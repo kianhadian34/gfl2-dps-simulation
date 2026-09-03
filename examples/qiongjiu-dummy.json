@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "seed": 20260903,
+  "turns": 10,
+  "team": [
+    {
+      "characterId": "qiongjiu",
+      "rotation": ["ultimate", "active1", "active2", "basic"],
+      "equippedFixedKeys": ["qiongjiu_fk1_concentration"]
+    }
+  ],
+  "dummy": {
+    "id": "training_dummy",
+    "name": "Training Dummy",
+    "hp": 999999999,
+    "defense": 0,
+    "stability": 0,
+    "weaknesses": [],
+    "phase": null,
+    "cover": "none"
+  }
+}

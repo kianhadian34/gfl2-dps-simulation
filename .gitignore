@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---- Node / TypeScript (this project) ----
+node_modules/
+*.tsbuildinfo
+npm-debug.log*
+# Host-managed workspace placeholder (recreated so the session shell can start)
+/Girls Frontline 2 Simulations/

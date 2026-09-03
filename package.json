@@ -1,0 +1,17 @@
+{
+  "name": "gfl2-dps-simulation",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Data-driven combat simulator/DPS calculator for Girls' Frontline 2: Exilium (MVP: Qiongjiu vs stationary training dummy)",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test \"dist/test/*.test.js\"",
+    "sim": "npm run build && node dist/cli.js"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
