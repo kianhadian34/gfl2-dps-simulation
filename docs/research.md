@@ -1,0 +1,375 @@
+# GFL2 Mechanics Research — MVP (Training-Dummy Combat Simulator)
+
+Status: research complete (2026-09-03) · Pre-implementation · Not all numbers are confirmed — see [Uncertainty Register](#4-uncertainty-register).
+
+This document records every mechanic the MVP needs, in the format requested by the handoff:
+
+```
+Mechanic
+Source
+Confidence
+Implementation interpretation
+Unknowns
+```
+
+Confidence levels: **CONFIRMED** (primary/official source, or independently reproduced in-game) · **PROBABLE** (one reliable secondary source, or strong corroboration) · **UNCERTAIN** (conflicting or ambiguous evidence) · **UNKNOWN** (not found — nothing invented).
+
+---
+
+## 1. Executive summary
+
+What we know with high confidence, in one paragraph:
+
+1. **Damage pipeline** — `final = ceil( base × defense_ratio × (1 + Σ additive bonuses) × phase × weakness × reductions × crit )`, where `defense_ratio = ATK/(1+DEF/ATK)`, all damage bonuses (self buffs, target vulnerability, Confectance bonus) are **additive in one bracket**, phase countering is ×1.2/×0.8, each exploited weakness is +10%, crit is ×1.5, and the result is ceiling-rounded. Reproduced against real in-game numbers (Reddit test: `1213/(1+194/1213) × 1 × 1.1 = 1150.4 → 1151` in game).
+2. **Stability (稳态) is a fully separate resource** from HP: per-hit fixed stability damage (independent of ATK/DEF/crit), break at 0 → "Exposed" state with a damage-taken window; recovery exists but exact values are unknown.
+3. **There are no ACC/EVA stats in GFL2.** Against a stationary, uncovered dummy, attacks always hit; the only hit randomness is "glancing" (擦伤, ×0.1).
+4. **Kit structure is fixed data**: 1 basic attack + 2 actives + 1 ultimate + 1 passive, all with explicit %-of-ATK multipliers. Cooldowns are small integers (0/1/2…). Confectance (导染) is an event-driven resource (e.g. Qiongjiu gains **+1 per damage event**, ultimate costs **3**), **not** a `damage × m` formula.
+5. **Keys (固键)** are 4 tables (fixed/common/expansion/affinity keys), not a strict "3-branch" model.
+6. **Default 1 main action per actor per turn**; basic attack vs skill is an exclusive choice; extra hits come from support/extra actions that do not consume the main action.
+7. **Recommended dummy defaults**: no official dummy stats exist → make them **configurable**; recommended defaults `DEF 0, stability 0, no cover, no weaknesses, no phase` (pure `ceil(ATK × multiplier × bonuses × crit)` baseline).
+8. **English wikis (Prydwen, Fandom, Game8) are currently unusable** — Prydwen has no GFL2 section (404), Fandom wiki does not exist. The reachable, citable sources are BWIKI (zh), IOPWiki, gfl2.help, DotGG, and game data dumps. See [Source map](#2-source-map).
+
+---
+
+## 2. Source map
+
+| Source | What it provided | Reachability (2026-09-03) |
+|---|---|---|
+| `wiki.biligame.com/gf2/伤害算法` (BWIKI damage algorithm) | Formula structure, additive bonus rule, phase ×1.2/×0.8, crit ×1.5, glancing ×0.1, panel formula, tested numbers | ✅ reachable |
+| `wiki.biligame.com/gf2/闪电, /琼玖, /可露凯, /莉塔拉, /罗蕾莱, /武器, /导染指数, /战斗玩法` | Buff/debuff texts, values, durations, stat panels, weapon scaling, cooldown/confectance examples | ✅ reachable (some pages are beta-era, flagged below) |
+| Reddit `r/GirlsFrontline2/comments/1hgw4zn` (via pullpush.io archive) | **In-game reproduction** of the damage formula incl. defense term | ✅ reachable via archive API |
+| `iopwiki.com/wiki/GFL2_Combat`, `/wiki/Qiongjiu`, `/wiki/Common_Keys` | Stability/weakness/cover rules, turns, support attacks, keys taxonomy | ✅ reachable |
+| `gfl2.help/en/characters/Qiongjiu`, `dotgg.gg/girls-frontline-2-exilium/qiongjiu/` | Skill multipliers, cooldowns, Confectance costs, fixed-key list | ✅ reachable |
+| Game data dumps: `66hh/GF2ExiliumData` (CN beta `BattleConfigData.json`, `BattleEffectData.json`), `PotRooms/GFL2_Data` (EN dump) | `breakRound=2`, `suppressToHurtId=20`, `StableHit` channel; full EN tables **not yet parsed** | ✅ reachable (shallow parse done) |
+| `prydwen.gg/gfl2/*`, `girlsfrontline2.fandom.com`, `game8.co`, `wiki.gg`, Reddit direct, most search engines | — | ❌ unreachable (404 / JS-challenge / 403 / no page) |
+
+---
+
+## 3. Mechanics
+
+### 3.1 Damage formula and order of operations
+
+**Mechanic** — Full damage calculation for an attacking hit.
+
+**Source** — `wiki.biligame.com/gf2/伤害算法`; Reddit 1hgw4zn (in-game reproduction); `iopwiki.com/wiki/GFL2_Combat`.
+
+**Confidence** — CONFIRMED for the structure and every listed factor (defense term, additive bonuses, phase, weakness, crit, ceil); the *written* operator order from the beta-era formula image is PROBABLE (image not OCR-able). Mathematically the multiplicative factors commute, so order only matters for grouping.
+
+**Implementation interpretation** (recommended, stable for the MVP):
+
+```
+raw       = finalATK × skillMultiplier                      # skill describes its own % of ATK
+mitigated = raw × finalATK / (finalATK + finalDEF)          # ≡ ATK/(1+DEF/ATK); final = post buff/debuff values
+bonus     = 1 + Σ additive_bonuses                          # ALL additive: own dmg-up, target vuln, Confectance bonus
+phase     = 1.2 (counter) | 0.8 (countered) | 1.0 (neutral) # 属性克制
+weakness  = ∏ (1 + 0.10) per exploited weakness             # each exposed weakness +10%
+reduction = (1 − stability_red) × (1 − dmg_red) × (1 − cover_red)   # dummy: cover_red = 0
+crit      = 1.5 if crit rolled else 1.0
+final     = ceil( mitigated × bonus × phase × weakness × reduction × crit )
+glancing  = ceil( final × 0.1 )                             # when a hit is judged glancing (trigger rule UNKNOWN)
+```
+
+All "damage dealt up" / "damage taken up" bonuses are **added together in one bracket first** (BWiki example: `1 + 20% + 50% + 30% + 50% = 250%` final multiplier). Damage *reductions* are multiplicative on top.
+
+**Unknowns** — exact written operator order of the beta formula image; whether DoT/indirect damage uses the same pipeline (see §3.10); exact relationship between the ×1.5 crit rule and the 120% panel crit-damage stat (see §3.3).
+
+### 3.2 Defense
+
+**Mechanic** — How DEF reduces incoming damage.
+
+**Source** — Reddit 1hgw4zn (in-game reproduction: ATK 1213 vs DEF 194 → `1213/(1+194/1213)`); `wiki.biligame.com/gf2/伤害算法`.
+
+**Confidence** — CONFIRMED (reproduced against an exact in-game number). `DEF:ATK = 1:1` halves damage; `2:1` → 1/3. A beta-era "flat ATK − DEF" description exists on old mechanic pages but is contradicted by the live-server reproduction; treat it as legacy. Enemies in early chapters have DEF ≈ 190–194 (two samples); 60-level enemy DEF magnitudes are UNKNOWN ("thousands" is unrealistic; hundreds realistic).
+
+**Implementation interpretation** — `mitigated = raw × finalATK/(finalATK + finalDEF)` counting post-buff/debuff defense. Dummy default `DEF = 0` (term degrades to 1.0) with full configurability.
+
+**Unknowns** — live DEF tables for level-60 enemies/dummies; skills that subtract flat panel DEF (rare cases) — data-model them as DEF modifiers, not formula changes.
+
+### 3.3 Critical hits
+
+**Mechanic** — Crit rate source and crit damage multiplier.
+
+**Source** — `wiki.biligame.com/gf2/伤害算法` ("暴击伤害的修正为固定的1.5倍"); character stat panels (base crit damage 120%); Reddit 1hgw4zn comments; IOPWiki GFL2_Combat.
+
+**Confidence** — Multiplicative ×1.5 on crit: CONFIRMED (BWIKI). Whether the 120% panel base (= +20%) is baked into that 1.5 or an additional layer: **UNCERTAIN** (two BWIKI statements conflict). Crit-rate sources: weapon attachments + skills/passives, no full list; a hard cap is UNKNOWN.
+
+**Implementation interpretation** — `critMult = 1.5` default (single multiplicative factor), crit rolled on final crit rate, RNG from the explicit RNG object. Do **not** implement a `1.2 × 1.5` double layer until in-game-tested. Keep `critDmgBonus` as a config slot.
+
+**Unknowns** — exact crit multiplier, crit-rate caps, anti-crit mechanics (PvP — out of scope anyway).
+
+### 3.4 Phase countering (属性克制)
+
+**Mechanic** — 6-element counter wheel: 物理/physical, 燃烧/burn, 电导/electric, 冷凝/ice, 酸蚀/acid, 浊刻/decay.
+
+**Source** — `wiki.biligame.com/gf2/伤害算法` (tested table, e.g. 114 vs 95 → ×1.2, 76 vs 95 → ×0.8).
+
+**Confidence** — CONFIRMED (tested data groups).
+
+**Implementation interpretation** — phase attribute on attack and target; `counter → ×1.2`, `countered → ×0.8`, else 1.0. Phase is a **separate multiplicative factor from weakness exploit**. Dummy default: no phase (neutral).
+
+**Unknowns** — a rumored newer "Resonance" phase extension (2026 news, unverified).
+
+### 3.5 Weakness exploit (弱点)
+
+**Mechanic** — Attacking a target's *exposed* weakness (weapon-type or phase weakness).
+
+**Source** — `iopwiki.com/wiki/GFL2_Combat`; Reddit 1hgw4zn.
+
+**Confidence** — CONFIRMED: each exploited weakness → +10% damage **and** +2 stability damage.
+
+**Implementation interpretation** — `weakness: product(1.1 per matched weakness)`; `stabDamage += 2 per matched weakness`. A hit that drops stability to 0 is computed at the pre-break damage level (i.e. the break hit does not benefit from stability reduction). Configurable per dummy.
+
+**Unknowns** — partial-match rules when not all weaknesses are hit (only all-or-nothing documented); simultaneous phase+weakness stacking is supported (independent multiplicatives) but not covered by one authoritative sentence (mark UNCERTAIN in engine defaults until tested).
+
+### 3.6 Glancing (擦伤)
+
+**Mechanic** — A hit judged "glancing" deals `ceil(final × 0.1)`.
+
+**Source** — `wiki.biligame.com/gf2/伤害算法`.
+
+**Confidence** — PROBABLE (the 0.1 multiplier); trigger condition/probability **UNKNOWN**.
+
+**Implementation interpretation** — optional config `glancingChance` (default 0 for MVP determinism tests; the dummy has no evasion so glancing should not occur).
+
+**Unknowns** — when glancing triggers, probability, relation to cover/distance.
+
+### 3.7 Stability system (稳态)
+
+**Mechanic** — Second, fully separate resource bar (hexagon segments beside the HP bar). Per-hit fixed stability damage (not a damage-formula product), break at 0, temporary damage-taken window, recovery.
+
+**Source** — IOPWiki GFL2_Combat; `66hh/GF2ExiliumData` beta `BattleConfigData.json` (`breakRound:2`, `suppressToHurtId:20`, `StableHit` effect channel); BWIKI character pages (per-skill stability values).
+
+**Confidence** —
+- Stability is an independent resource w/ its own hit channel, unaffected by ATK/DEF/crit: CONFIRMED.
+- Stability values are per-skill constants (typical 1–3 per hit; e.g. Qiongjiu basic 2, support attack 2): CONFIRMED examples, general table UNKNOWN.
+- Break → "Exposed" with damage-taken increase: PROBABLE; the **increase %** is UNKNOWN (buff id 20).
+- Break duration `breakRound = 2`: **UNCERTAIN** (CN beta value; re-check on live).
+- Stability reduction on damage: CONFIRMED only *when stability > 0 and in cover* (60% loss). For a dummy with stability > 0 but no cover, the rule is UNKNOWN → dummy default `stability: 0` avoids the ambiguity.
+- Recovery: EXISTS (start of own turn / new round), exact amount/formula UNKNOWN.
+
+**Implementation interpretation**
+
+```
+stab_damage = skill.stabDamage + (2 × #weaknesses exploited)
+target.stability -= stab_damage
+if target.stability <= 0 and not already exposed:
+    apply Exposed buff for breakRound turns (config, default 2)
+    → damage-taken multiplier on target (config, default ??? → must be tested)
+    → stability reduction term becomes 0 while exposed
+recovery: configurable per-dummy/actor rule (onRoundStart restore N, or restore to max × pct) — defaults ON but value = config
+```
+
+Attacker stability is irrelevant to the attacker's own damage output (CONFIRMED) → do not feed it into damage; only read the *target's* exposed flag.
+
+**Unknowns** — exposed damage-% and live break duration; per-unit max stability and exact per-skill stability damage; recovery formula; whether stability damage continues against an already-exposed target; AoE/multi-segment stability splitting.
+
+### 3.8 Stats and stat scaling
+
+**Mechanic** — Panel attributes and the panel formula.
+
+**Source** — BWIKI character pages (Qiongjiu 琼玖, Sharkry 夏克里, Suomi 索米, Lightning 闪电) and `/gf2/伤害算法`.
+
+**Confidence** — Attribute list CONFIRMED; no ACC/EVA stats exist (CONFIRMED — site-wide index has none); panel formula CONFIRMED: `finalATK = (small ATK sources summed) × (1 + Σ big ATK% bonuses)` (same for DEF/HP%).
+
+Attributes: ATK (攻击), HP (生命), DEF (防御), Stability Index (稳态指数), Crit Rate (暴击), Crit DMG (暴击伤害, panel base 120%), ATK%/HP%/DEF% (attack/life/defense %, "big stats"), Stability Damage Reduction % (稳态减伤), 行动力 movement (grid/round), 攻击范围 attack range (grids), weaknesses (弱点).
+
+Level-60 base magnitudes (CONFIRMED, 2024 BWIKI data): Qiongjiu `ATK 119→1224, HP 233→2494, DEF 65→695, stability 9, crit 20%, cdmg 120%`; Suomi ATK 837 / HP 2298 / DEF 725. With weapon + helix, an endgame DPS panels ~2000–3200 ATK, ~700–1100 DEF, ~3000–6000 HP (reasonable projection, PROBABLE).
+
+**Implementation interpretation** — store base stats + additive flat (small) sources + percentage (big) modifiers; compute panel at init once per sim: `flat × (1 + pct)`.
+
+**Unknowns** — current live level cap (60 vs 70 on CN, 2025+); complete small-ATK source list per doll.
+
+### 3.9 Weapons and calibration (校准/调校)
+
+**Mechanic** — Weapon ATK adds (as a "small" stat) to the character panel; skill-effect calibration is separate.
+
+**Source** — BWIKI `/gf2/武器`, Qiongjiu page (signature 金石奏).
+
+**Confidence** — CONFIRMED: weapon value at proficiency N = `ceil(lvl1_value × coefficient / 1000)`, level-60 coefficient 18.4; calibration has 6 stages and improves the weapon's *skill effect*, not its white stats. Examples: 金石奏 53 → 369 ATK @60 (+15% ATK% sub-stat); standard blues ~200–260 ATK @60, elites ~350–450 (range PROBABLE).
+
+**Implementation interpretation** — `weapon.atk` (small stat) + `weapon.subStats` (e.g. ATK% 15%) + `weapon.skillLevel` from calibration; feed into panel formula.
+
+**Unknowns** — exact per-rarity ranges; per-stage calibration values (read in-game).
+
+### 3.10 Buffs / debuffs / status effects
+
+**Mechanic** — Generic effect system with durations in turns, tiered variants, stacking, tick timing.
+
+**Source** — BWIKI pages for Lightning, Klukai, Litta, Lorelei; `/gf2/伤害算法`.
+
+**Confidence** —
+- Containers CONFIRMED: buffs (攻击提升I +10%, II +15%; 防御提升II +30%; 减伤 60% 1 turn; 受疗 +50%; Concealment 掩护 −2 stab dmg/layer, max 3; Extra/Bonus Action effects), debuffs (攻击降低I −10%; 防御降低I −20%, II −30%; 易伤I +10% dmg taken; Terror; Taunt; Lure; Stun; DoTs: 溢火 burn — caster's 10% ATK fixed dmg at action end, 强酸倾压 acid — 12% ATK per layer, +12%/layer, max 10, refresh on apply, un-dispellable).
+- Durations in «X turns» and «X big rounds» exist (big round = player phase + enemy phase): CONFIRMED. DoT/end-of-action timings exist: CONFIRMED. **Which exact tick point decrements a duration (own turn start / round end) is UNKNOWN.**
+- Same-tier reapplication behavior (refresh vs stack) UNKNOWN; stacking caps explicitly defined in skill text (e.g. max 3/8/10) CONFIRMED.
+- All damage-side bonuses are additive (§3.1): CONFIRMED.
+- "不可驱散" (un-dispellable) flag exists: CONFIRMED.
+- Official control-type set: taunt/evasion/lure/stun: CONFIRMED (out of MVP scope, but note).
+
+**Implementation interpretation** — generic `Status` records: `id, stacks, maxStacks, duration (big-rounds), tickAt (actionEnd|roundEnd|ownTurnStart), instanceKey (caster), purgeable, statMods[], dmgMods[], stabilityMods[], hooks[]`. DoT fixed damage uses caster ATK at cast time and does **not** crit or use DEF (fixed-damage branch). Duration model default for MVP: decrement on the owner's own action (per-own-turn cycle), configurable.
+
+**Unknowns** — tick point; refresh-vs-stack for same-tier applies; full element-DoT definitions for electric/ice/decay (only burn & acid are textually documented).
+
+### 3.11 Skills: kit structure, multipliers, cooldowns
+
+**Mechanic** — Fixed kit: 1 basic attack + 2 active skills + 1 ultimate + 1 passive; every skill has an explicit % of ATK (or fixed damage); cooldowns are small integers.
+
+**Source** — IOPWiki Qiongjiu; gfl2.help; DotGG Qiongjiu; BWIKI character pages.
+
+**Confidence** — Kit structure CONFIRMED (three sources agree verbatim; Wikipedia battle-mechanics outline agrees). Multipliers CONFIRMED per skill (Qiongjiu: basic 80% phys + 2 stab; Common Rail 150% burn, cd 1; Guide to Victory 110% burn AoE, Overburn 2 turns, cd 1; support attack 90% + 2 stab). Cooldown values 0/1/2 CONFIRMED; **decrement timing (is the use-turn counted? start or end decrement) UNCERTAIN** — no source states it.
+
+**Implementation interpretation** — slot model `basicAttack, active1, active2, ultimate, passive`, each with `multiplier | fixedDamage, typeTag, cooldown, confectanceCost, stabDamage, range, aoe, appliedStatuses, hooks`. Cooldown default model (self-consistent, recommended until tested): cooldown = number of full turns to wait; decrement **at the end of the acting character's own turn**; the use-turn is not counted (cd 1 → usable next turn). Configurable.
+
+**Unknowns** — live cooldown-timing rule; a real "cooldown 3" example; per-character kit variations (some dolls differ from the 1/2/1/1 shape).
+
+### 3.12 Confectance (导染 / Confectance Index)
+
+**Mechanic** — Pips above the HP bar; generated by events (damage, kills, skills — **per skill text**), spent on skills/ultimates; gains/costs settled after the event.
+
+**Source** — IOPWiki Qiongjiu (`skill_cost: 3`; passive +1 Confectance per damage event); gfl2.help / DotGG (cost 3, fixed key +3 at battle start); BWIKI `/gf2/导染指数` (beta: not turn-grown; gains/consumption settled after events; damage bonus 0% <100, +5%/10 pts, cap +50% @200 — beta numbers); IOPWiki GFL2_Combat.
+
+**Confidence** — Event-driven, per-skill-text generation CONFIRMED (a `damage × m` proportion is **rejected** by data). Cost values are per-skill (3; some ultimates consume ALL). **Max capacity (hexagon full value) UNKNOWN; battle-start value UNKNOWN; the beta damage-bonus table is UNCERTAIN** (beta source; the live additive example in the damage page shows a 20% Confectance bonus in the additive bracket, so treat it as a configurable additive term).
+
+**Implementation interpretation** — `confectance: int` on each unit; event hooks (`onDamageDealt`, `onKill`, `onSkillCast`, custom per skill) define gains; casting subtracts cost **after** the skill fully resolves; optional additive damage bonus `confectanceBonus(amount)` as config with beta defaults off.
+
+**Unknowns** — cap, start value, per-doll gain tables, kill bonus, live damage-bonus table.
+
+### 3.13 Keys (固键)
+
+**Mechanic** — Four key tables: Fixed (专属, doll-specific, several equippable; Qiongjiu has 6, e.g. FK1 +3 Confectance at battle start, FK3 DEF Down II on support hit), Common (shared pool, stat + conditional effect, e.g. crit+5% / +7% dmg on others' turns), Expansion (1 per doll, playstyle-changing: support attack becomes burning +15% vs burning), Affinity (bond-5, three pure stat keys).
+
+**Source** — IOPWiki Qiongjiu / Common_Keys; DotGG Qiongjiu.
+
+**Confidence** — Taxonomy and examples CONFIRMED; the "3-branch select" model is PROBABLY not current; **max equippable fixed keys (screenshots suggest 3 slots) UNKNOWN**.
+
+**Implementation interpretation** — `fixedKeys[]` (equipped set, each with stat terms + effect hooks), `commonKey`, `expansionKey` (skill modifier switch), `affinityKeys[]` (pure stat terms).
+
+**Unknowns** — live slot count; helix unlock costs; version-evidence of any 3-branch structure.
+
+### 3.14 Passives and out-of-turn attacks (支援/额外行动)
+
+**Mechanic** — Action Support (support attack, e.g. Qiongjiu: ally single-target hit in range → 1 support attack 90% ATK + 2 stab, max 3/round, does **not** consume action or Confectance, **cannot be triggered by another support attack**), Emergency Support, Interception (before being hit), Counterattack (after being hit), Extra Action (a full extra action; some dolls).
+
+**Source** — IOPWiki GFL2_Combat / Qiongjiu; gfl2.help; Gamerant (Tololo extra action).
+
+**Confidence** — Categories and Qiongjiu-specific rules CONFIRMED; per-doll quotas/conditions PROBABLE; exact trigger-verification sequencing UNKNOWN.
+
+**Implementation interpretation** — event-bus: `onAllySingleTargetHit`, `onDebuffApplied`, `onUnitAttacked`, etc.; passives subscribe with per-round quota counters (reset each round); support attacks emit 0-cost attack events that are themselves **not** trigger sources (guard against chaining).
+
+**Unknowns** — per-doll details; order between emergency support and support support on the same target.
+
+### 3.15 Turn / action sequencing and APL
+
+**Mechanic** — SRPG on a grid; each unit has 行动力 (movement) and 攻击范围 (range); default **1 main action** per unit per round; basic attack vs active skill is an exclusive choice on that action; extra hits only via support/extra actions; no speed/initiative documented — round-robin with player-chosen order.
+
+**Source** — IOPWiki GFL2_Combat (Turns); BWIKI `战斗玩法` (beta); BWIKI character pages.
+
+**Confidence** — 1 action/round + exclusive basic-vs-skill: CONFIRMED. Round-robin with free order: PROBABLE (structurally inferred, matches common knowledge). **Auto-battle AI priority: UNKNOWN (no documentation anywhere).** Community convention for "damage per turn" is per **full team round** — treat as the reporting convention (PROBABLE).
+
+**Implementation interpretation** — round = full team sweep (each doll acts once, in configurable/APL order); per-round reset of per-round counters; metrics: `total damage`, `damage per full team round`, optionally `damage per action`. APL default `ultimate if available > active if available > basic attack`, marked as a **model assumption**, configurable.
+
+**Unknowns** — real auto-AI behavior; whether AI withholds skills; movement AI (irrelevant: dummy stationary, no movement in MVP).
+
+### 3.16 Training dummy
+
+**Mechanic** — No official dummy stat sheet exists (searched; only combat-training tutorials exist).
+
+**Confidence** — Dummy stats: UNKNOWN → fully configurable.
+
+**Implementation interpretation** — recommended defaults: `DEF 0, HP 1e9, stability 0, weaknesses [], phase neutral, cover none`. With `stability 0`, the stability-reduction term (§3.7) can never fire, so its unknown rule does not block correctness.
+
+**Unknowns** — everything about the "real" in-game dummy → covered by the in-game test plan.
+
+### 3.17 Out-of-scope confirmations
+
+- Cover, high ground, flanking, movement: not modeled (MVP). Cover reduction values exist (35/30/25/20% by cover type) — recorded for later, **not** implemented.
+- "Nixie / 交换机" skill: **no evidence any such skill type exists** in any reachable source — do not model it. If the user meant something specific, it needs clarification.
+- No ACC/EVA, no miss vs the dummy (§3.8).
+- Attacker stability never affects offense (§3.7).
+
+---
+
+## 4. Uncertainty register
+
+Every mechanic that is still uncertain, with impact and resolution path. **None of these should be hardcoded as facts in the engine — all are config defaults pending the in-game test plan (§5).**
+
+| # | Mechanic | Confidence | Sim impact | Resolution |
+|---|---|---|---|---|
+| U1 | Crit multiplier: ×1.5 vs ×(1 + 20% panel) | UNCERTAIN | Up to 33% damage skew | In-game crit/non-crit ratio test |
+| U2 | Glancing trigger rule & probability | UNKNOWN | Random 0.1x hits | Damage distribution test |
+| U3 | Exposed damage-% after stability break | UNKNOWN | Big skew on break turns | Stability test |
+| U4 | Break duration (beta `breakRound=2`) | UNCERTAIN | Break window length | Stability test |
+| U5 | Per-unit max stability & per-skill stab damage values | CONFIRMED examples / UNKNOWN table | Stability pacing | Per-skill record + data dump parse (`PotRooms/GFL2_Data`) |
+| U6 | Stability recovery amount/formula | UNKNOWN | Long-sim drift | Stability test |
+| U7 | Buff duration tick point (own turn start vs round end) | UNKNOWN | Buff expiry timing | Buff timer test |
+| U8 | Same-tier status reapply: refresh vs stack | UNKNOWN | Stack math | Reapply test |
+| U9 | Confectance cap & battle-start value | UNKNOWN | Ultimate timing | Confectance test + data dump |
+| U10 | Confectance damage-bonus table (beta: +5%/10pts, cap +50%) | UNCERTAIN | Damage curve | Confectance test |
+| U11 | Cooldown decrement timing (use-turn counted?) | UNCERTAIN | Skill cadence | Cooldown test |
+| U12 | Auto-battle AI priority | UNKNOWN | Whole-sim fidelity | Auto-battle recording; default is a labeled model assumption |
+| U13 | Live level cap & endgame stat magnitudes | UNKNOWN (2024 data) | Absolute numbers | In-game panel read |
+| U14 | Enemy/dummy DEF magnitudes | UNKNOWN | Defense term scale | Dummy DEF test |
+| U15 | Weakness partial-match & phase×weakness interaction | UNKNOWN/UNCERTAIN | Edge-case damage | Weakness test |
+| U16 | Element DoTs (electric/ice/decay) full definitions | UNKNOWN | DoT modeling | Skill doc read (deferred — not required for first dolls) |
+| U17 | "Resonance" phase extension (2026) | UNKNOWN | Future-proofing | Watch patch notes; not in MVP |
+| U18 | "Nixie/交换机" term | UNKNOWN (no evidence) | — | Needs user clarification, not code |
+
+---
+
+## 5. In-game test plan (blocking values that cannot be verified online)
+
+Procedure sketches — all trivially runnable on a stationary target (existing training modes or a low-HP enemy) at known stats. Record values back into config/data, not code constants.
+
+1. **Dummy DEF** — hit a dummy with a known-ATK doll using a known-multiplier basic attack, record non-crit, no-buff damage, solve for DEF: `DEF = ATK×(raw/final − 1)`. If DEF ≈ 0, keep default.
+2. **Crit** — many same-condition hits, ratio of crit/non-crit damage → confirms ×1.5 (or whatever) and effective crit rate.
+3. **Stability per hit & +2 per weakness** — watch the hexagon bar with known stab-damage skills; confirm per-hit values and weakness bonus; confirm stability damage ignores DEF.
+4. **Exposed state** — break stability, measure damage-taken %, duration in turns, and recovery amount per turn (and any "action end" vs "round start" timing).
+5. **Buff timers** — apply ATK Up, observe expiry relative to caster's next turn vs round end; re-apply same tier → refresh or stack?
+6. **Cooldowns** — use a cd-1 skill on turn N; check usable on N+1 (vs N+2).
+7. **Confectance** — record pips at battle start, per damage event, per skill use, cap, and ultimate cost.
+8. **Glancing** — damage histogram across many attacks; count 0.1×-style outliers and infer trigger conditions.
+9. **Auto-battle AI** — record the action sequence of a 4-doll team on auto vs a dummy; compare to `ultimate > active > basic`.
+10. **Per-doll data capture** — for each doll added to the sim: full skill texts (multiplier, type, cd, cost, stab, statuses, keys) from the in-game panel.
+
+---
+
+## 6. MVP numeric defaults (single source of truth for the engine)
+
+Only CONFIRMED values become defaults; everything else is a **config key** (documented, off until in-game-verified).
+
+| Setting | Default | Status |
+|---|---|---|
+| Defense term | `ATK/(1+DEF/ATK)` | CONFIRMED |
+| Crit multiplier | `1.5` (single factor) | CONFIRMED (×120%-panel interplay: U1) |
+| Phase counter | `×1.2 / ×0.8 / 1.0` | CONFIRMED |
+| Weakness exploit | `+10% dmg` and `+2 stab` per weakness | CONFIRMED |
+| Glancing | `final × 0.1`, chance 0 (off) | PROBABLE/U2 |
+| Stability reduction | only when `stability > 0` **and** cover — dummy has stability 0 → never fires | CONFIRMED rule, dummy-safe |
+| Exposed window | `2` rounds, dmg-% `UNKNOWN → config` | U3/U4 |
+| Stability recovery | per-round restore, value `config` | U6 |
+| Buff duration units | big-rounds; tick at own action (config) | U7 |
+| Bonus grouping | one additive bracket | CONFIRMED |
+| Cooldown model | cd = full turns to wait; decrement at end of own turn | U11 (model assumption) |
+| Confectance | event gains per skill text; cost after cast; cap/start/bonus = config | U9/U10 |
+| Actions | 1 main action/round; basic ⊻ skill; support attacks free | CONFIRMED |
+| APL | ultimate > active > basic (model assumption, configurable) | U12 |
+| Dummy | `DEF 0, HP 1e9, stability 0, no cover, no weak, neutral phase` | config |
+| Panel stats | `(Σ small) × (1 + Σ pct)` | CONFIRMED |
+
+## 7. Terminology annex (CN → EN)
+
+| CN | EN (community-localized; verify in client before fixing strings) |
+|---|---|
+| 普攻 / 基本攻击 | Basic Attack |
+| 主动技能 | Active Skill |
+| 致胜技能 / 大招 | Ultimate |
+| 被动 | Passive |
+| 固键 | Key (fixed 专属 / common 共通 / expansion 扩展 / affinity 好感) |
+| 导染 (指数) | Confectance Index |
+| 稳态 / 稳定性 | Stability / Steadiness |
+| 稳态崩溃 / 破稳 | Stability Collapse / Exposed |
+| 弱点 | Weakness |
+| 属性克制 | Phase countering |
+| 支援攻击 | Action Support |
+| 额外行动 | Extra Action |
+| 擦伤 | Glancing |
+| 大回合 | Big round (player phase + enemy phase) |
