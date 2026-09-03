@@ -89,12 +89,18 @@ test("statusOverrides.tickAt roundEnd expires the buff the same round (U7)", () 
   assert.ok(Math.abs(r2b.bonusBracket - 1.1) < 1e-9, `roundEnd bracket ${r2b.bonusBracket}`);
 });
 
-test("cooldownModel nextOwnTurnEnd makes cd-1 skip a round (U11)", () => {
+test("cooldownModel: confirmed default waits N full turns; the alternative stays selectable (U11)", () => {
   const base: Over = { turns: 3, rotation: ["active1"], keys: [] };
+  // Confirmed default ("nextOwnTurnEnd"): CD-1 → cast T1, unavailable T2 (basic fallback), available T3.
   const dflt = simulateScenario(scenario(base));
-  const shifted = simulateScenario(scenario({ ...base, config: { cooldownModel: "nextOwnTurnEnd" } }));
-  assert.deepEqual(dflt.log.map((e) => e.action), ["qiongjiu_common_rail", "qiongjiu_common_rail", "qiongjiu_common_rail"]);
-  assert.deepEqual(shifted.log.map((e) => e.action), ["qiongjiu_common_rail", "qiongjiu_basic", "qiongjiu_common_rail"]);
+  const explicit = simulateScenario(scenario({ ...base, config: { cooldownModel: "nextOwnTurnEnd" } }));
+  assert.deepEqual(dflt.log.map((e) => e.action), ["qiongjiu_common_rail", "qiongjiu_basic", "qiongjiu_common_rail"]);
+  assert.equal(JSON.stringify(dflt.log), JSON.stringify(explicit.log));
+  // Alternative hypothesis retains the old behavior when explicitly requested.
+  const alt = simulateScenario(scenario({ ...base, config: { cooldownModel: "endOfOwnTurn" } }));
+  assert.deepEqual(alt.log.map((e) => e.action), ["qiongjiu_common_rail", "qiongjiu_common_rail", "qiongjiu_common_rail"]);
+  // The alternative is flagged as non-confirmed in warnings.
+  assert.ok(alt.warnings.some((w) => w.includes("non-confirmed alternative")));
 });
 
 test("overridden statuses are flagged as config-overridden in warnings", () => {

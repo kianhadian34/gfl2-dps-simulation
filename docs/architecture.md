@@ -51,7 +51,7 @@ Status: proposal, awaiting approval. Follows handoff §19–§21: accuracy-first
 | `damage` | The damage pipeline (§6) incl. crit, defense, weakness, glancing |
 | `stability` | Stability damage, break/expose, recovery (**confirmed 2-turn delay after break → restore to max**, research U6) |
 | `effects` | Generic effect engine: stat mods, damage mods, reductions, status apply/remove, resource gain, cooldown change, additional action, conditionals, fixed damage |
-| `cooldowns` | Per-skill cooldown state + decrement timing (configurable tick) |
+| `cooldowns` | Per-skill cooldown state + decrement timing — **confirmed: wait N full turns after the cast turn** (default `nextOwnTurnEnd`; alternative `endOfOwnTurn` selectable for testing only) |
 | `resources` | Confectance gauge, gains/costs (event-driven, per skill data) |
 | `rng` | Seeded RNG object (split-mix like, injectable) |
 | `apl` | Action-priority interpreter (§8) |

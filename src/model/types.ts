@@ -151,9 +151,11 @@ export interface ConfigOverrides {
    */
   statusOverrides?: Record<string, StatusOverride>;
   /**
-   * Cooldown decrement model (research U11):
-   * - "endOfOwnTurn": set at cast, decrement at end of own turn → cd-1 usable next round (default)
-   * - "nextOwnTurnEnd": cd effectively +1 → cd-1 skips the next round
+   * Cooldown decrement model (research U11 — CONFIRMED 2026-09-03):
+   * a CD-N skill waits N full turns after its cast turn:
+   *   "nextOwnTurnEnd" (DEFAULT): cast T1 → unavailable T2 → available T3 for CD-1.
+   *   "endOfOwnTurn": alternative hypothesis ("usable next turn") — kept
+   *   selectable for testing only.
    */
   cooldownModel?: "endOfOwnTurn" | "nextOwnTurnEnd";
 }

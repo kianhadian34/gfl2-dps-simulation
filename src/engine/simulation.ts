@@ -283,7 +283,10 @@ function collectWarnings(state: SimulationState): void {
     warn.add(`critMultiplier=${c.critMultiplier} (research §3.3); interplay with the 120% panel crit-damage stat is UNVERIFIED (U1)`);
   }
   warn.add(`buff duration tick model = ownActionEnd (research U7 model assumption) — overridable via configOverrides.statusOverrides.<id>.tickAt`);
-  warn.add(`cooldown model = ${c.cooldownModel} (research U11 model assumption) — overridable via configOverrides.cooldownModel`);
+  if (c.cooldownModel !== DEFAULT_CONFIG.cooldownModel) {
+    // U11 is RESOLVED (wait N full turns after the cast turn); the alternative is selectable for testing only.
+    warn.add(`cooldown model = ${c.cooldownModel} — non-confirmed alternative (confirmed rule: wait N full turns after the cast turn, U11 RESOLVED 2026-09-03)`);
+  }
   warn.add("phase wheel not populated — phase interactions resolve neutral 1.0 (research §3.4: ×1.2/×0.8 confirmed, wheel UNVERIFIED)");
   const referenced = new Set<string>();
   for (const u of state.units) {

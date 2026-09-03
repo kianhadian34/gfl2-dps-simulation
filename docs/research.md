@@ -243,11 +243,11 @@ Level-60 base magnitudes (CONFIRMED, 2024 BWIKI data): Qiongjiu `ATK 119→1224,
 
 **Source** — IOPWiki Qiongjiu; gfl2.help; DotGG Qiongjiu; BWIKI character pages.
 
-**Confidence** — Kit structure CONFIRMED (three sources agree verbatim; Wikipedia battle-mechanics outline agrees). Multipliers CONFIRMED per skill (Qiongjiu: basic 80% phys + 2 stab; Common Rail 150% burn, cd 1; Guide to Victory 110% burn AoE, Overburn 2 turns, cd 1; support attack 90% + 2 stab). Cooldown values 0/1/2 CONFIRMED; **decrement timing (is the use-turn counted? start or end decrement) UNCERTAIN** — no source states it.
+**Confidence** — Kit structure CONFIRMED (three sources agree verbatim; Wikipedia battle-mechanics outline agrees). Multipliers CONFIRMED per skill (Qiongjiu: basic 80% phys + 2 stab; Common Rail 150% burn, cd 1; Guide to Victory 110% burn AoE, Overburn 2 turns, cd 1; support attack 90% + 2 stab). Cooldown values 0/1/2 CONFIRMED; **decrement timing CONFIRMED in-game (2026-09-03)**: a CD-N skill requires **N full turns to pass after its cast turn** — CD-1 cast Turn N → unavailable Turn N+1 → available Turn N+2 (NOT "available next turn").
 
-**Implementation interpretation** — slot model `basicAttack, active1, active2, ultimate, passive`, each with `multiplier | fixedDamage, typeTag, cooldown, confectanceCost, stabDamage, range, aoe, appliedStatuses, hooks`. Cooldown default model (self-consistent, recommended until tested): cooldown = number of full turns to wait; decrement **at the end of the acting character's own turn**; the use-turn is not counted (cd 1 → usable next turn). Configurable.
+**Implementation interpretation** — slot model `basicAttack, active1, active2, ultimate, passive`, each with `multiplier | fixedDamage, typeTag, cooldown, confectanceCost, stabDamage, range, aoe, appliedStatuses, hooks`. Cooldown model (CONFIRMED): cooldown = number of full turns to wait **after the cast turn**; engine default `cooldownModel = "nextOwnTurnEnd"` implements exactly this (cd+1 effective; countdown at end of the actor's own turns). The alternative "usable next turn" (`endOfOwnTurn`) remains selectable for testing only.
 
-**Unknowns** — live cooldown-timing rule; a real "cooldown 3" example; per-character kit variations (some dolls differ from the 1/2/1/1 shape).
+**Unknowns** — a real base-skill "Cooldown 3" example (research only surfaced 0/1/2; CD-2 keys exist but no base-skill CD-3 seen) — the N-full-turns shape is confirmed for CD-1 and expected to generalize; per-character kit variations (some dolls differ from the 1/2/1/1 shape).
 
 ### 3.12 Confectance (导染 / Confectance Index)
 
@@ -332,7 +332,7 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 | U8 | Same-tier status reapply: refresh vs stack | UNKNOWN | Stack math | Reapply test |
 | U9 | Confectance cap & battle-start value | UNKNOWN | Ultimate timing | Confectance test + data dump |
 | U10 | Confectance damage-bonus table (beta: +5%/10pts, cap +50%) | UNCERTAIN | Damage curve | Confectance test |
-| U11 | Cooldown decrement timing (use-turn counted?) | UNCERTAIN | Skill cadence | Cooldown test |
+| U11 | ~~Cooldown decrement timing (use-turn counted?)~~ → **CONFIRMED 2026-09-03**: CD-N waits N full turns after the cast turn — CD-1 cast T1 → unavailable T2 → available T3 (NOT "next turn") | ~~UNCERTAIN~~ → **CONFIRMED (in-game)** | Skill cadence | ✅ resolved — engine default `cooldownModel = "nextOwnTurnEnd"`; alternative `endOfOwnTurn` selectable for testing only |
 | U12 | Auto-battle AI priority | UNKNOWN | Whole-sim fidelity | Auto-battle recording; default is a labeled model assumption |
 | U13 | Live level cap & endgame stat magnitudes | UNKNOWN (2024 data) | Absolute numbers | In-game panel read |
 | U14 | Enemy/dummy DEF magnitudes | UNKNOWN | Defense term scale | Dummy DEF test |
@@ -353,7 +353,7 @@ Procedure sketches — all trivially runnable on a stationary target (existing t
 3. **Stability per hit & +2 per weakness** — watch the hexagon bar with known stab-damage skills; confirm per-hit values and weakness bonus; confirm stability damage ignores DEF.
 4. **Exposed state** — break stability, measure damage-taken % (U3 — still open). **Recovery timing already CONFIRMED (2026-09-03): 2-turn delay → restored to max**; watch whether the damage step-down matches that exactly.
 5. **Buff timers** — apply ATK Up, observe expiry relative to caster's next turn vs round end; re-apply same tier → refresh or stack?
-6. **Cooldowns** — use a cd-1 skill on turn N; check usable on N+1 (vs N+2).
+6. **Cooldowns** — ✅ **RESOLVED 2026-09-03**: CD-N waits N full turns after the cast turn (CD-1: cast T1 → unavailable T2 → available T3). Optional follow-up: confirm the same shape on a CD-2 skill.
 7. **Confectance** — record pips at battle start, per damage event, per skill use, cap, and ultimate cost.
 8. **Glancing** — damage histogram across many attacks; count 0.1×-style outliers and infer trigger conditions.
 9. **Auto-battle AI** — record the action sequence of a 4-doll team on auto vs a dummy; compare to `ultimate > active > basic`.
@@ -377,7 +377,7 @@ Only CONFIRMED values become defaults; everything else is a **config key** (docu
 | Stability recovery | **2-turn delay after break → restore to max** (`STABILITY_RECOVERY_DELAY = 2`); Exposed damage-% from config (U3 UNVERIFIED) | **CONFIRMED** (timing + restore-to-max, in-game 2026-09-03) |
 | Buff duration units | big-rounds; tick at own action (config) | U7 |
 | Bonus grouping | one additive bracket | CONFIRMED |
-| Cooldown model | cd = full turns to wait; decrement at end of own turn | U11 (model assumption) |
+| Cooldown model | **wait N full turns after the cast turn** (CD-1: cast N → unavailable N+1 → available N+2) — engine default `cooldownModel = "nextOwnTurnEnd"` | **CONFIRMED** (in-game 2026-09-03, U11) |
 | Confectance | event gains per skill text; cost after cast; cap/start/bonus = config | U9/U10 |
 | Actions | 1 main action/round; basic ⊻ skill; support attacks free | CONFIRMED |
 | APL | ultimate > active > basic (model assumption, configurable) | U12 |

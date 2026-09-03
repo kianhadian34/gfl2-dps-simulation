@@ -35,7 +35,9 @@ test("falls back to basic when every rotation slot is unavailable", () => {
   assert.deepEqual(actionsOf(r), ["qiongjiu_basic", "qiongjiu_basic", "qiongjiu_basic"]);
 });
 
-test("cooldown model (U11): cd-1 skill used on round N is usable again on round N+1", () => {
+test("cooldown model (U11 CONFIRMED): CD-1 cast Turn N → unavailable N+1 → available N+2", () => {
+  // rotation holds only the cd-1 skill; Turn 2 must fall back to basic
+  // (proving unavailability), Turn 3 must be castable again.
   const r = simulateScenario(scenario({ turns: 3, rotation: ["active1"] }));
-  assert.deepEqual(actionsOf(r), ["qiongjiu_common_rail", "qiongjiu_common_rail", "qiongjiu_common_rail"]);
+  assert.deepEqual(actionsOf(r), ["qiongjiu_common_rail", "qiongjiu_basic", "qiongjiu_common_rail"]);
 });

@@ -1,10 +1,14 @@
 import type { UnitState } from "./state.js";
 
 /**
- * Cooldown model (research U11 — model assumption, overridable per scenario):
- * - "endOfOwnTurn" (default): cooldown = full turns to wait; decrement at the
- *   end of the actor's own turn; the use-turn is not counted (cd-1 usable next round).
- * - "nextOwnTurnEnd": cooldown behaves as cd+1 (cd-1 skips one round).
+ * Cooldown model (research U11 — CONFIRMED in-game 2026-09-03):
+ * a skill with cooldown N requires N full turns to pass after its cast turn:
+ *   cast Turn N → unavailable Turn N+1 … → available Turn N+2 (for N=1).
+ * Implemented as "nextOwnTurnEnd": the cooldown is set at cast and decremented
+ * at the end of each of the actor's own turns — i.e. effectively cd+1 rounds.
+ * - "nextOwnTurnEnd" (DEFAULT): confirmed behavior (cd-1 skips one round).
+ * - "endOfOwnTurn": alternative hypothesis ("usable next turn") kept
+ *   selectable via configOverrides.cooldownModel for testing only.
  */
 export type CooldownModel = "endOfOwnTurn" | "nextOwnTurnEnd";
 

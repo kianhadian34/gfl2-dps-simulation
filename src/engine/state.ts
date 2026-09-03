@@ -21,7 +21,7 @@ export const DEFAULT_CONFIG: ResolvedConfig = {
   confectanceMax: 6, // U9 UNVERIFIED
   confectanceStart: 0, // U9 UNVERIFIED
   statusOverrides: {},
-  cooldownModel: "endOfOwnTurn", // U11 model assumption
+  cooldownModel: "nextOwnTurnEnd", // U11 CONFIRMED 2026-09-03: wait N full turns after the cast turn (CD1: cast N → unavailable N+1 → available N+2)
 };
 
 export interface UnitState {

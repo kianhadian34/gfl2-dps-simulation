@@ -30,7 +30,7 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 | 16 | Buff/debuff statuses, durations in rounds | CONFIRMED (existence); **U7 tick point UNKNOWN, U8 refresh-vs-stack UNKNOWN** | `configOverrides.statusOverrides.<id>.tickAt` / `.durationRounds` | `config-override.test.ts` (U7, duration) |
 | 17 | Support Boost I/II per-stack additive value & duration | **UNVERIFIED** (data defaults 0.05/0.10, 1 round) | `configOverrides.statusOverrides.support_boost_i/ii.perStackValue/durationRounds` | `config-override.test.ts` |
 | 18 | Overburn status | applied 2 rounds (CONFIRMED text); **effect values UNVERIFIED** (modeled with no effect + warning) | `configOverrides.statusOverrides.overburn.*` | warnings assert; applied in log |
-| 19 | Skill cooldown values (0/1/2) | CONFIRMED values; **U11 decrement timing UNCERTAIN** | `configOverrides.cooldownModel` (`endOfOwnTurn` default / `nextOwnTurnEnd`) | `config-override.test.ts` (U11), `rotation.test.ts` |
+| 19 | Skill cooldown values (0/1/2) + **U11 decrement CONFIRMED 2026-09-03: wait N full turns after the cast turn (CD-1: cast T1 → unavailable T2 → available T3)** | CONFIRMED | `configOverrides.cooldownModel` — default `nextOwnTurnEnd` (confirmed); `endOfOwnTurn` alternative selectable for testing only | `config-override.test.ts` (U11), `rotation.test.ts`, `cooldown-validation.test.ts` |
 | 20 | Confectance: event-driven gains (−1/damage dealt), cost settled after cast | CONFIRMED | — | `confectance.test.ts` |
 | 21 | Confectance max & battle-start values | **UNVERIFIED (U9)** | `configOverrides.confectanceMax`, `confectanceStart` | `config-override.test.ts` (U9) |
 | 22 | Confectance damage-bonus table | **UNVERIFIED (U10)** — NOT IMPLEMENTED (not wired; beta table only) | n/a | n/a (flagged) |
@@ -59,7 +59,7 @@ APL/auto-AI (U12), movement/positioning, **Cover — explicitly deferred** (incl
 | Support Boost I/II value & duration | 0.05/0.10, 1r | `configOverrides.statusOverrides` | yes (note shows the override) |
 | Status tick point (U7) | `ownActionEnd` | `configOverrides.statusOverrides.<id>.tickAt` | yes |
 | Status applied duration (U8-adjacent) | per-skill data | `configOverrides.statusOverrides.<id>.durationRounds` | yes |
-| Cooldown model (U11) | `endOfOwnTurn` | `configOverrides.cooldownModel` | yes |
+| Cooldown model (U11 — RESOLVED) | `nextOwnTurnEnd` (confirmed: wait N full turns after cast) | `configOverrides.cooldownModel` (alternative `endOfOwnTurn` for testing only) | warn only when the non-confirmed alternative is active |
 
 All of these are honored by the engine **without engine code changes** — proofs in `src/test/config-override.test.ts`.
 
@@ -80,7 +80,7 @@ Every damaging `LogEvent` records: `round`, `turn`, `unit`, `action`, `attackerA
 
 ## 6. Validation evidence
 
-- `npm test` → 61/61 pass (32 original + 16 validation-mode + 4 crit-validation + 5 weakness-validation + 4 stability-recovery regression tests).
+- `npm test` → 65/65 pass (32 original + 16 validation-mode + 4 crit-validation + 5 weakness-validation + 4 stability-recovery + 4 cooldown-validation regression tests).
 - CLI: 7-turn example and 4-turn rotation walkthrough verified by hand (see report).
 - 8+ turns rejected with a clear error message (CLI + engine tests).
 
