@@ -102,7 +102,7 @@ Phases within a round (deterministic, fixed order — §7).
 ```text
 raw        = unit.finalATK  × skill.multiplier          (or fixedDamage → separate branch)
 mitigated  = raw × finalATK/(finalATK + finalDEF)
-bonus      = 1 + Σ additiveBonuses                       (dmg-up, vuln, confectance bonus — one bracket)
+bonus      = 1 + Σ additiveBonuses                       (dmg-up, vuln — one bracket; no generic Confectance bonus — U10 disproven)
 phase      = 1.2 | 0.8 | 1.0
 weakness   = ∏ 1.1 per exploited weakness                 (+2 stab per weakness, applied in stability module; ×1.10 confirmed in-game for Burn 2026-09-03 — multiplicative, OUTSIDE the additive bracket)
 reduction  = (1 − stabilityReduction) × (1 − damageReduction)   (stabilityReduction is COVER-deferred → 1.0 in MVP; target always No Cover)

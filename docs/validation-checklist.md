@@ -33,7 +33,7 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 | 19 | Skill cooldown values (0/1/2) + **U11 decrement CONFIRMED 2026-09-03: wait N full turns after the cast turn (CD-1: cast T1 → unavailable T2 → available T3)** | CONFIRMED | `configOverrides.cooldownModel` — default `nextOwnTurnEnd` (confirmed); `endOfOwnTurn` alternative selectable for testing only | `config-override.test.ts` (U11), `rotation.test.ts`, `cooldown-validation.test.ts` |
 | 20 | Confectance: event-driven gains (−1/damage dealt), cost settled after cast | CONFIRMED | — | `confectance.test.ts` |
 | 21 | Confectance max (6) & battle-start (3) values — **CONFIRMED in-game 2026-09-03 (no keys)**; +1 per damage event; ultimate cost 3 | CONFIRMED | engine defaults 3/6; `configOverrides.confectanceMax` / `confectanceStart` = alternative testing | `confectance-validation.test.ts`, `confectance.test.ts` |
-| 22 | Confectance damage-bonus table | **UNVERIFIED (U10)** — NOT IMPLEMENTED (not wired; beta table only) | n/a | n/a (flagged) |
+| 22 | Confectance damage-bonus table — **NOT PRESENT / DISPROVEN 2026-09-03**: repeated in-game attacks showed damage unchanged across rising Confectance; the beta (+5%/10 pts, +50% cap) claim removed | DISPROVEN (current Qiongjiu/MVP) | none — Confectance modeled purely as a resource (no multiplier) | `confectance-validation.test.ts` |
 | 23 | Keys: FK1 battle-start +3 Confectance | CONFIRMED | `equippedFixedKeys` | `confectance.test.ts` |
 | 24 | Support attack: 90% ATK + 2 stab, max 3/round, no chain, no cost | CONFIRMED; **range assumption UNVERIFIED** (assumed in range) | ally team composition | `support.test.ts` |
 | 25 | 1 main action/round; basic ⊻ skill; extra actions deferred | CONFIRMED | — | `rotation.test.ts`, integration |
@@ -44,7 +44,7 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 
 ## 2. NOT IMPLEMENTED (deliberately out of MVP scope)
 
-APL/auto-AI (U12), movement/positioning, **Cover — explicitly deferred** (incl. cover damage reductions 35/30/25/20% and the stability-cover 60% reduction), maps, enemy turns/AI, phase-wheel table (U15-adjacent), Confectance damage-bonus table (U10), DoT damage effects for unverified elements (U16), extra actions, status purge/removal, glancing trigger rules (beyond the chance knob), durations > 7 turns.
+APL/auto-AI (U12), movement/positioning, **Cover — explicitly deferred** (incl. cover damage reductions 35/30/25/20% and the stability-cover 60% reduction), maps, enemy turns/AI, phase-wheel table (U15-adjacent), DoT damage effects for unverified elements (U16), extra actions, status purge/removal, glancing trigger rules (beyond the chance knob), durations > 7 turns.
 
 ## 3. Every UNVERIFIED value that affects Qiongjiu's simulation — override coverage
 
@@ -80,7 +80,7 @@ Every damaging `LogEvent` records: `round`, `turn`, `unit`, `action`, `attackerA
 
 ## 6. Validation evidence
 
-- `npm test` → 84/84 pass (32 original + 16 validation-mode + 4 crit-validation + 5 weakness-validation + 4 stability-recovery + 4 cooldown-validation + 6 critdmg-validation + 8 crit-overflow-validation + 5 confectance-validation regression tests).
+- `npm test` → 85/85 pass (32 original + 16 validation-mode + 4 crit-validation + 5 weakness-validation + 4 stability-recovery + 4 cooldown-validation + 6 critdmg-validation + 8 crit-overflow-validation + 6 confectance-validation regression tests).
 - CLI: 7-turn example and 4-turn rotation walkthrough verified by hand (see report).
 - 8+ turns rejected with a clear error message (CLI + engine tests).
 

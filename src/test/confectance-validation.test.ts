@@ -38,6 +38,15 @@ test("Ultimate costs exactly 3 Confectance, settled after the cast", () => {
   assert.deepEqual(r.log[0].confectance, { before: 3, after: 0, cost: 3 });
 });
 
+test("increasing Confectance does not change damage (U10: no generic damage bonus)", () => {
+  // Qiongjiu's Confectance climbs 3→6 across the run while the additive bracket
+  // stays constant at 1 + 0.10 (no-cover) — no Confectance damage term exists.
+  const r = simulateScenario(scenario({ turns: 7, rotation: ["basic"], keys: [] }));
+  for (const e of r.log) {
+    assert.ok(Math.abs((e.bonusBracket ?? 0) - 1.1) < 1e-9, `bonusBracket=${e.bonusBracket}`);
+  }
+});
+
 test("FK1 (+3) stacks onto the confirmed start of 3 → 6 (clamped at max)", () => {
   const withKey = simulateScenario(scenario({ turns: 1, rotation: ["ultimate"], keys: ["qiongjiu_fk1_concentration"] }));
   assert.deepEqual(withKey.log[0].confectance, { before: 6, after: 3, cost: 3 });
