@@ -123,9 +123,8 @@ export interface DummyConfig {
   stability: number;
   weaknesses: Element[];
   phase: Element | null;
-  /** MVP: always "none" (handoff §4). */
+  /** MVP: always "none" (handoff §4); also drives conditional no-cover bonuses. */
   cover: "none";
-  stabilityRecovery?: { enabled: boolean; perRound: number };
 }
 
 /** Per-status override for UNVERIFIED values (docs/research.md §4 U7/U8 + status data). */

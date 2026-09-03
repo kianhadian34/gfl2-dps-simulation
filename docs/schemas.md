@@ -158,12 +158,11 @@ Timing: every status carries `tickAt`: `ownActionEnd | roundEnd | ownTurnStart` 
   "stability": 0,
   "weaknesses": [],
   "phase": null,
-  "cover": "none",
-  "stabilityRecovery": { "enabled": false, "perRound": 0 }
+  "cover": "none"
 }
 ```
 
-All fields user-configurable except `cover` (always `"none"` in MVP). Defaults per research §3.16/§6.
+All fields user-configurable except `cover` (always `"none"` in MVP). Stability recovery is a **confirmed fixed rule**, not a dummy option: broken stability is restored to max exactly 2 turns after the break (`STABILITY_RECOVERY_DELAY = 2`). Defaults per research §3.16/§3.7/§6.
 
 ## 8. Scenario (one simulation run)
 

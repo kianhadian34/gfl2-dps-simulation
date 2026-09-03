@@ -21,7 +21,7 @@ Confidence levels: **CONFIRMED** (primary/official source, or independently repr
 What we know with high confidence, in one paragraph:
 
 1. **Damage pipeline** — `final = ceil( base × defense_ratio × (1 + Σ additive bonuses) × phase × weakness × reductions × crit )`, where `defense_ratio = ATK/(1+DEF/ATK)`, all damage bonuses (self buffs, target vulnerability, Confectance bonus) are **additive in one bracket**, phase countering is ×1.2/×0.8, each exploited weakness is +10% (**Burn ×1.10 confirmed in-game 2026-09-03, multiplicative — see §3.5**), and the result is ceiling-rounded. **Crit multiplier = the attacker's Crit DMG stat** (e.g. ×1.20 at 120%), applied to the *unrounded* damage before the final ceiling round (CONFIRMED in-game 2026-09-03 — see §3.3). Reproduced against real in-game numbers (Reddit test: `1213/(1+194/1213) × 1 × 1.1 = 1150.4 → 1151` in game).
-2. **Stability (稳态) is a fully separate resource** from HP: per-hit fixed stability damage (independent of ATK/DEF/crit), break at 0 → "Exposed" state with a damage-taken window; recovery exists but exact values are unknown.
+2. **Stability (稳态) is a fully separate resource** from HP: per-hit fixed stability damage (independent of ATK/DEF/crit), break at 0 → "Exposed" state with a damage-taken window; **recovery timing CONFIRMED in-game (2026-09-03): stability is restored exactly 2 turns after the break (break Turn N → restored Turn N+2, back to max)** — see §3.7.
 3. **There are no ACC/EVA stats in GFL2.** Against a stationary, uncovered dummy, attacks always hit; the only hit randomness is "glancing" (擦伤, ×0.1).
 4. **Kit structure is fixed data**: 1 basic attack + 2 actives + 1 ultimate + 1 passive, all with explicit %-of-ATK multipliers. Cooldowns are small integers (0/1/2…). Confectance (导染) is an event-driven resource (e.g. Qiongjiu gains **+1 per damage event**, ultimate costs **3**), **not** a `damage × m` formula.
 5. **Keys (固键)** are 4 tables (fixed/common/expansion/affinity keys), not a strict "3-branch" model.
@@ -170,7 +170,7 @@ Confirmations: (1) Burn weakness multiplier is **×1.10**; (2) folding the weakn
 - Break → "Exposed" with damage-taken increase: PROBABLE; the **increase %** is UNKNOWN (buff id 20).
 - Break duration `breakRound = 2`: **UNCERTAIN** (CN beta value; re-check on live).
 - **Stability-cover reduction** (60% when stability > 0 in cover): CONFIRMED as a rule, but it is a **Cover mechanic — explicitly DEFERRED**; it never applies in the MVP because the target is **always No Cover** (the term is 1.0).
-- Recovery: EXISTS (start of own turn / new round), exact amount/formula UNKNOWN.
+- **Recovery timing — CONFIRMED in-game (2026-09-03)**: stability broken during turn N is **restored on turn N+2** (exactly 2 turns later), restored to max. Model as a **2-turn recovery delay**. The Exposed damage-% (U3) is **not** derived from this observation and remains unverified.
 
 **MVP scope (updated)** — **Stability and Exposed are mandatory mechanics**: stability damage per hit, break at 0, the Exposed damage-taken window (duration U4, multiplier U3, both config), and recovery (U6, config). Cover-dependent parts of the stability system (the 60% cover reduction) are **deferred** with Cover.
 
@@ -182,14 +182,14 @@ target.stability -= stab_damage
 if target.stability <= 0 and not already exposed:
     apply Exposed buff for breakRound turns (config, default 2)
     → damage-taken multiplier on target (config, default ??? → must be tested)
-recovery: configurable per-dummy/actor rule (onRoundStart restore N, or restore to max × pct) — dummy default OFF (enabled: false); value = config
+recovery: 2-turn delay after break (STABILITY_RECOVERY_DELAY = 2, CONFIRMED U6) → stability restored to max + Exposed ends
 ```
 
 (The former "stability reduction term becomes 0 while exposed" step is part of the **deferred Cover** mechanic — not modeled in the MVP.)
 
 Attacker stability is irrelevant to the attacker's own damage output (CONFIRMED) → do not feed it into damage; only read the *target's* exposed flag.
 
-**Unknowns** — exposed damage-% and live break duration; per-unit max stability and exact per-skill stability damage; recovery formula; whether stability damage continues against an already-exposed target; AoE/multi-segment stability splitting.
+**Unknowns** — exposed damage-% (U3) and live break duration (U4, beta 2); per-unit max stability and exact per-skill stability damage; whether stability damage continues against an already-exposed target; AoE/multi-segment stability splitting. (Recovery timing U6 is CONFIRMED; the confirmed test restored stability to max — general "partial restore" behavior is not implied.)
 
 ### 3.8 Stats and stat scaling
 
@@ -327,7 +327,7 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 | U3 | Exposed damage-% after stability break | UNKNOWN | Big skew on break turns | Stability test |
 | U4 | Break duration (beta `breakRound=2`) | UNCERTAIN | Break window length | Stability test |
 | U5 | Per-unit max stability & per-skill stab damage values | CONFIRMED examples / UNKNOWN table | Stability pacing | Per-skill record + data dump parse (`PotRooms/GFL2_Data`) |
-| U6 | Stability recovery amount/formula | UNKNOWN | Long-sim drift | Stability test |
+| U6 | ~~Stability recovery timing~~ → **CONFIRMED 2026-09-03**: restored exactly 2 turns after the break (break Turn N → restored Turn N+2), restored to max | ~~UNKNOWN~~ → **CONFIRMED (timing)** | Was long-sim drift | ✅ resolved — engine models the 2-turn delay (`STABILITY_RECOVERY_DELAY = 2`); Exposed damage-% (U3) remains open |
 | U7 | Buff duration tick point (own turn start vs round end) | UNKNOWN | Buff expiry timing | Buff timer test |
 | U8 | Same-tier status reapply: refresh vs stack | UNKNOWN | Stack math | Reapply test |
 | U9 | Confectance cap & battle-start value | UNKNOWN | Ultimate timing | Confectance test + data dump |
@@ -351,7 +351,7 @@ Procedure sketches — all trivially runnable on a stationary target (existing t
 1. **Dummy DEF** — hit a dummy with a known-ATK doll using a known-multiplier basic attack, record non-crit, no-buff damage, solve for DEF: `DEF = ATK×(raw/final − 1)`. If DEF ≈ 0, keep default.
 2. **Crit** — ✅ **RESOLVED 2026-09-03**: multiplier = Crit DMG stat (×1.20 at 120%), applied before final ceil; never computed from the rounded normal hit (see §3.3 dataset and the 1956-discriminator). Remaining: sample crit RATE frequency and test a second CDMG value (U19).
 3. **Stability per hit & +2 per weakness** — watch the hexagon bar with known stab-damage skills; confirm per-hit values and weakness bonus; confirm stability damage ignores DEF.
-4. **Exposed state** — break stability, measure damage-taken %, duration in turns, and recovery amount per turn (and any "action end" vs "round start" timing).
+4. **Exposed state** — break stability, measure damage-taken % (U3 — still open). **Recovery timing already CONFIRMED (2026-09-03): 2-turn delay → restored to max**; watch whether the damage step-down matches that exactly.
 5. **Buff timers** — apply ATK Up, observe expiry relative to caster's next turn vs round end; re-apply same tier → refresh or stack?
 6. **Cooldowns** — use a cd-1 skill on turn N; check usable on N+1 (vs N+2).
 7. **Confectance** — record pips at battle start, per damage event, per skill use, cap, and ultimate cost.
@@ -374,7 +374,7 @@ Only CONFIRMED values become defaults; everything else is a **config key** (docu
 | Glancing | `final × 0.1`, chance 0 (off) | PROBABLE/U2 |
 | Stability-cover reduction (60%, stable + in cover) | **Cover mechanic — DEFERRED**; MVP target always No Cover → term never fires (1.0) | — |
 | Exposed window | `2` rounds, dmg-% `UNKNOWN → config` | U3/U4 |
-| Stability recovery | per-round restore, value `config` | U6 |
+| Stability recovery | **2-turn delay after break → restore to max** (`STABILITY_RECOVERY_DELAY = 2`); Exposed damage-% from config (U3 UNVERIFIED) | **CONFIRMED** (timing + restore-to-max, in-game 2026-09-03) |
 | Buff duration units | big-rounds; tick at own action (config) | U7 |
 | Bonus grouping | one additive bracket | CONFIRMED |
 | Cooldown model | cd = full turns to wait; decrement at end of own turn | U11 (model assumption) |

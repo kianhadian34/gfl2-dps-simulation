@@ -10,5 +10,4 @@ export const TRAINING_DUMMY: DummyConfig = {
   weaknesses: [],
   phase: null,
   cover: "none",
-  stabilityRecovery: { enabled: false, perRound: 0 },
 };

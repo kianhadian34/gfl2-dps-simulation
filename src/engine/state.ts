@@ -52,7 +52,8 @@ export interface UnitState {
   rotationList: ActionSlot[];
   rotationIndex: number;
   actionBudget: number;
-  stabilityRecoveryPerRound: number;
+  /** Confirmed recovery (U6): rounds left until stability is restored to max after a break (0 = none pending). */
+  stabilityRecoveryRoundsLeft: number;
 }
 
 export interface Accumulators {
@@ -181,7 +182,7 @@ function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], con
     rotationList: rotation,
     rotationIndex: 0,
     actionBudget: 0,
-    stabilityRecoveryPerRound: 0,
+    stabilityRecoveryRoundsLeft: 0,
   };
 }
 
@@ -210,7 +211,7 @@ function makeDummy(d: Scenario["dummy"]): UnitState {
     rotationList: [],
     rotationIndex: 0,
     actionBudget: 0,
-    stabilityRecoveryPerRound: d.stabilityRecovery?.enabled ? d.stabilityRecovery.perRound : 0,
+    stabilityRecoveryRoundsLeft: 0,
   };
 }
 
