@@ -106,7 +106,7 @@ bonus      = 1 + Σ additiveBonuses                       (dmg-up, vuln, confect
 phase      = 1.2 | 0.8 | 1.0
 weakness   = ∏ 1.1 per exploited weakness                 (+2 stab per weakness, applied in stability module; ×1.10 confirmed in-game for Burn 2026-09-03 — multiplicative, OUTSIDE the additive bracket)
 reduction  = (1 − stabilityReduction) × (1 − damageReduction)   (stabilityReduction is COVER-deferred → 1.0 in MVP; target always No Cover)
-crit       = rng.roll(critRate) ? (1 + attacker Crit DMG) : 1.0   (confirmed, linear: 1.20 at 120%, 1.235 at 123.5% — U1 + U19 CDMG half; configOverrides.critMultiplier = test-only alternative)
+crit       = rng.roll(effCritRate) ? (1 + effCritDmg) : 1.0   (effCritRate = min(CritRate, 100%); effCritDmg = Crit DMG + passive-driven 1:1 overflow conversion — U19 confirmed; CDMG linear: 1.20@120%, 1.235@123.5%; configOverrides.critMultiplier = test-only alternative)
 final      = ceil( mitigated × bonus × phase × weakness × reduction × crit )
 glancing   = config.glanceChance ? ceil(final × 0.1) : final
 ```

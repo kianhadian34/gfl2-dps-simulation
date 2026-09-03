@@ -64,6 +64,19 @@ export type PassiveEffect =
       perRoundMax: number;
       chainable: boolean;
       trigger: "onAllySingleTargetHit";
+    }
+  | {
+      /**
+       * U19 Crit-Rate overflow conversion (CONFIRMED by in-game passive text, 2026-09-03):
+       * effective Crit Rate caps at `threshold` (default 1.0 = 100%); every 1% of overflow
+       * Crit Rate converts to 1% Crit DMG (ratio, default 1.0 — 1:1). `cap` optionally
+       * limits the converted Crit DMG. Character-specific: a doll only gets this via its
+       * own passive data — never a global rule.
+       */
+      kind: "excess_crit_conversion";
+      threshold: number;
+      ratio: number;
+      cap?: number;
     };
 
 export interface PassiveDef {

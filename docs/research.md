@@ -111,7 +111,9 @@ Formula reproduction (ATK 1958): `1958 × 0.80 × (1958/(1958+5000)) × 1.20 ≈
 
 **Implementation interpretation** — `critMult = 1 + critDmg` (attacker's Crit DMG stat) applied inside the pipeline before `ceil`; the engine **derives it from character data** (`UnitState.critDmg`) — no hardcoded default remains. `configOverrides.critMultiplier` is retained **solely as a test-only alternative hypothesis**.
 
-**Unknowns** — crit-RATE sources and caps (weapon attachments/skills/passives; cap not documented) — **U19 remainder, OPEN**; anti-crit mechanics (PvP — out of scope anyway). (CDMG linearity is CONFIRMED to the tested 123.5%; the U19 CDMG half is resolved.)
+**Confirmed (2026-09-03, in-game passive text — U19 Crit-Rate half)** — Crit Rate has a **100% effective cap**; overflow above 100% is discarded **unless the attacking character's own passive converts it** (never a global rule). Confirmed passive wording: *"When dealing damage, if critical rate of this attack exceeds 100%, every 1% of overflow critical rate is converted to 1% critical damage."* — threshold 100%, ratio 1:1, no stated cap, applied to the attack's final Crit Rate. Engine implements it data-driven via PassiveEffect `excess_crit_conversion` (`threshold`/`ratio`/optional `cap`); converted Crit DMG feeds the same confirmed `1 + Crit DMG` multiplier.
+
+**Unknowns (U19 remainder)** — which characters carry such a passive and their exact parameters (any ratio ≠ 1:1 or a conversion cap); how Crit Rate is raised past 100% (sources, e.g. attachments); numeric damage-level confirmation of the conversion (rule is **text-confirmed**, not yet damage-measured in-game); anti-crit mechanics (PvP — out of scope anyway). (CDMG linearity is CONFIRMED to the tested 123.5% — U19 CDMG half resolved.)
 
 ### 3.4 Phase countering (属性克制)
 
@@ -342,7 +344,7 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 | U16 | Element DoTs (electric/ice/decay) full definitions | UNKNOWN | DoT modeling | Skill doc read (deferred — not required for first dolls) |
 | U17 | "Resonance" phase extension (2026) | UNKNOWN | Future-proofing | Watch patch notes; not in MVP |
 | U18 | "Nixie/交换机" term | UNKNOWN (no evidence) | — | Needs user clarification, not code |
-| U19 | ~~CDMG linearity beyond the tested 120%~~ → **CDMG half RESOLVED 2026-09-03**: linear — CDMG 120.0% → ×1.20 (Basic crit 635), 123.5% → ×1.235 (Basic crit 654×4); multiplier = 1 + Crit DMG, before final ceil. **Crit-RATE sources & caps remain OPEN** | CDMG **CONFIRMED** (in-game) / crit-rate UNKNOWN | Crit-damage scaling + crit frequency | ✅ CDMG: engine derives `1 + critDmg` (no default 1.5; `configOverrides.critMultiplier` = test-only alternative). Crit rate: keep sampling hit/crit counts |
+| U19 | ~~CDMG linearity beyond 120% + Crit-Rate cap/overflow~~ → **CDMG half RESOLVED 2026-09-03** (linear: 120.0% → ×1.20 (crit 635), 123.5% → ×1.235 (crit 654×4); multiplier = 1 + Crit DMG, before final ceil); **Crit-Rate half CONFIRMED 2026-09-03 (passive text)**: effective CR caps at 100%; overflow is discarded unless a character passive converts it (1:1, data-driven `excess_crit_conversion`) | CDMG **CONFIRMED** (in-game) / CR cap + overflow **CONFIRMED** (passive text) / CR sources & per-character params UNKNOWN | Crit-damage scaling + crit frequency | ✅ CDMG: engine derives `1 + critDmg`. ✅ CR overflow: engine applies the 100% cap and converts overflow only via per-character passive data. Remainder: CR sources (attachments), non-1:1 ratio / cap characters, numeric damage confirmation |
 
 ---
 
@@ -351,7 +353,7 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 Procedure sketches — all trivially runnable on a stationary target (existing training modes or a low-HP enemy) at known stats. Record values back into config/data, not code constants.
 
 1. **Dummy DEF** — hit a dummy with a known-ATK doll using a known-multiplier basic attack, record non-crit, no-buff damage, solve for DEF: `DEF = ATK×(raw/final − 1)`. If DEF ≈ 0, keep default.
-2. **Crit** — ✅ **RESOLVED (2026-09-03)**: multiplier = Crit DMG stat, **linear** (×1.20 at 120% → Basic crit 635; ×1.235 at 123.5% → crit 654), applied before final ceil, never from the rounded normal hit (see §3.3 dataset and the 1956/1958/123.5% cases). Remaining (U19 remainder): sample crit-RATE frequency.
+2. **Crit** — ✅ **RESOLVED (2026-09-03)**: multiplier = Crit DMG stat, **linear** (×1.20 at 120% → Basic crit 635; ×1.235 at 123.5% → crit 654), applied before final ceil, never from the rounded normal hit (see §3.3 dataset and the 1956/1958/123.5% cases). ✅ **Crit-Rate cap + overflow conversion confirmed (passive text)**: effective CR caps at 100%; overflow converts 1:1 only via a character-specific passive. Remainder (U19): CR sources (attachments), any non-1:1 ratio/cap characters, and a numeric damage-level confirmation of the conversion.
 3. **Stability per hit & +2 per weakness** — watch the hexagon bar with known stab-damage skills; confirm per-hit values and weakness bonus; confirm stability damage ignores DEF.
 4. **Exposed state** — break stability, measure damage-taken % (U3 — still open). **Recovery timing already CONFIRMED (2026-09-03): 2-turn delay → restored to max**; watch whether the damage step-down matches that exactly.
 5. **Buff timers** — apply ATK Up, observe expiry relative to caster's next turn vs round end; re-apply same tier → refresh or stack?

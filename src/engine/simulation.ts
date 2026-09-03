@@ -24,6 +24,45 @@ export function phaseMultiplier(_attack: Element, _targetPhase: Element | null):
   return 1.0;
 }
 
+export interface ResolvedCritStats {
+  /** Effective Crit Rate — capped at the conversion threshold (default 100%). */
+  critRate: number;
+  /** Base Crit DMG + converted overflow. */
+  critDmg: number;
+  convertedCritDmg: number;
+}
+
+/**
+ * U19 Crit-Rate half (CONFIRMED 2026-09-03 by in-game passive text):
+ * effective Crit Rate caps at `threshold` (default 100%); overflow above the
+ * threshold is discarded UNLESS the attacker's own passive converts it
+ * (default 1:1) into Crit DMG. Data-driven via PassiveEffect
+ * "excess_crit_conversion" — never a global rule, never character-id logic.
+ * The converted Crit DMG feeds the same confirmed multiplier: 1 + Crit DMG.
+ */
+export function resolveCritStats(
+  critRate: number,
+  critDmg: number,
+  effects: PassiveEffect[],
+): ResolvedCritStats {
+  const conv = effects.find(
+    (e): e is Extract<PassiveEffect, { kind: "excess_crit_conversion" }> => e.kind === "excess_crit_conversion",
+  );
+  if (!conv) {
+    // Confirmed rule: without the conversion passive, overflow Crit Rate is
+    // simply discarded — effective Crit Rate still caps at 100% (default threshold).
+    return { critRate: Math.min(critRate, 1.0), critDmg, convertedCritDmg: 0 };
+  }
+  const threshold = conv.threshold;
+  const excess = Math.max(0, critRate - threshold);
+  const converted = conv.cap === undefined ? excess * conv.ratio : Math.min(conv.cap, excess * conv.ratio);
+  return {
+    critRate: Math.min(critRate, threshold),
+    critDmg: critDmg + converted,
+    convertedCritDmg: converted,
+  };
+}
+
 /**
  * Fixed rotation as a cyclic priority list: scan forward from the current
  * pointer, use the FIRST usable slot, then advance the pointer PAST the used
@@ -90,9 +129,11 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   const { mult, red } = multiplicativeTakenMods(dummy, state.statusRegistry);
   const exposedMult = dummy.exposed ? state.config.exposedDamageMult : 1; // U3 config
   const reductionMult = mult * red * exposedMult; // no stability-cover reduction: dummy has no cover
-  // Confirmed rule (U1 + U19 CDMG half): crit multiplier = 1 + attacker Crit DMG.
+  // Confirmed rule (U1 + U19): crit multiplier = 1 + attacker Crit DMG, where Crit DMG
+  // includes any passive overflow conversion; effective Crit Rate caps at 100%.
   // configOverrides.critMultiplier is a test-only alternative hypothesis.
-  const critMult = state.config.critMultiplier ?? 1 + actor.critDmg;
+  const crit = resolveCritStats(actor.critRate, actor.critDmg, passiveEffects(actor));
+  const critMult = state.config.critMultiplier ?? 1 + crit.critDmg;
   const hit = rollHit({
     atk: actor.panelAtk,
     def: dummy.defStat,
@@ -102,7 +143,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     phaseMult,
     weaknessMult,
     reductionMult,
-    critRate: actor.critRate,
+    critRate: crit.critRate,
     critMultiplier: critMult,
     glanceChance: state.config.glanceChance,
     rng: state.rng,
