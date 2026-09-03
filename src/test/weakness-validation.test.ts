@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { rollHit } from "../engine/damage.js";
 import { Rng } from "../engine/rng.js";
+import { simulateScenario } from "../simulate.js";
+import { scenario } from "./helpers.js";
 
 // In-game validation 2026-09-03 — Burn weakness (docs/research.md §3.5):
 // Qiongjiu Lv.60 V6, Retired OTs-14 R1 Lv.2, no keys, ATK 1958, CDMG 120%,
@@ -22,7 +24,7 @@ const ATK = 1958;
 const DEF = 5000;
 const MULT = 1.5; // Common Rail
 const BRACKET = 1.2; // 1 + 0.10 passive + 0.10 V6
-const BURN_WEAKNESS = 1.1; // multiplicative, NOT in the additive bucket
+const BURN_WEAKNESS = 1.1; // separate factor (NOT in the additive DMG bucket); additive across weaknesses (U20)
 const CDMG = 1.2; // 120%
 
 function commonRail(crit: boolean, seed = 1) {
@@ -97,4 +99,42 @@ test("deterministic: identical inputs reproduce the observed repeats exactly", (
   const again = [commonRail(false), commonRail(false), commonRail(false), commonRail(true)];
   assert.deepEqual(seq.map((h) => h.finalDamage), [1091, 1091, 1091, 1310]);
   assert.deepEqual(seq.map((h) => h.finalDamage), again.map((h) => h.finalDamage));
+});
+
+test("two weaknesses → ×1.20 additive (U20 confirmed: Burn + Assault Rifle ammo → 1191)", () => {
+  // Same setup as the single-weakness case; the second weakness (ammo) adds +0.10
+  // rather than multiplying: 991.77 × 1.20 = 1190.13 → 1191 (multiplicative 1.21 → 1201 ruled out).
+  const two = rollHit({
+    atk: ATK,
+    def: DEF,
+    multiplier: MULT,
+    additiveBonus: BRACKET,
+    phaseMult: 1,
+    weaknessMult: 1.2,
+    reductionMult: 1,
+    critRate: 0,
+    critMultiplier: CDMG,
+    glanceChance: 0,
+    rng: new Rng(1),
+  });
+  assert.equal(two.finalDamage, 1191);
+});
+
+test("engine-level U20: 1 weakness ×1.10, 2 weaknesses ×1.20 (count-driven, additive)", () => {
+  // Common Rail (Burn) vs the dummy with one vs two matched weaknesses. The MVP
+  // weakness model matches by element; two matches stand in for an ammo-type
+  // weakness (e.g., Burn + Assault Rifle ammo) — the rule is purely count-driven.
+  // Engine uses Qiongjiu's data panel (ATK 1831.95, dummy DEF 0):
+  //   bracket = 1 + 0.10 no-cover = 1.1; base = 1831.95 × 1.5 × 1.1 = 3022.72
+  //   1 weakness → ×1.10 → ceil(3022.72 × 1.1) = 3325
+  //   2 weaknesses → ×1.20 → ceil(3022.72 × 1.2) = 3628   (ratio 1.2/1.1, additive)
+  // Same seed ⇒ identical crit outcome in both runs, so the ratio is exact.
+  const r1 = simulateScenario(scenario({ turns: 1, rotation: ["active1"], dummy: { weaknesses: ["burn"] } }));
+  const r2 = simulateScenario(scenario({ turns: 1, rotation: ["active1"], dummy: { weaknesses: ["burn", "burn"] } }));
+  assert.equal(r1.log[0].finalDamage, 3325);
+  assert.equal(r2.log[0].finalDamage, 3628);
+  assert.deepEqual(r1.log[0].weaknessExploited, ["burn"]);
+  assert.deepEqual(r2.log[0].weaknessExploited, ["burn", "burn"]);
+  assert.equal(r1.log[0].stabilityDamage, 2); // +2 stab per exploited weakness
+  assert.equal(r2.log[0].stabilityDamage, 4);
 });

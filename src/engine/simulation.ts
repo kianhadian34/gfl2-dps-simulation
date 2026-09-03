@@ -104,7 +104,10 @@ function beginUnitRound(doll: UnitState): void {
 /** Match the attack's element against the target's exposed weaknesses: +10% and +2 stability each (research §3.5). */
 function exploitedWeaknesses(target: UnitState, element: Element): { weaknesses: string[]; mult: number } {
   const weaknesses = target.weaknessElements.filter((w) => w === element);
-  const mult = weaknesses.reduce((m) => m * 1.1, 1);
+  // U20 CONFIRMED 2026-09-03 (in-game: Burn → 1091; Burn + Assault Rifle ammo → 1191):
+  // the weakness factor is ADDITIVE across exploited weaknesses: 1 + 0.10 × count.
+  // (1 → ×1.10; 2 → ×1.20; multiplicative ×1.21 is ruled out.) Generic — no character ids.
+  const mult = 1 + 0.1 * weaknesses.length;
   return { weaknesses, mult };
 }
 

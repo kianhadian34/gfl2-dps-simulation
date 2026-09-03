@@ -20,7 +20,7 @@ Confidence levels: **CONFIRMED** (primary/official source, or independently repr
 
 What we know with high confidence, in one paragraph:
 
-1. **Damage pipeline** — `final = ceil( base × defense_ratio × (1 + Σ additive bonuses) × phase × weakness × reductions × crit )`, where `defense_ratio = ATK/(1+DEF/ATK)`, all damage bonuses (self buffs, target vulnerability) are **additive in one bracket** (**no generic Confectance damage bonus — U10 disproven 2026-09-03**), phase countering is ×1.2/×0.8, each exploited weakness is +10% (**Burn ×1.10 confirmed in-game 2026-09-03, multiplicative — see §3.5**), and the result is ceiling-rounded. **Crit multiplier = the attacker's Crit DMG stat** (e.g. ×1.20 at 120%), applied to the *unrounded* damage before the final ceiling round (CONFIRMED in-game 2026-09-03 — see §3.3). Reproduced against real in-game numbers (Reddit test: `1213/(1+194/1213) × 1 × 1.1 = 1150.4 → 1151` in game).
+1. **Damage pipeline** — `final = ceil( base × defense_ratio × (1 + Σ additive bonuses) × phase × weakness × reductions × crit )`, where `defense_ratio = ATK/(1+DEF/ATK)`, all damage bonuses (self buffs, target vulnerability) are **additive in one bracket** (**no generic Confectance damage bonus — U10 disproven 2026-09-03**), phase countering is ×1.2/×0.8, each exploited weakness is +10% with the factor **additive across weaknesses: `1 + 0.10 × #exploited`** (Burn ×1.10; Burn + AR ammo ×1.20 — U20 confirmed in-game 2026-09-03, see §3.5), and the result is ceiling-rounded. **Crit multiplier = the attacker's Crit DMG stat** (e.g. ×1.20 at 120%), applied to the *unrounded* damage before the final ceiling round (CONFIRMED in-game 2026-09-03 — see §3.3). Reproduced against real in-game numbers (Reddit test: `1213/(1+194/1213) × 1 × 1.1 = 1150.4 → 1151` in game).
 2. **Stability (稳态) is a fully separate resource** from HP: per-hit fixed stability damage (independent of ATK/DEF/crit), break at 0 → "Exposed" state with a damage-taken window; **recovery timing CONFIRMED in-game (2026-09-03): stability is restored exactly 2 turns after the break (break Turn N → restored Turn N+2, back to max)** — see §3.7.
 3. **There are no ACC/EVA stats in GFL2.** Against a stationary, uncovered dummy, attacks always hit; the only hit randomness is "glancing" (擦伤, ×0.1).
 4. **Kit structure is fixed data**: 1 basic attack + 2 actives + 1 ultimate + 1 passive, all with explicit %-of-ATK multipliers. Cooldowns are small integers (0/1/2…). Confectance (导染) is an event-driven resource (e.g. Qiongjiu gains **+1 per damage event**, ultimate costs **3**), **not** a `damage × m` formula.
@@ -63,7 +63,7 @@ raw       = finalATK × skillMultiplier                      # skill describes i
 mitigated = raw × finalATK / (finalATK + finalDEF)          # ≡ ATK/(1+DEF/ATK); final = post buff/debuff values
 bonus     = 1 + Σ additive_bonuses                          # ALL additive: own dmg-up, target vuln (no generic Confectance bonus — U10 disproven)
 phase     = 1.2 (counter) | 0.8 (countered) | 1.0 (neutral) # 属性克制
-weakness  = ∏ (1 + 0.10) per exploited weakness             # each exposed weakness +10%
+weakness  = 1 + 0.10 × (# exploited weaknesses)          # additive across weaknesses (U20); separate factor, outside the additive DMG bucket
 reduction = (1 − stability_red) × (1 − dmg_red) × (1 − cover_red)   # dummy: cover_red = 0
 crit      = 1 + critDmg (attacker's Crit DMG stat)          # e.g. ×1.20 at 120% CDMG (CONFIRMED in-game, §3.3)
 final     = ceil( mitigated × bonus × phase × weakness × reduction × crit )   # crit applies to the UNROUNDED product
@@ -133,22 +133,23 @@ Formula reproduction (ATK 1958): `1958 × 0.80 × (1958/(1958+5000)) × 1.20 ≈
 
 **Source** — `iopwiki.com/wiki/GFL2_Combat`; Reddit 1hgw4zn.
 
-**Confidence** — CONFIRMED (multi-source): each exploited weakness → +10% damage **and** +2 stability damage. **Burn weakness multiplier ×1.10 additionally confirmed in-game (2026-09-03)** — see dataset below.
+**Confidence** — CONFIRMED (multi-source): each exploited weakness → +10% damage **and** +2 stability damage, with the weakness factor **additive across exploited weaknesses: `1 + 0.10 × count`** (U20, in-game 2026-09-03). **Burn weakness ×1.10** and **Burn + Assault Rifle ammo ×1.20** confirmed in-game — see dataset below.
 
 **Confirmed in-game dataset (2026-09-03, Burn weakness)** — Attacker: Qiongjiu Lv.60 V6, Retired OTs-14 R1 Lv.2, no keys, ATK **1958**, CDMG 120%, no damage buffs (no Damage Up II). Target: Drone – Blaze Master Lv.60, DEF **5000**, stability 65/65, **Burn weakness**, Unaffiliated/Mechanicals, **No Cover**. Attack: Common Rail Lv.2 (Burn, 150% ATK). Observed: non-crit **1091** (repeated 1091, 1091, 1091); crit **1310** (1091, 1310, 1091, 1091).
 
 ```
 base  = 1958 × 1.50 × (1958/(1958+5000)) ≈ 826.48
 bracket = 1 + 0.10 (passive no-cover) + 0.10 (V6) = 1.20        # V6 (椎体) bonus NOT yet in character data — passed explicitly in the regression
-normal = ceil(826.48 × 1.20 × 1.10 [Burn weakness]) = 1091      # ×1.10 is MULTIPLICATIVE, outside the additive bucket
+normal = ceil(826.48 × 1.20 × 1.10 [Burn weakness]) = 1091      # ×1.10 is a separate factor, outside the additive DMG bucket
 crit   = ceil(826.48 × 1.20 × 1.10 × 1.20 [CDMG]) = 1310        # CDMG ×1.20 applied before the final ceil (re-confirms §3.3)
+twoWk  = ceil(826.48 × 1.20 × 1.20 [Burn + Assault Rifle ammo]) = 1191   # U20: 1 + 0.10×2, additive (multiplicative 1.21 → 1201 ruled out)
 ```
 
-Confirmations: (1) Burn weakness multiplier is **×1.10**; (2) folding the weakness into the additive bracket instead (`1.30`) yields `1075 ≠ 1091` — **weakness is NOT part of the additive +DMG bucket**; (3) independently re-confirms CDMG = ×1.20 applied before the final ceiling; (4) **no effect is attributed to Overburn** (it contributed nothing here); (5) the target had stability 65/65 and it did **not** modify damage on this No-Cover target (Stability never alters damage absent Cover — see §3.7).
+Confirmations: (1) Burn weakness multiplier is **×1.10**; (2) folding the weakness into the additive bracket instead (`1.30`) yields `1075 ≠ 1091` — **weakness is NOT part of the additive +DMG bucket**; (3) independently re-confirms CDMG = ×1.20 applied before the final ceiling; (4) **no effect is attributed to Overburn** (it contributed nothing here); (5) the target had stability 65/65 and it did **not** modify damage on this No-Cover target (Stability never alters damage absent Cover — see §3.7); (6) **U20 — two weaknesses are ADDITIVE: Burn only → 1091, Burn + Assault Rifle ammo → 1191** (`factor = 1 + 0.10 × count`; multiplicative ×1.21 would give 1201 ≠ 1191, ruled out).
 
-**Implementation interpretation** — `weakness: product(1.1 per matched weakness)`; `stabDamage += 2 per matched weakness`. A hit that drops stability to 0 is computed at the pre-break damage level (i.e. the break hit does not benefit from stability reduction). Configurable per dummy.
+**Implementation interpretation** — `weaknessFactor = 1 + 0.10 × (#matched weaknesses)` (additive across weaknesses, a separate factor from the additive DMG bucket); `stabDamage += 2 per matched weakness`. A hit that drops stability to 0 is computed at the pre-break damage level (i.e. the break hit does not benefit from stability reduction — Cover-scope detail). Configurable per dummy.
 
-**Unknowns** — partial-match rules when not all weaknesses are hit (only all-or-nothing documented); simultaneous phase+weakness stacking is supported (independent multiplicatives) but not covered by one authoritative sentence (mark UNCERTAIN in engine defaults until tested).
+**Unknowns** — partial-match (exploiting only some of a target's weaknesses) is implied by the count-based rule and implemented by counting matched weaknesses, but not separately in-game-tested; simultaneous phase+weakness interaction (independent factors) UNKNOWN until the phase wheel is populated.
 
 ### 3.6 Glancing (擦伤)
 
@@ -345,6 +346,7 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 | U17 | "Resonance" phase extension (2026) | UNKNOWN | Future-proofing | Watch patch notes; not in MVP |
 | U18 | "Nixie/交换机" term | UNKNOWN (no evidence) | — | Needs user clarification, not code |
 | U19 | ~~CDMG linearity beyond 120% + Crit-Rate cap/overflow~~ → **CDMG half RESOLVED 2026-09-03** (linear: 120.0% → ×1.20 (crit 635), 123.5% → ×1.235 (crit 654×4); multiplier = 1 + Crit DMG, before final ceil); **Crit-Rate half CONFIRMED 2026-09-03 (passive text)**: effective CR caps at 100%; overflow is discarded unless a character passive converts it (1:1, data-driven `excess_crit_conversion`) | CDMG **CONFIRMED** (in-game) / CR cap + overflow **CONFIRMED** (passive text) / CR sources & per-character params UNKNOWN | Crit-damage scaling + crit frequency | ✅ CDMG: engine derives `1 + critDmg`. ✅ CR overflow: engine applies the 100% cap and converts overflow only via per-character passive data. Remainder: CR sources (attachments), non-1:1 ratio / cap characters, numeric damage confirmation |
+| U20 | ~~Multi-weakness stacking (multiplicative vs additive)~~ → **RESOLVED 2026-09-03**: weakness factor is **additive across exploited weaknesses**: `1 + 0.10 × count` — 1 weakness ×1.10 (Burn → 1091); 2 weaknesses ×1.20 (Burn + Assault Rifle ammo → 1191); multiplicative ×1.21 ruled out (would give 1201 ≠ 1191) | ~~UNKNOWN~~ → **CONFIRMED (in-game)** | Multi-weakness damage | ✅ resolved — engine `weaknessFactor = 1 + 0.10 × #exploited`, count-driven and generic; regression tests added |
 
 ---
 
@@ -374,7 +376,7 @@ Only CONFIRMED values become defaults; everything else is a **config key** (docu
 | Defense term | `ATK/(1+DEF/ATK)` | CONFIRMED |
 | Crit multiplier | `1 + Crit DMG stat` (×1.20 at 120%; linear — confirmed at 123.5% → ×1.235), applied to unrounded damage before final ceil | **CONFIRMED in-game** (U1 + U19 CDMG half, 2026-09-03). Engine derives `1 + critDmg` from attacker data (no hardcoded default); `configOverrides.critMultiplier` = test-only alternative |
 | Phase counter | `×1.2 / ×0.8 / 1.0` | CONFIRMED |
-| Weakness exploit | `+10% dmg` and `+2 stab` per weakness | CONFIRMED |
+| Weakness exploit | factor = `1 + 0.10 × #exploited weaknesses` (+2 stab each) — separate factor, outside the additive DMG bucket, **additive across weaknesses** | CONFIRMED (in-game: Burn ×1.10; Burn + AR ammo ×1.20 — U20 2026-09-03) |
 | Glancing | `final × 0.1`, chance 0 (off) | PROBABLE/U2 |
 | Stability-cover reduction (60%, stable + in cover) | **Cover mechanic — DEFERRED**; MVP target always No Cover → term never fires (1.0) | — |
 | Exposed window | `2` rounds, dmg-% `UNKNOWN → config` | U3/U4 |

@@ -44,9 +44,10 @@ test("phase countering ×1.2 and ×0.8", () => {
   assert.equal(hit({ phaseMult: 0.8 }).finalDamage, 800);
 });
 
-test("weakness exploit +10% per weakness", () => {
+test("weakness exploit +10% per weakness (additive across weaknesses — U20)", () => {
   assert.equal(hit({ weaknessMult: 1.1 }).finalDamage, 1100);
-  assert.equal(hit({ weaknessMult: 1.1 * 1.1 }).finalDamage, 1210);
+  // U20: two exploited weaknesses = 1 + 0.10×2 = 1.20 (NOT multiplicative 1.1×1.1 = 1.21).
+  assert.equal(hit({ weaknessMult: 1.2 }).finalDamage, 1200);
 });
 
 test("crit multiplies by the Crit DMG multiplier (1 + critDmg)", () => {

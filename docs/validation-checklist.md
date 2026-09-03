@@ -17,7 +17,7 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 | 3 | One additive bracket for all damage bonuses | CONFIRMED | — | `damage.test.ts` (1.35 bracket) |
 | 4 | Defense term `ATK/(1+DEF/ATK)` | CONFIRMED | dummy `defense` | `damage.test.ts`, `stability.test.ts` |
 | 5 | Phase countering ×1.2 / ×0.8 | CONFIRMED rule; **wheel relations UNVERIFIED** | not configurable (resolves neutral 1.0 + warning) | `damage.test.ts` (multipliers), warning in every run |
-| 6 | Weakness exploit: +10% dmg and +2 stab per weakness — **Burn ×1.10 confirmed in-game 2026-09-03 (1091/1310); multiplicative, NOT in the additive bucket** | CONFIRMED (in-game + multi-source) | dummy `weaknesses`; V6 no-cover +10% not yet in character data (passed explicitly in regression) | `damage.test.ts`, `stability.test.ts`, `weakness-validation.test.ts` |
+| 6 | Weakness exploit: factor = **1 + 0.10 × #exploited weaknesses** (+2 stab each) — **additive across weaknesses**, separate factor (NOT in the additive DMG bucket); Burn ×1.10 → 1091 and **Burn + AR ammo ×1.20 → 1191 confirmed in-game; multiplicative ×1.21 ruled out (U20 2026-09-03)** | CONFIRMED (in-game) | dummy `weaknesses` (count-driven; V6 no-cover +10% not yet in character data — passed explicitly in regression) | `damage.test.ts`, `stability.test.ts`, `weakness-validation.test.ts` |
 | 7 | Critical multiplier = attacker's Crit DMG stat, **linear**: ×1.20 at 120% CDMG (Basic crit 635), ×1.235 at 123.5% (crit 654); applied to **unrounded** damage before final ceil. **Crit Rate: 100% effective cap; overflow converts 1:1 only via character-specific passive** ("every 1% of overflow critical rate is converted to 1% critical damage" — in-game passive text, 2026-09-03) | **CONFIRMED (in-game — U1 + U19 CDMG half; CR cap/overflow CONFIRMED via passive text)**: engine derives `1 + critDmg`; overflow via data-driven `excess_crit_conversion` passive (no global rule, no character-id logic) | `configOverrides.critMultiplier` = test-only alternative hypothesis; conversion params live in character passive data | `crit-validation.test.ts`, `critdmg-validation.test.ts`, `crit-overflow-validation.test.ts`; U19 remainder (CR sources, exact per-character params, numeric damage confirmation) OPEN |
 | 8 | Glancing = ceil(final × 0.1) | PROBABLE; **U2 trigger UNVERIFIED** | `configOverrides.glanceChance` | `config-override.test.ts` (U2) |
 | 9 | Ceiling rounding of final damage; crit applied to the underlying unrounded product (never to the rounded normal hit) | CONFIRMED (in-game 2026-09-03; ATK-1956 case discriminates 634 vs 635) | — | `damage.test.ts`, `crit-validation.test.ts` |
@@ -80,7 +80,7 @@ Every damaging `LogEvent` records: `round`, `turn`, `unit`, `action`, `attackerA
 
 ## 6. Validation evidence
 
-- `npm test` → 85/85 pass (32 original + 16 validation-mode + 4 crit-validation + 5 weakness-validation + 4 stability-recovery + 4 cooldown-validation + 6 critdmg-validation + 8 crit-overflow-validation + 6 confectance-validation regression tests).
+- `npm test` → 87/87 pass (32 original + 16 validation-mode + 4 crit-validation + 7 weakness-validation + 4 stability-recovery + 4 cooldown-validation + 6 critdmg-validation + 8 crit-overflow-validation + 6 confectance-validation regression tests).
 - CLI: 7-turn example and 4-turn rotation walkthrough verified by hand (see report).
 - 8+ turns rejected with a clear error message (CLI + engine tests).
 
