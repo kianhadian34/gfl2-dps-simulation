@@ -1,7 +1,17 @@
-import type { ActionSlot, CharacterDef, ConfigOverrides, Element, Scenario, SourceKind } from "../model/types.js";
+import type { ActionSlot, CharacterDef, ConfigOverrides, Element, Scenario, SourceKind, StatusDef, StatusOverride } from "../model/types.js";
 import type { ActiveStatus, LogEvent, ResolvedConfig } from "../model/runtime.js";
 import { Rng } from "./rng.js";
 import type { Registry } from "../data/registry.js";
+
+/**
+ * MVP simulation duration cap (validation mode): exactly 1–7 turns.
+ * Reject anything outside — never clamp. Raising this later is a one-line
+ * constant change; the engine itself is duration-agnostic.
+ */
+export const MAX_TURNS = 7;
+
+/** Effective status definition: registry entry after config.statusOverrides are applied. */
+export type EffectiveStatusDef = StatusDef & { effectiveDurationRounds?: number };
 
 export const DEFAULT_CONFIG: ResolvedConfig = {
   critMultiplier: 1.5, // CONFIRMED research §3.3 (U1 interplay note applies)
@@ -10,6 +20,8 @@ export const DEFAULT_CONFIG: ResolvedConfig = {
   exposedDamageMult: 1.0, // U3 UNVERIFIED
   confectanceMax: 6, // U9 UNVERIFIED
   confectanceStart: 0, // U9 UNVERIFIED
+  statusOverrides: {},
+  cooldownModel: "endOfOwnTurn", // U11 model assumption
 };
 
 export interface UnitState {
@@ -58,7 +70,7 @@ export interface SimulationState {
   config: ResolvedConfig;
   units: UnitState[];
   dummy: UnitState;
-  statusRegistry: Map<string, import("../model/types.js").StatusDef>;
+  statusRegistry: Map<string, EffectiveStatusDef>;
   log: LogEvent[];
   warnings: Set<string>;
   /** Statuses applied during the current action — excluded from its own end-of-turn tick. */
@@ -96,7 +108,41 @@ export function resolveConfig(overrides: ConfigOverrides | undefined): ResolvedC
     exposedDamageMult: overrides?.exposedDamageMult ?? DEFAULT_CONFIG.exposedDamageMult,
     confectanceMax: overrides?.confectanceMax ?? DEFAULT_CONFIG.confectanceMax,
     confectanceStart: overrides?.confectanceStart ?? DEFAULT_CONFIG.confectanceStart,
+    statusOverrides: overrides?.statusOverrides ?? {},
+    cooldownModel: overrides?.cooldownModel ?? DEFAULT_CONFIG.cooldownModel,
   };
+}
+
+/**
+ * Build the effective status registry: base StatusDefs cloned with any
+ * config.statusOverrides applied (per-stack damage value, tick point, and the
+ * applied duration). The engine reads ONLY this map, so an uncertainty value
+ * can be changed from a scenario without touching engine code.
+ */
+export function applyStatusOverrides(
+  base: Map<string, StatusDef>,
+  overrides: Record<string, StatusOverride>,
+): Map<string, EffectiveStatusDef> {
+  const out = new Map<string, EffectiveStatusDef>();
+  for (const [id, def] of base) {
+    const ov = overrides[id];
+    if (!ov) {
+      out.set(id, def);
+      continue;
+    }
+    out.set(id, {
+      ...def,
+      effects:
+        ov.perStackValue === undefined
+          ? def.effects
+          : def.effects.map((e) =>
+              e.kind === "damage_modifier" && ov.perStackValue !== undefined ? { ...e, value: ov.perStackValue } : e,
+            ),
+      tickAt: ov.tickAt ?? def.tickAt,
+      effectiveDurationRounds: ov.durationRounds,
+    });
+  }
+  return out;
 }
 
 function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], config: ResolvedConfig): UnitState {
@@ -178,10 +224,15 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
   if (scenario.version !== 1) throw new Error(`Unsupported scenario version: ${scenario.version}`);
   if (scenario.team.length === 0) throw new Error("Scenario team must not be empty");
   if (scenario.dummy.cover !== "none") throw new Error("MVP: dummy cover must be \"none\" (handoff §4)");
-  const config = resolveConfig(scenario.configOverrides);
+  if (!Number.isInteger(scenario.turns) || scenario.turns < 1 || scenario.turns > MAX_TURNS) {
+    throw new Error(
+      `Scenario turns must be an integer between 1 and ${MAX_TURNS} (MVP cap); got ${scenario.turns} — durations above ${MAX_TURNS} are rejected, not clamped`,
+    );
+  }
   for (const m of scenario.team) {
     if (m.rotation.length === 0) throw new Error(`Rotation for ${m.characterId} must not be empty`);
   }
+  const config = resolveConfig(scenario.configOverrides);
   const units: UnitState[] = scenario.team.map((m) => {
     const def = registry.getCharacter(m.characterId);
     if (!def) throw new Error(`Unknown character: ${m.characterId}`);
@@ -196,7 +247,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
     config,
     units,
     dummy,
-    statusRegistry: registry.getStatusMap(),
+    statusRegistry: applyStatusOverrides(registry.getStatusMap(), config.statusOverrides),
     log: [],
     warnings,
     appliedThisAction: [],

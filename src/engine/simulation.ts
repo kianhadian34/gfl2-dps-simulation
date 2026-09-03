@@ -114,6 +114,8 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   }
   ev.baseDamage = hit.baseDamage;
   ev.mitigatedDamage = hit.mitigatedDamage;
+  ev.attackerAtk = actor.panelAtk;
+  ev.targetDef = dummy.defStat;
   ev.critical = hit.critical;
   ev.critMultiplier = state.config.critMultiplier;
   ev.weaknessExploited = weaknesses;
@@ -165,7 +167,7 @@ function resolveMainAction(state: SimulationState, doll: UnitState, slot: Action
   }
   ev.confectance = { before: beforeConfectance, after: doll.confectance, cost };
 
-  setCooldown(doll, skill.id, skill.cooldown); // model assumption U11 (decrement at end of own turn)
+  setCooldown(doll, skill.id, skill.cooldown, state.config.cooldownModel); // model assumption U11 (overridable in scenario)
   ev.cooldownAfter = Object.fromEntries(doll.cooldowns);
 
   doll.rotationIndex = (doll.rotationIndex + k + 1) % doll.rotationList.length;
@@ -280,8 +282,8 @@ function collectWarnings(state: SimulationState): void {
   if (state.units.some((u) => u.def && u.def.base.critRate > 0)) {
     warn.add(`critMultiplier=${c.critMultiplier} (research §3.3); interplay with the 120% panel crit-damage stat is UNVERIFIED (U1)`);
   }
-  warn.add("buff duration tick model = ownActionEnd (research U7 model assumption; configurable once tested)");
-  warn.add("cooldown model = decrement at end of own turn (research U11 model assumption)");
+  warn.add(`buff duration tick model = ownActionEnd (research U7 model assumption) — overridable via configOverrides.statusOverrides.<id>.tickAt`);
+  warn.add(`cooldown model = ${c.cooldownModel} (research U11 model assumption) — overridable via configOverrides.cooldownModel`);
   warn.add("phase wheel not populated — phase interactions resolve neutral 1.0 (research §3.4: ×1.2/×0.8 confirmed, wheel UNVERIFIED)");
   const referenced = new Set<string>();
   for (const u of state.units) {
@@ -293,7 +295,12 @@ function collectWarnings(state: SimulationState): void {
   }
   for (const id of referenced) {
     const sd = state.statusRegistry.get(id);
-    if (sd && !sd.verified) warn.add(`status "${id}": ${sd.note ?? "UNVERIFIED model default"}`);
+    if (!sd) continue;
+    if (c.statusOverrides[id]) {
+      warn.add(`status "${id}": config-overridden (${JSON.stringify(c.statusOverrides[id])}) — in-game value still pending verification`);
+    } else if (!sd.verified) {
+      warn.add(`status "${id}": ${sd.note ?? "UNVERIFIED model default (docs/research.md §4)"}`);
+    }
   }
 }
 

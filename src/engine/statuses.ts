@@ -1,11 +1,12 @@
-import type { StatusApplySpec, StatusDef } from "../model/types.js";
-import type { SimulationState, UnitState } from "./state.js";
+import type { StatusApplySpec } from "../model/types.js";
+import type { EffectiveStatusDef, SimulationState, UnitState } from "./state.js";
 
-/** Status expiry bookkeeping. Tick timing is a model assumption (research U7), config-overridable later. */
+/** Status expiry bookkeeping. Tick timing is a model assumption (research U7), config-overridable per scenario. */
 export function applyStatus(state: SimulationState, target: UnitState, spec: StatusApplySpec): void {
   const def = state.statusRegistry.get(spec.statusId);
   if (!def) throw new Error(`Unknown status: ${spec.statusId}`);
-  const dur = spec.durationRounds;
+  // Applied duration = per-status config override (validation mode) else the skill's spec.
+  const dur = def.effectiveDurationRounds ?? spec.durationRounds;
   const stacks = spec.stacks ?? 1;
   const existing = target.statuses.find((s) => s.statusId === spec.statusId);
   if (existing) {
@@ -44,7 +45,7 @@ export function tickStatuses(state: SimulationState, unit: UnitState, at: "ownAc
 }
 
 /** Σ additive damage-dealt bonuses from the unit's own statuses. */
-export function additiveDealtBonus(unit: UnitState, statusRegistry: Map<string, StatusDef>): number {
+export function additiveDealtBonus(unit: UnitState, statusRegistry: Map<string, EffectiveStatusDef>): number {
   let sum = 0;
   for (const s of unit.statuses) {
     const def = statusRegistry.get(s.statusId);
@@ -59,7 +60,7 @@ export function additiveDealtBonus(unit: UnitState, statusRegistry: Map<string, 
 }
 
 /** Σ additive damage-taken bonuses from the target's own statuses. */
-export function additiveTakenBonus(unit: UnitState, statusRegistry: Map<string, StatusDef>): number {
+export function additiveTakenBonus(unit: UnitState, statusRegistry: Map<string, EffectiveStatusDef>): number {
   let sum = 0;
   for (const s of unit.statuses) {
     const def = statusRegistry.get(s.statusId);
@@ -74,7 +75,10 @@ export function additiveTakenBonus(unit: UnitState, statusRegistry: Map<string, 
 }
 
 /** Multiplicative taken modifiers (e.g. Exposed damage bonus from config) or reductions. */
-export function multiplicativeTakenMods(unit: UnitState, statusRegistry: Map<string, StatusDef>): { mult: number; red: number } {
+export function multiplicativeTakenMods(
+  unit: UnitState,
+  statusRegistry: Map<string, EffectiveStatusDef>,
+): { mult: number; red: number } {
   let mult = 1;
   let red = 1;
   for (const s of unit.statuses) {

@@ -30,7 +30,7 @@ export function scenario(overrides: {
   return {
     version: 1,
     seed: overrides.seed ?? 1,
-    turns: overrides.turns ?? 10,
+    turns: overrides.turns ?? 7,
     team: [
       {
         characterId: "qiongjiu",

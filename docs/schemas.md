@@ -171,7 +171,7 @@ All fields user-configurable except `cover` (always `"none"` in MVP). Defaults p
 {
   "version": 1,
   "seed": 20260903,
-  "turns": 10,
+  "turns": 7,
   "team": [
     { "character": { "$ref": "characters/qiongjiu.json" }, "build": { "weapon": { "id": "jinshizou", "level": 60, "calibration": 6 }, "keys": { "fixed": ["qiongjiu_fk1"], "common": "strategic_negotiation" }, "level": 60 } }
   ],
@@ -190,12 +190,22 @@ All fields user-configurable except `cover` (always `"none"` in MVP). Defaults p
     "exposedDuration": 2,
     "exposedDamageMult": null,    // null = use data-dump value once verified; for MVP runs: set explicitly
     "confectanceMax": null, "confectanceStart": null,
-    "cooldownModel": "endOfOwnTurn",
+    "cooldownModel": "endOfOwnTurn",              // U11: endOfOwnTurn | nextOwnTurnEnd
+    "statusOverrides": {                          // U7/U8 + unverified status values
+      "support_boost_ii": { "perStackValue": 0.1, "durationRounds": 1, "tickAt": "ownActionEnd" }
+    },
     "buffTickModel": "ownActionEnd",
     "stabilityReduction": { "enabled": true, "damageMult": 0.4 }
   }
 }
 ```
+
+> **Duration cap (validation mode):** `turns` accepts integers **1–7** only
+> (`MAX_TURNS = 7` in the engine). Anything outside — including 8+, 0,
+> negatives, and non-integers — is **rejected with a validation error**, never
+> clamped. The cap is a single constant in `src/engine/state.ts`, so it can be
+> raised later without engine redesign. Fixed rotations operate normally within
+> the 7-turn limit.
 
 ## 9. Combat log event (handoff §14)
 
@@ -242,7 +252,7 @@ All fields user-configurable except `cover` (always `"none"` in MVP). Defaults p
 {
   "version": 1,
   "seed": 1,
-  "turns": 10,
+  "turns": 7,
   "team": [{
     "character": { "id": "qiongjiu", "level": 60, "base": { "atk": 1224, "hp": 2494, "def": 695, "stability": 9, "critRate": 0.2, "critDmg": 0.2 }, "phase": "burn" },
     "build": { "weapon": { "id": "jinshizou", "atkBase1": 53, "lvlCoefficient60": 18.4, "subStats": [{ "stat": "pctAtk", "value": 0.15 }] }, "keys": { "fixed": ["qiongjiu_fk1_concentration"] } },

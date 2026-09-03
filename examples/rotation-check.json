@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "seed": 20260903,
-  "turns": 7,
+  "seed": 7,
+  "turns": 4,
   "team": [
     {
       "characterId": "qiongjiu",
-      "rotation": ["ultimate", "active1", "active2", "basic"],
+      "rotation": ["active1", "active2", "basic", "ultimate"],
       "equippedFixedKeys": ["qiongjiu_fk1_concentration"]
     }
   ],

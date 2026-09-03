@@ -12,18 +12,18 @@ test("panel stats: weapon ATK adds to base, ATK% multiplies the flat sum (resear
   assert.equal(panel.hp, 2494);
 });
 
-test("integration: 10-round fixed rotation, all aggregations consistent, warnings surfaced", () => {
+test("integration: 7-round fixed rotation (MVP cap), all aggregations consistent, warnings surfaced", () => {
   const r = simulateScenario({
     version: 1,
     seed: 20260903,
-    turns: 10,
+    turns: 7,
     team: [{ characterId: "qiongjiu", rotation: ["ultimate", "active1", "active2", "basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"] }],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
   });
 
   // One main action per round (solo team, no supports).
-  assert.equal(r.totals.actions, 10);
-  assert.equal(r.log.length, 10);
+  assert.equal(r.totals.actions, 7);
+  assert.equal(r.log.length, 7);
 
   // Exact rotation execution: ultimate re-casts whenever Confectance (3) covers the cost.
   // FK1 start 3 → r1 ult (0); dmg gains +1: r2 1, r3 2, r4 3; r5 ult again…
@@ -37,9 +37,6 @@ test("integration: 10-round fixed rotation, all aggregations consistent, warning
       "qiongjiu_pressing_momentum",
       "qiongjiu_common_rail",
       "qiongjiu_guide_to_victory",
-      "qiongjiu_basic",
-      "qiongjiu_pressing_momentum",
-      "qiongjiu_common_rail",
     ],
   );
 
@@ -49,7 +46,7 @@ test("integration: 10-round fixed rotation, all aggregations consistent, warning
   assert.equal(r.byCharacter.length, 1);
   assert.equal(r.byCharacter[0].id, "qiongjiu");
   assert.equal(r.byCharacter[0].damage, logSum);
-  assert.equal(r.byCharacter[0].actions, 10);
+  assert.equal(r.byCharacter[0].actions, 7);
   const sourceSum = r.bySource.reduce((a, s) => a + s.damage, 0);
   assert.equal(sourceSum, logSum);
   assert.deepEqual(
@@ -57,11 +54,21 @@ test("integration: 10-round fixed rotation, all aggregations consistent, warning
     ["active", "basic", "ultimate"],
   );
 
+  // Log detail: every damaging action records its damage-pipeline inputs for
+  // comparison against an in-game test (attacker ATK, target DEF, bracket…).
+  for (const e of r.log) {
+    if (e.action === "qiongjiu_pressing_momentum") continue; // no damage
+    assert.equal(typeof e.attackerAtk, "number");
+    assert.equal(typeof e.targetDef, "number");
+    assert.equal(typeof e.bonusBracket, "number");
+    assert.equal(typeof e.mitigatedDamage, "number");
+  }
+
   // Determinism (explicit seed).
   const r2 = simulateScenario({
     version: 1,
     seed: 20260903,
-    turns: 10,
+    turns: 7,
     team: [{ characterId: "qiongjiu", rotation: ["ultimate", "active1", "active2", "basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"] }],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
   });

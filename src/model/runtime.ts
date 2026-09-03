@@ -1,4 +1,4 @@
-import type { ActionSlot, SourceKind } from "./types.js";
+import type { ActionSlot, SourceKind, StatusOverride } from "./types.js";
 
 export interface ResolvedConfig {
   critMultiplier: number;
@@ -7,6 +7,8 @@ export interface ResolvedConfig {
   exposedDamageMult: number;
   confectanceMax: number;
   confectanceStart: number;
+  statusOverrides: Record<string, StatusOverride>;
+  cooldownModel: "endOfOwnTurn" | "nextOwnTurnEnd";
 }
 
 export interface ActiveStatus {
@@ -27,6 +29,9 @@ export interface LogEvent {
   supportAttack: boolean;
   baseDamage?: number;
   mitigatedDamage?: number;
+  /** Damage-pipeline inputs recorded so every action reproduces against an in-game test (validation mode). */
+  attackerAtk?: number;
+  targetDef?: number;
   critical?: boolean;
   critMultiplier?: number;
   weaknessExploited: string[];

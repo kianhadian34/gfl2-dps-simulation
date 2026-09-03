@@ -5,7 +5,7 @@ import { scenario } from "./helpers.js";
 
 test("Confectance gains +1 per damage event and clamps at the configured cap", () => {
   // No start Confectance; hits clamp at cap 6.
-  const r = simulateScenario(scenario({ turns: 8, rotation: ["basic"], keys: [] }));
+  const r = simulateScenario(scenario({ turns: 7, rotation: ["basic"], keys: [] }));
   const last = r.log[r.log.length - 1];
   assert.deepEqual(last.confectance, { before: 6, after: 6, cost: 0 });
 });

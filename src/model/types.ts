@@ -128,6 +128,16 @@ export interface DummyConfig {
   stabilityRecovery?: { enabled: boolean; perRound: number };
 }
 
+/** Per-status override for UNVERIFIED values (docs/research.md §4 U7/U8 + status data). */
+export interface StatusOverride {
+  /** Per-stack value for additive/multiplicative damage effects (e.g. Support Boost I/II). */
+  perStackValue?: number;
+  /** Applied duration in rounds (overrides the skill's appliesStatuses.durationRounds). */
+  durationRounds?: number;
+  /** Duration tick point (research U7). */
+  tickAt?: "ownActionEnd" | "roundEnd";
+}
+
 /** Every engine default that research left UNVERIFIED is overridable here (docs/architecture.md §1.5). */
 export interface ConfigOverrides {
   critMultiplier?: number; // default 1.5 (research §3.3)
@@ -136,6 +146,17 @@ export interface ConfigOverrides {
   exposedDamageMult?: number; // default 1.0 — UNVERIFIED (U3)
   confectanceMax?: number; // default 6 — UNVERIFIED (U9)
   confectanceStart?: number; // default 0 — UNVERIFIED (U9)
+  /**
+   * Override unverified per-status values: perStackValue (damage mods),
+   * durationRounds (applied duration), tickAt (U7). Missing keys keep data defaults.
+   */
+  statusOverrides?: Record<string, StatusOverride>;
+  /**
+   * Cooldown decrement model (research U11):
+   * - "endOfOwnTurn": set at cast, decrement at end of own turn → cd-1 usable next round (default)
+   * - "nextOwnTurnEnd": cd effectively +1 → cd-1 skips the next round
+   */
+  cooldownModel?: "endOfOwnTurn" | "nextOwnTurnEnd";
 }
 
 export interface ScenarioTeamMember {
@@ -147,6 +168,7 @@ export interface ScenarioTeamMember {
 export interface Scenario {
   version: number;
   seed: number;
+  /** MVP simulation duration cap: integers 1–7 only (8+ rejected with a validation error, never clamped). */
   turns: number;
   team: ScenarioTeamMember[];
   dummy: DummyConfig;

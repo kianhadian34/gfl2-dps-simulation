@@ -4,7 +4,7 @@ import { simulateScenario } from "../simulate.js";
 import { Rng } from "../engine/rng.js";
 import { scenario } from "./helpers.js";
 
-const EXAMPLE = scenario({ turns: 10, seed: 20260903, rotation: ["ultimate", "active1", "active2", "basic"] });
+const EXAMPLE = scenario({ turns: 7, seed: 20260903, rotation: ["ultimate", "active1", "active2", "basic"] });
 
 test("same scenario + same seed ⇒ byte-identical log and results (golden determinism)", () => {
   const a = simulateScenario(EXAMPLE);

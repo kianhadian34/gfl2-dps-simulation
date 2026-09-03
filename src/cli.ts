@@ -91,4 +91,13 @@ function main(): number {
   return 0;
 }
 
-process.exitCode = main();
+function safeRun(): number {
+  try {
+    return main();
+  } catch (err) {
+    console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
+    return 1;
+  }
+}
+
+process.exitCode = safeRun();
