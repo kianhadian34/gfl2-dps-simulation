@@ -311,11 +311,11 @@ function collectWarnings(state: SimulationState): void {
   const c = state.config;
   const d = DEFAULT_CONFIG;
   const warn = state.warnings;
-  if (c.confectanceMax === d.confectanceMax) {
-    warn.add(`confectanceMax=${d.confectanceMax} is an UNVERIFIED model default (research U9) — set configOverrides.confectanceMax after in-game test`);
+  if (c.confectanceMax !== d.confectanceMax) {
+    warn.add(`confectanceMax = ${c.confectanceMax} — non-confirmed override (confirmed in-game: 6, U9)`);
   }
-  if (c.confectanceStart === d.confectanceStart) {
-    warn.add(`confectanceStart=${d.confectanceStart} is an UNVERIFIED model default (research U9)`);
+  if (c.confectanceStart !== d.confectanceStart) {
+    warn.add(`confectanceStart = ${c.confectanceStart} — non-confirmed override (confirmed in-game: 3, U9)`);
   }
   if (c.exposedDamageMult === d.exposedDamageMult && state.dummy.maxStability > 0) {
     warn.add(`exposedDamageMult=${d.exposedDamageMult} is an UNVERIFIED model default (research U3) — affects post-break damage`);

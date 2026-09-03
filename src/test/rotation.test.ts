@@ -18,20 +18,22 @@ test("fixed rotation cycles through the declared slots", () => {
 });
 
 test("ultimate is only used when Confectance covers its cost (rotation scans ahead)", () => {
-  // No FK1 key → start 0; basic deals damage → +1 per hit; ultimate costs 3.
+  // Confirmed start = 3 → the ultimate is castable on turn 1; after the cost is
+  // spent (0), damage gains (+1 per hit) rebuild: r4→3 → r5 ultimate again.
   const r = simulateScenario(scenario({ turns: 5, rotation: ["ultimate", "basic"], keys: [] }));
   assert.deepEqual(actionsOf(r), [
+    "qiongjiu_pressing_momentum",
     "qiongjiu_basic",
     "qiongjiu_basic",
     "qiongjiu_basic",
     "qiongjiu_pressing_momentum",
-    "qiongjiu_basic",
   ]);
 });
 
 test("falls back to basic when every rotation slot is unavailable", () => {
-  // Rotation has only the ultimate; with 0 Confectance the first actions fall back to basic.
-  const r = simulateScenario(scenario({ turns: 3, rotation: ["ultimate"], keys: [] }));
+  // Rotation holds only the ultimate; a non-default start of 0 forces it
+  // unavailable every turn → fallback basic (override honored).
+  const r = simulateScenario(scenario({ turns: 3, rotation: ["ultimate"], keys: [], config: { confectanceStart: 0 } }));
   assert.deepEqual(actionsOf(r), ["qiongjiu_basic", "qiongjiu_basic", "qiongjiu_basic"]);
 });
 

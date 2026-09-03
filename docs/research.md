@@ -259,11 +259,11 @@ Level-60 base magnitudes (CONFIRMED, 2024 BWIKI data): Qiongjiu `ATK 119→1224,
 
 **Source** — IOPWiki Qiongjiu (`skill_cost: 3`; passive +1 Confectance per damage event); gfl2.help / DotGG (cost 3, fixed key +3 at battle start); BWIKI `/gf2/导染指数` (beta: not turn-grown; gains/consumption settled after events; damage bonus 0% <100, +5%/10 pts, cap +50% @200 — beta numbers); IOPWiki GFL2_Combat.
 
-**Confidence** — Event-driven, per-skill-text generation CONFIRMED (a `damage × m` proportion is **rejected** by data). Cost values are per-skill (3; some ultimates consume ALL). **Max capacity (hexagon full value) UNKNOWN; battle-start value UNKNOWN; the beta damage-bonus table is UNCERTAIN** (beta source; the live additive example in the damage page shows a 20% Confectance bonus in the additive bracket, so treat it as a configurable additive term).
+**Confidence** — Event-driven, per-skill-text generation CONFIRMED (a `damage × m` proportion is **rejected** by data). Cost values are per-skill (3; some ultimates consume ALL). **Max capacity and battle-start value CONFIRMED in-game (2026-09-03, Qiongjiu no keys): start 3, max 6**; Pressing the Momentum cost **3** (confirmed). The **beta damage-bonus table remains UNCERTAIN (U10)** (beta source; the live additive example shows a 20% Confectance bonus in the additive bracket — treated as a config additive term).
 
 **Implementation interpretation** — `confectance: int` on each unit; event hooks (`onDamageDealt`, `onKill`, `onSkillCast`, custom per skill) define gains; casting subtracts cost **after** the skill fully resolves; optional additive damage bonus `confectanceBonus(amount)` as config with beta defaults off.
 
-**Unknowns** — cap, start value, per-doll gain tables, kill bonus, live damage-bonus table.
+**Unknowns** — per-doll gain tables (outside Qiongjiu's confirmed +1 per damage event), kill bonus, live damage-bonus table (U10). (Cap 6 and battle-start 3 are CONFIRMED for Qiongjiu with no keys; engine defaults updated — overrides remain available for alternative testing.)
 
 ### 3.13 Keys (固键)
 
@@ -334,7 +334,7 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 | U6 | ~~Stability recovery timing~~ → **CONFIRMED 2026-09-03**: restored exactly 2 turns after the break (break Turn N → restored Turn N+2), restored to max | ~~UNKNOWN~~ → **CONFIRMED (timing)** | Was long-sim drift | ✅ resolved — engine models the 2-turn delay (`STABILITY_RECOVERY_DELAY = 2`); Exposed damage-% (U3) remains open |
 | U7 | Buff duration tick point (own turn start vs round end) | UNKNOWN | Buff expiry timing | Buff timer test |
 | U8 | Same-tier status reapply: refresh vs stack | UNKNOWN | Stack math | Reapply test |
-| U9 | Confectance cap & battle-start value | UNKNOWN | Ultimate timing | Confectance test + data dump |
+| U9 | ~~Confectance cap & battle-start value~~ → **RESOLVED 2026-09-03**: battle start **3** (no keys), max **6**; +1 per Basic damage event; Pressing the Momentum cost **3** | ~~UNKNOWN~~ → **CONFIRMED (in-game, Qiongjiu no keys)** | Ultimate timing | ✅ resolved — engine defaults start 3 / max 6; gains & cost are data-driven; overrides (confectanceMax/Start) remain for alternative testing. U10 (Confectance damage-bonus table) still open |
 | U10 | Confectance damage-bonus table (beta: +5%/10pts, cap +50%) | UNCERTAIN | Damage curve | Confectance test |
 | U11 | ~~Cooldown decrement timing (use-turn counted?)~~ → **CONFIRMED 2026-09-03**: CD-N waits N full turns after the cast turn — CD-1 cast T1 → unavailable T2 → available T3 (NOT "next turn") | ~~UNCERTAIN~~ → **CONFIRMED (in-game)** | Skill cadence | ✅ resolved — engine default `cooldownModel = "nextOwnTurnEnd"`; alternative `endOfOwnTurn` selectable for testing only |
 | U12 | Auto-battle AI priority | UNKNOWN | Whole-sim fidelity | Auto-battle recording; default is a labeled model assumption |
@@ -358,7 +358,7 @@ Procedure sketches — all trivially runnable on a stationary target (existing t
 4. **Exposed state** — break stability, measure damage-taken % (U3 — still open). **Recovery timing already CONFIRMED (2026-09-03): 2-turn delay → restored to max**; watch whether the damage step-down matches that exactly.
 5. **Buff timers** — apply ATK Up, observe expiry relative to caster's next turn vs round end; re-apply same tier → refresh or stack?
 6. **Cooldowns** — ✅ **RESOLVED 2026-09-03**: CD-N waits N full turns after the cast turn (CD-1: cast T1 → unavailable T2 → available T3). Optional follow-up: confirm the same shape on a CD-2 skill.
-7. **Confectance** — record pips at battle start, per damage event, per skill use, cap, and ultimate cost.
+7. **Confectance** — ✅ **RESOLVED 2026-09-03**: battle start 3 (no keys), max 6, +1 per damage event, Pressing the Momentum cost 3. Remainder: per-doll gains (other characters), kill bonus, and the damage-bonus table (U10).
 8. **Glancing** — damage histogram across many attacks; count 0.1×-style outliers and infer trigger conditions.
 9. **Auto-battle AI** — record the action sequence of a 4-doll team on auto vs a dummy; compare to `ultimate > active > basic`.
 10. **Per-doll data capture** — for each doll added to the sim: full skill texts (multiplier, type, cd, cost, stab, statuses, keys) from the in-game panel.
@@ -382,7 +382,7 @@ Only CONFIRMED values become defaults; everything else is a **config key** (docu
 | Buff duration units | big-rounds; tick at own action (config) | U7 |
 | Bonus grouping | one additive bracket | CONFIRMED |
 | Cooldown model | **wait N full turns after the cast turn** (CD-1: cast N → unavailable N+1 → available N+2) — engine default `cooldownModel = "nextOwnTurnEnd"` | **CONFIRMED** (in-game 2026-09-03, U11) |
-| Confectance | event gains per skill text; cost after cast; cap/start/bonus = config | U9/U10 |
+| Confectance | start **3** / max **6** (CONFIRMED in-game); event gains per skill text (+1/damage for Qiongjiu); cost after cast (ult cost 3); damage-bonus table (U10) = config | U9 ✅ / U10 open |
 | Actions | 1 main action/round; basic ⊻ skill; support attacks free | CONFIRMED |
 | APL | ultimate > active > basic (model assumption, configurable) | U12 |
 | Dummy | `DEF 0, HP 1e9, stability 0, no cover, no weak, neutral phase` | config |

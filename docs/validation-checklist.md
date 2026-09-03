@@ -32,7 +32,7 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 | 18 | Overburn status | applied 2 rounds (CONFIRMED text); **effect values UNVERIFIED** (modeled with no effect + warning) | `configOverrides.statusOverrides.overburn.*` | warnings assert; applied in log |
 | 19 | Skill cooldown values (0/1/2) + **U11 decrement CONFIRMED 2026-09-03: wait N full turns after the cast turn (CD-1: cast T1 → unavailable T2 → available T3)** | CONFIRMED | `configOverrides.cooldownModel` — default `nextOwnTurnEnd` (confirmed); `endOfOwnTurn` alternative selectable for testing only | `config-override.test.ts` (U11), `rotation.test.ts`, `cooldown-validation.test.ts` |
 | 20 | Confectance: event-driven gains (−1/damage dealt), cost settled after cast | CONFIRMED | — | `confectance.test.ts` |
-| 21 | Confectance max & battle-start values | **UNVERIFIED (U9)** | `configOverrides.confectanceMax`, `confectanceStart` | `config-override.test.ts` (U9) |
+| 21 | Confectance max (6) & battle-start (3) values — **CONFIRMED in-game 2026-09-03 (no keys)**; +1 per damage event; ultimate cost 3 | CONFIRMED | engine defaults 3/6; `configOverrides.confectanceMax` / `confectanceStart` = alternative testing | `confectance-validation.test.ts`, `confectance.test.ts` |
 | 22 | Confectance damage-bonus table | **UNVERIFIED (U10)** — NOT IMPLEMENTED (not wired; beta table only) | n/a | n/a (flagged) |
 | 23 | Keys: FK1 battle-start +3 Confectance | CONFIRMED | `equippedFixedKeys` | `confectance.test.ts` |
 | 24 | Support attack: 90% ATK + 2 stab, max 3/round, no chain, no cost | CONFIRMED; **range assumption UNVERIFIED** (assumed in range) | ally team composition | `support.test.ts` |
@@ -54,8 +54,8 @@ APL/auto-AI (U12), movement/positioning, **Cover — explicitly deferred** (incl
 | Glance chance (U2) | 0 | `configOverrides.glanceChance` | yes |
 | Exposed damage-% (U3) | 1.0 | `configOverrides.exposedDamageMult` | yes (when dummy can break) |
 | Exposed duration (U4) | 2 | `configOverrides.exposedDurationRounds` | yes (when dummy can break) |
-| Confectance max (U9) | 6 | `configOverrides.confectanceMax` | yes |
-| Confectance start (U9) | 0 | `configOverrides.confectanceStart` | yes |
+| Confectance max (U9 — RESOLVED) | 6 (confirmed) | `configOverrides.confectanceMax` | warn only when overridden |
+| Confectance start (U9 — RESOLVED) | 3 (confirmed) | `configOverrides.confectanceStart` | warn only when overridden |
 | Support Boost I/II value & duration | 0.05/0.10, 1r | `configOverrides.statusOverrides` | yes (note shows the override) |
 | Status tick point (U7) | `ownActionEnd` | `configOverrides.statusOverrides.<id>.tickAt` | yes |
 | Status applied duration (U8-adjacent) | per-skill data | `configOverrides.statusOverrides.<id>.durationRounds` | yes |
@@ -80,7 +80,7 @@ Every damaging `LogEvent` records: `round`, `turn`, `unit`, `action`, `attackerA
 
 ## 6. Validation evidence
 
-- `npm test` → 79/79 pass (32 original + 16 validation-mode + 4 crit-validation + 5 weakness-validation + 4 stability-recovery + 4 cooldown-validation + 6 critdmg-validation + 8 crit-overflow-validation regression tests).
+- `npm test` → 84/84 pass (32 original + 16 validation-mode + 4 crit-validation + 5 weakness-validation + 4 stability-recovery + 4 cooldown-validation + 6 critdmg-validation + 8 crit-overflow-validation + 5 confectance-validation regression tests).
 - CLI: 7-turn example and 4-turn rotation walkthrough verified by hand (see report).
 - 8+ turns rejected with a clear error message (CLI + engine tests).
 

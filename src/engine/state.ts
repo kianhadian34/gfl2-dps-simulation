@@ -18,8 +18,8 @@ export const DEFAULT_CONFIG: ResolvedConfig = {
   glanceChance: 0, // U2
   exposedDurationRounds: 2, // U4 (CN beta value)
   exposedDamageMult: 1.0, // U3 UNVERIFIED
-  confectanceMax: 6, // U9 UNVERIFIED
-  confectanceStart: 0, // U9 UNVERIFIED
+  confectanceMax: 6, // U9 CONFIRMED 2026-09-03 (in-game, Qiongjiu no keys)
+  confectanceStart: 3, // U9 CONFIRMED 2026-09-03 (in-game, Qiongjiu no keys)
   statusOverrides: {},
   cooldownModel: "nextOwnTurnEnd", // U11 CONFIRMED 2026-09-03: wait N full turns after the cast turn (CD1: cast N → unavailable N+1 → available N+2)
 };
