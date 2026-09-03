@@ -20,7 +20,7 @@ Confidence levels: **CONFIRMED** (primary/official source, or independently repr
 
 What we know with high confidence, in one paragraph:
 
-1. **Damage pipeline** — `final = ceil( base × defense_ratio × (1 + Σ additive bonuses) × phase × weakness × reductions × crit )`, where `defense_ratio = ATK/(1+DEF/ATK)`, all damage bonuses (self buffs, target vulnerability, Confectance bonus) are **additive in one bracket**, phase countering is ×1.2/×0.8, each exploited weakness is +10%, crit is ×1.5, and the result is ceiling-rounded. Reproduced against real in-game numbers (Reddit test: `1213/(1+194/1213) × 1 × 1.1 = 1150.4 → 1151` in game).
+1. **Damage pipeline** — `final = ceil( base × defense_ratio × (1 + Σ additive bonuses) × phase × weakness × reductions × crit )`, where `defense_ratio = ATK/(1+DEF/ATK)`, all damage bonuses (self buffs, target vulnerability, Confectance bonus) are **additive in one bracket**, phase countering is ×1.2/×0.8, each exploited weakness is +10%, and the result is ceiling-rounded. **Crit multiplier = the attacker's Crit DMG stat** (e.g. ×1.20 at 120%), applied to the *unrounded* damage before the final ceiling round (CONFIRMED in-game 2026-09-03 — see §3.3). Reproduced against real in-game numbers (Reddit test: `1213/(1+194/1213) × 1 × 1.1 = 1150.4 → 1151` in game).
 2. **Stability (稳态) is a fully separate resource** from HP: per-hit fixed stability damage (independent of ATK/DEF/crit), break at 0 → "Exposed" state with a damage-taken window; recovery exists but exact values are unknown.
 3. **There are no ACC/EVA stats in GFL2.** Against a stationary, uncovered dummy, attacks always hit; the only hit randomness is "glancing" (擦伤, ×0.1).
 4. **Kit structure is fixed data**: 1 basic attack + 2 actives + 1 ultimate + 1 passive, all with explicit %-of-ATK multipliers. Cooldowns are small integers (0/1/2…). Confectance (导染) is an event-driven resource (e.g. Qiongjiu gains **+1 per damage event**, ultimate costs **3**), **not** a `damage × m` formula.
@@ -64,14 +64,14 @@ bonus     = 1 + Σ additive_bonuses                          # ALL additive: own
 phase     = 1.2 (counter) | 0.8 (countered) | 1.0 (neutral) # 属性克制
 weakness  = ∏ (1 + 0.10) per exploited weakness             # each exposed weakness +10%
 reduction = (1 − stability_red) × (1 − dmg_red) × (1 − cover_red)   # dummy: cover_red = 0
-crit      = 1.5 if crit rolled else 1.0
-final     = ceil( mitigated × bonus × phase × weakness × reduction × crit )
+crit      = 1 + critDmg (attacker's Crit DMG stat)          # e.g. ×1.20 at 120% CDMG (CONFIRMED in-game, §3.3)
+final     = ceil( mitigated × bonus × phase × weakness × reduction × crit )   # crit applies to the UNROUNDED product
 glancing  = ceil( final × 0.1 )                             # when a hit is judged glancing (trigger rule UNKNOWN)
 ```
 
 All "damage dealt up" / "damage taken up" bonuses are **added together in one bracket first** (BWiki example: `1 + 20% + 50% + 30% + 50% = 250%` final multiplier). Damage *reductions* are multiplicative on top.
 
-**Unknowns** — exact written operator order of the beta formula image; whether DoT/indirect damage uses the same pipeline (see §3.10); exact relationship between the ×1.5 crit rule and the 120% panel crit-damage stat (see §3.3).
+**Unknowns** — exact written operator order of the beta formula image; whether DoT/indirect damage uses the same pipeline (see §3.10); remaining crit unknowns (crit-rate sources/caps, CDMG linearity beyond 120% — see §3.3).
 
 ### 3.2 Defense
 
@@ -89,13 +89,26 @@ All "damage dealt up" / "damage taken up" bonuses are **added together in one br
 
 **Mechanic** — Crit rate source and crit damage multiplier.
 
-**Source** — `wiki.biligame.com/gf2/伤害算法` ("暴击伤害的修正为固定的1.5倍"); character stat panels (base crit damage 120%); Reddit 1hgw4zn comments; IOPWiki GFL2_Combat.
+**Source** — **In-game validation 2026-09-03 (Qiongjiu, Lv.60 V6)**; older references: `wiki.biligame.com/gf2/伤害算法` ("目前暴击伤害的修正为固定的1.5倍" — pre-validation text, superseded); character stat panels (base crit damage 120%); Reddit 1hgw4zn; IOPWiki GFL2_Combat.
 
-**Confidence** — Multiplicative ×1.5 on crit: CONFIRMED (BWIKI). Whether the 120% panel base (= +20%) is baked into that 1.5 or an additional layer: **UNCERTAIN** (two BWIKI statements conflict). Crit-rate sources: weapon attachments + skills/passives, no full list; a hard cap is UNKNOWN.
+**Confirmed in-game dataset** (dummy DEF 5000, no cover, no ammo weakness, Burn weakness only; Qiongjiu Basic is Physical → no weakness applies; no break; no buffs; CDMG 120%):
 
-**Implementation interpretation** — `critMult = 1.5` default (single multiplicative factor), crit rolled on final crit rate, RNG from the explicit RNG object. Do **not** implement a `1.2 × 1.5` double layer until in-game-tested. Keep `critDmgBonus` as a config slot.
+| Qiongjiu ATK | Normal Basic | Critical Basic | Repetitions |
+|---|---|---|---|
+| 1956 | 529 | **634** | same values reproduced multiple times |
+| 1958 (weapon Lv1→Lv2, weapon ATK 24, ATK 1956→1958) | 529 | **635** | both reproduced twice |
 
-**Unknowns** — exact crit multiplier, crit-rate caps, anti-crit mechanics (PvP — out of scope anyway).
+Formula reproduction (ATK 1958): `1958 × 0.80 × (1958/(1958+5000)) × 1.20 ≈ 528.947` → normal `ceil = 529`; crit `528.947 × 1.20 ≈ 634.736 → ceil = 635`. Observed 529/635 ✔. The 1956 case is the *discriminating* case: `ceil(529 × 1.20) = 635`, but the game shows **634** — proving crit is computed from the underlying **unrounded** damage, then ceiled. This also independently re-validates the defense term `ATK/(1+DEF/ATK)`, the additive bracket (1 + 20% no-cover bonus), and ceiling rounding at DEF 5000.
+
+**Confirmed conclusions (U1 — RESOLVED):**
+1. **Crit multiplier = the displayed Crit Damage stat** — Qiongjiu at 120% CDMG → **×1.20**. Not a universal ×1.5 (the earlier BWIKI "fixed 1.5" statement is superseded).
+2. Crit multiplication happens **before** final damage rounding.
+3. Final damage is **ceiling-rounded after the full calculation**.
+4. Crit damage is **NOT** derived from an already-rounded normal hit.
+
+**Implementation interpretation (engine pending approved change)** — `critMult = 1 + critDmgStat` applied inside the pipeline before `ceil`. The engine's current `DEFAULT_CONFIG.critMultiplier` is still the pre-validation constant `1.5` (see `docs/validation-checklist.md` §3); scenarios reproduce the confirmed behavior today via `configOverrides.critMultiplier` (e.g. `1.2`), and the engine default should switch to `1 + critDmg` once the engine change is approved.
+
+**Unknowns** — crit-RATE sources and caps (weapon attachments/skills/passives; cap not documented) — split to U19; whether CDMG scales linearly beyond 120% — split to U19; anti-crit mechanics (PvP — out of scope anyway).
 
 ### 3.4 Phase countering (属性克制)
 
@@ -294,7 +307,7 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 
 | # | Mechanic | Confidence | Sim impact | Resolution |
 |---|---|---|---|---|
-| U1 | Crit multiplier: ×1.5 vs ×(1 + 20% panel) | UNCERTAIN | Up to 33% damage skew | In-game crit/non-crit ratio test |
+| U1 | ~~Crit multiplier: ×1.5 vs ×(1 + 20% panel)~~ → **RESOLVED 2026-09-03**: multiplier = Crit DMG stat (×1.20 at 120%), applied to unrounded damage before final ceil; the 1956/1958 ATK control test discriminates the ordering (see §3.3) | ~~UNCERTAIN~~ → **CONFIRMED (in-game)** | Was up to 33% skew | ✅ resolved by in-game test — engine default `critMultiplier` still 1.5 pending approved engine change (scenario override `configOverrides.critMultiplier` → use 1.2) |
 | U2 | Glancing trigger rule & probability | UNKNOWN | Random 0.1x hits | Damage distribution test |
 | U3 | Exposed damage-% after stability break | UNKNOWN | Big skew on break turns | Stability test |
 | U4 | Break duration (beta `breakRound=2`) | UNCERTAIN | Break window length | Stability test |
@@ -312,6 +325,7 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 | U16 | Element DoTs (electric/ice/decay) full definitions | UNKNOWN | DoT modeling | Skill doc read (deferred — not required for first dolls) |
 | U17 | "Resonance" phase extension (2026) | UNKNOWN | Future-proofing | Watch patch notes; not in MVP |
 | U18 | "Nixie/交换机" term | UNKNOWN (no evidence) | — | Needs user clarification, not code |
+| U19 | Crit-rate sources & caps; CDMG linearity beyond the tested 120% | UNKNOWN / UNCERTAIN | Crit frequency & crit-damage scaling | In-game crit-rate sampling + a second CDMG value test |
 
 ---
 
@@ -320,7 +334,7 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 Procedure sketches — all trivially runnable on a stationary target (existing training modes or a low-HP enemy) at known stats. Record values back into config/data, not code constants.
 
 1. **Dummy DEF** — hit a dummy with a known-ATK doll using a known-multiplier basic attack, record non-crit, no-buff damage, solve for DEF: `DEF = ATK×(raw/final − 1)`. If DEF ≈ 0, keep default.
-2. **Crit** — many same-condition hits, ratio of crit/non-crit damage → confirms ×1.5 (or whatever) and effective crit rate.
+2. **Crit** — ✅ **RESOLVED 2026-09-03**: multiplier = Crit DMG stat (×1.20 at 120%), applied before final ceil; never computed from the rounded normal hit (see §3.3 dataset and the 1956-discriminator). Remaining: sample crit RATE frequency and test a second CDMG value (U19).
 3. **Stability per hit & +2 per weakness** — watch the hexagon bar with known stab-damage skills; confirm per-hit values and weakness bonus; confirm stability damage ignores DEF.
 4. **Exposed state** — break stability, measure damage-taken %, duration in turns, and recovery amount per turn (and any "action end" vs "round start" timing).
 5. **Buff timers** — apply ATK Up, observe expiry relative to caster's next turn vs round end; re-apply same tier → refresh or stack?
@@ -339,7 +353,7 @@ Only CONFIRMED values become defaults; everything else is a **config key** (docu
 | Setting | Default | Status |
 |---|---|---|
 | Defense term | `ATK/(1+DEF/ATK)` | CONFIRMED |
-| Crit multiplier | `1.5` (single factor) | CONFIRMED (×120%-panel interplay: U1) |
+| Crit multiplier | `1 + Crit DMG stat` (×1.20 at 120%), applied to unrounded damage before final ceil | **CONFIRMED in-game** (U1 resolved 2026-09-03). Engine default `critMultiplier` remains pre-validation `1.5` until the approved engine change; scenario override `configOverrides.critMultiplier` → `1.2` |
 | Phase counter | `×1.2 / ×0.8 / 1.0` | CONFIRMED |
 | Weakness exploit | `+10% dmg` and `+2 stab` per weakness | CONFIRMED |
 | Glancing | `final × 0.1`, chance 0 (off) | PROBABLE/U2 |
