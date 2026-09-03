@@ -14,7 +14,7 @@ export const MAX_TURNS = 7;
 export type EffectiveStatusDef = StatusDef & { effectiveDurationRounds?: number };
 
 export const DEFAULT_CONFIG: ResolvedConfig = {
-  critMultiplier: 1.5, // CONFIRMED research §3.3 (U1 interplay note applies)
+  critMultiplier: null, // derive 1 + attacker Crit DMG (confirmed U1 + U19 CDMG half); no hardcoded default
   glanceChance: 0, // U2
   exposedDurationRounds: 2, // U4 (CN beta value)
   exposedDamageMult: 1.0, // U3 UNVERIFIED
@@ -41,6 +41,8 @@ export interface UnitState {
   maxHp: number;
   defStat: number;
   critRate: number;
+  /** Crit DMG bonus (panel shows 100% + this), e.g. 0.2 → crit multiplier 1.2 (confirmed U1/U19). */
+  critDmg: number;
   stability: number;
   maxStability: number;
   exposed: boolean;
@@ -103,7 +105,6 @@ export function computePanel(def: CharacterDef): { atk: number; hp: number; def:
 
 export function resolveConfig(overrides: ConfigOverrides | undefined): ResolvedConfig {
   return {
-    critMultiplier: overrides?.critMultiplier ?? DEFAULT_CONFIG.critMultiplier,
     glanceChance: overrides?.glanceChance ?? DEFAULT_CONFIG.glanceChance,
     exposedDurationRounds: overrides?.exposedDurationRounds ?? DEFAULT_CONFIG.exposedDurationRounds,
     exposedDamageMult: overrides?.exposedDamageMult ?? DEFAULT_CONFIG.exposedDamageMult,
@@ -111,6 +112,7 @@ export function resolveConfig(overrides: ConfigOverrides | undefined): ResolvedC
     confectanceStart: overrides?.confectanceStart ?? DEFAULT_CONFIG.confectanceStart,
     statusOverrides: overrides?.statusOverrides ?? {},
     cooldownModel: overrides?.cooldownModel ?? DEFAULT_CONFIG.cooldownModel,
+    critMultiplier: overrides?.critMultiplier ?? null,
   };
 }
 
@@ -171,6 +173,7 @@ function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], con
     maxHp: panel.hp,
     defStat: panel.def,
     critRate: def.base.critRate,
+    critDmg: def.base.critDmg,
     stability: def.base.stability,
     maxStability: def.base.stability,
     exposed: false,
@@ -200,6 +203,7 @@ function makeDummy(d: Scenario["dummy"]): UnitState {
     maxHp: d.hp,
     defStat: d.defense,
     critRate: 0,
+    critDmg: 0,
     stability: d.stability,
     maxStability: d.stability,
     exposed: false,

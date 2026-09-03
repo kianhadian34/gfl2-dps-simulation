@@ -1,7 +1,8 @@
 import type { ActionSlot, SourceKind, StatusOverride } from "./types.js";
 
 export interface ResolvedConfig {
-  critMultiplier: number;
+  /** null = derive from the attacker's Crit DMG stat (1 + critDmg, confirmed U1/U19); number = test-only alternative. */
+  critMultiplier: number | null;
   glanceChance: number;
   exposedDurationRounds: number;
   exposedDamageMult: number;

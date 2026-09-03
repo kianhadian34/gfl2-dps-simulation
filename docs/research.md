@@ -98,6 +98,7 @@ All "damage dealt up" / "damage taken up" bonuses are **added together in one br
 |---|---|---|---|
 | 1956 | 529 | **634** | same values reproduced multiple times |
 | 1958 (weapon Lv1→Lv2, weapon ATK 24, ATK 1956→1958) | 529 | **635** | both reproduced twice |
+| 1958 (CDMG raised 120.0% → 123.5%) | 529 | **654** | 654, 654, 654, 654 |
 
 Formula reproduction (ATK 1958): `1958 × 0.80 × (1958/(1958+5000)) × 1.20 ≈ 528.947` → normal `ceil = 529`; crit `528.947 × 1.20 ≈ 634.736 → ceil = 635`. Observed 529/635 ✔. The 1956 case is the *discriminating* case: `ceil(529 × 1.20) = 635`, but the game shows **634** — proving crit is computed from the underlying **unrounded** damage, then ceiled. This also independently re-validates the defense term `ATK/(1+DEF/ATK)`, the additive bracket (1 + 20% no-cover bonus), and ceiling rounding at DEF 5000.
 
@@ -106,10 +107,11 @@ Formula reproduction (ATK 1958): `1958 × 0.80 × (1958/(1958+5000)) × 1.20 ≈
 2. Crit multiplication happens **before** final damage rounding.
 3. Final damage is **ceiling-rounded after the full calculation**.
 4. Crit damage is **NOT** derived from an already-rounded normal hit.
+5. **Crit DMG scales linearly beyond 120% (U19 CDMG half — RESOLVED 2026-09-03)**: raising CDMG 120.0% → 123.5% changed the Basic crit 635 → 654, matching `ceil(pre × 1.235)` exactly — **multiplier = 1 + Crit DMG**, applied before the final ceiling. Crit-RATE sources/caps remain a separate open item (U19 remainder).
 
-**Implementation interpretation (engine pending approved change)** — `critMult = 1 + critDmgStat` applied inside the pipeline before `ceil`. The engine's current `DEFAULT_CONFIG.critMultiplier` is still the pre-validation constant `1.5` (see `docs/validation-checklist.md` §3); scenarios reproduce the confirmed behavior today via `configOverrides.critMultiplier` (e.g. `1.2`), and the engine default should switch to `1 + critDmg` once the engine change is approved.
+**Implementation interpretation** — `critMult = 1 + critDmg` (attacker's Crit DMG stat) applied inside the pipeline before `ceil`; the engine **derives it from character data** (`UnitState.critDmg`) — no hardcoded default remains. `configOverrides.critMultiplier` is retained **solely as a test-only alternative hypothesis**.
 
-**Unknowns** — crit-RATE sources and caps (weapon attachments/skills/passives; cap not documented) — split to U19; whether CDMG scales linearly beyond 120% — split to U19; anti-crit mechanics (PvP — out of scope anyway).
+**Unknowns** — crit-RATE sources and caps (weapon attachments/skills/passives; cap not documented) — **U19 remainder, OPEN**; anti-crit mechanics (PvP — out of scope anyway). (CDMG linearity is CONFIRMED to the tested 123.5%; the U19 CDMG half is resolved.)
 
 ### 3.4 Phase countering (属性克制)
 
@@ -340,7 +342,7 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 | U16 | Element DoTs (electric/ice/decay) full definitions | UNKNOWN | DoT modeling | Skill doc read (deferred — not required for first dolls) |
 | U17 | "Resonance" phase extension (2026) | UNKNOWN | Future-proofing | Watch patch notes; not in MVP |
 | U18 | "Nixie/交换机" term | UNKNOWN (no evidence) | — | Needs user clarification, not code |
-| U19 | Crit-rate sources & caps; CDMG linearity beyond the tested 120% | UNKNOWN / UNCERTAIN | Crit frequency & crit-damage scaling | In-game crit-rate sampling + a second CDMG value test |
+| U19 | ~~CDMG linearity beyond the tested 120%~~ → **CDMG half RESOLVED 2026-09-03**: linear — CDMG 120.0% → ×1.20 (Basic crit 635), 123.5% → ×1.235 (Basic crit 654×4); multiplier = 1 + Crit DMG, before final ceil. **Crit-RATE sources & caps remain OPEN** | CDMG **CONFIRMED** (in-game) / crit-rate UNKNOWN | Crit-damage scaling + crit frequency | ✅ CDMG: engine derives `1 + critDmg` (no default 1.5; `configOverrides.critMultiplier` = test-only alternative). Crit rate: keep sampling hit/crit counts |
 
 ---
 
@@ -349,7 +351,7 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 Procedure sketches — all trivially runnable on a stationary target (existing training modes or a low-HP enemy) at known stats. Record values back into config/data, not code constants.
 
 1. **Dummy DEF** — hit a dummy with a known-ATK doll using a known-multiplier basic attack, record non-crit, no-buff damage, solve for DEF: `DEF = ATK×(raw/final − 1)`. If DEF ≈ 0, keep default.
-2. **Crit** — ✅ **RESOLVED 2026-09-03**: multiplier = Crit DMG stat (×1.20 at 120%), applied before final ceil; never computed from the rounded normal hit (see §3.3 dataset and the 1956-discriminator). Remaining: sample crit RATE frequency and test a second CDMG value (U19).
+2. **Crit** — ✅ **RESOLVED (2026-09-03)**: multiplier = Crit DMG stat, **linear** (×1.20 at 120% → Basic crit 635; ×1.235 at 123.5% → crit 654), applied before final ceil, never from the rounded normal hit (see §3.3 dataset and the 1956/1958/123.5% cases). Remaining (U19 remainder): sample crit-RATE frequency.
 3. **Stability per hit & +2 per weakness** — watch the hexagon bar with known stab-damage skills; confirm per-hit values and weakness bonus; confirm stability damage ignores DEF.
 4. **Exposed state** — break stability, measure damage-taken % (U3 — still open). **Recovery timing already CONFIRMED (2026-09-03): 2-turn delay → restored to max**; watch whether the damage step-down matches that exactly.
 5. **Buff timers** — apply ATK Up, observe expiry relative to caster's next turn vs round end; re-apply same tier → refresh or stack?
@@ -368,7 +370,7 @@ Only CONFIRMED values become defaults; everything else is a **config key** (docu
 | Setting | Default | Status |
 |---|---|---|
 | Defense term | `ATK/(1+DEF/ATK)` | CONFIRMED |
-| Crit multiplier | `1 + Crit DMG stat` (×1.20 at 120%), applied to unrounded damage before final ceil | **CONFIRMED in-game** (U1 resolved 2026-09-03). Engine default `critMultiplier` remains pre-validation `1.5` until the approved engine change; scenario override `configOverrides.critMultiplier` → `1.2` |
+| Crit multiplier | `1 + Crit DMG stat` (×1.20 at 120%; linear — confirmed at 123.5% → ×1.235), applied to unrounded damage before final ceil | **CONFIRMED in-game** (U1 + U19 CDMG half, 2026-09-03). Engine derives `1 + critDmg` from attacker data (no hardcoded default); `configOverrides.critMultiplier` = test-only alternative |
 | Phase counter | `×1.2 / ×0.8 / 1.0` | CONFIRMED |
 | Weakness exploit | `+10% dmg` and `+2 stab` per weakness | CONFIRMED |
 | Glancing | `final × 0.1`, chance 0 (off) | PROBABLE/U2 |

@@ -90,6 +90,9 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   const { mult, red } = multiplicativeTakenMods(dummy, state.statusRegistry);
   const exposedMult = dummy.exposed ? state.config.exposedDamageMult : 1; // U3 config
   const reductionMult = mult * red * exposedMult; // no stability-cover reduction: dummy has no cover
+  // Confirmed rule (U1 + U19 CDMG half): crit multiplier = 1 + attacker Crit DMG.
+  // configOverrides.critMultiplier is a test-only alternative hypothesis.
+  const critMult = state.config.critMultiplier ?? 1 + actor.critDmg;
   const hit = rollHit({
     atk: actor.panelAtk,
     def: dummy.defStat,
@@ -100,7 +103,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     weaknessMult,
     reductionMult,
     critRate: actor.critRate,
-    critMultiplier: state.config.critMultiplier,
+    critMultiplier: critMult,
     glanceChance: state.config.glanceChance,
     rng: state.rng,
   });
@@ -117,7 +120,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   ev.attackerAtk = actor.panelAtk;
   ev.targetDef = dummy.defStat;
   ev.critical = hit.critical;
-  ev.critMultiplier = state.config.critMultiplier;
+  ev.critMultiplier = critMult;
   ev.weaknessExploited = weaknesses;
   ev.phaseMult = phaseMult;
   ev.bonusBracket = 1 + addDealt + addTaken;
@@ -279,8 +282,9 @@ function collectWarnings(state: SimulationState): void {
   if (state.dummy.maxStability > 0) {
     warn.add(`exposedDurationRounds=${c.exposedDurationRounds} is a CN-beta value (research U4)`);
   }
-  if (state.units.some((u) => u.def && u.def.base.critRate > 0)) {
-    warn.add(`critMultiplier=${c.critMultiplier} (research §3.3); interplay with the 120% panel crit-damage stat is UNVERIFIED (U1)`);
+  if (c.critMultiplier !== null) {
+    // Confirmed rule: crit multiplier = 1 + Crit DMG (U1 + U19 CDMG half resolved).
+    warn.add(`critMultiplier override = ${c.critMultiplier} — test-only alternative hypothesis (confirmed rule: multiplier = 1 + Crit DMG)`);
   }
   warn.add(`buff duration tick model = ownActionEnd (research U7 model assumption) — overridable via configOverrides.statusOverrides.<id>.tickAt`);
   if (c.cooldownModel !== DEFAULT_CONFIG.cooldownModel) {

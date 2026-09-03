@@ -139,7 +139,11 @@ export interface StatusOverride {
 
 /** Every engine default that research left UNVERIFIED is overridable here (docs/architecture.md §1.5). */
 export interface ConfigOverrides {
-  critMultiplier?: number; // default 1.5 (research §3.3)
+  /**
+   * Test-only alternative crit multiplier. Default: the engine derives
+   * 1 + Crit DMG from the attacker (confirmed in-game, U1 + U19 CDMG half).
+   */
+  critMultiplier?: number;
   glanceChance?: number; // default 0 — trigger rule UNVERIFIED (U2)
   exposedDurationRounds?: number; // default 2 — CN beta value (U4)
   exposedDamageMult?: number; // default 1.0 — UNVERIFIED (U3)

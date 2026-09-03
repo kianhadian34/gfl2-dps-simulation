@@ -75,7 +75,7 @@ test("integration: 7-round fixed rotation (MVP cap), all aggregations consistent
   assert.equal(JSON.stringify(r.log), JSON.stringify(r2.log));
 
   // Accuracy-first: the run must WARN about every unverified value it leans on.
-  for (const needle of ["confectanceMax", "critMultiplier", "support_boost_ii", "support_boost_i", "phase wheel"]) {
+  for (const needle of ["confectanceMax", "support_boost_ii", "support_boost_i", "phase wheel"]) {
     assert.ok(r.warnings.some((w) => w.includes(needle)), `expected a warning mentioning "${needle}"`);
   }
 });

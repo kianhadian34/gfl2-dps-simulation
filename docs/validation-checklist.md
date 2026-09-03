@@ -18,7 +18,7 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 | 4 | Defense term `ATK/(1+DEF/ATK)` | CONFIRMED | dummy `defense` | `damage.test.ts`, `stability.test.ts` |
 | 5 | Phase countering ×1.2 / ×0.8 | CONFIRMED rule; **wheel relations UNVERIFIED** | not configurable (resolves neutral 1.0 + warning) | `damage.test.ts` (multipliers), warning in every run |
 | 6 | Weakness exploit: +10% dmg and +2 stab per weakness — **Burn ×1.10 confirmed in-game 2026-09-03 (1091/1310); multiplicative, NOT in the additive bucket** | CONFIRMED (in-game + multi-source) | dummy `weaknesses`; V6 no-cover +10% not yet in character data (passed explicitly in regression) | `damage.test.ts`, `stability.test.ts`, `weakness-validation.test.ts` |
-| 7 | Critical multiplier = attacker's Crit DMG stat (×1.20 at 120% CDMG), applied to **unrounded** damage before final ceil | **CONFIRMED (in-game 2026-09-03 — U1 resolved)**; engine default `critMultiplier` still pre-validation `1.5` pending approved engine change | `configOverrides.critMultiplier` (set 1.2 today; later engine derives `1 + critDmg` from data) | `config-override.test.ts` (U1), `crit-validation.test.ts` |
+| 7 | Critical multiplier = attacker's Crit DMG stat, **linear**: ×1.20 at 120% CDMG (Basic crit 635), ×1.235 at 123.5% (crit 654); applied to **unrounded** damage before final ceil | **CONFIRMED (in-game — U1 + U19 CDMG half resolved)**: engine derives `1 + critDmg` from attacker data; no hardcoded default | `configOverrides.critMultiplier` = test-only alternative hypothesis | `crit-validation.test.ts`, `critdmg-validation.test.ts`; U19 remainder (crit-RATE sources/caps) OPEN |
 | 8 | Glancing = ceil(final × 0.1) | PROBABLE; **U2 trigger UNVERIFIED** | `configOverrides.glanceChance` | `config-override.test.ts` (U2) |
 | 9 | Ceiling rounding of final damage; crit applied to the underlying unrounded product (never to the rounded normal hit) | CONFIRMED (in-game 2026-09-03; ATK-1956 case discriminates 634 vs 635) | — | `damage.test.ts`, `crit-validation.test.ts` |
 | 10 | Fixed-damage branch (no DEF, no crit) | PROBABLE | — | `damage.test.ts` |
@@ -50,7 +50,7 @@ APL/auto-AI (U12), movement/positioning, **Cover — explicitly deferred** (incl
 
 | Value | Default | Override location | Warning surfaced |
 |---|---|---|---|
-| Crit multiplier (U1 — RESOLVED) | engine default `1.5` (pre-validation constant; **confirmed in-game value = 1 + Crit DMG**, e.g. `1.2` at 120%) | `configOverrides.critMultiplier` (set `1.2`; engine change to derive from `critDmg` pending approval) | yes |
+| Crit multiplier (U1 + U19 CDMG half — RESOLVED) | derived `1 + Crit DMG` from attacker data (e.g. `1.2` at 120%, `1.235` at 123.5%) — **no hardcoded default** | `configOverrides.critMultiplier` (test-only alternative hypothesis) | warning only when an override is active |
 | Glance chance (U2) | 0 | `configOverrides.glanceChance` | yes |
 | Exposed damage-% (U3) | 1.0 | `configOverrides.exposedDamageMult` | yes (when dummy can break) |
 | Exposed duration (U4) | 2 | `configOverrides.exposedDurationRounds` | yes (when dummy can break) |
@@ -80,7 +80,7 @@ Every damaging `LogEvent` records: `round`, `turn`, `unit`, `action`, `attackerA
 
 ## 6. Validation evidence
 
-- `npm test` → 65/65 pass (32 original + 16 validation-mode + 4 crit-validation + 5 weakness-validation + 4 stability-recovery + 4 cooldown-validation regression tests).
+- `npm test` → 71/71 pass (32 original + 16 validation-mode + 4 crit-validation + 5 weakness-validation + 4 stability-recovery + 4 cooldown-validation + 6 critdmg-validation regression tests).
 - CLI: 7-turn example and 4-turn rotation walkthrough verified by hand (see report).
 - 8+ turns rejected with a clear error message (CLI + engine tests).
 

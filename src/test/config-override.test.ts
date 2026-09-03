@@ -10,11 +10,12 @@ import { scenario } from "./helpers.js";
 
 type Over = Parameters<typeof scenario>[0];
 
-test("critMultiplier override changes crit damage exactly (U1)", () => {
+test("critMultiplier override (alternative hypothesis) changes crit damage", () => {
+  // Confirmed rule is 1 + Crit DMG; the override stays as a test-only alternative.
   const high: Over = { turns: 1, seed: 1, rotation: ["basic"], config: { critMultiplier: 2.0 } };
-  const low: Over = { turns: 1, seed: 1, rotation: ["basic"], config: { critMultiplier: 1.5 } };
+  const alt: Over = { turns: 1, seed: 1, rotation: ["basic"], config: { critMultiplier: 1.5 } };
   const ev2 = simulateScenario(scenario(high)).log[0];
-  const ev15 = simulateScenario(scenario(low)).log[0];
+  const ev15 = simulateScenario(scenario(alt)).log[0];
   assert.equal(ev2.critical, ev15.critical); // same seed → same crit outcome
   if (ev2.critical) {
     assert.ok(ev2.finalDamage > ev15.finalDamage, "crit damage must scale with critMultiplier");

@@ -4,7 +4,7 @@ import { rollHit } from "../engine/damage.js";
 import { Rng } from "../engine/rng.js";
 
 function hit(over: Partial<{ atk: number; def: number; multiplier: number; fixedDamage: number; additiveBonus: number; phaseMult: number; weaknessMult: number; reductionMult: number; critRate: number; critMultiplier: number; glanceChance: number; seed: number }> = {}) {
-  const o = { atk: 1000, def: 0, multiplier: 1, additiveBonus: 1, phaseMult: 1, weaknessMult: 1, reductionMult: 1, critRate: 0, critMultiplier: 1.5, glanceChance: 0, seed: 1, ...over };
+  const o = { atk: 1000, def: 0, multiplier: 1, additiveBonus: 1, phaseMult: 1, weaknessMult: 1, reductionMult: 1, critRate: 0, critMultiplier: 1.2, glanceChance: 0, seed: 1, ...over };
   return rollHit({
     atk: o.atk,
     def: o.def,
@@ -49,8 +49,10 @@ test("weakness exploit +10% per weakness", () => {
   assert.equal(hit({ weaknessMult: 1.1 * 1.1 }).finalDamage, 1210);
 });
 
-test("crit multiplies by 1.5", () => {
-  assert.equal(hit({ critRate: 1 }).finalDamage, 1500);
+test("crit multiplies by the Crit DMG multiplier (1 + critDmg)", () => {
+  const r = hit({ critRate: 1, critMultiplier: 1.2 });
+  assert.equal(r.finalDamage, 1200);
+  assert.equal(r.critical, true);
 });
 
 test("final damage is ceiling-rounded before glancing", () => {
