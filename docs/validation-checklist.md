@@ -1,8 +1,10 @@
 # GFL2 Combat Simulator — Validation Checklist (MVP, Qiongjiu vs Training Dummy)
 
-Status: validation mode · 2026-09-03 · Built from `docs/research.md` (§4 uncertainty register + §5 in-game test plan) against the implemented engine (commit `a8f69ca` + validation changes, **uncommitted**).
+Status: validation mode · 2026-09-03 · Built from `docs/research.md` (§4 uncertainty register + §5 in-game test plan) against the implemented engine (commits `a8f69ca`, `99340e5`, `c2a1ba7`).
 
 Legend: **CONFIRMED** = verified by a primary source or reproduced in-game during research · **UNVERIFIED** = research says so but the exact value/rule is not confirmed — must be overridable, never hardcoded as fact · **PROBABLE** = single reliable secondary source · **NOT IMPLEMENTED** = deliberately deferred, out of MVP scope.
+
+**MVP scope constraint (2026-09-03):** the target is **always No Cover** (dummy `cover` fixed `"none"`); **Stability + Exposed are mandatory mechanics**; **Cover is explicitly deferred** — cover damage reductions (35/30/25/20%) and the stability-cover 60% reduction are recorded in research but never modeled.
 
 ---
 
@@ -15,12 +17,12 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 | 3 | One additive bracket for all damage bonuses | CONFIRMED | — | `damage.test.ts` (1.35 bracket) |
 | 4 | Defense term `ATK/(1+DEF/ATK)` | CONFIRMED | dummy `defense` | `damage.test.ts`, `stability.test.ts` |
 | 5 | Phase countering ×1.2 / ×0.8 | CONFIRMED rule; **wheel relations UNVERIFIED** | not configurable (resolves neutral 1.0 + warning) | `damage.test.ts` (multipliers), warning in every run |
-| 6 | Weakness exploit: +10% dmg and +2 stab per weakness | CONFIRMED | dummy `weaknesses` | `damage.test.ts`, `stability.test.ts` |
+| 6 | Weakness exploit: +10% dmg and +2 stab per weakness — **Burn ×1.10 confirmed in-game 2026-09-03 (1091/1310); multiplicative, NOT in the additive bucket** | CONFIRMED (in-game + multi-source) | dummy `weaknesses`; V6 no-cover +10% not yet in character data (passed explicitly in regression) | `damage.test.ts`, `stability.test.ts`, `weakness-validation.test.ts` |
 | 7 | Critical multiplier = attacker's Crit DMG stat (×1.20 at 120% CDMG), applied to **unrounded** damage before final ceil | **CONFIRMED (in-game 2026-09-03 — U1 resolved)**; engine default `critMultiplier` still pre-validation `1.5` pending approved engine change | `configOverrides.critMultiplier` (set 1.2 today; later engine derives `1 + critDmg` from data) | `config-override.test.ts` (U1), `crit-validation.test.ts` |
 | 8 | Glancing = ceil(final × 0.1) | PROBABLE; **U2 trigger UNVERIFIED** | `configOverrides.glanceChance` | `config-override.test.ts` (U2) |
 | 9 | Ceiling rounding of final damage; crit applied to the underlying unrounded product (never to the rounded normal hit) | CONFIRMED (in-game 2026-09-03; ATK-1956 case discriminates 634 vs 635) | — | `damage.test.ts`, `crit-validation.test.ts` |
 | 10 | Fixed-damage branch (no DEF, no crit) | PROBABLE | — | `damage.test.ts` |
-| 11 | Stability as separate resource; per-hit fixed stability damage | CONFIRMED | dummy `stability`, skill `stabDamage` (data) | `stability.test.ts` |
+| 11 | Stability as separate resource; per-hit fixed stability damage | CONFIRMED — **never alters damage on a No-Cover target** (in-game Burn test had 65/65 stability; formula matched with no stability term) | dummy `stability`, skill `stabDamage` (data) | `stability.test.ts` |
 | 12 | Break → Exposed state | PROBABLE; **U3 damage-% UNKNOWN, U4 duration UNCERTAIN (beta 2)** | `configOverrides.exposedDamageMult`, `exposedDurationRounds` | `config-override.test.ts` (U3/U4) |
 | 13 | Stability recovery | **UNVERIFIED (U6)** | dummy `stabilityRecovery` | `stability.test.ts` (recovery honored) |
 | 14 | Panel formula `(Σ flat) × (1 + Σ pct)` | CONFIRMED | — | `integration.test.ts` (panel) |
@@ -42,7 +44,7 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 
 ## 2. NOT IMPLEMENTED (deliberately out of MVP scope)
 
-APL/auto-AI (U12), movement/positioning/cover/maps, enemy turns/AI, phase-wheel table (U15-adjacent), Confectance damage-bonus table (U10), DoT damage effects for unverified elements (U16), extra actions, status purge/removal, glancing trigger rules (beyond the chance knob), durations > 7 turns.
+APL/auto-AI (U12), movement/positioning, **Cover — explicitly deferred** (incl. cover damage reductions 35/30/25/20% and the stability-cover 60% reduction), maps, enemy turns/AI, phase-wheel table (U15-adjacent), Confectance damage-bonus table (U10), DoT damage effects for unverified elements (U16), extra actions, status purge/removal, glancing trigger rules (beyond the chance knob), durations > 7 turns.
 
 ## 3. Every UNVERIFIED value that affects Qiongjiu's simulation — override coverage
 
@@ -78,6 +80,19 @@ Every damaging `LogEvent` records: `round`, `turn`, `unit`, `action`, `attackerA
 
 ## 6. Validation evidence
 
-- `npm test` → 52/52 pass (32 original + 16 validation-mode + 4 crit-validation regression tests).
+- `npm test` → 57/57 pass (32 original + 16 validation-mode + 4 crit-validation + 5 weakness-validation regression tests).
 - CLI: 7-turn example and 4-turn rotation walkthrough verified by hand (see report).
 - 8+ turns rejected with a clear error message (CLI + engine tests).
+
+## 7. Next smallest test — Exposed behavior (pins U3 / U4 / U6)
+
+Engine-side Exposed mechanics are already covered (`stability.test.ts`, `config-override.test.ts` U3/U4: break → exposed flag, `exposedDamageMult` and `exposedDurationRounds` change post-break damage). What is still UNVERIFIED are the in-game **numbers**. The next smallest validation test (in-game, same methodology as the confirmed crit test):
+
+1. **Setup** — Qiongjiu Lv.60 (record ATK & CDMG), dummy DEF (recorded) **No Cover**, no weaknesses, no buffs, Dummy Stability = small even number ≥ 2. Use Basic Attack (0.8 × ATK, physical, **stab 2** — known stability damage).
+2. **Measure** — hit repeatedly while stability > 0; the hit that breaks stability still computes at pre-break level (research §3.5) → its damage is `D_pre`. Continue hitting while the dummy is Exposed → `D_post` (repeat ≥ 3×, no crits).
+3. **Derive U3** — `exposedMult ≈ D_post/D_pre` comparing unrounded values (`ceil(pre × m)` pattern fit over several hits).
+4. **Derive U4** — count rounds until damage returns to `D_pre` (window length; beta says 2).
+5. **Derive U6 (recovery)** — observe whether stability hexes partially restore by then, and whether the damage drop is due to Expose expiry or stability recovery.
+6. **Discriminator** — without break (stability higher than total stabbed damage), all hits must equal `D_pre`; the damage step-change must occur exactly at the break hit.
+
+Result feeds `configOverrides.exposedDamageMult` / `exposedDurationRounds` (and dummy `stabilityRecovery`), then a regression suite mirrors the crit one.

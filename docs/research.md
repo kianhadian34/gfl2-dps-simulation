@@ -20,13 +20,14 @@ Confidence levels: **CONFIRMED** (primary/official source, or independently repr
 
 What we know with high confidence, in one paragraph:
 
-1. **Damage pipeline** — `final = ceil( base × defense_ratio × (1 + Σ additive bonuses) × phase × weakness × reductions × crit )`, where `defense_ratio = ATK/(1+DEF/ATK)`, all damage bonuses (self buffs, target vulnerability, Confectance bonus) are **additive in one bracket**, phase countering is ×1.2/×0.8, each exploited weakness is +10%, and the result is ceiling-rounded. **Crit multiplier = the attacker's Crit DMG stat** (e.g. ×1.20 at 120%), applied to the *unrounded* damage before the final ceiling round (CONFIRMED in-game 2026-09-03 — see §3.3). Reproduced against real in-game numbers (Reddit test: `1213/(1+194/1213) × 1 × 1.1 = 1150.4 → 1151` in game).
+1. **Damage pipeline** — `final = ceil( base × defense_ratio × (1 + Σ additive bonuses) × phase × weakness × reductions × crit )`, where `defense_ratio = ATK/(1+DEF/ATK)`, all damage bonuses (self buffs, target vulnerability, Confectance bonus) are **additive in one bracket**, phase countering is ×1.2/×0.8, each exploited weakness is +10% (**Burn ×1.10 confirmed in-game 2026-09-03, multiplicative — see §3.5**), and the result is ceiling-rounded. **Crit multiplier = the attacker's Crit DMG stat** (e.g. ×1.20 at 120%), applied to the *unrounded* damage before the final ceiling round (CONFIRMED in-game 2026-09-03 — see §3.3). Reproduced against real in-game numbers (Reddit test: `1213/(1+194/1213) × 1 × 1.1 = 1150.4 → 1151` in game).
 2. **Stability (稳态) is a fully separate resource** from HP: per-hit fixed stability damage (independent of ATK/DEF/crit), break at 0 → "Exposed" state with a damage-taken window; recovery exists but exact values are unknown.
 3. **There are no ACC/EVA stats in GFL2.** Against a stationary, uncovered dummy, attacks always hit; the only hit randomness is "glancing" (擦伤, ×0.1).
 4. **Kit structure is fixed data**: 1 basic attack + 2 actives + 1 ultimate + 1 passive, all with explicit %-of-ATK multipliers. Cooldowns are small integers (0/1/2…). Confectance (导染) is an event-driven resource (e.g. Qiongjiu gains **+1 per damage event**, ultimate costs **3**), **not** a `damage × m` formula.
 5. **Keys (固键)** are 4 tables (fixed/common/expansion/affinity keys), not a strict "3-branch" model.
 6. **Default 1 main action per actor per turn**; basic attack vs skill is an exclusive choice; extra hits come from support/extra actions that do not consume the main action.
 7. **Recommended dummy defaults**: no official dummy stats exist → make them **configurable**; recommended defaults `DEF 0, stability 0, no cover, no weaknesses, no phase` (pure `ceil(ATK × multiplier × bonuses × crit)` baseline).
+8. **Scope rule (updated)**: the MVP target is **always No Cover**; **Stability + Exposed are mandatory MVP mechanics**; **Cover is explicitly deferred** — cover damage reductions (35/30/25/20% by cover type) and the stability-cover 60% reduction are recorded for later use but are **not** part of the MVP, so no cover-dependent term ever fires.
 8. **English wikis (Prydwen, Fandom, Game8) are currently unusable** — Prydwen has no GFL2 section (404), Fandom wiki does not exist. The reachable, citable sources are BWIKI (zh), IOPWiki, gfl2.help, DotGG, and game data dumps. See [Source map](#2-source-map).
 
 ---
@@ -128,7 +129,18 @@ Formula reproduction (ATK 1958): `1958 × 0.80 × (1958/(1958+5000)) × 1.20 ≈
 
 **Source** — `iopwiki.com/wiki/GFL2_Combat`; Reddit 1hgw4zn.
 
-**Confidence** — CONFIRMED: each exploited weakness → +10% damage **and** +2 stability damage.
+**Confidence** — CONFIRMED (multi-source): each exploited weakness → +10% damage **and** +2 stability damage. **Burn weakness multiplier ×1.10 additionally confirmed in-game (2026-09-03)** — see dataset below.
+
+**Confirmed in-game dataset (2026-09-03, Burn weakness)** — Attacker: Qiongjiu Lv.60 V6, Retired OTs-14 R1 Lv.2, no keys, ATK **1958**, CDMG 120%, no damage buffs (no Damage Up II). Target: Drone – Blaze Master Lv.60, DEF **5000**, stability 65/65, **Burn weakness**, Unaffiliated/Mechanicals, **No Cover**. Attack: Common Rail Lv.2 (Burn, 150% ATK). Observed: non-crit **1091** (repeated 1091, 1091, 1091); crit **1310** (1091, 1310, 1091, 1091).
+
+```
+base  = 1958 × 1.50 × (1958/(1958+5000)) ≈ 826.48
+bracket = 1 + 0.10 (passive no-cover) + 0.10 (V6) = 1.20        # V6 (椎体) bonus NOT yet in character data — passed explicitly in the regression
+normal = ceil(826.48 × 1.20 × 1.10 [Burn weakness]) = 1091      # ×1.10 is MULTIPLICATIVE, outside the additive bucket
+crit   = ceil(826.48 × 1.20 × 1.10 × 1.20 [CDMG]) = 1310        # CDMG ×1.20 applied before the final ceil (re-confirms §3.3)
+```
+
+Confirmations: (1) Burn weakness multiplier is **×1.10**; (2) folding the weakness into the additive bracket instead (`1.30`) yields `1075 ≠ 1091` — **weakness is NOT part of the additive +DMG bucket**; (3) independently re-confirms CDMG = ×1.20 applied before the final ceiling; (4) **no effect is attributed to Overburn** (it contributed nothing here); (5) the target had stability 65/65 and it did **not** modify damage on this No-Cover target (Stability never alters damage absent Cover — see §3.7).
 
 **Implementation interpretation** — `weakness: product(1.1 per matched weakness)`; `stabDamage += 2 per matched weakness`. A hit that drops stability to 0 is computed at the pre-break damage level (i.e. the break hit does not benefit from stability reduction). Configurable per dummy.
 
@@ -157,8 +169,10 @@ Formula reproduction (ATK 1958): `1958 × 0.80 × (1958/(1958+5000)) × 1.20 ≈
 - Stability values are per-skill constants (typical 1–3 per hit; e.g. Qiongjiu basic 2, support attack 2): CONFIRMED examples, general table UNKNOWN.
 - Break → "Exposed" with damage-taken increase: PROBABLE; the **increase %** is UNKNOWN (buff id 20).
 - Break duration `breakRound = 2`: **UNCERTAIN** (CN beta value; re-check on live).
-- Stability reduction on damage: CONFIRMED only *when stability > 0 and in cover* (60% loss). For a dummy with stability > 0 but no cover, the rule is UNKNOWN → dummy default `stability: 0` avoids the ambiguity.
+- **Stability-cover reduction** (60% when stability > 0 in cover): CONFIRMED as a rule, but it is a **Cover mechanic — explicitly DEFERRED**; it never applies in the MVP because the target is **always No Cover** (the term is 1.0).
 - Recovery: EXISTS (start of own turn / new round), exact amount/formula UNKNOWN.
+
+**MVP scope (updated)** — **Stability and Exposed are mandatory mechanics**: stability damage per hit, break at 0, the Exposed damage-taken window (duration U4, multiplier U3, both config), and recovery (U6, config). Cover-dependent parts of the stability system (the 60% cover reduction) are **deferred** with Cover.
 
 **Implementation interpretation**
 
@@ -168,9 +182,10 @@ target.stability -= stab_damage
 if target.stability <= 0 and not already exposed:
     apply Exposed buff for breakRound turns (config, default 2)
     → damage-taken multiplier on target (config, default ??? → must be tested)
-    → stability reduction term becomes 0 while exposed
-recovery: configurable per-dummy/actor rule (onRoundStart restore N, or restore to max × pct) — defaults ON but value = config
+recovery: configurable per-dummy/actor rule (onRoundStart restore N, or restore to max × pct) — dummy default OFF (enabled: false); value = config
 ```
+
+(The former "stability reduction term becomes 0 while exposed" step is part of the **deferred Cover** mechanic — not modeled in the MVP.)
 
 Attacker stability is irrelevant to the attacker's own damage output (CONFIRMED) → do not feed it into damage; only read the *target's* exposed flag.
 
@@ -284,7 +299,7 @@ Level-60 base magnitudes (CONFIRMED, 2024 BWIKI data): Qiongjiu `ATK 119→1224,
 
 ### 3.16 Training dummy
 
-**Mechanic** — No official dummy stat sheet exists (searched; only combat-training tutorials exist).
+**Mechanic** — No official dummy stat sheet exists (searched; only combat-training tutorials exist). **The MVP target is ALWAYS No Cover** — the dummy's `cover` field is fixed to `"none"` and no cover mechanic can ever engage; the requested "cover always NONE" from the handoff is a hard constraint, not a configurable option.
 
 **Confidence** — Dummy stats: UNKNOWN → fully configurable.
 
@@ -294,7 +309,7 @@ Level-60 base magnitudes (CONFIRMED, 2024 BWIKI data): Qiongjiu `ATK 119→1224,
 
 ### 3.17 Out-of-scope confirmations
 
-- Cover, high ground, flanking, movement: not modeled (MVP). Cover reduction values exist (35/30/25/20% by cover type) — recorded for later, **not** implemented.
+- Cover — **explicitly DEFERRED** (not modeled in the MVP; the target is always No Cover). Research-recorder values for later: cover damage reductions 35/30/25/20% by cover type, and the stability-cover 60% reduction (§3.7). High ground, flanking, movement: also not modeled (MVP).
 - "Nixie / 交换机" skill: **no evidence any such skill type exists** in any reachable source — do not model it. If the user meant something specific, it needs clarification.
 - No ACC/EVA, no miss vs the dummy (§3.8).
 - Attacker stability never affects offense (§3.7).
@@ -357,7 +372,7 @@ Only CONFIRMED values become defaults; everything else is a **config key** (docu
 | Phase counter | `×1.2 / ×0.8 / 1.0` | CONFIRMED |
 | Weakness exploit | `+10% dmg` and `+2 stab` per weakness | CONFIRMED |
 | Glancing | `final × 0.1`, chance 0 (off) | PROBABLE/U2 |
-| Stability reduction | only when `stability > 0` **and** cover — dummy has stability 0 → never fires | CONFIRMED rule, dummy-safe |
+| Stability-cover reduction (60%, stable + in cover) | **Cover mechanic — DEFERRED**; MVP target always No Cover → term never fires (1.0) | — |
 | Exposed window | `2` rounds, dmg-% `UNKNOWN → config` | U3/U4 |
 | Stability recovery | per-round restore, value `config` | U6 |
 | Buff duration units | big-rounds; tick at own action (config) | U7 |

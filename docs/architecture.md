@@ -12,6 +12,7 @@ Status: proposal, awaiting approval. Follows handoff §19–§21: accuracy-first
 4. **Explicit determinism.** A single injected RNG object (seeded) is the only randomness source. Same inputs + same seed ⇒ same result.
 5. **Config over constants.** Every value the research could not confirm (U1–U18 in `docs/research.md`) is a scenario/config key with a documented default, never a magic constant in code.
 6. **Accuracy-first.** Features are added only when they can be validated (§5). Out-of-scope mechanics (cover, movement, AI, enemy actions) are not modeled.
+7. **No Cover in the MVP.** The target is **always No Cover** (dummy `cover` is fixed `"none"`). **Stability + Exposed are mandatory mechanics**; **Cover is explicitly deferred** — cover damage reductions and the stability-cover 60% reduction (§6) are never modeled, so no cover-dependent term can fire.
 
 ---
 
@@ -57,7 +58,7 @@ Status: proposal, awaiting approval. Follows handoff §19–§21: accuracy-first
 | `log` | Structured event records (§9) |
 | `results` | Aggregations: total damage, dmg/round, dmg/action, per-character, per-source |
 
-Deliberately **not** present: map, movement, cover, AI, enemy turns, encounter logic.
+Deliberately **not** present: map, movement, cover (**explicitly deferred** — the target is always No Cover), high ground, AI, enemy turns, encounter logic.
 
 ---
 
@@ -103,9 +104,9 @@ raw        = unit.finalATK  × skill.multiplier          (or fixedDamage → sep
 mitigated  = raw × finalATK/(finalATK + finalDEF)
 bonus      = 1 + Σ additiveBonuses                       (dmg-up, vuln, confectance bonus — one bracket)
 phase      = 1.2 | 0.8 | 1.0
-weakness   = ∏ 1.1 per exploited weakness                 (+2 stab per weakness, applied in stability module)
-reduction  = (1 − stabilityReduction) × (1 − damageReduction)   (stabilityReduction only if stable+cover)
-crit       = rng.roll(critRate) ? critMultiplier : 1.0   (default 1.5)
+weakness   = ∏ 1.1 per exploited weakness                 (+2 stab per weakness, applied in stability module; ×1.10 confirmed in-game for Burn 2026-09-03 — multiplicative, OUTSIDE the additive bracket)
+reduction  = (1 − stabilityReduction) × (1 − damageReduction)   (stabilityReduction is COVER-deferred → 1.0 in MVP; target always No Cover)
+crit       = rng.roll(critRate) ? critMultiplier : 1.0   (confirmed value = 1 + Crit DMG stat, e.g. 1.20 at 120%; engine default still 1.5 pending approved change)
 final      = ceil( mitigated × bonus × phase × weakness × reduction × crit )
 glancing   = config.glanceChance ? ceil(final × 0.1) : final
 ```
