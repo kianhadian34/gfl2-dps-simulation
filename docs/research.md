@@ -82,11 +82,11 @@ All "damage dealt up" / "damage taken up" bonuses are **added together in one br
 
 **Source** — Reddit 1hgw4zn (in-game reproduction: ATK 1213 vs DEF 194 → `1213/(1+194/1213)`); `wiki.biligame.com/gf2/伤害算法`.
 
-**Confidence** — CONFIRMED (reproduced against an exact in-game number). `DEF:ATK = 1:1` halves damage; `2:1` → 1/3. A beta-era "flat ATK − DEF" description exists on old mechanic pages but is contradicted by the live-server reproduction; treat it as legacy. Enemies in early chapters have DEF ≈ 190–194 (two samples); 60-level enemy DEF magnitudes are UNKNOWN ("thousands" is unrealistic; hundreds realistic).
+**Confidence** — CONFIRMED (reproduced against an exact in-game number). `DEF:ATK = 1:1` halves damage; `2:1` → 1/3. A beta-era "flat ATK − DEF" description exists on old mechanic pages but is contradicted by the live-server reproduction; treat it as legacy. Enemies in early chapters have DEF ≈ 190–194 (two samples). **The current tested boss displays DEF 5,001 (confirmed in-game, U14)** — target-specific data; earlier "thousands unrealistic" assumptions are superseded for this target; no universal level-60 DEF magnitude exists (each target's displayed DEF is used).
 
-**Implementation interpretation** — `mitigated = raw × finalATK/(finalATK + finalDEF)` counting post-buff/debuff defense. Dummy default `DEF = 0` (term degrades to 1.0) with full configurability.
+**Implementation interpretation** — `mitigated = raw × finalATK/(finalATK + finalDEF)` counting post-buff/debuff defense. Dummy default `DEF = 0` (term degrades to 1.0) with full configurability — boss/target DEF (`dummy.defense`) is per-target DATA; boss rotations change values, not engine code.
 
-**Unknowns** — live DEF tables for level-60 enemies/dummies; skills that subtract flat panel DEF (rare cases) — data-model them as DEF modifiers, not formula changes.
+**Unknowns** — live DEF tables for OTHER enemies/dummies (data-population per target); skills that subtract flat panel DEF (rare cases) — data-model them as DEF modifiers, not formula changes.
 
 ### 3.3 Critical hits
 
@@ -354,7 +354,7 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 | U11 | ~~Cooldown decrement timing (use-turn counted?)~~ → **CONFIRMED 2026-09-03**: CD-N waits N full turns after the cast turn — CD-1 cast T1 → unavailable T2 → available T3 (NOT "next turn") | ~~UNCERTAIN~~ → **CONFIRMED (in-game)** | Skill cadence | ✅ resolved — engine default `cooldownModel = "nextOwnTurnEnd"`; alternative `endOfOwnTurn` selectable for testing only |
 | U12 | Auto-battle AI priority | UNKNOWN | Whole-sim fidelity | Auto-battle recording; default is a labeled model assumption |
 | U13 | Live level cap & endgame stat magnitudes | UNKNOWN (2024 data) | Absolute numbers | In-game panel read |
-| U14 | Enemy/dummy DEF magnitudes | UNKNOWN | Defense term scale | Dummy DEF test |
+| U14 | ~~Enemy/dummy DEF magnitudes~~ → **RESOLVED (mechanic + current data point)**: engine capability RESOLVED — target DEF is per-target configurable data (`dummy.defense`), applied via the confirmed factor `ATK/(ATK+DEF)` (the formula itself was already resolved separately). **Current boss DEF CONFIRMED in-game: 5,001** (displayed stat of the current tested target). Future boss rotations = **DATA POPULATION** (new `dummy.defense` per target — no engine change). An earlier validation target (Blaze Master) displayed DEF 5,000 and reproduced its observed damage (529/635/1091/1310/1191) — target-specific displays, **no universal boss DEF is implied** | ~~UNKNOWN~~ → **CONFIRMED (current target) / mechanics RESOLVED** | Defense term scale | ✅ resolved — `boss-def-validation.test.ts` pins the current boss's DEF 5,001 as data through the engine; no engine change |
 | U15 | Weakness partial-match & phase×weakness interaction | UNKNOWN/UNCERTAIN | Edge-case damage | Weakness test |
 | U16 | Element DoTs (electric/ice/decay) full definitions | UNKNOWN | DoT modeling | Skill doc read (deferred — not required for first dolls) |
 | U17 | "Resonance" phase extension (2026) | UNKNOWN | Future-proofing | Watch patch notes; not in MVP |
@@ -369,7 +369,7 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 
 Procedure sketches — all trivially runnable on a stationary target (existing training modes or a low-HP enemy) at known stats. Record values back into config/data, not code constants.
 
-1. **Dummy DEF** — hit a dummy with a known-ATK doll using a known-multiplier basic attack, record non-crit, no-buff damage, solve for DEF: `DEF = ATK×(raw/final − 1)`. If DEF ≈ 0, keep default.
+1. **Dummy DEF** — ✅ **current boss DEF CONFIRMED in-game: 5,001** (displayed stat; recorded as target data — `boss-def-validation.test.ts`). DEF is per-target data, never a universal constant: boss rotations change `dummy.defense`, not engine code. The solve-for-DEF procedure below remains available for OTHER targets: hit a dummy with a known-ATK doll using a known-multiplier basic attack, record non-crit, no-buff damage, solve for DEF: `DEF = ATK×(raw/final − 1)`. If DEF ≈ 0, keep default.
 2. **Crit** — ✅ **RESOLVED (2026-09-03, U19)**: multiplier = Crit DMG stat, **linear** (×1.20 at 120% → Basic crit 635; ×1.235 at 123.5% → crit 654), applied before final ceil, never from the rounded normal hit (see §3.3 dataset and the 1956/1958/123.5% cases). ✅ **Crit-Rate cap + overflow conversion confirmed**: effective Crit Rate caps at 100% (universal); overflow converts to Crit DMG (confirmed ratio 1:1) **only** via a character-specific passive — engine `excess_crit_conversion`, all paths numerically locked (`crit-overflow-validation.test.ts`). Data-population follow-ups (not mechanic blockers): which characters carry such a passive, their exact parameters, and the CR-raising attachment sources.
 3. **Stability per hit & +2 per weakness** — watch the hexagon bar with known stab-damage skills; confirm per-hit values and weakness bonus; confirm stability damage ignores DEF.
 4. **Exposed state** — U4 window duration **RESOLVED (fixed 2-turn recovery: broken through N/N+1, restored at START of N+2)**; **U3 RESOLVED — no universal Exposed damage modifier exists**; nothing further to measure.
