@@ -92,8 +92,34 @@ function skillForSlot(doll: UnitState, slot: ActionSlot): SkillDef | null {
   return doll.def?.skills[slot] ?? null;
 }
 
-function passiveEffects(doll: UnitState): PassiveEffect[] {
-  return doll.def?.passive.effects ?? [];
+function passiveEffects(unit: UnitState): PassiveEffect[] {
+  return unit.passives;
+}
+
+interface TakenMods {
+  additive: number;
+  multiplicative: number;
+}
+
+/**
+ * U5: target/boss passives that modify INCOMING damage, gated on the target's state.
+ * Conditional taken modifiers only apply while their condition holds; the confirmed
+ * boss passive ("incoming damage × 0.20 while Stability > 0") is a multiplicative
+ * taken modifier on the target. Conditions are evaluated on the target's PRE-HIT
+ * state, so a stability-breaking attack is still reduced while stability > 0 at
+ * evaluation time — no special break-hit rule is invented.
+ */
+function targetPassiveTakenMods(target: UnitState): TakenMods {
+  let additive = 0;
+  let multiplicative = 1;
+  for (const e of target.passives) {
+    if (e.kind !== "conditional_damage_modifier" || e.scope !== "taken") continue;
+    const cond = e.when === "target.stabilityAboveZero" ? target.stability > 0 : target.cover === "none";
+    if (!cond) continue;
+    if (e.mode === "additive") additive += e.value;
+    else multiplicative *= e.value;
+  }
+  return { additive, multiplicative };
 }
 
 function beginUnitRound(doll: UnitState): void {
@@ -128,10 +154,12 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   const { weaknesses, mult: weaknessMult } = exploitedWeaknesses(dummy, skill.element);
   const phaseMult = phaseMultiplier(skill.element, dummy.phase);
   const addDealt = additiveDealtBonus(actor, state.statusRegistry) + conditionalNoCoverBonus(actor, dummy);
-  const addTaken = additiveTakenBonus(dummy, state.statusRegistry);
+  const targetMods = targetPassiveTakenMods(dummy); // U5 boss/target stability-conditional passives
+  const addTaken = additiveTakenBonus(dummy, state.statusRegistry) + targetMods.additive;
   const { mult, red } = multiplicativeTakenMods(dummy, state.statusRegistry);
   const exposedMult = dummy.exposed ? state.config.exposedDamageMult : 1; // U3 config
-  const reductionMult = mult * red * exposedMult; // no stability-cover reduction: dummy has no cover
+  // no stability-cover reduction: dummy has no cover (Cover permanently out of scope)
+  const reductionMult = mult * red * exposedMult * targetMods.multiplicative;
   // Confirmed rule (U1 + U19): crit multiplier = 1 + attacker Crit DMG, where Crit DMG
   // includes any passive overflow conversion; effective Crit Rate caps at 100%.
   // configOverrides.critMultiplier is a test-only alternative hypothesis.

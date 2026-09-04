@@ -107,7 +107,7 @@ Per skill type: `active1/active2` both `type: "active"`; ultimate `type: "ultima
 | `cooldown_change` | `skillId, delta` |
 | `additional_action` | `mode (extraAction|bonusAction)` |
 | `fixed_damage` | `value` or `percentOfAtk` (DoT/溢火-style, no crit/DEF) |
-| `conditional` | `when` (small predicate DSL: status present, cooldown 0, confectance ≥, hp <, target.noCover…), `effect` |
+| `conditional` | `when` (small predicate DSL: status present, cooldown 0, confectance ≥, hp <, target.noCover, **target.stabilityAboveZero — U5 boss passives**…), `effect` |
 | `passive_trigger` | `event, skillRef, perRoundMax` (used for support/emergency/intercept/counter) |
 
 Timing: every status carries `tickAt`: `ownActionEnd | roundEnd | ownTurnStart` — defaults to the research §3.10 recommended model, overridable per status until U7 is resolved in-game.

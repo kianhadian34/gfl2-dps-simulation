@@ -42,7 +42,7 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 | 28 | Duration cap: 1–7 turns, 8+ rejected (never clamped) | validation rule | `turns` (validated) | `validation-cap.test.ts` |
 | 29 | Combat log reproduces every action vs an in-game test | engine guarantee | — | `integration.test.ts` (attackerAtk/targetDef/bracket), `--log` |
 | 30 | Fixed Damage (U21) — **post-chain, independent ceil**: `ceil(normalChain) + ceil(fixed)`; bypasses DEF / damage-buff bracket / phase / weakness / reduction / crit | **CONFIRMED (in-game: Overburn 196 = ceil(10% × 1958 ATK), immune to Burn weakness and +20% No-Cover buff)**; DEF/crit/phase/reduction bypass SOURCE-SUPPORTED (untested in-game) | absolute `SkillDef.fixedDamage` (percentOfAtk data model deferred) | `damage.test.ts`, `fixed-damage-validation.test.ts` |
-| 31 | No-Cover Stability behavior (U5 boss-domain) — **no universal No-Cover stability damage reduction** (Blaze Master 65/65 evidence; generic rule is Cover-gated and out of scope); **boss-specific stability-conditional passives IN SCOPE**: category source-supported (Oljefat −80% taken, Elite Angriper +100% DEF, "while stability > 0"), mechanic **UNRESOLVED** pending a specific boss + validated value | CONFIRMED (absence of universal rule) / SOURCE-SUPPORTED (passive category) / UNRESOLVED (no boss data) | `configOverrides.exposedDamageMult` (U3 — UNVERIFIED) | `stability.test.ts` (U5 lock tests), `stability-recovery.test.ts`; design note research §3.7 |
+| 31 | No-Cover Stability behavior (U5 boss-domain) — **no universal No-Cover stability damage reduction** (Blaze Master 65/65 evidence; generic rule is Cover-gated and out of scope); **boss-specific stability-conditional passives IN SCOPE and implemented**: confirmed boss −80% taken while stability > 0 → ×0.20; inactive at Stability = 0; pre-hit break evaluation; reduction returns on U6 recovery; fixed damage bypasses it (U21) | CONFIRMED (in-game boss passive) / implemented generically via `DummyConfig.passives` (no boss IDs) | `DummyConfig.passives` + `configOverrides.exposedDamageMult` (U3 — UNVERIFIED) | `boss-stability.test.ts`, `stability.test.ts` (U5 locks), `stability-recovery.test.ts` |
 
 ## 2. NOT IMPLEMENTED (deliberately out of MVP scope)
 
@@ -81,7 +81,7 @@ Every damaging `LogEvent` records: `round`, `turn`, `unit`, `action`, `attackerA
 
 ## 6. Validation evidence
 
-- `npm test` → 92/92 pass (90 + 2 U5 No-Cover Stability lock tests).
+- `npm test` → 99/99 pass (92 + 7 U5 boss-Stability tests).
 - CLI: 7-turn example and 4-turn rotation walkthrough verified by hand (see report).
 - 8+ turns rejected with a clear error message (CLI + engine tests).
 

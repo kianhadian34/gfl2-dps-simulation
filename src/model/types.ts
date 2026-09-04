@@ -53,10 +53,12 @@ export type PassiveEffect =
   | { kind: "resource_gain"; resource: "confectance"; amount: number; on: "onDamageDealt" }
   | {
       kind: "conditional_damage_modifier";
-      scope: "dealt";
+      /** "dealt" = on the unit's own attacks (attacker); "taken" = on incoming damage (boss/target passives, U5). */
+      scope: "dealt" | "taken";
       mode: "additive" | "multiplicative";
       value: number;
-      when: "target.noCover";
+      /** Condition evaluated against the receiving target unit. */
+      when: "target.noCover" | "target.stabilityAboveZero";
     }
   | {
       kind: "support_attack";
@@ -138,6 +140,8 @@ export interface DummyConfig {
   phase: Element | null;
   /** MVP: always "none" (handoff §4); also drives conditional no-cover bonuses. */
   cover: "none";
+  /** Optional boss/target passives (U5): stability-conditional taken modifiers etc. — data-driven, per-boss values. */
+  passives?: PassiveDef[];
 }
 
 /** Per-status override for UNVERIFIED values (docs/research.md §4 U7/U8 + status data). */

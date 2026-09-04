@@ -1,4 +1,4 @@
-import type { ActionSlot, CharacterDef, ConfigOverrides, Element, Scenario, SourceKind, StatusDef, StatusOverride } from "../model/types.js";
+import type { ActionSlot, CharacterDef, ConfigOverrides, Element, PassiveEffect, Scenario, SourceKind, StatusDef, StatusOverride } from "../model/types.js";
 import type { ActiveStatus, LogEvent, ResolvedConfig } from "../model/runtime.js";
 import { Rng } from "./rng.js";
 import type { Registry } from "../data/registry.js";
@@ -29,6 +29,8 @@ export interface UnitState {
   name: string;
   /** Dolls only (dummy has null). */
   def: CharacterDef | null;
+  /** Passive effects of the unit (dolls: character passive; dummy/boss: DummyConfig.passives — U5). */
+  passives: PassiveEffect[];
   /** Dummy-exposed elemental weaknesses (research §3.5). */
   weaknessElements: Element[];
   /** MVP: cover is always "none" (handoff §4); drives conditional no-cover bonuses. */
@@ -163,6 +165,7 @@ function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], con
     id: def.id,
     name: def.name,
     def,
+    passives: def.passive.effects,
     weaknessElements: [],
     cover: "none",
     phase: def.phase,
@@ -193,6 +196,7 @@ function makeDummy(d: Scenario["dummy"]): UnitState {
     id: d.id,
     name: d.name,
     def: null,
+    passives: (d.passives ?? []).flatMap((p) => p.effects),
     weaknessElements: d.weaknesses,
     cover: "none",
     phase: d.phase,
