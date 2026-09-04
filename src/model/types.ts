@@ -23,7 +23,8 @@ export interface WeaponDef {
 
 export interface StatusApplySpec {
   statusId: string;
-  durationRounds: number;
+  /** Applied duration in rounds — omit to use the status definition's own duration (permanent for durationRounds: null). */
+  durationRounds?: number;
   stacks?: number;
   /** Where the status lands. Default "target". */
   target?: "self" | "target";
@@ -34,6 +35,8 @@ export interface SkillDef {
   name: string;
   type: "basic" | "active" | "ultimate" | "support";
   element: Element;
+  /** Ammo/weapon type of the attack (matches `DummyConfig.weaknessTags` — Ammo Weakness dimension, 2026). */
+  ammoType?: AmmoType;
   /** Fraction of final ATK — used unless fixedDamage is set. */
   multiplier?: number;
   /** Absolute fixed-damage branch (no crit / no DEF) per research §3.10. */
@@ -79,6 +82,25 @@ export type PassiveEffect =
       threshold: number;
       ratio: number;
       cap?: number;
+    }
+  | {
+      /**
+       * Target-side stack trigger (Ammo Weakness Upgrade, validated 2026):
+       * declared on the TARGET (DummyConfig.passives). Fires when an attack
+       * exploits `weaknessTag` AND its element is in `requiresElements`
+       * (AWU: physical-only — Phase/elemental exploits do not advance stacks
+       * unless later validated otherwise). The first exploit applies
+       * `firstGain` stacks, every subsequent exploit adds `gainPerEvent`,
+       * capped at `maxStacks`. Data-driven — the 2/1/5 progression lives here,
+       * not in the damage formula. `statusId` must be a stackable target status.
+       */
+      kind: "grant_stacks_on_weakness_exploit";
+      weaknessTag: string;
+      statusId: string;
+      firstGain: number;
+      gainPerEvent: number;
+      maxStacks: number;
+      requiresElements?: Element[];
     };
 
 export interface PassiveDef {
@@ -113,12 +135,27 @@ export type StatusEffect =
       mode: "additive" | "multiplicative";
       value: number;
     }
-  | { kind: "damage_reduction"; value: number };
+  | { kind: "damage_reduction"; value: number }
+  | {
+      /**
+       * Stack-tier damage modifier (Ammo Weakness Upgrade, validated 2026):
+       * value is a per-stack TIER lookup (non-linear), not `value × stacks`.
+       * `tiers[stacks]` is used; stacks above the highest tier stay at the top
+       * tier; stacks below the lowest tier contribute 0. `when.element` gates
+       * the effect to specific attack elements (AWU: physical only — Phase
+       * damage bypasses it naturally; there is no AWU special-case branch).
+       */
+      kind: "stack_tier_modifier";
+      scope: "dealt" | "taken";
+      mode: "additive";
+      tiers: Record<number, number>;
+      when?: { element: Element[] };
+    };
 
 export interface StatusDef {
   id: string;
   name: string;
-  category: "buff" | "debuff" | "state";
+  category: "buff" | "debuff" | "state" | "upgrade";
   stackable: boolean;
   maxStacks: number;
   /** null = permanent until ticked/removed. */
@@ -130,13 +167,19 @@ export interface StatusDef {
   note?: string;
 }
 
+/** Ammo/weapon-type weakness tags (project terminology: Assault Rifle Ammo, Shotgun Ammo). */
+export type AmmoType = "assault_rifle_ammo" | "shotgun_ammo";
+
 export interface DummyConfig {
   id: string;
   name: string;
   hp: number;
   defense: number;
   stability: number;
+  /** Dummy-exposed elemental weaknesses (research §3.5) — matched against the attack element. */
   weaknesses: Element[];
+  /** Dummy-exposed ammo/weapon-type weakness tags (Ammo Weakness Upgrade, 2026) — matched against the attack's ammo type. */
+  weaknessTags?: AmmoType[];
   phase: Element | null;
   /** MVP: always "none" (handoff §4); also drives conditional no-cover bonuses. */
   cover: "none";

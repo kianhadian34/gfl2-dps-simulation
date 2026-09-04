@@ -153,6 +153,8 @@ Confirmations: (1) Burn weakness multiplier is **×1.10**; (2) folding the weakn
 
 **Implementation interpretation** — `weaknessFactor = 1 + 0.10 × (#matched weaknesses)` (additive across weaknesses, a separate factor from the additive DMG bucket); `stabDamage += 2 per matched weakness`. A hit that drops stability to 0 is computed at the pre-break damage level (i.e. the break hit does not benefit from stability reduction — Cover-scope detail). Configurable per dummy.
 
+**Generic weakness also applies to Phase damage (VALIDATED 2026)** — a Burn attack vs a target weak to both Burn and Ammo receives the normal ×1.20 two-weakness multiplier (independent of Stability; §3.7). This is DISTINCT from the Ammo Weakness Upgrade system — see §3.18 (a separate mechanic that never applies to Phase damage).
+
 **Unknowns** — partial-match (exploiting only some of a target's weaknesses) is implied by the count-based rule and implemented by counting matched weaknesses, but not separately in-game-tested; simultaneous phase+weakness interaction (independent factors) UNKNOWN until the phase wheel is populated.
 
 ### 3.6 Glancing (擦伤) — REMOVED (beta artifact)
@@ -331,6 +333,55 @@ Level-60 base magnitudes (CONFIRMED, 2024 BWIKI data): Qiongjiu `ATK 119→1224,
 - "Nixie / 交换机" skill: **no evidence any such skill type exists** in any reachable source — do not model it. If the user meant something specific, it needs clarification.
 - No ACC/EVA, no miss vs the dummy (§3.8).
 - Attacker stability never affects offense (§3.7).
+
+### 3.18 Ammo Weakness Upgrade system (separate from generic weakness)
+
+**Mechanic** — A stacking upgrade triggered by exploiting an **Ammo weakness**; it is a SEPARATE mechanic from the generic weakness multiplier (§3.5 / U20) and must not be conflated with it. Validated in-game (2026).
+
+**Distinction (kept separate):**
+- **Generic weakness effect** — each matched target weakness adds `1 + 0.10 × n` damage (1 → ×1.10, 2 → ×1.20); this generic multiplier **also applies to Phase damage** (e.g. a Burn + Ammo Phase attack vs a target weak to both Burn and Ammo receives the normal ×1.20).
+- **Ammo Weakness Upgrade system** — triggered only by exploiting an **Ammo weakness**; the upgrade bonus affects **Physical damage only**; **Phase damage does NOT receive it**.
+- The upgrade is NOT the generic weakness multiplier. **Phase interaction VALIDATED (2026): a Phase Ammo exploit does NOT advance AWU stacks and does NOT receive the AWU bonus; only a qualifying Physical Ammo-weakness exploit advances stacks.** Generic weakness matching still applies to Phase damage independently.
+
+**Trigger and stacks (VALIDATED in-game):**
+- The **first** attack that exploits an Ammo weakness applies **2 stacks**.
+- Each **subsequent** attack that exploits the Ammo weakness applies **+1 stack**.
+- **Maximum 5 stacks**; at 5 stacks the bonus is capped and further Ammo-weakness exploits do not increase it.
+
+**Upgrade damage bonus per stack tier (VALIDATED in-game, Physical damage only):**
+
+| Stacks | DMG bonus |
+|---|---|
+| 2 | +7% |
+| 3 | +11% |
+| 4 | +17% |
+| 5 (cap) | +25% |
+
+**In-game validation — controlled Qiongjiu Basic test** (ATK 1958, Basic 80% Physical, dummy DEF 5000, No Cover, target has Ammo weakness, same buffs throughout; non-crit unless noted):
+
+| Turn | Result | Note |
+|---|---|---|
+| T1 | **616** | 2 Ammo Upgrade stacks |
+| T2 | 785 (critical) | 3 stacks — excluded from the non-crit progression |
+| T3 | **665** | 4 stacks |
+| T4 | **704** | 5 stacks |
+| T5 | **704** | 5 stacks (capped) |
+| T6 | **704** | 5 stacks (capped) |
+
+Previously observed non-crit 3-stack result: **636**. Validated Physical damage progression: **2 stacks → 616 · 3 stacks → 636 (non-crit) · 4 stacks → 665 · 5 stacks → 704 · further attacks remain 704**.
+
+**No-ammo control** — Qiongjiu Basic against a DEF 5000 dummy WITHOUT Ammo weakness: **529** non-crit, **654** crit. This confirms the changing 616/636/665/704 Physical values are associated with the Ammo Weakness Upgrade mechanic rather than with Stability. Stability itself does **not** directly modify damage (consistent with §3.7 — no universal No-Cover Stability reduction; this dataset establishes no Stability→damage link).
+
+**Phase-damage control (independent)** — Qiongjiu Common Rail (Burn + Ammo) vs a target weak to both: **1191** non-crit at 65, 58, and 51 Stability; **1470** crit at 44 Stability, consistent with 123.5% Crit DMG. Conclusion: the Ammo Weakness Upgrade stacking bonus does **not** affect this Burn/Phase damage, while the normal generic two-weakness **×1.20** multiplier DOES apply to the Burn attack (independently of Stability).
+
+**Phase interaction — VALIDATED (2026):**
+- **Physical Ammo-weakness exploit** → advances AWU stacks **and** receives the AWU bonus.
+- **Phase Ammo-weakness exploit** → does **NOT** advance AWU stacks and does **NOT** receive the AWU bonus.
+- **Generic weakness matching still applies to Phase damage independently** (e.g. Burn + Ammo vs a target weak to both → the normal ×1.20 generic multiplier, unchanged by AWU).
+
+**Implementation (IMPLEMENTED, data-driven):** damage placement is now VALIDATED — `base → generic weakness ×(1 + 0.10×n) → additive DMG% bucket (1 + no-cover + AWU tier …) → remaining pipeline → existing ceil`; the tier values are additive tenths (+7/+11/+17/+25) with the project's established ceiling producing the observed numbers exactly — no new rounding stage was introduced (the source's "DMG% is rounded up to a tenth" matches the tier granularity; nothing beyond the existing ceil is modeled). The engine implements AWU generically: the target carries a permanent `upgrade` status (`ammo_weakness_upgrade`, stackable, max 5) whose effects use a generic `stack_tier_modifier` (`tiers` + `when.element = physical` — Phase damage bypasses naturally); a target-side passive trigger (`grant_stacks_on_weakness_exploit` on `DummyConfig.passives`, firstGain 2 / gainPerEvent 1 / maxStacks 5, requiresElements physical) advances stacks on Physical Ammo-weakness exploits; the Ammo weakness itself is a real data dimension (`SkillDef.ammoType` vs `DummyConfig.weaknessTags`) that also counts into the generic weakness multiplier. All values are data — no character IDs, no 2/1/5 or tier logic in the formula.
+
+**Remaining unknowns (NOT resolved, deliberately):** whether AWU stacks reset (e.g. on Stability break/recovery or boss rotation — currently modeled permanent); whether exploiting an Ammo weakness also grants the generic +2 stability weakness bonus (the engine keeps the +2 stability bonus element-scoped, Stability behavior unchanged).
 
 ---
 

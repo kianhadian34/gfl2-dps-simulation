@@ -43,6 +43,7 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 | 29 | Combat log reproduces every action vs an in-game test | engine guarantee | — | `integration.test.ts` (attackerAtk/targetDef/bracket), `--log` |
 | 30 | Fixed Damage (U21) — **post-chain, independent ceil**: `ceil(normalChain) + ceil(fixed)`; bypasses DEF / damage-buff bracket / phase / weakness / reduction / crit | **CONFIRMED (in-game: Overburn 196 = ceil(10% × 1958 ATK), immune to Burn weakness and +20% No-Cover buff)**; DEF/crit/phase/reduction bypass SOURCE-SUPPORTED (untested in-game) | absolute `SkillDef.fixedDamage` (percentOfAtk data model deferred) | `damage.test.ts`, `fixed-damage-validation.test.ts` |
 | 31 | No-Cover Stability behavior (U5 boss-domain) — **no universal No-Cover stability damage reduction** (Blaze Master 65/65 evidence; generic rule is Cover-gated and out of scope); **boss-specific stability-conditional passives IN SCOPE and implemented**: confirmed boss −80% taken while stability > 0 → ×0.20; inactive at Stability = 0; pre-hit break evaluation; reduction returns on U6 recovery; fixed damage bypasses it (U21); no universal Exposed multiplier (U3 resolved) | CONFIRMED (in-game boss passive) / implemented generically via `DummyConfig.passives` (no boss IDs) | `DummyConfig.passives` (U5) | `boss-stability.test.ts`, `stability.test.ts`, `stability-recovery.test.ts` |
+| 32 | Ammo Weakness Upgrade system (2026, in-game) — **SEPARATE from the generic weakness multiplier** (§3.18): exploiting an Ammo weakness applies 2 stacks on the first exploit, +1 per subsequent exploit, max 5; **Physical-only** bonus: 2 stacks +7% · 3 stacks +11% · 4 stacks +17% · 5 stacks +25% (capped); **Phase attacks neither advance stacks nor receive the bonus (VALIDATED 2026)**; generic ×1.10/×1.20 still applies to Phase damage independently; not the generic weakness multiplier; Stability does not modify damage. Unresolved: stack reset rules; ammo +2 stability bonus | **VALIDATED in-game** (Qiongjiu Basic 616/636/665/704 non-crit progression + 529/654 no-ammo control; Burn+Ammo Phase control 1191×3 / 1470 crit @123.5% CDMG; shotgun 89→105/109/114/122) — **IMPLEMENTED** data-driven (target `upgrade` status + `stack_tier_modifier` + `grant_stacks_on_weakness_exploit` target passive + ammo weakness dimension `ammoType`/`weaknessTags`) | data (`statuses.ts`, `DummyConfig.passives`, `SkillDef.ammoType`) | `ammo-weakness-upgrade.test.ts` (progression, tiers, Physical gate, Phase control, data-driven trigger) |
 
 ## 2. NOT IMPLEMENTED (deliberately out of MVP scope)
 
@@ -81,7 +82,7 @@ Every damaging `LogEvent` records: `round`, `turn`, `unit`, `action`, `attackerA
 
 ## 6. Validation evidence
 
-- `npm test` → 101/101 pass (92 base + 7 U5 boss-Stability + 2 U7/U8 status-timing).
+- `npm test` → 113/113 pass (92 base + 7 U5 boss-Stability + 2 U7/U8 status-timing + 2 U14 boss-DEF + 10 Ammo Weakness Upgrade).
 - CLI: 7-turn example and 4-turn rotation walkthrough verified by hand (see report).
 - 8+ turns rejected with a clear error message (CLI + engine tests).
 

@@ -45,6 +45,8 @@ export interface LogEvent {
   cooldownAfter: Record<string, number>;
   statusesApplied: string[];
   statusesExpired: string[];
+  /** Snapshot of permanent target 'upgrade' statuses after the hit (e.g. Ammo Weakness Upgrade stacks, 2026) — absent when none. */
+  upgradeStacks?: { statusId: string; stacks: number }[];
   /** Independently ceiled Fixed Damage component (U21) — absent for normal-only hits. */
   fixedDamage?: number;
 }

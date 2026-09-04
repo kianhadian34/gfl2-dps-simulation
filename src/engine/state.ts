@@ -1,4 +1,4 @@
-import type { ActionSlot, CharacterDef, ConfigOverrides, Element, PassiveEffect, Scenario, SourceKind, StatusDef, StatusOverride } from "../model/types.js";
+import type { ActionSlot, AmmoType, CharacterDef, ConfigOverrides, Element, PassiveEffect, Scenario, SourceKind, StatusDef, StatusOverride } from "../model/types.js";
 import type { ActiveStatus, LogEvent, ResolvedConfig } from "../model/runtime.js";
 import { Rng } from "./rng.js";
 import type { Registry } from "../data/registry.js";
@@ -32,6 +32,8 @@ export interface UnitState {
   passives: PassiveEffect[];
   /** Dummy-exposed elemental weaknesses (research §3.5). */
   weaknessElements: Element[];
+  /** Dummy-exposed ammo/weapon-type weakness tags (Ammo Weakness Upgrade, 2026). */
+  weaknessTags: AmmoType[];
   /** MVP: cover is always "none" (handoff §4); drives conditional no-cover bonuses. */
   cover: "none";
   /** Attack element of dolls / phase category of the dummy (research §3.4). */
@@ -165,6 +167,7 @@ function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], con
     def,
     passives: def.passive.effects,
     weaknessElements: [],
+    weaknessTags: [],
     cover: "none",
     phase: def.phase,
     panelAtk: panel.atk,
@@ -196,6 +199,7 @@ function makeDummy(d: Scenario["dummy"]): UnitState {
     def: null,
     passives: (d.passives ?? []).flatMap((p) => p.effects),
     weaknessElements: d.weaknesses,
+    weaknessTags: d.weaknessTags ?? [],
     cover: "none",
     phase: d.phase,
     panelAtk: 0,

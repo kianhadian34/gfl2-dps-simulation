@@ -117,9 +117,10 @@ test("two weaknesses → ×1.20 additive (U20 confirmed: Burn + Assault Rifle am
 });
 
 test("engine-level U20: 1 weakness ×1.10, 2 weaknesses ×1.20 (count-driven, additive)", () => {
-  // Common Rail (Burn) vs the dummy with one vs two matched weaknesses. The MVP
-  // weakness model matches by element; two matches stand in for an ammo-type
-  // weakness (e.g., Burn + Assault Rifle ammo) — the rule is purely count-driven.
+  // Pure-element count check (the real Ammo-weakness dimension — SkillDef.ammoType
+  // vs DummyConfig.weaknessTags — is covered by ammo-weakness-upgrade.test.ts; this
+  // duplicates it by element to isolate the count rule). Common Rail (Burn) vs a
+  // dummy with one vs two matched element weaknesses:
   // Engine uses Qiongjiu's data panel (ATK 1831.95, dummy DEF 0):
   //   bracket = 1 + 0.10 no-cover = 1.1; base = 1831.95 × 1.5 × 1.1 = 3022.72
   //   1 weakness → ×1.10 → ceil(3022.72 × 1.1) = 3325

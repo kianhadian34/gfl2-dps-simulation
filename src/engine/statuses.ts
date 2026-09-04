@@ -1,4 +1,4 @@
-import type { StatusApplySpec } from "../model/types.js";
+import type { Element, StatusApplySpec } from "../model/types.js";
 import type { EffectiveStatusDef, SimulationState, UnitState } from "./state.js";
 
 /** Status expiry bookkeeping. Tick timing is CONFIRMED (U7, in-game 2026-09-03: normal timed buffs tick at the recipient's action end); the tick point stays config-overridable per scenario for alternative testing. */
@@ -6,7 +6,8 @@ export function applyStatus(state: SimulationState, target: UnitState, spec: Sta
   const def = state.statusRegistry.get(spec.statusId);
   if (!def) throw new Error(`Unknown status: ${spec.statusId}`);
   // Applied duration = per-status config override (validation mode) else the skill's spec.
-  const dur = def.effectiveDurationRounds ?? spec.durationRounds;
+  // Permanent statuses (def.durationRounds === null) never tick (tickStatuses skips them).
+  const dur = def.effectiveDurationRounds ?? spec.durationRounds ?? (def.durationRounds === null ? Infinity : def.durationRounds);
   const stacks = spec.stacks ?? 1;
   const existing = target.statuses.find((s) => s.statusId === spec.statusId);
   if (existing) {
@@ -46,8 +47,8 @@ export function tickStatuses(state: SimulationState, unit: UnitState, at: "ownAc
   return expired;
 }
 
-/** Σ additive damage-dealt bonuses from the unit's own statuses. */
-export function additiveDealtBonus(unit: UnitState, statusRegistry: Map<string, EffectiveStatusDef>): number {
+/** Σ additive damage-dealt bonuses from the unit's own statuses (tier effects gated on the hit element). */
+export function additiveDealtBonus(unit: UnitState, statusRegistry: Map<string, EffectiveStatusDef>, element: Element): number {
   let sum = 0;
   for (const s of unit.statuses) {
     const def = statusRegistry.get(s.statusId);
@@ -56,13 +57,17 @@ export function additiveDealtBonus(unit: UnitState, statusRegistry: Map<string, 
       if (e.kind === "damage_modifier" && e.scope === "dealt" && e.mode === "additive") {
         sum += e.value * s.stacks;
       }
+      if (e.kind === "stack_tier_modifier" && e.scope === "dealt") {
+        if (e.when && e.when.element && !e.when.element.includes(element)) continue;
+        sum += tierValue(e.tiers, s.stacks);
+      }
     }
   }
   return sum;
 }
 
-/** Σ additive damage-taken bonuses from the target's own statuses. */
-export function additiveTakenBonus(unit: UnitState, statusRegistry: Map<string, EffectiveStatusDef>): number {
+/** Σ additive damage-taken bonuses from the target's own statuses (tier effects gated on the hit element). */
+export function additiveTakenBonus(unit: UnitState, statusRegistry: Map<string, EffectiveStatusDef>, element: Element): number {
   let sum = 0;
   for (const s of unit.statuses) {
     const def = statusRegistry.get(s.statusId);
@@ -71,9 +76,32 @@ export function additiveTakenBonus(unit: UnitState, statusRegistry: Map<string, 
       if (e.kind === "damage_modifier" && e.scope === "taken" && e.mode === "additive") {
         sum += e.value * s.stacks;
       }
+      if (e.kind === "stack_tier_modifier" && e.scope === "taken") {
+        if (e.when && e.when.element && !e.when.element.includes(element)) continue;
+        sum += tierValue(e.tiers, s.stacks);
+      }
     }
   }
   return sum;
+}
+
+/**
+ * Non-linear per-stack tier lookup (Ammo Weakness Upgrade, validated 2026):
+ * exact tier for the stack count; stacks above the highest tier stay at the top
+ * tier; stacks below the lowest tier contribute 0. Data-driven — no hardcoded
+ * 2/1/5 or 7/11/17/25 logic in the engine.
+ */
+export function tierValue(tiers: Record<number, number>, stacks: number): number {
+  const keys = Object.keys(tiers)
+    .map(Number)
+    .sort((a, b) => a - b);
+  if (keys.length === 0) return 0;
+  let best = 0;
+  for (const k of keys) {
+    if (k > stacks) break;
+    best = tiers[k];
+  }
+  return best;
 }
 
 /** Multiplicative taken modifiers (e.g. boss Stability passives, U5) or reductions. */
