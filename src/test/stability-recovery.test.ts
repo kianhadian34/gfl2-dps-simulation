@@ -10,11 +10,13 @@ import { STABILITY_RECOVERY_DELAY } from "../engine/stability.js";
 //   multiplier (resolved) — the flag is pure state for this window.
 //
 // Observation via log: ev.exposed is true for hits while the target is broken
-// and false after recovery. Qiongjiu basic deals 2 stability damage; active1/
-// active2 deal normal damage with 0 stability damage — rotating between them
-// lets us watch the window without re-breaking. NOTE (U11 confirmed): CD-1
+// and false after recovery. Qiongjiu basic deals 2 stability damage and the
+// ultimate deals 0; active2 (Guide to Victory) deals 0 base stability damage,
+// while active1 (Common Rail) has base 3 (validated 2026) — rotating between
+// them lets us watch the window without re-breaking. NOTE (U11 confirmed): CD-1
 // skills are unavailable on the immediately following turn, so 0-stab
-// observation turns must NOT chain two actives back-to-back.
+// observation turns must NOT chain two actives back-to-back (the ultimate is a
+// 0-stab, cd-0 option for observation turns after recovery).
 
 test("break during Turn 2 → stability restored on Turn 4 (confirmed in-game)", () => {
   // stability 4: r1 basic 4→2 (no break), r2 basic 2→0 (break), r3 exposed
@@ -27,11 +29,12 @@ test("break during Turn 2 → stability restored on Turn 4 (confirmed in-game)",
 
 test("break during Turn 1 → stability restored on Turn 3 (confirmed in-game)", () => {
   // stability 2: r1 basic 2→0 (break), r2 exposed (active2, 0 stab),
-  // r3 restored (active1, 0 stab — first cast, cd 0 — cannot re-break).
+  // r3 ultimate (0 stab, cd 0 — first cast — cannot re-break after recovery).
   const r = simulateScenario(
-    scenario({ turns: 3, seed: 7, rotation: ["basic", "active2", "active1"], dummy: { stability: 2 } }),
+    scenario({ turns: 3, seed: 7, rotation: ["basic", "active2", "ultimate"], dummy: { stability: 2 } }),
   );
-  assert.deepEqual(r.log.map((e) => e.exposed), [true, true, false]);
+  // `?? false`: the ultimate is a non-damaging action (no hit → no exposed flag).
+  assert.deepEqual(r.log.map((e) => e.exposed ?? false), [true, true, false]);
 });
 
 test("no earlier restoration: the 2-turn delay is exact (confirmed rule)", () => {

@@ -127,22 +127,18 @@ function beginUnitRound(doll: UnitState): void {
   doll.supportQuota = doll.def ? supportAttackQuota(doll.def) : 0;
 }
 
-/** Match the attack's element AND ammo type against the target's exposed weaknesses: +10% each (research §3.5 / U20 / 2026 ammo dimension). */
-function exploitedWeaknesses(
-  target: UnitState,
-  skill: SkillDef,
-): { weaknesses: string[]; mult: number; elementMatched: number; ammoExploited: boolean } {
+/** Match the attack's element AND ammo type against the target's exposed weaknesses: +10% damage and +2 stability each (research §3.5 / U20 / 2026 ammo dimension). */
+function exploitedWeaknesses(target: UnitState, skill: SkillDef): { weaknesses: string[]; mult: number; ammoExploited: boolean } {
   const elementMatches = target.weaknessElements.filter((w) => w === skill.element);
   const ammoExploited = skill.ammoType !== undefined && target.weaknessTags.includes(skill.ammoType);
   const weaknesses = ammoExploited ? [...elementMatches, skill.ammoType as string] : [...elementMatches];
   // U20 CONFIRMED 2026-09-03 (in-game: Burn → 1091; Burn + Assault Rifle ammo → 1191):
   // the weakness factor is ADDITIVE across exploited weaknesses: 1 + 0.10 × count.
   // (1 → ×1.10; 2 → ×1.20; multiplicative ×1.21 is ruled out.) Element matches AND
-  // ammo-tag matches count into the SAME generic multiplier (validated 2026). Generic —
-  // no character ids. The +2 stability bonus per exploited weakness remains
-  // element-scoped (ammo-tag stab bonus is not validated; Stability behavior unchanged).
+  // ammo-tag matches count into the SAME generic multiplier AND into the +2 stability
+  // bonus per exploited weakness (validated 2026 — see §3.5). Generic — no character ids.
   const mult = 1 + 0.1 * weaknesses.length;
-  return { weaknesses, mult, elementMatched: elementMatches.length, ammoExploited };
+  return { weaknesses, mult, ammoExploited };
 }
 
 /** Passive "conditional_damage_modifier" bonuses (target.noCover) — Qiongjiu +10% (CONFIRMED). */
@@ -159,7 +155,7 @@ function conditionalNoCoverBonus(actor: UnitState, target: UnitState): number {
 /** Damage + stability + Confectance-gain application for a single hit; fills the event's damage fields. */
 function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef, ev: LogEvent): number {
   const dummy = state.dummy;
-  const { weaknesses, mult: weaknessMult, elementMatched, ammoExploited } = exploitedWeaknesses(dummy, skill);
+  const { weaknesses, mult: weaknessMult, ammoExploited } = exploitedWeaknesses(dummy, skill);
   // AWU trigger fires BEFORE the hit resolves: the first exploiting attack already
   // benefits from its own 2 stacks (validated T1 = 616 / 105). Phase attacks are
   // gated out by the trigger data (requiresElements) — they neither gain nor benefit.
@@ -194,7 +190,10 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   //  finalDamage = ceil(normalChain) + ceil(fixed).
   const totalDamage = hit.finalDamage + hit.fixedDamage;
   dummy.hp = Math.max(0, dummy.hp - totalDamage);
-  const stabAmount = (skill.stabDamage ?? 0) + 2 * elementMatched; // element-matched weaknesses only (Stability behavior unchanged)
+  // Validated 2026: Total Stability Damage = attack base stability damage
+  //   + 2 × (# weaknesses exploited) — element AND ammo-tag matches both count
+  //   (generic across Physical/Phase; independent of the damage multiplier; AWU untouched).
+  const stabAmount = (skill.stabDamage ?? 0) + 2 * weaknesses.length;
   const { broke } = applyStabilityDamage(state, dummy, stabAmount);
   const upgrades = dummy.statuses
     .filter((s) => state.statusRegistry.get(s.statusId)?.category === "upgrade")

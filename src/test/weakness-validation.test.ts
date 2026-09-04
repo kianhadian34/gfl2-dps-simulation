@@ -120,7 +120,9 @@ test("engine-level U20: 1 weakness ×1.10, 2 weaknesses ×1.20 (count-driven, ad
   // Pure-element count check (the real Ammo-weakness dimension — SkillDef.ammoType
   // vs DummyConfig.weaknessTags — is covered by ammo-weakness-upgrade.test.ts; this
   // duplicates it by element to isolate the count rule). Common Rail (Burn) vs a
-  // dummy with one vs two matched element weaknesses:
+  // dummy with one vs two matched element weaknesses. Common Rail base stability
+  // damage = 3 (validated 2026), +2 per exploited weakness:
+  //   1 weakness → stab 3 + 2 = 5; 2 weaknesses → stab 3 + 4 = 7.
   // Engine uses Qiongjiu's data panel (ATK 1831.95, dummy DEF 0):
   //   bracket = 1 + 0.10 no-cover = 1.1; base = 1831.95 × 1.5 × 1.1 = 3022.72
   //   1 weakness → ×1.10 → ceil(3022.72 × 1.1) = 3325
@@ -132,6 +134,6 @@ test("engine-level U20: 1 weakness ×1.10, 2 weaknesses ×1.20 (count-driven, ad
   assert.equal(r2.log[0].finalDamage, 3628);
   assert.deepEqual(r1.log[0].weaknessExploited, ["burn"]);
   assert.deepEqual(r2.log[0].weaknessExploited, ["burn", "burn"]);
-  assert.equal(r1.log[0].stabilityDamage, 2); // +2 stab per exploited weakness
-  assert.equal(r2.log[0].stabilityDamage, 4);
+  assert.equal(r1.log[0].stabilityDamage, 5); // 3 base + 2 × 1 exploited weakness
+  assert.equal(r2.log[0].stabilityDamage, 7); // 3 base + 2 × 2 exploited weaknesses
 });

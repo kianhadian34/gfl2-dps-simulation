@@ -39,7 +39,7 @@ export const QIONGJIU: CharacterDef = {
       element: "burn",
       ammoType: "assault_rifle_ammo",
       multiplier: 1.5,
-      stabDamage: 0,
+      stabDamage: 3, // base Stability Damage 3 — VALIDATED in-game (2026, U15)
       cooldown: 1,
       confectanceCost: 0,
       appliesStatuses: [
