@@ -5,8 +5,8 @@ import { scenario } from "./helpers.js";
 
 // Every UNVERIFIED value that affects Qiongjiu's simulation must be changeable
 // through scenario config alone — no engine edits (docs/research.md §4 items:
-// U1 crit, U3 exposed dmg%, U4 exposed duration, U7 tick point,
-// U8 durations, U9 confectance cap/start, U11 cooldown model).
+// U1 crit, U3 exposed dmg%, U4 exposed duration, U7/U8 tick point & durations (RESOLVED — knobs
+// remain for alternative testing), U9 confectance cap/start, U11 cooldown model).
 
 type Over = Parameters<typeof scenario>[0];
 
@@ -70,7 +70,7 @@ test("statusOverrides.durationRounds lengthens the buff window (Support Boost I)
   assert.ok(Math.abs(r3l.bonusBracket - 1.15) < 1e-9);
 });
 
-test("statusOverrides.tickAt roundEnd expires the buff the same round (U7)", () => {
+test("statusOverrides.tickAt roundEnd expires the buff the same round (U7 alternative-tick testing knob)", () => {
   const base: Over = { turns: 2, seed: 4, rotation: ["active1", "basic"], keys: [] };
   const ownEnd = simulateScenario(scenario(base));
   const roundEnd = simulateScenario(

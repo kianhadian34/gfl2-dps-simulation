@@ -1,7 +1,7 @@
 import type { StatusApplySpec } from "../model/types.js";
 import type { EffectiveStatusDef, SimulationState, UnitState } from "./state.js";
 
-/** Status expiry bookkeeping. Tick timing is a model assumption (research U7), config-overridable per scenario. */
+/** Status expiry bookkeeping. Tick timing is CONFIRMED (U7, in-game 2026-09-03: normal timed buffs tick at the recipient's action end); the tick point stays config-overridable per scenario for alternative testing. */
 export function applyStatus(state: SimulationState, target: UnitState, spec: StatusApplySpec): void {
   const def = state.statusRegistry.get(spec.statusId);
   if (!def) throw new Error(`Unknown status: ${spec.statusId}`);
@@ -10,7 +10,8 @@ export function applyStatus(state: SimulationState, target: UnitState, spec: Sta
   const stacks = spec.stacks ?? 1;
   const existing = target.statuses.find((s) => s.statusId === spec.statusId);
   if (existing) {
-    // Re-apply: refresh duration; stack if stackable (convention — research U8).
+    // Re-apply: refresh duration; stack if stackable — CONFIRMED (U8, in-game 2026-09-03,
+    // Attack Up II): same-tier reapplication refreshes the duration and does NOT add a stack.
     existing.durationLeft = Math.max(existing.durationLeft, dur);
     if (def.stackable) existing.stacks = Math.min(def.maxStacks, existing.stacks + stacks);
   } else {
@@ -22,8 +23,9 @@ export function applyStatus(state: SimulationState, target: UnitState, spec: Sta
 
 /**
  * Tick durations for one unit. `ownActionEnd`: decremented at the end of the
- * OWNER's action phase; statuses applied during that same action are skipped
- * (a 1-round status cast on turn N covers the owner's turn N+1).
+ * OWNER's action phase (CONFIRMED for normal timed buffs — U7, in-game 2026-09-03);
+ * statuses applied during that same action are skipped (a 1-round status cast on
+ * turn N covers the owner's turn N+1).
  */
 export function tickStatuses(state: SimulationState, unit: UnitState, at: "ownActionEnd" | "roundEnd"): string[] {
   const expired: string[] = [];

@@ -332,7 +332,7 @@ function accumulate(state: SimulationState, doll: UnitState, source: SourceKind,
 
 function endOfOwnTurn(state: SimulationState, doll: UnitState): void {
   tickCooldowns(doll); // U11 model assumption
-  tickStatuses(state, doll, "ownActionEnd"); // U7 model assumption
+  tickStatuses(state, doll, "ownActionEnd"); // U7 CONFIRMED 2026-09-03: normal timed buffs tick at the recipient's action end
 }
 
 function endOfRound(state: SimulationState): void {
@@ -357,7 +357,10 @@ function collectWarnings(state: SimulationState): void {
     // Confirmed rule: crit multiplier = 1 + Crit DMG (U1 + U19 CDMG half resolved).
     warn.add(`critMultiplier override = ${c.critMultiplier} — test-only alternative hypothesis (confirmed rule: multiplier = 1 + Crit DMG)`);
   }
-  warn.add(`buff duration tick model = ownActionEnd (research U7 model assumption) — overridable via configOverrides.statusOverrides.<id>.tickAt`);
+  const tickOverridden = Object.entries(c.statusOverrides).some(([id, ov]) => ov.tickAt !== undefined && ov.tickAt !== "ownActionEnd");
+  if (tickOverridden) {
+    warn.add(`a status tickAt override is not "ownActionEnd" — non-confirmed alternative (confirmed rule: normal timed buffs tick at the recipient's action end, U7 RESOLVED 2026-09-03)`);
+  }
   if (c.cooldownModel !== DEFAULT_CONFIG.cooldownModel) {
     // U11 is RESOLVED (wait N full turns after the cast turn); the alternative is selectable for testing only.
     warn.add(`cooldown model = ${c.cooldownModel} — non-confirmed alternative (confirmed rule: wait N full turns after the cast turn, U11 RESOLVED 2026-09-03)`);

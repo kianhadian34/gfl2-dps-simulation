@@ -27,7 +27,7 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 | 13 | Stability recovery — **2-turn delay after break (break Turn N → restored Turn N+2), restore to max (U6 CONFIRMED 2026-09-03)**; no universal Exposed damage multiplier (U3 resolved) | CONFIRMED (timing) | engine `STABILITY_RECOVERY_DELAY = 2` | `stability-recovery.test.ts` |
 | 14 | Panel formula `(Σ flat) × (1 + Σ pct)` | CONFIRMED | — | `integration.test.ts` (panel) |
 | 15 | Weapon ATK at proficiency 60 (53 → 369) | CONFIRMED values; **per-level curve UNVERIFIED** (linear interp) | weapon `atkLvl1/atkLvl60/level` (data) | `integration.test.ts` |
-| 16 | Buff/debuff statuses, durations in rounds | CONFIRMED (existence); **U7 tick point UNKNOWN, U8 refresh-vs-stack UNKNOWN** | `configOverrides.statusOverrides.<id>.tickAt` / `.durationRounds` | `config-override.test.ts` (U7, duration) |
+| 16 | Buff/debuff statuses, durations in rounds | CONFIRMED (existence; durations big-rounds); **U7 RESOLVED 2026-09-03 (in-game, Attack Up II) — normal timed buffs tick at the recipient's action end; U8 RESOLVED — same-tier reapplication refreshes the duration and does NOT add a stack** (statuses with their own timing/stacking text remain status-specific) | `configOverrides.statusOverrides.<id>.tickAt` / `.durationRounds` (alternative testing only now) | `status-timing.test.ts` (U7/U8), `config-override.test.ts` (alternative-tick knob) |
 | 17 | Support Boost I/II per-stack additive value & duration | **UNVERIFIED** (data defaults 0.05/0.10, 1 round) | `configOverrides.statusOverrides.support_boost_i/ii.perStackValue/durationRounds` | `config-override.test.ts` |
 | 18 | Overburn status | applied 2 rounds (CONFIRMED text); **effect values UNVERIFIED** (modeled with no effect + warning) | `configOverrides.statusOverrides.overburn.*` | warnings assert; applied in log |
 | 19 | Skill cooldown values (0/1/2) + **U11 decrement CONFIRMED 2026-09-03: wait N full turns after the cast turn (CD-1: cast T1 → unavailable T2 → available T3)** | CONFIRMED | `configOverrides.cooldownModel` — default `nextOwnTurnEnd` (confirmed); `endOfOwnTurn` alternative selectable for testing only | `config-override.test.ts` (U11), `rotation.test.ts`, `cooldown-validation.test.ts` |
@@ -58,8 +58,8 @@ APL/auto-AI (U12), movement/positioning, **Cover — explicitly deferred** (incl
 | Confectance max (U9 — RESOLVED) | 6 (confirmed) | `configOverrides.confectanceMax` | warn only when overridden |
 | Confectance start (U9 — RESOLVED) | 3 (confirmed) | `configOverrides.confectanceStart` | warn only when overridden |
 | Support Boost I/II value & duration | 0.05/0.10, 1r | `configOverrides.statusOverrides` | yes (note shows the override) |
-| Status tick point (U7) | `ownActionEnd` | `configOverrides.statusOverrides.<id>.tickAt` | yes |
-| Status applied duration (U8-adjacent) | per-skill data | `configOverrides.statusOverrides.<id>.durationRounds` | yes |
+| Status tick point (U7 — RESOLVED) | `ownActionEnd` — **normal timed buffs tick at the recipient's action end (CONFIRMED in-game, Attack Up II)** | `configOverrides.statusOverrides.<id>.tickAt` (alternative testing only) | yes — only when the knob deviates from the confirmed default |
+| Status applied duration | per-skill data (refresh on same-tier reapply — U8 RESOLVED) | `configOverrides.statusOverrides.<id>.durationRounds` | yes |
 | Cooldown model (U11 — RESOLVED) | `nextOwnTurnEnd` (confirmed: wait N full turns after cast) | `configOverrides.cooldownModel` (alternative `endOfOwnTurn` for testing only) | warn only when the non-confirmed alternative is active |
 
 All of these are honored by the engine **without engine code changes** — proofs in `src/test/config-override.test.ts`.
@@ -81,7 +81,7 @@ Every damaging `LogEvent` records: `round`, `turn`, `unit`, `action`, `attackerA
 
 ## 6. Validation evidence
 
-- `npm test` → 99/99 pass (92 + 7 U5 boss-Stability tests).
+- `npm test` → 101/101 pass (92 base + 7 U5 boss-Stability + 2 U7/U8 status-timing).
 - CLI: 7-turn example and 4-turn rotation walkthrough verified by hand (see report).
 - 8+ turns rejected with a clear error message (CLI + engine tests).
 

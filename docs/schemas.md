@@ -110,7 +110,7 @@ Per skill type: `active1/active2` both `type: "active"`; ultimate `type: "ultima
 | `conditional` | `when` (small predicate DSL: status present, cooldown 0, confectance ≥, hp <, target.noCover, **target.stabilityAboveZero — U5 boss passives**…), `effect` |
 | `passive_trigger` | `event, skillRef, perRoundMax` (used for support/emergency/intercept/counter) |
 
-Timing: every status carries `tickAt`: `ownActionEnd | roundEnd | ownTurnStart` — defaults to the research §3.10 recommended model, overridable per status until U7 is resolved in-game.
+Timing: every status carries `tickAt`: `ownActionEnd | roundEnd | ownTurnStart` — the confirmed default for normal timed buffs is **`ownActionEnd` (recipient's action end; U7 RESOLVED 2026-09-03, in-game Attack Up II)**, overridable per status for alternative testing. Same-tier reapplication REFRESHES the duration and does NOT add a stack (U8 RESOLVED; statuses with explicit stacking text remain governed by that text).
 
 ## 6. Status definitions (buffs / debuffs)
 

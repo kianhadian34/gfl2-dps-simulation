@@ -150,7 +150,7 @@ export interface StatusOverride {
   perStackValue?: number;
   /** Applied duration in rounds (overrides the skill's appliesStatuses.durationRounds). */
   durationRounds?: number;
-  /** Duration tick point (research U7). */
+  /** Duration tick point — CONFIRMED default for normal timed buffs: recipient's action end (`ownActionEnd`, U7, in-game 2026-09-03); override retained for alternative testing. */
   tickAt?: "ownActionEnd" | "roundEnd";
 }
 
