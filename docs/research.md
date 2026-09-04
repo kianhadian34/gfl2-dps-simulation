@@ -179,6 +179,12 @@ Confirmations: (1) Burn weakness multiplier is **×1.10**; (2) folding the weakn
 
 **MVP scope (updated)** — **Stability and Exposed are mandatory mechanics**: stability damage per hit, break at 0, the Exposed damage-taken window (duration U4, multiplier U3, both config), and recovery (U6, config). Cover-dependent parts of the stability system (the 60% cover reduction) are **deferred** with Cover.
 
+**Boss-domain conclusion (U5, 2026-09-03)** — This simulator is a **No-Cover boss DPS simulator**; Cover is permanently out of scope. For that domain, **Stability is modeled purely as a resource/state**: per-hit stability reduction, break → "exposed" flag, and the confirmed 2-turn recovery (U6). Specifically:
+- **No generic Stability damage reduction without Cover** — the 60% stability-cover reduction is a Cover mechanic and never applies (target always No Cover). The engine has no cover term; damage is unaffected by Stability while stability > 0.
+- **No generic post-break damage multiplier is established by any source for No-Cover targets** — the only post-break damage interaction is `configOverrides.exposedDamageMult` (U3, unverified, default 1.0 = no effect). No Exposed/Broken multiplier is invented.
+- **Break-hit cover nuance** (physical hits keeping the 60% reduction on the breaking hit) is Cover-scoped and irrelevant.
+- The existing engine already matches this conclusion — no code change was required; behavior is locked by `stability.test.ts` (U5 lock tests).
+
 **Implementation interpretation**
 
 ```
@@ -332,7 +338,7 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 | U1 | ~~Crit multiplier: ×1.5 vs ×(1 + 20% panel)~~ → **RESOLVED 2026-09-03**: multiplier = Crit DMG stat (×1.20 at 120%), applied to unrounded damage before final ceil; the 1956/1958 ATK control test discriminates the ordering (see §3.3) | ~~UNCERTAIN~~ → **CONFIRMED (in-game)** | Was up to 33% skew | ✅ resolved by in-game test — engine default `critMultiplier` still 1.5 pending approved engine change (scenario override `configOverrides.critMultiplier` → use 1.2) |
 | U3 | Exposed damage-% after stability break | UNKNOWN | Big skew on break turns | Stability test |
 | U4 | Break duration (beta `breakRound=2`) | UNCERTAIN | Break window length | Stability test |
-| U5 | Per-unit max stability & per-skill stab damage values | CONFIRMED examples / UNKNOWN table | Stability pacing | Per-skill record + data dump parse (`PotRooms/GFL2_Data`) |
+| U5 | Per-unit max stability & per-skill stab damage values | CONFIRMED examples / UNKNOWN table | Stability pacing | Per-skill record + data dump parse (`PotRooms/GFL2_Data`); **No-Cover behavior for boss sims already documented** (pure resource/state — see §3.7 Boss-domain conclusion) |
 | U6 | ~~Stability recovery timing~~ → **CONFIRMED 2026-09-03**: restored exactly 2 turns after the break (break Turn N → restored Turn N+2), restored to max | ~~UNKNOWN~~ → **CONFIRMED (timing)** | Was long-sim drift | ✅ resolved — engine models the 2-turn delay (`STABILITY_RECOVERY_DELAY = 2`); Exposed damage-% (U3) remains open |
 | U7 | Buff duration tick point (own turn start vs round end) | UNKNOWN | Buff expiry timing | Buff timer test |
 | U8 | Same-tier status reapply: refresh vs stack | UNKNOWN | Stack math | Reapply test |

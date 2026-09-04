@@ -39,3 +39,35 @@ test("warnings only mention Exposed values when the dummy can actually break", (
   assert.ok(stable.warnings.some((w) => w.includes("exposed")));
   assert.ok(!unstable.warnings.some((w) => w.includes("exposed")));
 });
+
+test("No-Cover: Stability > 0 never reduces damage (U5 boss-domain — pure resource)", () => {
+  // Same attack, same seed: a target with full Stability takes identical damage
+  // to one with zero Stability — there is no stability damage reduction without Cover.
+  const noStab = simulateScenario(scenario({ turns: 5, seed: 5, rotation: ["basic"] }));
+  const stab = simulateScenario(scenario({ turns: 5, seed: 5, rotation: ["basic"], dummy: { stability: 9 } }));
+  assert.deepEqual(
+    noStab.log.map((e) => e.finalDamage),
+    stab.log.map((e) => e.finalDamage),
+  );
+  assert.deepEqual(
+    noStab.log.map((e) => e.reductionMult),
+    stab.log.map((e) => e.reductionMult),
+  );
+});
+
+test("No-Cover: a stability-broken target gets no generic multiplier by default (U3 stays config-gated)", () => {
+  // stability 2 breaks on round 1 (exposed on rounds 2-5); stability 9 never breaks.
+  // With the default exposedDamageMult = 1.0 there is no invented Exposed/Broken
+  // damage bonus — the broken run deals identical damage to the intact run.
+  const broken = simulateScenario(scenario({ turns: 5, seed: 5, rotation: ["basic"], dummy: { stability: 2 } }));
+  const intact = simulateScenario(scenario({ turns: 5, seed: 5, rotation: ["basic"], dummy: { stability: 9 } }));
+  assert.ok(broken.log.some((e) => e.exposed === true), "break must occur");
+  assert.deepEqual(
+    broken.log.map((e) => e.finalDamage),
+    intact.log.map((e) => e.finalDamage),
+  );
+  assert.deepEqual(
+    broken.log.map((e) => e.reductionMult),
+    intact.log.map((e) => e.reductionMult),
+  );
+});

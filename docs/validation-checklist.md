@@ -42,6 +42,7 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 | 28 | Duration cap: 1–7 turns, 8+ rejected (never clamped) | validation rule | `turns` (validated) | `validation-cap.test.ts` |
 | 29 | Combat log reproduces every action vs an in-game test | engine guarantee | — | `integration.test.ts` (attackerAtk/targetDef/bracket), `--log` |
 | 30 | Fixed Damage (U21) — **post-chain, independent ceil**: `ceil(normalChain) + ceil(fixed)`; bypasses DEF / damage-buff bracket / phase / weakness / reduction / crit | **CONFIRMED (in-game: Overburn 196 = ceil(10% × 1958 ATK), immune to Burn weakness and +20% No-Cover buff)**; DEF/crit/phase/reduction bypass SOURCE-SUPPORTED (untested in-game) | absolute `SkillDef.fixedDamage` (percentOfAtk data model deferred) | `damage.test.ts`, `fixed-damage-validation.test.ts` |
+| 31 | No-Cover Stability behavior (U5 boss-domain) — **pure resource/state**: Stability never reduces damage without Cover; no generic post-break multiplier (U3 config only, default 1.0); break + confirmed 2-turn recovery as implemented | CONFIRMED (design-conclusion; no source claims a No-Cover stability damage effect) | `configOverrides.exposedDamageMult` (U3 — UNVERIFIED) | `stability.test.ts` (U5 lock tests), `stability-recovery.test.ts` |
 
 ## 2. NOT IMPLEMENTED (deliberately out of MVP scope)
 
@@ -80,7 +81,7 @@ Every damaging `LogEvent` records: `round`, `turn`, `unit`, `action`, `attackerA
 
 ## 6. Validation evidence
 
-- `npm test` → 90/90 pass (prior 92 − 2 Glancing tests removed).
+- `npm test` → 92/92 pass (90 + 2 U5 No-Cover Stability lock tests).
 - CLI: 7-turn example and 4-turn rotation walkthrough verified by hand (see report).
 - 8+ turns rejected with a clear error message (CLI + engine tests).
 
