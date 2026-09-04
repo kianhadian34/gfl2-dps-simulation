@@ -146,7 +146,7 @@ Timing: every status carries `tickAt`: `ownActionEnd | roundEnd | ownTurnStart` 
 }
 ```
 
-`exposed`: duration default 2 (research U4), damage multiplier from config (U3). DoT statuses (burn/acid) use `{ "kind": "fixed_damage", "percentOfAtk": 0.10, "tickAt": "actionEnd" }`.
+`exposed`: duration fixed by the always-2-turn recovery rule (research U4 — non-configurable), damage multiplier from config (U3, unresolved). DoT statuses (burn/acid) use `{ "kind": "fixed_damage", "percentOfAtk": 0.10, "tickAt": "actionEnd" }`.
 
 ## 7. Dummy (handoff §4)
 

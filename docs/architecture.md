@@ -49,7 +49,7 @@ Status: proposal, awaiting approval. Follows handoff §19–§21: accuracy-first
 | `turns` | Round/action ordering, per-round counter resets, deterministic order |
 | `actions` | Basic Attack / Active / Ultimate / Passive trigger / Support attack resolution |
 | `damage` | The damage pipeline (§6) incl. crit, defense, weakness |
-| `stability` | Stability damage, break/expose, recovery (**confirmed 2-turn delay after break → restore to max**, research U6). No-Cover boss domain: no universal stability damage reduction (generic rule is Cover-scoped); **boss-specific stability-conditional passives implemented generically** via `DummyConfig.passives` (conditional taken modifiers, e.g. −80% while stability > 0 → ×0.20; research §3.7) |
+| `stability` | Stability damage, break/expose, recovery (**fixed 2-turn window: broken through N/N+1, restored at START N+2 — U4/U6, non-configurable**). No-Cover boss domain: no universal stability damage reduction (generic rule is Cover-scoped); **boss-specific stability-conditional passives implemented generically** via `DummyConfig.passives` (conditional taken modifiers, e.g. −80% while stability > 0 → ×0.20; research §3.7) |
 | `effects` | Generic effect engine: stat mods, damage mods, reductions, status apply/remove, resource gain, cooldown change, additional action, conditionals, fixed damage |
 | `cooldowns` | Per-skill cooldown state + decrement timing — **confirmed: wait N full turns after the cast turn** (default `nextOwnTurnEnd`; alternative `endOfOwnTurn` selectable for testing only) |
 | `resources` | Confectance gauge, gains/costs (event-driven, per skill data) |

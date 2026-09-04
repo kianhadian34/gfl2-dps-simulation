@@ -23,7 +23,7 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 | 9 | Ceiling rounding of final damage; crit applied to the underlying unrounded product (never to the rounded normal hit) | CONFIRMED (in-game 2026-09-03; ATK-1956 case discriminates 634 vs 635) | — | `damage.test.ts`, `crit-validation.test.ts` |
 | 10 | Fixed-damage branch (no DEF, no crit) | PROBABLE | — | `damage.test.ts` |
 | 11 | Stability as separate resource; per-hit fixed stability damage | CONFIRMED — **never alters damage on a No-Cover target** (in-game Burn test had 65/65 stability; formula matched with no stability term) | dummy `stability`, skill `stabDamage` (data) | `stability.test.ts` |
-| 12 | Break → Exposed state | PROBABLE; **U3 damage-% UNKNOWN, U4 duration UNCERTAIN (beta 2)** | `configOverrides.exposedDamageMult`, `exposedDurationRounds` | `config-override.test.ts` (U3/U4) |
+| 12 | Break → Exposed state | CONFIRMED (window): **U4 duration RESOLVED (fixed 2-turn recovery rule — broken through N/N+1, restored at START N+2)**; **U3 damage-% UNKNOWN** | `configOverrides.exposedDamageMult` (U3 — UNVERIFIED) | `config-override.test.ts` (U3), `stability-recovery.test.ts` (U4 timing) |
 | 13 | Stability recovery — **2-turn delay after break (break Turn N → restored Turn N+2), restore to max (U6 CONFIRMED 2026-09-03)**; Exposed damage-% (U3) stays UNVERIFIED | CONFIRMED (timing) | engine `STABILITY_RECOVERY_DELAY = 2`; `configOverrides.exposedDamageMult` | `stability-recovery.test.ts` |
 | 14 | Panel formula `(Σ flat) × (1 + Σ pct)` | CONFIRMED | — | `integration.test.ts` (panel) |
 | 15 | Weapon ATK at proficiency 60 (53 → 369) | CONFIRMED values; **per-level curve UNVERIFIED** (linear interp) | weapon `atkLvl1/atkLvl60/level` (data) | `integration.test.ts` |
@@ -54,7 +54,7 @@ APL/auto-AI (U12), movement/positioning, **Cover — explicitly deferred** (incl
 |---|---|---|---|
 | Crit multiplier (U1 + U19 CDMG half — RESOLVED) | derived `1 + Crit DMG` from attacker data (e.g. `1.2` at 120%, `1.235` at 123.5%) — **no hardcoded default** | `configOverrides.critMultiplier` (test-only alternative hypothesis) | warning only when an override is active |
 | Exposed damage-% (U3) | 1.0 | `configOverrides.exposedDamageMult` | yes (when dummy can break) |
-| Exposed duration (U4) | 2 | `configOverrides.exposedDurationRounds` | yes (when dummy can break) |
+| Exposed duration (U4 — RESOLVED) | fixed 2-turn broken/recovery window (non-configurable rule) | `configOverrides.exposedDurationRounds` retained solely for alternative-hypothesis testing | yes (when dummy can break; warns it is a CN-beta artifact) |
 | Confectance max (U9 — RESOLVED) | 6 (confirmed) | `configOverrides.confectanceMax` | warn only when overridden |
 | Confectance start (U9 — RESOLVED) | 3 (confirmed) | `configOverrides.confectanceStart` | warn only when overridden |
 | Support Boost I/II value & duration | 0.05/0.10, 1r | `configOverrides.statusOverrides` | yes (note shows the override) |
@@ -92,7 +92,7 @@ Engine-side Exposed mechanics are already covered (`stability.test.ts`, `config-
 1. **Setup** — Qiongjiu Lv.60 (record ATK & CDMG), dummy DEF (recorded) **No Cover**, no weaknesses, no buffs, Dummy Stability = small even number ≥ 2. Use Basic Attack (0.8 × ATK, physical, **stab 2** — known stability damage).
 2. **Measure** — hit repeatedly while stability > 0; the hit that breaks stability still computes at pre-break level (research §3.5) → its damage is `D_pre`. Continue hitting while the dummy is Exposed → `D_post` (repeat ≥ 3×, no crits).
 3. **Derive U3** — `exposedMult ≈ D_post/D_pre` comparing unrounded values (`ceil(pre × m)` pattern fit over several hits).
-4. **Derive U4** — count rounds until damage returns to `D_pre` (window length; beta says 2).
+4. **Derive U4** — ✅ **RESOLVED**: the broken window is the fixed 2-turn recovery (broken through N/N+1, restored at START N+2; U6-validated) — no separate measurement needed.
 5. **Derive U6 (recovery)** — ✅ **already CONFIRMED (2026-09-03)**: stability is restored exactly 2 turns after the break (restored to max, `STABILITY_RECOVERY_DELAY = 2`) — the remaining measurement is purely the **U3 damage-%**.
 6. **Discriminator** — without break (stability higher than total stabbed damage), all hits must equal `D_pre`; the damage step-change must occur exactly at the break hit.
 
