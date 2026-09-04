@@ -6,8 +6,8 @@ import { STABILITY_RECOVERY_DELAY } from "../engine/stability.js";
 
 // Confirmed in-game (2026-09-03, research §3.7 / U6):
 //   break during turn N  →  stability restored on turn N+2 (exactly 2 turns
-//   later), restored to max. The Exposed damage-% (U3) is untouched by this —
-//   it remains configOverrides.exposedDamageMult (UNVERIFIED).
+//   later), restored to max. U3: there is NO universal Exposed damage
+//   multiplier (resolved) — the flag is pure state for this window.
 //
 // Observation via log: ev.exposed is true for hits while the target is broken
 // and false after recovery. Qiongjiu basic deals 2 stability damage; active1/

@@ -173,11 +173,11 @@ Confirmations: (1) Burn weakness multiplier is **×1.10**; (2) folding the weakn
 - Stability is an independent resource w/ its own hit channel, unaffected by ATK/DEF/crit: CONFIRMED.
 - Stability values are per-skill constants (typical 1–3 per hit; e.g. Qiongjiu basic 2, support attack 2): CONFIRMED examples, general table UNKNOWN.
 - Break → "Exposed" with damage-taken increase: PROBABLE; the **increase %** is UNKNOWN (buff id 20).
-- **Break duration — RESOLVED 2026-09-03 (permanent rule)**: the broken/exposed window is fixed by the always-2-turn Stability recovery (U6, current-game validated): break on Turn N → broken through N and N+1 → Stability restored at the START of N+2. The beta `breakRound = 2` value is supporting historical evidence only. Non-configurable. (U4 = duration; U3 = the separate, still-unresolved damage multiplier during the window.)
+- **Break duration — RESOLVED 2026-09-03 (permanent rule)**: the broken/exposed window is fixed by the always-2-turn Stability recovery (U6, current-game validated): break on Turn N → broken through N and N+1 → Stability restored at the START of N+2. The beta `breakRound = 2` value is supporting historical evidence only. Non-configurable. (U4 = duration; **U3 = no universal damage multiplier — resolved; Broken/Exposed is pure state**.)
 - **Stability-cover reduction** (60% when stability > 0 in cover): CONFIRMED as a rule, but it is a **Cover mechanic — explicitly DEFERRED**; it never applies in the MVP because the target is **always No Cover** (the term is 1.0).
-- **Recovery timing — CONFIRMED in-game (2026-09-03)**: stability broken during turn N is **restored on turn N+2** (exactly 2 turns later), restored to max. Model as a **2-turn recovery delay**. The Exposed damage-% (U3) is **not** derived from this observation and remains unverified.
+- **Recovery timing — CONFIRMED in-game (2026-09-03)**: stability broken during turn N is **restored on turn N+2** (exactly 2 turns later), restored to max. Model as a **2-turn recovery delay**. There is **no universal Exposed damage multiplier** (U3 resolved — removed from the engine).
 
-**MVP scope (updated)** — **Stability and Exposed are mandatory mechanics**: stability damage per hit, break at 0, the Exposed damage-taken window (**duration U4 — fixed by the always-2-turn recovery rule, not configurable**; multiplier U3 — unresolved, config), and recovery (U6, fixed 2 turns). Cover-dependent parts of the stability system (the 60% cover reduction) are **deferred** with Cover.
+**MVP scope (updated)** — **Stability and Exposed are mandatory mechanics**: stability damage per hit, break at 0, the Exposed/Broken state (**duration U4 — fixed by the always-2-turn recovery rule, not configurable; NO universal damage multiplier — U3 resolved; Broken/Exposed is pure state**), and recovery (U6, fixed 2 turns). Cover-dependent parts of the stability system (the 60% cover reduction) are **deferred** with Cover.
 
 **Boss-domain scope (U5)** — This simulator is a **No-Cover boss DPS simulator**; Cover is permanently out of scope. Two SEPARATE concepts must not be conflated:
 
@@ -188,7 +188,7 @@ Confirmations: (1) Burn weakness multiplier is **×1.10**; (2) folding the weakn
   - **Broken state:** Stability = 0 → condition false → no reduction, until the confirmed U6 2-turn recovery restores Stability (the reduction returns on recovery).
   - **Fixed Damage:** the passive does not reduce fixed components — consistent with U21 (fixed damage bypasses the normal-chain reduction factors). The fixed-vs-boss-passive interaction is not separately in-game-tested; documented per U21 behavior.
   - **Boss-tooltip secondary effects** (Deep Freeze application, preventing stability restoration during the break, restoring stability after 2 turns) are **outside generic U5 scope** and not implemented.
-  - **U3 remains separate:** this passive establishes no generic Exposed/post-break damage multiplier.
+  - **U3 resolved — no universal Exposed/Broken damage multiplier:** breaking a boss only ends its Stability-dependent passives (`stability > 0` false); any 'bonus vs Broken/Exposed' effect is a CHARACTER-specific mechanic to be modeled in that Doll's data.
 
 **Implementation interpretation**
 
@@ -197,7 +197,7 @@ stab_damage = skill.stabDamage + (2 × #weaknesses exploited)
 target.stability -= stab_damage
 if target.stability <= 0 and not already exposed:
     apply Exposed buff (window duration fixed by the 2-turn recovery rule — U4 resolved, non-configurable)
-    → damage-taken multiplier on target (config, default ??? → must be tested)
+    → no generic damage multiplier (U3 resolved — Broken/Exposed is pure state)
 recovery: 2-turn delay after break (STABILITY_RECOVERY_DELAY = 2, CONFIRMED U6) → stability restored to max + Exposed ends
 ```
 
@@ -205,7 +205,7 @@ recovery: 2-turn delay after break (STABILITY_RECOVERY_DELAY = 2, CONFIRMED U6) 
 
 Attacker stability is irrelevant to the attacker's own damage output (CONFIRMED) → do not feed it into damage; only read the *target's* exposed flag.
 
-**Unknowns** — exposed damage-% (U3, unresolved); per-unit max stability and exact per-skill stability damage; whether stability damage continues against an already-exposed target; AoE/multi-segment stability splitting. (Break window duration U4 is RESOLVED — fixed 2-turn recovery; recovery timing U6 CONFIRMED; the confirmed test restored stability to max — general "partial restore" behavior is not implied.)
+**Unknowns** — per-unit max stability and exact per-skill stability damage; whether stability damage continues against an already-exposed target; AoE/multi-segment stability splitting. (U3 resolved — no universal Exposed damage multiplier; U4 broken window RESOLVED — fixed 2-turn recovery; U6 recovery CONFIRMED; the confirmed test restored stability to max — general "partial restore" behavior is not implied.)
 
 ### 3.8 Stats and stat scaling
 
@@ -341,10 +341,10 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 | # | Mechanic | Confidence | Sim impact | Resolution |
 |---|---|---|---|---|
 | U1 | ~~Crit multiplier: ×1.5 vs ×(1 + 20% panel)~~ → **RESOLVED 2026-09-03**: multiplier = Crit DMG stat (×1.20 at 120%), applied to unrounded damage before final ceil; the 1956/1958 ATK control test discriminates the ordering (see §3.3) | ~~UNCERTAIN~~ → **CONFIRMED (in-game)** | Was up to 33% skew | ✅ resolved by in-game test — engine default `critMultiplier` still 1.5 pending approved engine change (scenario override `configOverrides.critMultiplier` → use 1.2) |
-| U3 | Exposed damage-% after stability break | UNKNOWN | Big skew on break turns | Stability test |
-| U4 | ~~Break duration (beta `breakRound=2`)~~ → **RESOLVED 2026-09-03 (permanent simulator rule, current-game validated via U6)**: the broken/exposed window is governed by the ALWAYS-2-turn Stability recovery — break on Turn N → broken through the remainder of N and throughout N+1 → **Stability restored at the START of Turn N+2**. The beta `breakRound=2` datum is supporting historical evidence, not the primary justification. **U4 = window DURATION; U3 = the (still unresolved) damage MULTIPLIER during that window** — U4 establishes no Exposed damage magnitude. | ~~UNCERTAIN~~ → **CONFIRMED (current-game, via U6; fixed 2-turn recovery, non-configurable)** | Break window length | ✅ resolved — fixed 2-turn broken/recovery window; engine behavior verified by `stability-recovery.test.ts` and `boss-stability.test.ts`; no configurable recovery duration |
+| U3 | ~~Exposed damage-% after stability break~~ → **RESOLVED 2026-09-03 — NO UNIVERSAL MODIFIER**: for the boss DPS simulator there is **no universal Exposed/Broken damage multiplier**. Breaking a boss makes `stability > 0` false, so Stability-dependent boss passives (U5) stop applying; the Broken/Exposed flag itself is **pure state** (U4 window, U5 condition, future character-specific Broken-target effects). Any "bonus vs Broken/Exposed" effect is a CHARACTER mechanic to be modeled in that Doll's data, not a generic multiplier. | ~~UNKNOWN~~ → **RESOLVED (no universal modifier)** | Was big skew on break turns | ✅ closed — generic `exposedDamageMult` removed from the engine; `exposed` remains queryable state (`LogEvent.exposed`) |
+| U4 | ~~Break duration (beta `breakRound=2`)~~ → **RESOLVED 2026-09-03 (permanent simulator rule, current-game validated via U6)**: the broken/exposed window is governed by the ALWAYS-2-turn Stability recovery — break on Turn N → broken through the remainder of N and throughout N+1 → **Stability restored at the START of Turn N+2**. The beta `breakRound=2` datum is supporting historical evidence, not the primary justification. **U4 = window DURATION; U3 = NO universal damage MULTIPLIER (resolved — none exists)** — U4 establishes no Exposed damage magnitude. | ~~UNCERTAIN~~ → **CONFIRMED (current-game, via U6; fixed 2-turn recovery, non-configurable)** | Break window length | ✅ resolved — fixed 2-turn broken/recovery window; engine behavior verified by `stability-recovery.test.ts` and `boss-stability.test.ts`; no configurable recovery duration |
 | U5 | Per-unit max stability & per-skill stab damage values; **boss-specific Stability-conditional passive damage reduction — CONFIRMED & IMPLEMENTED (2026-09-03, in-game boss tooltip: −80% taken while stability > 0 → ×0.20)** | values: CONFIRMED examples / UNKNOWN table; boss-passive mechanic **RESOLVED** (generic, data-driven) | Stability pacing + boss damage | boss-passive: implemented via `DummyConfig.passives` + conditional taken modifier (see §3.7, `boss-stability.test.ts`); per-unit values still from per-skill record / `PotRooms/GFL2_Data` |
-| U6 | ~~Stability recovery timing~~ → **CONFIRMED 2026-09-03**: restored exactly 2 turns after the break (break Turn N → restored Turn N+2), restored to max | ~~UNKNOWN~~ → **CONFIRMED (timing)** | Was long-sim drift | ✅ resolved — engine models the 2-turn delay (`STABILITY_RECOVERY_DELAY = 2`); Exposed damage-% (U3) remains open |
+| U6 | ~~Stability recovery timing~~ → **CONFIRMED 2026-09-03**: restored exactly 2 turns after the break (break Turn N → restored Turn N+2), restored to max | ~~UNKNOWN~~ → **CONFIRMED (timing)** | Was long-sim drift | ✅ resolved — engine models the 2-turn delay (`STABILITY_RECOVERY_DELAY = 2`); no universal Exposed damage multiplier (U3 resolved) |
 | U7 | Buff duration tick point (own turn start vs round end) | UNKNOWN | Buff expiry timing | Buff timer test |
 | U8 | Same-tier status reapply: refresh vs stack | UNKNOWN | Stack math | Reapply test |
 | U9 | ~~Confectance cap & battle-start value~~ → **RESOLVED 2026-09-03**: battle start **3** (no keys), max **6**; +1 per Basic damage event; Pressing the Momentum cost **3** | ~~UNKNOWN~~ → **CONFIRMED (in-game, Qiongjiu no keys)** | Ultimate timing | ✅ resolved — engine defaults start 3 / max 6; gains & cost are data-driven; overrides (confectanceMax/Start) remain for alternative testing. U10 closed (generic Confectance damage bonus disproven — no multiplier) |
@@ -370,7 +370,7 @@ Procedure sketches — all trivially runnable on a stationary target (existing t
 1. **Dummy DEF** — hit a dummy with a known-ATK doll using a known-multiplier basic attack, record non-crit, no-buff damage, solve for DEF: `DEF = ATK×(raw/final − 1)`. If DEF ≈ 0, keep default.
 2. **Crit** — ✅ **RESOLVED (2026-09-03)**: multiplier = Crit DMG stat, **linear** (×1.20 at 120% → Basic crit 635; ×1.235 at 123.5% → crit 654), applied before final ceil, never from the rounded normal hit (see §3.3 dataset and the 1956/1958/123.5% cases). ✅ **Crit-Rate cap + overflow conversion confirmed (passive text)**: effective CR caps at 100%; overflow converts 1:1 only via a character-specific passive. Remainder (U19): CR sources (attachments), any non-1:1 ratio/cap characters, and a numeric damage-level confirmation of the conversion.
 3. **Stability per hit & +2 per weakness** — watch the hexagon bar with known stab-damage skills; confirm per-hit values and weakness bonus; confirm stability damage ignores DEF.
-4. **Exposed state** — U4 window duration **RESOLVED (fixed 2-turn recovery: broken through N/N+1, restored at START of N+2)**; remaining measurement is **only the damage-taken % (U3, still open)** — no magnitude is inferred from the window rule.
+4. **Exposed state** — U4 window duration **RESOLVED (fixed 2-turn recovery: broken through N/N+1, restored at START of N+2)**; **U3 RESOLVED — no universal Exposed damage modifier exists**; nothing further to measure.
 5. **Buff timers** — apply ATK Up, observe expiry relative to caster's next turn vs round end; re-apply same tier → refresh or stack?
 6. **Cooldowns** — ✅ **RESOLVED 2026-09-03**: CD-N waits N full turns after the cast turn (CD-1: cast T1 → unavailable T2 → available T3). Optional follow-up: confirm the same shape on a CD-2 skill.
 7. **Confectance** — ✅ **RESOLVED 2026-09-03**: battle start 3 (no keys), max 6, +1 per damage event, Pressing the Momentum cost 3. Remainder: per-doll gains (other characters), kill bonus. (U10 generic Confectance damage bonus: **DISPROVEN 2026-09-03** — not modeled.)
@@ -391,8 +391,8 @@ Only CONFIRMED values become defaults; everything else is a **config key** (docu
 | Phase counter | `×1.2 / ×0.8 / 1.0` | CONFIRMED |
 | Weakness exploit | factor = `1 + 0.10 × #exploited weaknesses` (+2 stab each) — separate factor, outside the additive DMG bucket, **additive across weaknesses** | CONFIRMED (in-game: Burn ×1.10; Burn + AR ammo ×1.20 — U20 2026-09-03) |
 | Stability-cover reduction (60%, stable + in cover) | **Cover mechanic — DEFERRED**; MVP target always No Cover → term never fires (1.0) | — |
-| Exposed window | `2` rounds, dmg-% `UNKNOWN → config` | U3/U4 |
-| Stability recovery | **2-turn delay after break → restore to max** (`STABILITY_RECOVERY_DELAY = 2`); Exposed damage-% from config (U3 UNVERIFIED) | **CONFIRMED** (timing + restore-to-max, in-game 2026-09-03) |
+| Exposed window | fixed 2-turn broken-state window (U4); **no universal damage multiplier (U3)** | U4 ✅ / U3 ✅ |
+| Stability recovery | **2-turn delay after break → restore to max** (`STABILITY_RECOVERY_DELAY = 2`); no universal Exposed damage multiplier (U3 resolved) | **CONFIRMED** (timing + restore-to-max, in-game 2026-09-03) |
 | Buff duration units | big-rounds; tick at own action (config) | U7 |
 | Bonus grouping | one additive bracket | CONFIRMED |
 | Cooldown model | **wait N full turns after the cast turn** (CD-1: cast N → unavailable N+1 → available N+2) — engine default `cooldownModel = "nextOwnTurnEnd"` | **CONFIRMED** (in-game 2026-09-03, U11) |

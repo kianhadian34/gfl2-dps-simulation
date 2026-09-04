@@ -24,13 +24,13 @@ test("critMultiplier override (alternative hypothesis) changes crit damage", () 
   }
 });
 
-test("exposedDurationRounds + exposedDamageMult overrides change post-break damage (U3/U4)", () => {
-  const soft: Over = { turns: 4, seed: 2, dummy: { stability: 2 }, config: { exposedDamageMult: 1.0, exposedDurationRounds: 2 } };
-  const hard: Over = { turns: 4, seed: 2, dummy: { stability: 2 }, config: { exposedDamageMult: 1.5, exposedDurationRounds: 4 } };
-  const softR = simulateScenario(scenario(soft));
-  const hardR = simulateScenario(scenario(hard));
-  assert.ok(hardR.totals.damage > softR.totals.damage);
-  assert.ok(hardR.log.some((e) => e.exposed === true), "break-round event must be logged as exposed");
+test("exposedDurationRounds override changes the broken-window flag timing (U4 testing knob)", () => {
+  // stability 4: r1 no break, r2 breaks. Default flag persists through r3
+  // (fixed 2-turn rule); an override shortens the flag (recovery still ends it).
+  const dflt = simulateScenario(scenario({ turns: 4, seed: 2, dummy: { stability: 4 } }));
+  const short = simulateScenario(scenario({ turns: 4, seed: 2, dummy: { stability: 4 }, config: { exposedDurationRounds: 1 } }));
+  assert.deepEqual(dflt.log.map((e) => e.exposed), [false, true, true, false]);
+  assert.deepEqual(short.log.map((e) => e.exposed), [false, true, false, false]);
 });
 
 test("confectanceMax + confectanceStart overrides change ultimate timing (U9)", () => {

@@ -162,7 +162,6 @@ export interface ConfigOverrides {
    */
   critMultiplier?: number;
   exposedDurationRounds?: number; // default 2 — CN beta value (U4)
-  exposedDamageMult?: number; // default 1.0 — UNVERIFIED (U3)
   confectanceMax?: number; // default 6 — UNVERIFIED (U9)
   confectanceStart?: number; // default 0 — UNVERIFIED (U9)
   /**

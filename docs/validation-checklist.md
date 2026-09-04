@@ -23,8 +23,8 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 | 9 | Ceiling rounding of final damage; crit applied to the underlying unrounded product (never to the rounded normal hit) | CONFIRMED (in-game 2026-09-03; ATK-1956 case discriminates 634 vs 635) | — | `damage.test.ts`, `crit-validation.test.ts` |
 | 10 | Fixed-damage branch (no DEF, no crit) | PROBABLE | — | `damage.test.ts` |
 | 11 | Stability as separate resource; per-hit fixed stability damage | CONFIRMED — **never alters damage on a No-Cover target** (in-game Burn test had 65/65 stability; formula matched with no stability term) | dummy `stability`, skill `stabDamage` (data) | `stability.test.ts` |
-| 12 | Break → Exposed state | CONFIRMED (window): **U4 duration RESOLVED (fixed 2-turn recovery rule — broken through N/N+1, restored at START N+2)**; **U3 damage-% UNKNOWN** | `configOverrides.exposedDamageMult` (U3 — UNVERIFIED) | `config-override.test.ts` (U3), `stability-recovery.test.ts` (U4 timing) |
-| 13 | Stability recovery — **2-turn delay after break (break Turn N → restored Turn N+2), restore to max (U6 CONFIRMED 2026-09-03)**; Exposed damage-% (U3) stays UNVERIFIED | CONFIRMED (timing) | engine `STABILITY_RECOVERY_DELAY = 2`; `configOverrides.exposedDamageMult` | `stability-recovery.test.ts` |
+| 12 | Break → Exposed state | CONFIRMED (window): **U4 duration RESOLVED (fixed 2-turn recovery rule — broken through N/N+1, restored at START N+2)**; **U3 RESOLVED — no universal Exposed damage multiplier** | `configOverrides.exposedDurationRounds` (U4 testing knob only) | `config-override.test.ts`, `stability-recovery.test.ts` (U4 timing), `stability.test.ts` (U3 no-multiplier) |
+| 13 | Stability recovery — **2-turn delay after break (break Turn N → restored Turn N+2), restore to max (U6 CONFIRMED 2026-09-03)**; no universal Exposed damage multiplier (U3 resolved) | CONFIRMED (timing) | engine `STABILITY_RECOVERY_DELAY = 2` | `stability-recovery.test.ts` |
 | 14 | Panel formula `(Σ flat) × (1 + Σ pct)` | CONFIRMED | — | `integration.test.ts` (panel) |
 | 15 | Weapon ATK at proficiency 60 (53 → 369) | CONFIRMED values; **per-level curve UNVERIFIED** (linear interp) | weapon `atkLvl1/atkLvl60/level` (data) | `integration.test.ts` |
 | 16 | Buff/debuff statuses, durations in rounds | CONFIRMED (existence); **U7 tick point UNKNOWN, U8 refresh-vs-stack UNKNOWN** | `configOverrides.statusOverrides.<id>.tickAt` / `.durationRounds` | `config-override.test.ts` (U7, duration) |
@@ -42,7 +42,7 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 | 28 | Duration cap: 1–7 turns, 8+ rejected (never clamped) | validation rule | `turns` (validated) | `validation-cap.test.ts` |
 | 29 | Combat log reproduces every action vs an in-game test | engine guarantee | — | `integration.test.ts` (attackerAtk/targetDef/bracket), `--log` |
 | 30 | Fixed Damage (U21) — **post-chain, independent ceil**: `ceil(normalChain) + ceil(fixed)`; bypasses DEF / damage-buff bracket / phase / weakness / reduction / crit | **CONFIRMED (in-game: Overburn 196 = ceil(10% × 1958 ATK), immune to Burn weakness and +20% No-Cover buff)**; DEF/crit/phase/reduction bypass SOURCE-SUPPORTED (untested in-game) | absolute `SkillDef.fixedDamage` (percentOfAtk data model deferred) | `damage.test.ts`, `fixed-damage-validation.test.ts` |
-| 31 | No-Cover Stability behavior (U5 boss-domain) — **no universal No-Cover stability damage reduction** (Blaze Master 65/65 evidence; generic rule is Cover-gated and out of scope); **boss-specific stability-conditional passives IN SCOPE and implemented**: confirmed boss −80% taken while stability > 0 → ×0.20; inactive at Stability = 0; pre-hit break evaluation; reduction returns on U6 recovery; fixed damage bypasses it (U21) | CONFIRMED (in-game boss passive) / implemented generically via `DummyConfig.passives` (no boss IDs) | `DummyConfig.passives` + `configOverrides.exposedDamageMult` (U3 — UNVERIFIED) | `boss-stability.test.ts`, `stability.test.ts` (U5 locks), `stability-recovery.test.ts` |
+| 31 | No-Cover Stability behavior (U5 boss-domain) — **no universal No-Cover stability damage reduction** (Blaze Master 65/65 evidence; generic rule is Cover-gated and out of scope); **boss-specific stability-conditional passives IN SCOPE and implemented**: confirmed boss −80% taken while stability > 0 → ×0.20; inactive at Stability = 0; pre-hit break evaluation; reduction returns on U6 recovery; fixed damage bypasses it (U21); no universal Exposed multiplier (U3 resolved) | CONFIRMED (in-game boss passive) / implemented generically via `DummyConfig.passives` (no boss IDs) | `DummyConfig.passives` (U5) | `boss-stability.test.ts`, `stability.test.ts`, `stability-recovery.test.ts` |
 
 ## 2. NOT IMPLEMENTED (deliberately out of MVP scope)
 
@@ -53,7 +53,7 @@ APL/auto-AI (U12), movement/positioning, **Cover — explicitly deferred** (incl
 | Value | Default | Override location | Warning surfaced |
 |---|---|---|---|
 | Crit multiplier (U1 + U19 CDMG half — RESOLVED) | derived `1 + Crit DMG` from attacker data (e.g. `1.2` at 120%, `1.235` at 123.5%) — **no hardcoded default** | `configOverrides.critMultiplier` (test-only alternative hypothesis) | warning only when an override is active |
-| Exposed damage-% (U3) | 1.0 | `configOverrides.exposedDamageMult` | yes (when dummy can break) |
+| Exposed multiplier (U3 — RESOLVED) | **none** — no universal Exposed/Broken damage modifier exists | removed from the engine (generic `exposedDamageMult` deleted); `exposed` remains queryable state | — |
 | Exposed duration (U4 — RESOLVED) | fixed 2-turn broken/recovery window (non-configurable rule) | `configOverrides.exposedDurationRounds` retained solely for alternative-hypothesis testing | yes (when dummy can break; warns it is a CN-beta artifact) |
 | Confectance max (U9 — RESOLVED) | 6 (confirmed) | `configOverrides.confectanceMax` | warn only when overridden |
 | Confectance start (U9 — RESOLVED) | 3 (confirmed) | `configOverrides.confectanceStart` | warn only when overridden |
@@ -85,15 +85,10 @@ Every damaging `LogEvent` records: `round`, `turn`, `unit`, `action`, `attackerA
 - CLI: 7-turn example and 4-turn rotation walkthrough verified by hand (see report).
 - 8+ turns rejected with a clear error message (CLI + engine tests).
 
-## 7. Next smallest test — Exposed behavior (pins U3 / U4 / U6)
+## 7. Exposed/Broken behavior — RESOLVED (U3 / U4 / U6)
 
-Engine-side Exposed mechanics are already covered (`stability.test.ts`, `config-override.test.ts` U3/U4: break → exposed flag, `exposedDamageMult` and `exposedDurationRounds` change post-break damage). What is still UNVERIFIED are the in-game **numbers**. The next smallest validation test (in-game, same methodology as the confirmed crit test):
+All three Exposed-related uncertainties are resolved:
 
-1. **Setup** — Qiongjiu Lv.60 (record ATK & CDMG), dummy DEF (recorded) **No Cover**, no weaknesses, no buffs, Dummy Stability = small even number ≥ 2. Use Basic Attack (0.8 × ATK, physical, **stab 2** — known stability damage).
-2. **Measure** — hit repeatedly while stability > 0; the hit that breaks stability still computes at pre-break level (research §3.5) → its damage is `D_pre`. Continue hitting while the dummy is Exposed → `D_post` (repeat ≥ 3×, no crits).
-3. **Derive U3** — `exposedMult ≈ D_post/D_pre` comparing unrounded values (`ceil(pre × m)` pattern fit over several hits).
-4. **Derive U4** — ✅ **RESOLVED**: the broken window is the fixed 2-turn recovery (broken through N/N+1, restored at START N+2; U6-validated) — no separate measurement needed.
-5. **Derive U6 (recovery)** — ✅ **already CONFIRMED (2026-09-03)**: stability is restored exactly 2 turns after the break (restored to max, `STABILITY_RECOVERY_DELAY = 2`) — the remaining measurement is purely the **U3 damage-%**.
-6. **Discriminator** — without break (stability higher than total stabbed damage), all hits must equal `D_pre`; the damage step-change must occur exactly at the break hit.
-
-Result feeds `configOverrides.exposedDamageMult` / `exposedDurationRounds`, then a regression suite mirrors the crit one.
+- **U4 (window duration)** — fixed 2-turn broken window (broken through N/N+1, restored at START N+2; U6-validated). `stability-recovery.test.ts`.
+- **U6 (recovery)** — confirmed (2026-09-03): restored exactly 2 turns after the break, restored to max. `stability-recovery.test.ts`, `boss-stability.test.ts`.
+- **U3 (damage modifier)** — **no universal Exposed/Broken damage multiplier exists**; the generic `exposedDamageMult` was removed from the engine. A Broken target with no character-specific Broken-target effect takes normal damage (`stability.test.ts` "U3 resolved…"). Any future "bonus vs Broken/Exposed" is a CHARACTER-specific mechanic modeled in that Doll's data.

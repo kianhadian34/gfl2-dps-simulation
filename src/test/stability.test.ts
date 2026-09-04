@@ -25,19 +25,21 @@ test("a dummy with stability 0 never breaks (no invented collapsed-at-start sema
   assert.ok(r.log.every((e) => e.exposed === false));
 });
 
-test("exposedDamageMult config raises damage after the break", () => {
-  const base = { turns: 4, dummy: { stability: 2 } }; // breaks on round 1
-  const a = simulateScenario(scenario({ ...base, config: { exposedDamageMult: 1.0 } }));
-  const b = simulateScenario(scenario({ ...base, config: { exposedDamageMult: 1.2 } }));
-  assert.equal(a.seed, b.seed);
-  assert.ok(b.totals.damage > a.totals.damage, "higher exposed multiplier must increase post-break damage");
+test("U4: exposedDurationRounds override shortens the broken-window flag (testing knob)", () => {
+  // stability 4: r1 no break, r2 breaks. Default 2 keeps the exposed flag through r3
+  // (fixed 2-turn rule); an override of 1 clears it at the end of the break round.
+  // stability restores at the START of r4 (recovery), and r4 does not re-break.
+  const dflt = simulateScenario(scenario({ turns: 4, seed: 2, dummy: { stability: 4 } }));
+  const short = simulateScenario(scenario({ turns: 4, seed: 2, dummy: { stability: 4 }, config: { exposedDurationRounds: 1 } }));
+  assert.deepEqual(dflt.log.map((e) => e.exposed), [false, true, true, false]);
+  assert.deepEqual(short.log.map((e) => e.exposed), [false, true, false, false]);
 });
 
-test("warnings only mention Exposed values when the dummy can actually break", () => {
-  const stable = simulateScenario(scenario({ turns: 3, dummy: { stability: 5 } }));
-  const unstable = simulateScenario(scenario({ turns: 3 }));
-  assert.ok(stable.warnings.some((w) => w.includes("exposed")));
-  assert.ok(!unstable.warnings.some((w) => w.includes("exposed")));
+test("warnings mention the broken-window knob only when it is overridden", () => {
+  const dflt = simulateScenario(scenario({ turns: 3, dummy: { stability: 5 } }));
+  const overridden = simulateScenario(scenario({ turns: 3, dummy: { stability: 5 }, config: { exposedDurationRounds: 3 } }));
+  assert.ok(!dflt.warnings.some((w) => w.includes("exposed")));
+  assert.ok(overridden.warnings.some((w) => w.includes("exposed")));
 });
 
 test("No-Cover: Stability > 0 never reduces damage (U5 boss-domain — pure resource)", () => {
@@ -55,19 +57,16 @@ test("No-Cover: Stability > 0 never reduces damage (U5 boss-domain — pure reso
   );
 });
 
-test("No-Cover: a stability-broken target gets no generic multiplier by default (U3 stays config-gated)", () => {
-  // stability 2 breaks on round 1 (exposed on rounds 2-5); stability 9 never breaks.
-  // With the default exposedDamageMult = 1.0 there is no invented Exposed/Broken
-  // damage bonus — the broken run deals identical damage to the intact run.
+test("U3 resolved: no universal Exposed damage multiplier — Broken targets take normal damage", () => {
+  // stability 2 breaks on round 1; stability 9 never breaks; stability 0 is broken from the start.
+  // With no generic Exposed multiplier, all three runs deal identical damage.
   const broken = simulateScenario(scenario({ turns: 5, seed: 5, rotation: ["basic"], dummy: { stability: 2 } }));
   const intact = simulateScenario(scenario({ turns: 5, seed: 5, rotation: ["basic"], dummy: { stability: 9 } }));
+  const zeroFromStart = simulateScenario(scenario({ turns: 5, seed: 5, rotation: ["basic"], dummy: { stability: 0 } }));
   assert.ok(broken.log.some((e) => e.exposed === true), "break must occur");
-  assert.deepEqual(
-    broken.log.map((e) => e.finalDamage),
-    intact.log.map((e) => e.finalDamage),
-  );
-  assert.deepEqual(
-    broken.log.map((e) => e.reductionMult),
-    intact.log.map((e) => e.reductionMult),
-  );
+  const dmg = (r: ReturnType<typeof simulateScenario>) => r.log.map((e) => e.finalDamage);
+  const red = (r: ReturnType<typeof simulateScenario>) => r.log.map((e) => e.reductionMult);
+  assert.deepEqual(dmg(broken), dmg(intact));
+  assert.deepEqual(dmg(zeroFromStart), dmg(intact));
+  assert.deepEqual(red(broken), red(intact));
 });

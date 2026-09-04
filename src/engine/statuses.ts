@@ -74,7 +74,7 @@ export function additiveTakenBonus(unit: UnitState, statusRegistry: Map<string, 
   return sum;
 }
 
-/** Multiplicative taken modifiers (e.g. Exposed damage bonus from config) or reductions. */
+/** Multiplicative taken modifiers (e.g. boss Stability passives, U5) or reductions. */
 export function multiplicativeTakenMods(
   unit: UnitState,
   statusRegistry: Map<string, EffectiveStatusDef>,

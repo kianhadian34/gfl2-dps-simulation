@@ -137,16 +137,16 @@ Timing: every status carries `tickAt`: `ownActionEnd | roundEnd | ownTurnStart` 
 
 ```json
 {
-  "id": "exposed",
-  "name": "Exposed",
+  "id": "broken_state",
+  "name": "Broken / Exposed",
   "category": "state",
   "tickAt": "roundEnd", "purgeable": false,
-  "effect": { "kind": "damage_modifier", "multiplicative": "@config.exposedDamageMult" },
+  "effect": null,
   "suppresses": ["stabilityReduction"]
 }
 ```
 
-`exposed`: duration fixed by the always-2-turn recovery rule (research U4 — non-configurable), damage multiplier from config (U3, unresolved). DoT statuses (burn/acid) use `{ "kind": "fixed_damage", "percentOfAtk": 0.10, "tickAt": "actionEnd" }`.
+`broken_state`/Exposed: pure state — duration fixed by the always-2-turn recovery rule (research U4 — non-configurable), **no damage effect (U3 resolved — no universal Exposed multiplier)**. DoT statuses (burn/acid) use `{ "kind": "fixed_damage", "percentOfAtk": 0.10, "tickAt": "actionEnd" }`.
 
 ## 7. Dummy (handoff §4)
 
@@ -186,7 +186,6 @@ All fields user-configurable except `cover` (always `"none"` in MVP). Stability 
   "configOverrides": {            // research U-items: every engine default is overridable
     "critMultiplier": 1.5,
     "exposedDuration": 2,
-    "exposedDamageMult": null,    // null = use data-dump value once verified; for MVP runs: set explicitly
     "confectanceMax": null, "confectanceStart": null,
     "cooldownModel": "endOfOwnTurn",              // U11: endOfOwnTurn | nextOwnTurnEnd
     "statusOverrides": {                          // U7/U8 + unverified status values
@@ -238,7 +237,7 @@ All fields user-configurable except `cover` (always `"none"` in MVP). Stability 
     { "source": "passive", "damage": 707 }
   ],
   "summary": ["Turn 4 ... finalDamage 1842"],   // human-readable lines derived from the log
-  "warnings": ["configOverrides.exposedDamageMult unset → Exposed damage bonus = default 0 (U3 pending in-game test)"]
+  "warnings": ["confectanceMax = 6 — UNVERIFIED default (research U9)"]
 }
 ```
 
@@ -275,4 +274,4 @@ All fields user-configurable except `cover` (always `"none"` in MVP). Stability 
 
 - Schemas are described here as JSON because game data should ship as JSON files (data-driven, handoff §5). The engine may instantiate typed classes (e.g. TypeScript interfaces) matching these shapes — no behavioral logic lives in the data layer.
 - Additions for new characters must be **data-only**: a new character is 3 JSON files (character, weapon, skills/passive/keys) + status/effect definitions if it introduces new effects. A genuinely new effect kind is the only case that touches the engine (`effects` module), and it must be added with a test (handoff §17).
-- Every UNKNOWN-sensitive field (`exposedDamageMult`, `confectanceMax`, `confectanceStart`, `critMultiplier`…) is expected to be pinned by the in-game test plan (`docs/research.md` §5) before data packs ship for real validation runs.
+- Every UNKNOWN-sensitive field (`confectanceMax`, `confectanceStart`, `critMultiplier`…) is expected to be pinned by the in-game test plan (`docs/research.md` §5) before data packs ship for real validation runs.

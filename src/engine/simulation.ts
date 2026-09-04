@@ -157,9 +157,9 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   const targetMods = targetPassiveTakenMods(dummy); // U5 boss/target stability-conditional passives
   const addTaken = additiveTakenBonus(dummy, state.statusRegistry) + targetMods.additive;
   const { mult, red } = multiplicativeTakenMods(dummy, state.statusRegistry);
-  const exposedMult = dummy.exposed ? state.config.exposedDamageMult : 1; // U3 config
   // no stability-cover reduction: dummy has no cover (Cover permanently out of scope)
-  const reductionMult = mult * red * exposedMult * targetMods.multiplicative;
+  // U3: NO universal Exposed damage multiplier — the reduction chain contains none.
+  const reductionMult = mult * red * targetMods.multiplicative;
   // Confirmed rule (U1 + U19): crit multiplier = 1 + attacker Crit DMG, where Crit DMG
   // includes any passive overflow conversion; effective Crit Rate caps at 100%.
   // configOverrides.critMultiplier is a test-only alternative hypothesis.
@@ -350,11 +350,8 @@ function collectWarnings(state: SimulationState): void {
   if (c.confectanceStart !== d.confectanceStart) {
     warn.add(`confectanceStart = ${c.confectanceStart} — non-confirmed override (confirmed in-game: 3, U9)`);
   }
-  if (c.exposedDamageMult === d.exposedDamageMult && state.dummy.maxStability > 0) {
-    warn.add(`exposedDamageMult=${d.exposedDamageMult} is an UNVERIFIED model default (research U3) — affects post-break damage`);
-  }
-  if (state.dummy.maxStability > 0) {
-    warn.add(`exposedDurationRounds=${c.exposedDurationRounds} is a CN-beta value (research U4)`);
+  if (c.exposedDurationRounds !== d.exposedDurationRounds && state.dummy.maxStability > 0) {
+    warn.add(`exposedDurationRounds = ${c.exposedDurationRounds} — non-confirmed alternative (fixed 2-turn broken window rule, U4/U6)`);
   }
   if (c.critMultiplier !== null) {
     // Confirmed rule: crit multiplier = 1 + Crit DMG (U1 + U19 CDMG half resolved).

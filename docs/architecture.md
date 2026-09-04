@@ -34,7 +34,7 @@ Status: proposal, awaiting approval. Follows handoff §19–§21: accuracy-first
 ```
 
 - **Game Data** — static library of characters, weapons, skills, effects, statuses, keys (versioned JSON).
-- **Scenario** — one run: team selection (+builds: weapon, keys, calibration), dummy config, turn count, APL config, RNG seed, config overrides (e.g. `exposedDamageMult`).
+- **Scenario** — one run: team selection (+builds: weapon, keys, calibration), dummy config, turn count, APL config, RNG seed, config overrides (e.g. `exposedDurationRounds`).
 - **Combat Engine** — runs the sim; emits a structured combat log + results. No formatting, no I/O (other than reading its inputs).
 - **Simulation API** — thin facade: `simulate(scenario, gameData) → results`. CLI (`gfl2sim simulate scenario.json`) is a 20-line wrapper.
 - **Web UI** — deferred to handoff Phase 7; never contains calculations.
@@ -112,7 +112,7 @@ fixed      = ceil(absolute fixed component)                  (U21: added POST-ch
 total      = normalChainFinal + fixed                        (total game damage = ceil(normal) + ceil(fixed))
 ```
 
-Uncertain entries (U1, U2, U3…) are read from scenario config, not hardcoded. Modifier order within the pipeline is grouping-based (per research), so the engine documents the group order and does not claim a beta-era written order.
+Uncertain entries (U4, U7, U8, U13, U14, U15…) are read from scenario config, not hardcoded; resolved unknowns are invariants (e.g. U3 — no universal Exposed multiplier). Modifier order within the pipeline is grouping-based (per research), so the engine documents the group order and does not claim a beta-era written order.
 
 ---
 
@@ -178,7 +178,7 @@ Results aggregate from the log (never recomputed): total damage, damage/full-tea
 
 - `Scenario.seed` → engine RNG. Test suite asserts byte-identical logs for identical inputs (golden tests).
 - Validation tests mirror handoff §17: fixed character/weapon/dummy configs with expected damage/stability values; expected numbers come **only** from in-game observation or confirmed formulas (`docs/research.md` §6) — SQLite-style fixture table. Where a value is UNKNOWN, tests assert the config slot is honored, not an invented number.
-- Uncertainty-driven tests: a "config override" test per U-item proving the engine obeys the override (e.g. `exposedDamageMult` changes break-turn damage exactly).
+- Uncertainty-driven tests: a "config override" test per U-item proving the engine obeys the override (e.g. `exposedDurationRounds` changes the broken-window flag timing exactly).
 
 ---
 

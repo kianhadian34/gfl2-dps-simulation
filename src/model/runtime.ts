@@ -4,7 +4,6 @@ export interface ResolvedConfig {
   /** null = derive from the attacker's Crit DMG stat (1 + critDmg, confirmed U1/U19); number = test-only alternative. */
   critMultiplier: number | null;
   exposedDurationRounds: number;
-  exposedDamageMult: number;
   confectanceMax: number;
   confectanceStart: number;
   statusOverrides: Record<string, StatusOverride>;

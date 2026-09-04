@@ -7,8 +7,10 @@ import type { SimulationState, UnitState } from "./state.js";
  * Confirmed recovery rule (in-game 2026-09-03, research §3.7 / U6):
  *   stability breaks during turn N  →  restored at the start of turn N+2
  * (exactly 2 full rounds later), restoring stability to max.
- * The Exposed damage-% (U3) is NOT derived from this observation — it remains
- * a config value (exposedDamageMult).
+ * The Exposed/Broken state is a pure STATE: there is NO generic Exposed damage
+ * multiplier (U3 resolved — no universal modifier); it exists so Stability-
+ * dependent boss passives can stop applying at stability 0 and future
+ * character-specific Broken-target effects can condition on it.
  *
  * Expose triggers only on a real transition (stability > 0 → 0). A dummy
  * configured with stability 0 from the start never "breaks" — no invented
