@@ -185,7 +185,6 @@ All fields user-configurable except `cover` (always `"none"` in MVP). Stability 
   },
   "configOverrides": {            // research U-items: every engine default is overridable
     "critMultiplier": 1.5,
-    "glanceChance": 0,
     "exposedDuration": 2,
     "exposedDamageMult": null,    // null = use data-dump value once verified; for MVP runs: set explicitly
     "confectanceMax": null, "confectanceStart": null,
@@ -214,7 +213,7 @@ All fields user-configurable except `cover` (always `"none"` in MVP). Stability 
   "target": "training_dummy",
   "baseDamage": 1200, "mitigatedDamage": 1100, "critical": true, "critMultiplier": 1.5,
   "weaknessExploited": ["heavy_ammo"], "phase": 1.0,
-  "bonusBracket": 1.2, "reduction": 1.0, "glancing": false,
+  "bonusBracket": 1.2, "reduction": 1.0,
   "stabilityDamage": 4, "targetStabilityAfter": 0, "exposed": true,
   "finalDamage": 1842,
   "confectance": { "before": 4, "after": 1, "cost": 3 },
@@ -276,4 +275,4 @@ All fields user-configurable except `cover` (always `"none"` in MVP). Stability 
 
 - Schemas are described here as JSON because game data should ship as JSON files (data-driven, handoff §5). The engine may instantiate typed classes (e.g. TypeScript interfaces) matching these shapes — no behavioral logic lives in the data layer.
 - Additions for new characters must be **data-only**: a new character is 3 JSON files (character, weapon, skills/passive/keys) + status/effect definitions if it introduces new effects. A genuinely new effect kind is the only case that touches the engine (`effects` module), and it must be added with a test (handoff §17).
-- Every UNKNOWN-sensitive field (`exposedDamageMult`, `confectanceMax`, `confectanceStart`, `glanceChance`, `critMultiplier`…) is expected to be pinned by the in-game test plan (`docs/research.md` §5) before data packs ship for real validation runs.
+- Every UNKNOWN-sensitive field (`exposedDamageMult`, `confectanceMax`, `confectanceStart`, `critMultiplier`…) is expected to be pinned by the in-game test plan (`docs/research.md` §5) before data packs ship for real validation runs.

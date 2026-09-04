@@ -12,14 +12,14 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 
 | # | Mechanic | Status | Model knob (overrides) | Where tested |
 |---|---|---|---|---|
-| 1 | Damage pipeline: `raw → ATK/(1+DEF/ATK) → (1+Σ additive) → phase → weakness → reductions → crit → ceil → glance` | CONFIRMED (formula reproduced: 1213 ATK, 194 DEF, ×1.1 → 1151) | — | `src/test/damage.test.ts` |
+| 1 | Damage pipeline: `raw → ATK/(1+DEF/ATK) → (1+Σ additive) → phase → weakness → reductions → crit → ceil` | CONFIRMED (formula reproduced: 1213 ATK, 194 DEF, ×1.1 → 1151) | — | `src/test/damage.test.ts` |
 | 2 | Skill multiplier as % of final ATK | CONFIRMED (Qiongjiu 0.8/1.5/1.1/0.9) | — (data) | `src/data/qiongjiu.ts`, integration test |
 | 3 | One additive bracket for all damage bonuses | CONFIRMED | — | `damage.test.ts` (1.35 bracket) |
 | 4 | Defense term `ATK/(1+DEF/ATK)` | CONFIRMED | dummy `defense` | `damage.test.ts`, `stability.test.ts` |
 | 5 | Phase countering ×1.2 / ×0.8 | CONFIRMED rule; **wheel relations UNVERIFIED** | not configurable (resolves neutral 1.0 + warning) | `damage.test.ts` (multipliers), warning in every run |
 | 6 | Weakness exploit: factor = **1 + 0.10 × #exploited weaknesses** (+2 stab each) — **additive across weaknesses**, separate factor (NOT in the additive DMG bucket); Burn ×1.10 → 1091 and **Burn + AR ammo ×1.20 → 1191 confirmed in-game; multiplicative ×1.21 ruled out (U20 2026-09-03)** | CONFIRMED (in-game) | dummy `weaknesses` (count-driven; V6 no-cover +10% not yet in character data — passed explicitly in regression) | `damage.test.ts`, `stability.test.ts`, `weakness-validation.test.ts` |
 | 7 | Critical multiplier = attacker's Crit DMG stat, **linear**: ×1.20 at 120% CDMG (Basic crit 635), ×1.235 at 123.5% (crit 654); applied to **unrounded** damage before final ceil. **Crit Rate: 100% effective cap; overflow converts 1:1 only via character-specific passive** ("every 1% of overflow critical rate is converted to 1% critical damage" — in-game passive text, 2026-09-03) | **CONFIRMED (in-game — U1 + U19 CDMG half; CR cap/overflow CONFIRMED via passive text)**: engine derives `1 + critDmg`; overflow via data-driven `excess_crit_conversion` passive (no global rule, no character-id logic) | `configOverrides.critMultiplier` = test-only alternative hypothesis; conversion params live in character passive data | `crit-validation.test.ts`, `critdmg-validation.test.ts`, `crit-overflow-validation.test.ts`; U19 remainder (CR sources, exact per-character params, numeric damage confirmation) OPEN |
-| 8 | Glancing = ceil(final × 0.1) | PROBABLE; **U2 trigger UNVERIFIED** | `configOverrides.glanceChance` | `config-override.test.ts` (U2) |
+| 8 | Glancing (擦伤) — **REMOVED 2026-09-03 (U2, beta artifact)** — no longer a modeled mechanic | REMOVED (tombstone) | — | research.md §3.6 / register tombstone |
 | 9 | Ceiling rounding of final damage; crit applied to the underlying unrounded product (never to the rounded normal hit) | CONFIRMED (in-game 2026-09-03; ATK-1956 case discriminates 634 vs 635) | — | `damage.test.ts`, `crit-validation.test.ts` |
 | 10 | Fixed-damage branch (no DEF, no crit) | PROBABLE | — | `damage.test.ts` |
 | 11 | Stability as separate resource; per-hit fixed stability damage | CONFIRMED — **never alters damage on a No-Cover target** (in-game Burn test had 65/65 stability; formula matched with no stability term) | dummy `stability`, skill `stabDamage` (data) | `stability.test.ts` |
@@ -45,14 +45,13 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 
 ## 2. NOT IMPLEMENTED (deliberately out of MVP scope)
 
-APL/auto-AI (U12), movement/positioning, **Cover — explicitly deferred** (incl. cover damage reductions 35/30/25/20% and the stability-cover 60% reduction), maps, enemy turns/AI, phase-wheel table (U15-adjacent), DoT damage effects for unverified elements (U16), extra actions, status purge/removal, glancing trigger rules (beyond the chance knob), durations > 7 turns.
+APL/auto-AI (U12), movement/positioning, **Cover — explicitly deferred** (incl. cover damage reductions 35/30/25/20% and the stability-cover 60% reduction), maps, enemy turns/AI, phase-wheel table (U15-adjacent), DoT damage effects for unverified elements (U16), extra actions, status purge/removal, durations > 7 turns.
 
 ## 3. Every UNVERIFIED value that affects Qiongjiu's simulation — override coverage
 
 | Value | Default | Override location | Warning surfaced |
 |---|---|---|---|
 | Crit multiplier (U1 + U19 CDMG half — RESOLVED) | derived `1 + Crit DMG` from attacker data (e.g. `1.2` at 120%, `1.235` at 123.5%) — **no hardcoded default** | `configOverrides.critMultiplier` (test-only alternative hypothesis) | warning only when an override is active |
-| Glance chance (U2) | 0 | `configOverrides.glanceChance` | yes |
 | Exposed damage-% (U3) | 1.0 | `configOverrides.exposedDamageMult` | yes (when dummy can break) |
 | Exposed duration (U4) | 2 | `configOverrides.exposedDurationRounds` | yes (when dummy can break) |
 | Confectance max (U9 — RESOLVED) | 6 (confirmed) | `configOverrides.confectanceMax` | warn only when overridden |
@@ -77,11 +76,11 @@ Turn 4 → qiongjiu_pressing_momentum  (Ultimate — Confectance 6 ≥ cost 3)
 
 ## 5. Combat-log detail guarantee (per-action in-game comparison)
 
-Every damaging `LogEvent` records: `round`, `turn`, `unit`, `action`, `attackerAtk`, `targetDef`, `baseDamage` (ATK × multiplier), `mitigatedDamage`, `additiveBlock` (`bonusBracket`), `phaseMult`, `weaknessExploited`, `reductionMult`, `glancing`, `critical`/`critMultiplier`, `stabilityDamage`, `targetStabilityAfter`, `exposed`, `finalDamage`, `confectance` before/after/cost, `cooldownAfter`, `statusesApplied`. This is sufficient to recompute any action by hand and diff it against an in-game screenshot/recording.
+Every damaging `LogEvent` records: `round`, `turn`, `unit`, `action`, `attackerAtk`, `targetDef`, `baseDamage` (ATK × multiplier), `mitigatedDamage`, `additiveBlock` (`bonusBracket`), `phaseMult`, `weaknessExploited`, `reductionMult`, `critical`/`critMultiplier`, `stabilityDamage`, `targetStabilityAfter`, `exposed`, `finalDamage`, `confectance` before/after/cost, `cooldownAfter`, `statusesApplied`. This is sufficient to recompute any action by hand and diff it against an in-game screenshot/recording.
 
 ## 6. Validation evidence
 
-- `npm test` → 92/92 pass (prior 87 + 2 added pipeline tests in `damage.test.ts` + 3 `fixed-damage-validation` tests).
+- `npm test` → 90/90 pass (prior 92 − 2 Glancing tests removed).
 - CLI: 7-turn example and 4-turn rotation walkthrough verified by hand (see report).
 - 8+ turns rejected with a clear error message (CLI + engine tests).
 

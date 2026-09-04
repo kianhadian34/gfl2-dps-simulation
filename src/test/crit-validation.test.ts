@@ -29,7 +29,6 @@ function hit(atk: number, crit: boolean, seed = 1) {
     reductionMult: 1,
     critRate: crit ? 1 : 0,
     critMultiplier: CDMG,
-    glanceChance: 0,
     rng: new Rng(seed),
   });
 }

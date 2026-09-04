@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { rollHit } from "../engine/damage.js";
 import { Rng } from "../engine/rng.js";
 
-function hit(over: Partial<{ atk: number; def: number; multiplier: number; fixedDamage: number; additiveBonus: number; phaseMult: number; weaknessMult: number; reductionMult: number; critRate: number; critMultiplier: number; glanceChance: number; seed: number }> = {}) {
-  const o = { atk: 1000, def: 0, multiplier: 1, additiveBonus: 1, phaseMult: 1, weaknessMult: 1, reductionMult: 1, critRate: 0, critMultiplier: 1.2, glanceChance: 0, seed: 1, ...over };
+function hit(over: Partial<{ atk: number; def: number; multiplier: number; fixedDamage: number; additiveBonus: number; phaseMult: number; weaknessMult: number; reductionMult: number; critRate: number; critMultiplier: number; seed: number }> = {}) {
+  const o = { atk: 1000, def: 0, multiplier: 1, additiveBonus: 1, phaseMult: 1, weaknessMult: 1, reductionMult: 1, critRate: 0, critMultiplier: 1.2, seed: 1, ...over };
   return rollHit({
     atk: o.atk,
     def: o.def,
@@ -16,7 +16,6 @@ function hit(over: Partial<{ atk: number; def: number; multiplier: number; fixed
     reductionMult: o.reductionMult,
     critRate: o.critRate,
     critMultiplier: o.critMultiplier,
-    glanceChance: o.glanceChance,
     rng: new Rng(o.seed),
   });
 }
@@ -54,14 +53,6 @@ test("crit multiplies by the Crit DMG multiplier (1 + critDmg)", () => {
   const r = hit({ critRate: 1, critMultiplier: 1.2 });
   assert.equal(r.finalDamage, 1200);
   assert.equal(r.critical, true);
-});
-
-test("final damage is ceiling-rounded before glancing", () => {
-  const r = hit({ atk: 1234 });
-  assert.equal(r.finalDamage, 1234);
-  const g = hit({ atk: 1234, glanceChance: 1 });
-  assert.equal(g.glancing, true);
-  assert.equal(g.finalDamage, 124); // ceil(1234 × 0.1)
 });
 
 test("U21: fixed damage bypasses EVERY normal-chain factor (independent ceil)", () => {

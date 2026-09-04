@@ -48,7 +48,7 @@ Status: proposal, awaiting approval. Follows handoff §19–§21: accuracy-first
 | `state` | `SimulationState` + per-unit `CombatUnitState`; the only mutable world |
 | `turns` | Round/action ordering, per-round counter resets, deterministic order |
 | `actions` | Basic Attack / Active / Ultimate / Passive trigger / Support attack resolution |
-| `damage` | The damage pipeline (§6) incl. crit, defense, weakness, glancing |
+| `damage` | The damage pipeline (§6) incl. crit, defense, weakness |
 | `stability` | Stability damage, break/expose, recovery (**confirmed 2-turn delay after break → restore to max**, research U6) |
 | `effects` | Generic effect engine: stat mods, damage mods, reductions, status apply/remove, resource gain, cooldown change, additional action, conditionals, fixed damage |
 | `cooldowns` | Per-skill cooldown state + decrement timing — **confirmed: wait N full turns after the cast turn** (default `nextOwnTurnEnd`; alternative `endOfOwnTurn` selectable for testing only) |
@@ -108,7 +108,6 @@ weakness   = 1 + 0.10 × (# exploited weaknesses)   (+2 stab per weakness, appli
 reduction  = (1 − stabilityReduction) × (1 − damageReduction)   (stabilityReduction is COVER-deferred → 1.0 in MVP; target always No Cover)
 crit       = rng.roll(effCritRate) ? (1 + effCritDmg) : 1.0   (effCritRate = min(CritRate, 100%); effCritDmg = Crit DMG + passive-driven 1:1 overflow conversion — U19 confirmed; CDMG linear: 1.20@120%, 1.235@123.5%; configOverrides.critMultiplier = test-only alternative)
 final      = ceil( mitigated × bonus × phase × weakness × reduction × crit )
-glancing   = config.glanceChance ? ceil(final × 0.1) : final
 fixed      = ceil(absolute fixed component)                  (U21: added POST-chain with its own ceil — never scaled by the chain; normal path unchanged)
 total      = normalChainFinal + fixed                        (total game damage = ceil(normal) + ceil(fixed))
 ```

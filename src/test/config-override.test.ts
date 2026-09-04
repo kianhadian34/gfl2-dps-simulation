@@ -5,7 +5,7 @@ import { scenario } from "./helpers.js";
 
 // Every UNVERIFIED value that affects Qiongjiu's simulation must be changeable
 // through scenario config alone — no engine edits (docs/research.md §4 items:
-// U1 crit, U2 glance, U3 exposed dmg%, U4 exposed duration, U7 tick point,
+// U1 crit, U3 exposed dmg%, U4 exposed duration, U7 tick point,
 // U8 durations, U9 confectance cap/start, U11 cooldown model).
 
 type Over = Parameters<typeof scenario>[0];
@@ -22,14 +22,6 @@ test("critMultiplier override (alternative hypothesis) changes crit damage", () 
   } else {
     assert.equal(ev2.finalDamage, ev15.finalDamage);
   }
-});
-
-test("glanceChance override introduces glancing hits (U2)", () => {
-  const noGlance = simulateScenario(scenario({ turns: 7, seed: 1, rotation: ["basic"] }));
-  const withGlance = simulateScenario(scenario({ turns: 7, seed: 1, rotation: ["basic"], config: { glanceChance: 1 } }));
-  assert.ok(noGlance.log.every((e) => !e.glancing));
-  assert.ok(withGlance.log.every((e) => e.glancing));
-  assert.ok(withGlance.totals.damage < noGlance.totals.damage);
 });
 
 test("exposedDurationRounds + exposedDamageMult overrides change post-break damage (U3/U4)", () => {

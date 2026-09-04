@@ -15,7 +15,6 @@ export type EffectiveStatusDef = StatusDef & { effectiveDurationRounds?: number 
 
 export const DEFAULT_CONFIG: ResolvedConfig = {
   critMultiplier: null, // derive 1 + attacker Crit DMG (confirmed U1 + U19 CDMG half); no hardcoded default
-  glanceChance: 0, // U2
   exposedDurationRounds: 2, // U4 (CN beta value)
   exposedDamageMult: 1.0, // U3 UNVERIFIED
   confectanceMax: 6, // U9 CONFIRMED 2026-09-03 (in-game, Qiongjiu no keys)
@@ -105,7 +104,6 @@ export function computePanel(def: CharacterDef): { atk: number; hp: number; def:
 
 export function resolveConfig(overrides: ConfigOverrides | undefined): ResolvedConfig {
   return {
-    glanceChance: overrides?.glanceChance ?? DEFAULT_CONFIG.glanceChance,
     exposedDurationRounds: overrides?.exposedDurationRounds ?? DEFAULT_CONFIG.exposedDurationRounds,
     exposedDamageMult: overrides?.exposedDamageMult ?? DEFAULT_CONFIG.exposedDamageMult,
     confectanceMax: overrides?.confectanceMax ?? DEFAULT_CONFIG.confectanceMax,

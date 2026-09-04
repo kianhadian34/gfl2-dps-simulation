@@ -157,7 +157,6 @@ export interface ConfigOverrides {
    * 1 + Crit DMG from the attacker (confirmed in-game, U1 + U19 CDMG half).
    */
   critMultiplier?: number;
-  glanceChance?: number; // default 0 — trigger rule UNVERIFIED (U2)
   exposedDurationRounds?: number; // default 2 — CN beta value (U4)
   exposedDamageMult?: number; // default 1.0 — UNVERIFIED (U3)
   confectanceMax?: number; // default 6 — UNVERIFIED (U9)

@@ -148,7 +148,6 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     reductionMult,
     critRate: crit.critRate,
     critMultiplier: critMult,
-    glanceChance: state.config.glanceChance,
     rng: state.rng,
   });
   // U21: normal chain and fixed component are both final game damage —
@@ -172,7 +171,6 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   ev.phaseMult = phaseMult;
   ev.bonusBracket = 1 + addDealt + addTaken;
   ev.reductionMult = reductionMult;
-  ev.glancing = hit.glancing;
   ev.stabilityDamage = stabAmount;
   ev.targetStabilityAfter = dummy.stability;
   ev.exposed = broke ? true : dummy.exposed;

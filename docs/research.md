@@ -22,7 +22,7 @@ What we know with high confidence, in one paragraph:
 
 1. **Damage pipeline** — `final = ceil( base × defense_ratio × (1 + Σ additive bonuses) × phase × weakness × reductions × crit )`, where `defense_ratio = ATK/(1+DEF/ATK)`, all damage bonuses (self buffs, target vulnerability) are **additive in one bracket** (**no generic Confectance damage bonus — U10 disproven 2026-09-03**), phase countering is ×1.2/×0.8, each exploited weakness is +10% with the factor **additive across weaknesses: `1 + 0.10 × #exploited`** (Burn ×1.10; Burn + AR ammo ×1.20 — U20 confirmed in-game 2026-09-03, see §3.5), and the result is ceiling-rounded. **Crit multiplier = the attacker's Crit DMG stat** (e.g. ×1.20 at 120%), applied to the *unrounded* damage before the final ceiling round (CONFIRMED in-game 2026-09-03 — see §3.3). Reproduced against real in-game numbers (Reddit test: `1213/(1+194/1213) × 1 × 1.1 = 1150.4 → 1151` in game).
 2. **Stability (稳态) is a fully separate resource** from HP: per-hit fixed stability damage (independent of ATK/DEF/crit), break at 0 → "Exposed" state with a damage-taken window; **recovery timing CONFIRMED in-game (2026-09-03): stability is restored exactly 2 turns after the break (break Turn N → restored Turn N+2, back to max)** — see §3.7.
-3. **There are no ACC/EVA stats in GFL2.** Against a stationary, uncovered dummy, attacks always hit; the only hit randomness is "glancing" (擦伤, ×0.1).
+3. **There are no ACC/EVA stats in GFL2.** Against a stationary, uncovered dummy, attacks always hit; there is no miss mechanic and no "Glancing" (擦伤) mechanic in the live formula — a beta-era 擦伤 claim was removed (see §3.6 / U2 tombstone).
 4. **Kit structure is fixed data**: 1 basic attack + 2 actives + 1 ultimate + 1 passive, all with explicit %-of-ATK multipliers. Cooldowns are small integers (0/1/2…). Confectance (导染) is an event-driven resource (e.g. Qiongjiu gains **+1 per damage event**, ultimate costs **3**), **not** a `damage × m` formula.
 5. **Keys (固键)** are 4 tables (fixed/common/expansion/affinity keys), not a strict "3-branch" model.
 6. **Default 1 main action per actor per turn**; basic attack vs skill is an exclusive choice; extra hits come from support/extra actions that do not consume the main action.
@@ -37,7 +37,7 @@ What we know with high confidence, in one paragraph:
 
 | Source | What it provided | Reachability (2026-09-03) |
 |---|---|---|
-| `wiki.biligame.com/gf2/伤害算法` (BWIKI damage algorithm) | Formula structure, additive bonus rule, phase ×1.2/×0.8, crit ×1.5, glancing ×0.1, panel formula, tested numbers | ✅ reachable |
+| `wiki.biligame.com/gf2/伤害算法` (BWIKI damage algorithm) | Formula structure, additive bonus rule, phase ×1.2/×0.8, crit ×1.5, panel formula, tested numbers | ✅ reachable |
 | `wiki.biligame.com/gf2/闪电, /琼玖, /可露凯, /莉塔拉, /罗蕾莱, /武器, /导染指数, /战斗玩法` | Buff/debuff texts, values, durations, stat panels, weapon scaling, cooldown/confectance examples | ✅ reachable (some pages are beta-era, flagged below) |
 | Reddit `r/GirlsFrontline2/comments/1hgw4zn` (via pullpush.io archive) | **In-game reproduction** of the damage formula incl. defense term | ✅ reachable via archive API |
 | `iopwiki.com/wiki/GFL2_Combat`, `/wiki/Qiongjiu`, `/wiki/Common_Keys` | Stability/weakness/cover rules, turns, support attacks, keys taxonomy | ✅ reachable |
@@ -68,7 +68,6 @@ weakness  = 1 + 0.10 × (# exploited weaknesses)          # additive across weak
 reduction = (1 − stability_red) × (1 − dmg_red) × (1 − cover_red)   # dummy: cover_red = 0
 crit      = 1 + critDmg (attacker's Crit DMG stat)          # e.g. ×1.20 at 120% CDMG (CONFIRMED in-game, §3.3)
 final     = ceil( mitigated × bonus × phase × weakness × reduction × crit )   # crit applies to the UNROUNDED product
-glancing  = ceil( final × 0.1 )                             # when a hit is judged glancing (trigger rule UNKNOWN)
 fixed     = ceil( absolute fixed component )                 # U21: post-chain, its own ceil — never scaled by the chain
 final     = normalChainFinal + fixed                         # total game damage
 ```
@@ -154,17 +153,15 @@ Confirmations: (1) Burn weakness multiplier is **×1.10**; (2) folding the weakn
 
 **Unknowns** — partial-match (exploiting only some of a target's weaknesses) is implied by the count-based rule and implemented by counting matched weaknesses, but not separately in-game-tested; simultaneous phase+weakness interaction (independent factors) UNKNOWN until the phase wheel is populated.
 
-### 3.6 Glancing (擦伤)
+### 3.6 Glancing (擦伤) — REMOVED (beta artifact)
 
-**Mechanic** — A hit judged "glancing" deals `ceil(final × 0.1)`.
+**Status** — **REMOVED 2026-09-03 (U2 tombstone).** Glancing is NOT a current-game mechanic for this simulator.
 
-**Source** — `wiki.biligame.com/gf2/伤害算法`.
+**Origin** — a single BWIKI damage-algorithm line ("擦伤时最终伤害 = 向上取整{伤害 × 0.1}") from **一测 / first closed-beta** material (the same beta-era formula image that also carried the superseded crit ×1.5 claim).
 
-**Confidence** — PROBABLE (the 0.1 multiplier); trigger condition/probability **UNKNOWN**.
+**Evidence against** — absent from the established live damage formula (GFL2 Damage Formula Translation: `ATK × Defense × Skill × Crit × Weakness × Damage Buff × Stability/Cover Reduction + Fixed Damage`), from the Reddit live-server formula reproduction, and from IOPWiki; no current-game evidence ever produced a glancing hit in any of our validations; ~two years of gameplay never encountered it.
 
-**Implementation interpretation** — optional config `glancingChance` (default 0 for MVP determinism tests; the dummy has no evasion so glancing should not occur).
-
-**Unknowns** — when glancing triggers, probability, relation to cover/distance.
+**Conclusion** — removed from the engine/config/tests rather than treated as an unresolved live mechanic. The dead `glanceChance` placeholder (default 0, no RNG effect) never affected any default simulation.
 
 ### 3.7 Stability system (稳态)
 
@@ -328,10 +325,11 @@ Level-60 base magnitudes (CONFIRMED, 2024 BWIKI data): Qiongjiu `ATK 119→1224,
 
 Every mechanic that is still uncertain, with impact and resolution path. **None of these should be hardcoded as facts in the engine — all are config defaults pending the in-game test plan (§5).**
 
+**Removed entry (tombstone, NOT an active uncertainty):** U2 — Glancing (擦伤): **REMOVED 2026-09-03**. Originated from 一测/first closed-beta BWIKI material ("擦伤" ⇒ final × 0.1). No current-game evidence; absent from the established live damage formula (GFL2 Damage Formula Translation, Reddit live reproduction, IOPWiki); never observed in any in-game validation; removed from the simulator rather than treated as an unresolved live mechanic. Historical detail preserved in §3.6. **No other U-IDs were renumbered.**
+
 | # | Mechanic | Confidence | Sim impact | Resolution |
 |---|---|---|---|---|
 | U1 | ~~Crit multiplier: ×1.5 vs ×(1 + 20% panel)~~ → **RESOLVED 2026-09-03**: multiplier = Crit DMG stat (×1.20 at 120%), applied to unrounded damage before final ceil; the 1956/1958 ATK control test discriminates the ordering (see §3.3) | ~~UNCERTAIN~~ → **CONFIRMED (in-game)** | Was up to 33% skew | ✅ resolved by in-game test — engine default `critMultiplier` still 1.5 pending approved engine change (scenario override `configOverrides.critMultiplier` → use 1.2) |
-| U2 | Glancing trigger rule & probability | UNKNOWN | Random 0.1x hits | Damage distribution test |
 | U3 | Exposed damage-% after stability break | UNKNOWN | Big skew on break turns | Stability test |
 | U4 | Break duration (beta `breakRound=2`) | UNCERTAIN | Break window length | Stability test |
 | U5 | Per-unit max stability & per-skill stab damage values | CONFIRMED examples / UNKNOWN table | Stability pacing | Per-skill record + data dump parse (`PotRooms/GFL2_Data`) |
@@ -365,7 +363,7 @@ Procedure sketches — all trivially runnable on a stationary target (existing t
 5. **Buff timers** — apply ATK Up, observe expiry relative to caster's next turn vs round end; re-apply same tier → refresh or stack?
 6. **Cooldowns** — ✅ **RESOLVED 2026-09-03**: CD-N waits N full turns after the cast turn (CD-1: cast T1 → unavailable T2 → available T3). Optional follow-up: confirm the same shape on a CD-2 skill.
 7. **Confectance** — ✅ **RESOLVED 2026-09-03**: battle start 3 (no keys), max 6, +1 per damage event, Pressing the Momentum cost 3. Remainder: per-doll gains (other characters), kill bonus. (U10 generic Confectance damage bonus: **DISPROVEN 2026-09-03** — not modeled.)
-8. **Glancing** — damage histogram across many attacks; count 0.1×-style outliers and infer trigger conditions.
+8. **Glancing** — ✅ **REMOVED 2026-09-03** (U2 — beta artifact; see §3.6 tombstone) — not a live mechanic; no in-game test required.
 9. **Auto-battle AI** — record the action sequence of a 4-doll team on auto vs a dummy; compare to `ultimate > active > basic`.
 10. **Per-doll data capture** — for each doll added to the sim: full skill texts (multiplier, type, cd, cost, stab, statuses, keys) from the in-game panel.
 
@@ -381,7 +379,6 @@ Only CONFIRMED values become defaults; everything else is a **config key** (docu
 | Crit multiplier | `1 + Crit DMG stat` (×1.20 at 120%; linear — confirmed at 123.5% → ×1.235), applied to unrounded damage before final ceil | **CONFIRMED in-game** (U1 + U19 CDMG half, 2026-09-03). Engine derives `1 + critDmg` from attacker data (no hardcoded default); `configOverrides.critMultiplier` = test-only alternative |
 | Phase counter | `×1.2 / ×0.8 / 1.0` | CONFIRMED |
 | Weakness exploit | factor = `1 + 0.10 × #exploited weaknesses` (+2 stab each) — separate factor, outside the additive DMG bucket, **additive across weaknesses** | CONFIRMED (in-game: Burn ×1.10; Burn + AR ammo ×1.20 — U20 2026-09-03) |
-| Glancing | `final × 0.1`, chance 0 (off) | PROBABLE/U2 |
 | Stability-cover reduction (60%, stable + in cover) | **Cover mechanic — DEFERRED**; MVP target always No Cover → term never fires (1.0) | — |
 | Exposed window | `2` rounds, dmg-% `UNKNOWN → config` | U3/U4 |
 | Stability recovery | **2-turn delay after break → restore to max** (`STABILITY_RECOVERY_DELAY = 2`); Exposed damage-% from config (U3 UNVERIFIED) | **CONFIRMED** (timing + restore-to-max, in-game 2026-09-03) |
@@ -410,5 +407,5 @@ Only CONFIRMED values become defaults; everything else is a **config key** (docu
 | 属性克制 | Phase countering |
 | 支援攻击 | Action Support |
 | 额外行动 | Extra Action |
-| 擦伤 | Glancing |
+| 擦伤 | Glancing — *(removed beta-era term — see §3.6 / U2 tombstone)* |
 | 大回合 | Big round (player phase + enemy phase) |

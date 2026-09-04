@@ -7,7 +7,7 @@ import type { CharacterDef, Element, Scenario } from "../model/types.js";
 // U21 engine-level (docs/research.md §3.1/§4):
 // - Fixed Damage is an absolute, already-resolved component (SkillDef.fixedDamage).
 // - It bypasses EVERY normal-chain factor (buff bracket, phase, weakness,
-//   reductions, DEF, crit, glance) and is independently ceiled, then ADDED
+//   reductions, DEF, crit) and is independently ceiled, then ADDED
 //   post-chain: finalDamage = ceil(normalChain) + ceil(fixed). The log keeps
 //   the fixed component separately (ev.fixedDamage).
 // - In-game mirror: Overburn = 10% of applier ATK → 1958 × 0.10 = 195.8 → 196,

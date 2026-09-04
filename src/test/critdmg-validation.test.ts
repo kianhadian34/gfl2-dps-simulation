@@ -29,7 +29,6 @@ function basic(critRate: number, cdmg: number): ReturnType<typeof rollHit> {
     reductionMult: 1,
     critRate,
     critMultiplier: cdmg,
-    glanceChance: 0,
     rng: new Rng(1),
   });
 }

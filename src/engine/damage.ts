@@ -3,12 +3,12 @@ import type { Rng } from "./rng.js";
 /**
  * Damage pipeline — the ONLY damage code path (docs/architecture.md §6).
  * Order per docs/research.md §3.1: raw → mitigated (defense) → additive bracket
- * → phase → weakness → reductions → crit → ceil → glancing.
+ * → phase → weakness → reductions → crit → ceil.
  * The multiplicative factors commute algebraically; grouping is what matters.
  *
  * Fixed Damage (U21, docs/research.md §3.1/§4): the absolute fixed component
  * bypasses EVERY normal-chain factor (DEF, crit, additive damage-buff bracket,
- * phase, weakness, reductions, glancing). It is independently ceiled and added
+ * phase, weakness, reductions). It is independently ceiled and added
  * AFTER the normal chain:
  *     finalDamage = ceil(normalChain) + ceil(fixedDamage)
  * Representation: `fixedDamage` is an ALREADY-RESOLVED absolute value supplied
@@ -31,7 +31,6 @@ export interface HitInputs {
   reductionMult: number;
   critRate: number;
   critMultiplier: number;
-  glanceChance: number;
   rng: Rng;
 }
 
@@ -42,10 +41,9 @@ export interface HitResult {
   mitigatedDamage: number;
   /** Independently ceiled Fixed Damage component (0 for normal-only hits). */
   fixedDamage: number;
-  /** Final NORMAL-chain damage (ceiled, crits/glancing applied) — excludes fixedDamage. */
+  /** Final NORMAL-chain damage (ceiled, crits applied) — excludes fixedDamage. */
   finalDamage: number;
   critical: boolean;
-  glancing: boolean;
 }
 
 export function rollHit(i: HitInputs): HitResult {
@@ -58,10 +56,8 @@ export function rollHit(i: HitInputs): HitResult {
   if (critical) dmg *= i.critMultiplier;
   // Guard against float noise before ceil (e.g. 1000 × 1.1 = 1100.0000000000001).
   const rounded = Math.round(dmg * 1e6) / 1e6;
-  let finalDamage = isFixed ? 0 : Math.ceil(rounded);
-  const glancing = !isFixed && i.rng.chance(i.glanceChance);
-  if (glancing) finalDamage = Math.ceil(Math.round(finalDamage * 0.1 * 1e6) / 1e6); // research §3.6
+  const finalDamage = isFixed ? 0 : Math.ceil(rounded);
   // U21: fixed component independent of every normal-chain factor; own ceil.
   const fixedDamage = isFixed ? Math.ceil(Math.round((i.fixedDamage as number) * 1e6) / 1e6) : 0;
-  return { baseDamage: normalRaw, mitigatedDamage: mitigated, fixedDamage, finalDamage, critical, glancing };
+  return { baseDamage: normalRaw, mitigatedDamage: mitigated, fixedDamage, finalDamage, critical };
 }

@@ -38,7 +38,6 @@ function commonRail(crit: boolean, seed = 1) {
     reductionMult: 1,
     critRate: crit ? 1 : 0,
     critMultiplier: CDMG,
-    glanceChance: 0,
     rng: new Rng(seed),
   });
 }
@@ -68,7 +67,6 @@ test("Burn weakness is multiplicative OUTSIDE the additive +DMG bucket", () => {
     reductionMult: 1,
     critRate: 0,
     critMultiplier: CDMG,
-    glanceChance: 0,
     rng: new Rng(1),
   });
   assert.notEqual(folded.finalDamage, 1091);
@@ -87,7 +85,6 @@ test("without the Burn weakness the hit is 992 (isolates the ×1.10 term)", () =
     reductionMult: 1,
     critRate: 0,
     critMultiplier: CDMG,
-    glanceChance: 0,
     rng: new Rng(1),
   });
   assert.equal(noWeakness.finalDamage, 992); // ceil(826.48 × 1.20) = 992
@@ -114,7 +111,6 @@ test("two weaknesses → ×1.20 additive (U20 confirmed: Burn + Assault Rifle am
     reductionMult: 1,
     critRate: 0,
     critMultiplier: CDMG,
-    glanceChance: 0,
     rng: new Rng(1),
   });
   assert.equal(two.finalDamage, 1191);
