@@ -11,7 +11,8 @@ import type { CharacterDef, Scenario } from "../model/types.js";
 //   baseline CDMG 120.0% → crit multiplier ×1.20 (Basic crit 635)
 //   elevated CDMG 123.5% → crit multiplier ×1.235 (Basic crit 654, observed 654×4)
 // Rule: crit multiplier = 1 + Crit DMG, linear, applied before the final ceil.
-// Crit-RATE sources/caps remain OPEN (U19 remainder).
+// CR system (universal cap 100% + passive-driven 1:1 overflow conversion) is
+// RESOLVED (U19 2026-09-03) — locked numerically in crit-overflow-validation.test.ts.
 
 const ATK = 1958; // Qiongjiu, Retired OTs-14 R1 Lv.2, no keys
 const DEF = 5000; // dummy, No Cover, no weakness for Basic (physical)
