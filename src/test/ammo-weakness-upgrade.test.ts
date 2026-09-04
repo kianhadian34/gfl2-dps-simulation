@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
 import { createState } from "../engine/state.js";
-import { additiveTakenBonus, applyStatus } from "../engine/statuses.js";
+import { additiveTakenBonus, applyStatus, tickStatuses } from "../engine/statuses.js";
 import { REGISTRY } from "../data/registry.js";
 import { customRegistry, scenario } from "./helpers.js";
 import type { AmmoType, CharacterDef, Element, PassiveEffect } from "../model/types.js";
@@ -133,6 +133,23 @@ test("AWU is Physical-only: the tier bonus does not apply to Phase attack elemen
   assert.equal(takenBonus(5, "burn"), 0);
   assert.equal(takenBonus(5, "electric"), 0);
   assert.equal(takenBonus(5, "physical"), 0.25, "Physical still receives it");
+});
+
+test("AWU persistence: stacks do NOT expire from elapsed turns (validated in-game: 6 skipped turns)", () => {
+  // Validated (2026): AWU stacks remained on the target after 6 full skipped turns
+  // with no further attacks — no expiration. Modeled as permanent (durationRounds: null);
+  // the engine never ticks a permanent status. NOTE: this validates 6 skipped turns,
+  // not a mathematical proof of infinite persistence; no reset condition is invented.
+  const st = createState(scenario({ turns: 1 }), REGISTRY, new Set());
+  applyStatus(st, st.dummy, { statusId: AWU, stacks: 5 });
+  for (let i = 0; i < 6; i++) {
+    tickStatuses(st, st.dummy, "roundEnd");
+    tickStatuses(st, st.dummy, "ownActionEnd");
+  }
+  const active = st.dummy.statuses.find((s) => s.statusId === AWU);
+  assert.ok(active, "AWU status still present after 6 elapsed turns");
+  assert.equal(active!.stacks, 5, "stacks unchanged (no time-based expiry)");
+  assert.equal(additiveTakenBonus(st.dummy, st.statusRegistry, "physical"), 0.25, "tier bonus intact");
 });
 
 // ---------------------------------------------------------------------------
