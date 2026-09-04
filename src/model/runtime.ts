@@ -48,6 +48,8 @@ export interface LogEvent {
   cooldownAfter: Record<string, number>;
   statusesApplied: string[];
   statusesExpired: string[];
+  /** Independently ceiled Fixed Damage component (U21) — absent for normal-only hits. */
+  fixedDamage?: number;
 }
 
 /** docs/schemas.md §10. */

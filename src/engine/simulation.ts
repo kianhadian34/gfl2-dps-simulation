@@ -151,7 +151,10 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     glanceChance: state.config.glanceChance,
     rng: state.rng,
   });
-  dummy.hp = Math.max(0, dummy.hp - hit.finalDamage);
+  // U21: normal chain and fixed component are both final game damage —
+  //  finalDamage = ceil(normalChain) + ceil(fixed).
+  const totalDamage = hit.finalDamage + hit.fixedDamage;
+  dummy.hp = Math.max(0, dummy.hp - totalDamage);
   const stabAmount = (skill.stabDamage ?? 0) + 2 * weaknesses.length;
   const { broke } = applyStabilityDamage(state, dummy, stabAmount);
   for (const e of passiveEffects(actor)) {
@@ -173,8 +176,9 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   ev.stabilityDamage = stabAmount;
   ev.targetStabilityAfter = dummy.stability;
   ev.exposed = broke ? true : dummy.exposed;
-  ev.finalDamage = hit.finalDamage;
-  return hit.finalDamage;
+  ev.finalDamage = totalDamage;
+  if (hit.fixedDamage > 0) ev.fixedDamage = hit.fixedDamage;
+  return totalDamage;
 }
 
 function applySkillStatuses(state: SimulationState, actor: UnitState, target: UnitState, specs: StatusApplySpec[] | undefined, ev: LogEvent): void {

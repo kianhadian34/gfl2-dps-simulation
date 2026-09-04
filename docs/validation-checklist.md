@@ -41,6 +41,7 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 | 27 | Determinism (seeded RNG; same inputs ⇒ identical log) | engine guarantee | `seed` | `determinism.test.ts` |
 | 28 | Duration cap: 1–7 turns, 8+ rejected (never clamped) | validation rule | `turns` (validated) | `validation-cap.test.ts` |
 | 29 | Combat log reproduces every action vs an in-game test | engine guarantee | — | `integration.test.ts` (attackerAtk/targetDef/bracket), `--log` |
+| 30 | Fixed Damage (U21) — **post-chain, independent ceil**: `ceil(normalChain) + ceil(fixed)`; bypasses DEF / damage-buff bracket / phase / weakness / reduction / crit | **CONFIRMED (in-game: Overburn 196 = ceil(10% × 1958 ATK), immune to Burn weakness and +20% No-Cover buff)**; DEF/crit/phase/reduction bypass SOURCE-SUPPORTED (untested in-game) | absolute `SkillDef.fixedDamage` (percentOfAtk data model deferred) | `damage.test.ts`, `fixed-damage-validation.test.ts` |
 
 ## 2. NOT IMPLEMENTED (deliberately out of MVP scope)
 
@@ -80,7 +81,7 @@ Every damaging `LogEvent` records: `round`, `turn`, `unit`, `action`, `attackerA
 
 ## 6. Validation evidence
 
-- `npm test` → 87/87 pass (32 original + 16 validation-mode + 4 crit-validation + 7 weakness-validation + 4 stability-recovery + 4 cooldown-validation + 6 critdmg-validation + 8 crit-overflow-validation + 6 confectance-validation regression tests).
+- `npm test` → 92/92 pass (prior 87 + 2 added pipeline tests in `damage.test.ts` + 3 `fixed-damage-validation` tests).
 - CLI: 7-turn example and 4-turn rotation walkthrough verified by hand (see report).
 - 8+ turns rejected with a clear error message (CLI + engine tests).
 

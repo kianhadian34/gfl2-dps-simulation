@@ -109,6 +109,8 @@ reduction  = (1 − stabilityReduction) × (1 − damageReduction)   (stabilityR
 crit       = rng.roll(effCritRate) ? (1 + effCritDmg) : 1.0   (effCritRate = min(CritRate, 100%); effCritDmg = Crit DMG + passive-driven 1:1 overflow conversion — U19 confirmed; CDMG linear: 1.20@120%, 1.235@123.5%; configOverrides.critMultiplier = test-only alternative)
 final      = ceil( mitigated × bonus × phase × weakness × reduction × crit )
 glancing   = config.glanceChance ? ceil(final × 0.1) : final
+fixed      = ceil(absolute fixed component)                  (U21: added POST-chain with its own ceil — never scaled by the chain; normal path unchanged)
+total      = normalChainFinal + fixed                        (total game damage = ceil(normal) + ceil(fixed))
 ```
 
 Uncertain entries (U1, U2, U3…) are read from scenario config, not hardcoded. Modifier order within the pipeline is grouping-based (per research), so the engine documents the group order and does not claim a beta-era written order.

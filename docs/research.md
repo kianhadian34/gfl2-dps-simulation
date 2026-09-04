@@ -28,6 +28,7 @@ What we know with high confidence, in one paragraph:
 6. **Default 1 main action per actor per turn**; basic attack vs skill is an exclusive choice; extra hits come from support/extra actions that do not consume the main action.
 7. **Recommended dummy defaults**: no official dummy stats exist → make them **configurable**; recommended defaults `DEF 0, stability 0, no cover, no weaknesses, no phase` (pure `ceil(ATK × multiplier × bonuses × crit)` baseline).
 8. **Scope rule (updated)**: the MVP target is **always No Cover**; **Stability + Exposed are mandatory MVP mechanics**; **Cover is explicitly deferred** — cover damage reductions (35/30/25/20% by cover type) and the stability-cover 60% reduction are recorded for later use but are **not** part of the MVP, so no cover-dependent term ever fires.
+9. **Fixed Damage (U21)** — an absolute component computed from the caster's stats (e.g., **Overburn = 10% of the effect applier's ATK**), added **after** the normal multiplicative chain with its **own ceiling**; never scaled by damage buffs, weakness, phase, reductions, DEF, or crit. CONFIRMED in-game: Overburn at 1958 ATK → 195.8 → **196**, unchanged by Burn immunity and by Qiongjiu's +20% No-Cover bonus (see §3.1, §4 U21).
 8. **English wikis (Prydwen, Fandom, Game8) are currently unusable** — Prydwen has no GFL2 section (404), Fandom wiki does not exist. The reachable, citable sources are BWIKI (zh), IOPWiki, gfl2.help, DotGG, and game data dumps. See [Source map](#2-source-map).
 
 ---
@@ -68,11 +69,13 @@ reduction = (1 − stability_red) × (1 − dmg_red) × (1 − cover_red)   # du
 crit      = 1 + critDmg (attacker's Crit DMG stat)          # e.g. ×1.20 at 120% CDMG (CONFIRMED in-game, §3.3)
 final     = ceil( mitigated × bonus × phase × weakness × reduction × crit )   # crit applies to the UNROUNDED product
 glancing  = ceil( final × 0.1 )                             # when a hit is judged glancing (trigger rule UNKNOWN)
+fixed     = ceil( absolute fixed component )                 # U21: post-chain, its own ceil — never scaled by the chain
+final     = normalChainFinal + fixed                         # total game damage
 ```
 
 All "damage dealt up" / "damage taken up" bonuses are **added together in one bracket first** (BWiki example: `1 + 20% + 50% + 30% + 50% = 250%` final multiplier). Damage *reductions* are multiplicative on top.
 
-**Unknowns** — exact written operator order of the beta formula image; whether DoT/indirect damage uses the same pipeline (see §3.10); remaining crit unknowns (crit-rate sources/caps, CDMG linearity beyond 120% — see §3.3).
+**Unknowns** — exact written operator order of the beta formula image; **DoT/fixed damage resolved (U21)**: Fixed Damage is post-chain with its own ceil and DoT ticks are fixed-damage-type events (percent-of-ATK values still per-effect data); remaining crit unknowns (crit-rate sources/caps, CDMG linearity beyond 120% — see §3.3).
 
 ### 3.2 Defense
 
@@ -347,6 +350,7 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 | U18 | "Nixie/交换机" term | UNKNOWN (no evidence) | — | Needs user clarification, not code |
 | U19 | ~~CDMG linearity beyond 120% + Crit-Rate cap/overflow~~ → **CDMG half RESOLVED 2026-09-03** (linear: 120.0% → ×1.20 (crit 635), 123.5% → ×1.235 (crit 654×4); multiplier = 1 + Crit DMG, before final ceil); **Crit-Rate half CONFIRMED 2026-09-03 (passive text)**: effective CR caps at 100%; overflow is discarded unless a character passive converts it (1:1, data-driven `excess_crit_conversion`) | CDMG **CONFIRMED** (in-game) / CR cap + overflow **CONFIRMED** (passive text) / CR sources & per-character params UNKNOWN | Crit-damage scaling + crit frequency | ✅ CDMG: engine derives `1 + critDmg`. ✅ CR overflow: engine applies the 100% cap and converts overflow only via per-character passive data. Remainder: CR sources (attachments), non-1:1 ratio / cap characters, numeric damage confirmation |
 | U20 | ~~Multi-weakness stacking (multiplicative vs additive)~~ → **RESOLVED 2026-09-03**: weakness factor is **additive across exploited weaknesses**: `1 + 0.10 × count` — 1 weakness ×1.10 (Burn → 1091); 2 weaknesses ×1.20 (Burn + Assault Rifle ammo → 1191); multiplicative ×1.21 ruled out (would give 1201 ≠ 1191) | ~~UNKNOWN~~ → **CONFIRMED (in-game)** | Multi-weakness damage | ✅ resolved — engine `weaknessFactor = 1 + 0.10 × #exploited`, count-driven and generic; regression tests added |
+| U21 | ~~Fixed damage: through-chain vs post-chain~~ → **RESOLVED (behavior) 2026-09-03**: Fixed Damage is **post-chain with its own ceil** — Overburn = 10% of applier ATK: 1958 × 0.10 = 195.8 → observed **196**; unchanged by Burn immunity (weakness factor) and by the +20% No-Cover Damage Done (damage-buff factor). Engine's old fixed branch (scaling fixed by additive/phase/weakness/reduction) was a **latent contradiction — corrected**: `finalDamage = ceil(normalChain) + ceil(fixed)`; fixed component kept separate (ev.fixedDamage) | CONFIRMED (in-game: ATK-derived value, weakness & damage-buff immunity, own ceil) / SOURCE-SUPPORTED (untested in-game): DEF/crit/phase/reduction bypass | Fixed Damage handling | ✅ resolved (behavior) — engine bypasses all chain factors; `percentOfAtk` data model deferred (schema uses absolute `SkillDef.fixedDamage`); regression tests added |
 
 ---
 

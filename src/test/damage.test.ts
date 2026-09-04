@@ -64,10 +64,34 @@ test("final damage is ceiling-rounded before glancing", () => {
   assert.equal(g.finalDamage, 124); // ceil(1234 × 0.1)
 });
 
-test("fixed damage ignores DEF and crit (research §3.10)", () => {
-  const r = hit({ fixedDamage: 500, def: 9999, critRate: 1 });
-  assert.equal(r.finalDamage, 500);
+test("U21: fixed damage bypasses EVERY normal-chain factor (independent ceil)", () => {
+  // Multiplier 0 isolates the fixed component; every chain factor is non-neutral.
+  const r = hit({ fixedDamage: 500, multiplier: 0, def: 9999, additiveBonus: 2.0, phaseMult: 1.2, weaknessMult: 1.1, reductionMult: 0.8, critRate: 1 });
+  assert.equal(r.fixedDamage, 500);
+  assert.equal(r.finalDamage, 0); // no normal-chain damage
   assert.equal(r.critical, false);
+  assert.equal(r.finalDamage + r.fixedDamage, 500); // final = ceil(normal) + ceil(fixed)
+});
+
+test("U21 Overburn mirror: 195.8 → 196 independent ceil, chain factors never change it", () => {
+  // In-game: 1958 ATK × 10% = 195.8 → observed 196; Burn immunity and the +20%
+  // No-Cover Damage Done leave it at exactly 196.
+  const hostile = hit({ fixedDamage: 195.8, multiplier: 0, def: 9999, additiveBonus: 2.0, phaseMult: 1.2, weaknessMult: 1.1, reductionMult: 0.8, critRate: 1 });
+  const neutral = hit({ fixedDamage: 195.8, multiplier: 0, def: 0, additiveBonus: 1, phaseMult: 1, weaknessMult: 1, reductionMult: 1, critRate: 0 });
+  assert.equal(hostile.fixedDamage, 196);
+  assert.equal(neutral.fixedDamage, 196);
+  assert.equal(hostile.finalDamage + hostile.fixedDamage, 196);
+});
+
+test("U21 normal + fixed: independent rounding differs from ceil(normal+fixed)", () => {
+  const normal = hit({ atk: 334, multiplier: 0.3, def: 0, additiveBonus: 1, phaseMult: 1, weaknessMult: 1, reductionMult: 1, critRate: 0 });
+  const fixed = hit({ atk: 0, multiplier: 0, fixedDamage: 100.7, def: 0, additiveBonus: 1, phaseMult: 1, weaknessMult: 1, reductionMult: 1, critRate: 0 });
+  assert.equal(normal.finalDamage, 101); // ceil(100.2)
+  assert.equal(fixed.fixedDamage, 101); // ceil(100.7)
+  const total = normal.finalDamage + fixed.fixedDamage;
+  assert.equal(total, 202);
+  assert.equal(Math.ceil(100.2 + 100.7), 201); // combined ceil would be 201
+  assert.notEqual(total, 201); // independent rounding is the confirmed model
 });
 
 test("same seed ⇒ identical rolls; different seeds diverge", () => {
