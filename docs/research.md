@@ -179,11 +179,17 @@ Confirmations: (1) Burn weakness multiplier is **×1.10**; (2) folding the weakn
 
 **MVP scope (updated)** — **Stability and Exposed are mandatory mechanics**: stability damage per hit, break at 0, the Exposed damage-taken window (duration U4, multiplier U3, both config), and recovery (U6, config). Cover-dependent parts of the stability system (the 60% cover reduction) are **deferred** with Cover.
 
-**Boss-domain conclusion (U5, 2026-09-03)** — This simulator is a **No-Cover boss DPS simulator**; Cover is permanently out of scope. For that domain, **Stability is modeled purely as a resource/state**: per-hit stability reduction, break → "exposed" flag, and the confirmed 2-turn recovery (U6). Specifically:
-- **No generic Stability damage reduction without Cover** — the 60% stability-cover reduction is a Cover mechanic and never applies (target always No Cover). The engine has no cover term; damage is unaffected by Stability while stability > 0.
-- **No generic post-break damage multiplier is established by any source for No-Cover targets** — the only post-break damage interaction is `configOverrides.exposedDamageMult` (U3, unverified, default 1.0 = no effect). No Exposed/Broken multiplier is invented.
-- **Break-hit cover nuance** (physical hits keeping the 60% reduction on the breaking hit) is Cover-scoped and irrelevant.
-- The existing engine already matches this conclusion — no code change was required; behavior is locked by `stability.test.ts` (U5 lock tests).
+**Boss-domain scope (U5, corrected 2026-09-03)** — This simulator is a **No-Cover boss DPS simulator**; Cover is permanently out of scope. Two SEPARATE concepts must not be conflated:
+
+- **A. Generic Cover/Stability damage reduction (general formula) — OUT OF SCOPE.** The 60% stability-cover reduction, cover-reduction interplay, and the break-hit cover nuances require Cover; the target is always No Cover so they never apply (the engine has no cover term). In-game evidence (Blaze Master at 65/65 Stability) shows **no universal** No-Cover Stability damage reduction.
+- **B. Boss-specific Stability-dependent passive damage reduction — IN SCOPE (category source-supported, values unresolved).** The GFL2 Damage Formula Translation documents passive-specific effects conditioned on "stability greater than 0":
+  - **Oljefat's passive**: reduces damage taken by **80%** while stability > 0 (damage-received reduction; passive-specific).
+  - **Elite Angriper (Neural Survey)**: **+100% Defense** while stability > 0 (stat bonus; same condition).
+  These establish the **mechanic type**: individual boss/unit passives gated on stability > 0, NOT a universal rule, with per-passive values. HOWEVER, no specific boss in our simulation data carries such a passive and no stability-passive value has been in-game-validated by us — so the **boss-passive mechanic remains UNRESOLVED and no reduction value is invented**.
+
+Missing information before implementing a boss Stability passive: (1) a specific boss for our sim with a documented stability passive; (2) its sourced/validated reduction or stat value; (3) behavior at the stability-breaking hit and in the broken state for such passives (the source only states "while stability > 0"; break-hit specifics for passives are UNKNOWN); (4) whether the effect returns on recovery.
+
+Minimal generic data-driven model (design only — not built, because no boss data exists): let the boss/target definition carry an optional passive block and add a passive effect kind such as `{ kind: "conditional_target_modifier", scope: "taken" | "stat", when: "target.stabilityAboveZero", mode: "multiplicative" | "additive", value }`; incoming-damage resolution folds it into the target's reduction/stat while the condition holds. Different bosses = different values via data; the condition set can later extend to broken-state variants.
 
 **Implementation interpretation**
 
@@ -338,7 +344,7 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 | U1 | ~~Crit multiplier: ×1.5 vs ×(1 + 20% panel)~~ → **RESOLVED 2026-09-03**: multiplier = Crit DMG stat (×1.20 at 120%), applied to unrounded damage before final ceil; the 1956/1958 ATK control test discriminates the ordering (see §3.3) | ~~UNCERTAIN~~ → **CONFIRMED (in-game)** | Was up to 33% skew | ✅ resolved by in-game test — engine default `critMultiplier` still 1.5 pending approved engine change (scenario override `configOverrides.critMultiplier` → use 1.2) |
 | U3 | Exposed damage-% after stability break | UNKNOWN | Big skew on break turns | Stability test |
 | U4 | Break duration (beta `breakRound=2`) | UNCERTAIN | Break window length | Stability test |
-| U5 | Per-unit max stability & per-skill stab damage values | CONFIRMED examples / UNKNOWN table | Stability pacing | Per-skill record + data dump parse (`PotRooms/GFL2_Data`); **No-Cover behavior for boss sims already documented** (pure resource/state — see §3.7 Boss-domain conclusion) |
+| U5 | Per-unit max stability & per-skill stab damage values; plus **boss-specific Stability-conditional passive damage reduction** (category source-supported — Oljefat −80% taken / Elite Angriper +100% DEF while stability > 0; no specific boss or validated value yet) | CONFIRMED examples / UNKNOWN table; boss-passive mechanic **UNRESOLVED** (pending a specific boss + validated value) | Stability pacing + boss damage | Per-skill record + data dump parse (`PotRooms/GFL2_Data`); boss-passive design note in §3.7; no value invented |
 | U6 | ~~Stability recovery timing~~ → **CONFIRMED 2026-09-03**: restored exactly 2 turns after the break (break Turn N → restored Turn N+2), restored to max | ~~UNKNOWN~~ → **CONFIRMED (timing)** | Was long-sim drift | ✅ resolved — engine models the 2-turn delay (`STABILITY_RECOVERY_DELAY = 2`); Exposed damage-% (U3) remains open |
 | U7 | Buff duration tick point (own turn start vs round end) | UNKNOWN | Buff expiry timing | Buff timer test |
 | U8 | Same-tier status reapply: refresh vs stack | UNKNOWN | Stack math | Reapply test |
