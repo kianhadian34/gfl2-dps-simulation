@@ -16,7 +16,7 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 | 2 | Skill multiplier as % of final ATK | CONFIRMED (Qiongjiu 0.8/1.5/1.1/0.9) | — (data) | `src/data/qiongjiu.ts`, integration test |
 | 3 | One additive bracket for all damage bonuses | CONFIRMED | — | `damage.test.ts` (1.35 bracket) |
 | 4 | Defense term `ATK/(1+DEF/ATK)` (= `ATK/(ATK+DEF)`); **U14 RESOLVED — current boss DEF CONFIRMED in-game: 5,001 (target DATA, not a universal constant; future boss rotations = data updates)** | CONFIRMED | dummy `defense` (per-target) | `damage.test.ts`, `stability.test.ts`, `boss-def-validation.test.ts` |
-| 5 | Phase countering ×1.2 / ×0.8 | CONFIRMED rule; **wheel relations UNVERIFIED** | not configurable (resolves neutral 1.0 + warning) | `damage.test.ts` (multipliers), warning in every run |
+| 5 | Element/Phase counter wheel — **DOES NOT EXIST (corrected 2026)**: GFL2 has no ×1.2/×0.8 elemental counter relationships; weakness matching is the only element interaction (validated: +10% dmg, +2 stab per exploited weakness). Engine has no counter factor (`phaseMultiplier` always 1.0; the old "phase wheel not populated" warning was removed) | REMOVED (erroneous premise) | — | `damage.test.ts` (premise-based ×1.2/×0.8 test removed; weakness multipliers unchanged) |
 | 6 | Weakness exploit: factor = **1 + 0.10 × #exploited weaknesses** (+2 stab each) — **additive across weaknesses**, separate factor (NOT in the additive DMG bucket); Burn ×1.10 → 1091 and **Burn + AR ammo ×1.20 → 1191 confirmed in-game; multiplicative ×1.21 ruled out (U20 2026-09-03)** | CONFIRMED (in-game) | dummy `weaknesses` (count-driven; V6 no-cover +10% not yet in character data — passed explicitly in regression) | `damage.test.ts`, `stability.test.ts`, `weakness-validation.test.ts` |
 | 7 | Critical multiplier = attacker's Crit DMG stat, **linear**: ×1.20 at 120% CDMG (Basic crit 635), ×1.235 at 123.5% (crit 654); applied to **unrounded** damage before final ceil. **Crit Rate: 100% effective cap; overflow converts 1:1 only via character-specific passive** ("every 1% of overflow critical rate is converted to 1% critical damage" — in-game passive text, 2026-09-03) | **CONFIRMED (in-game — U19 RESOLVED)**: engine derives `1 + critDmg`; universal 100% CR cap; overflow conversion via data-driven `excess_crit_conversion` passive (no global rule, no character-id logic); 1:1 ratio + non-1:1 + cap + no-passive paths **numerically locked** | `configOverrides.critMultiplier` = test-only alternative hypothesis; conversion params live in character passive data | `crit-validation.test.ts`, `critdmg-validation.test.ts`, `crit-overflow-validation.test.ts`. Data-population only remains: which characters carry such passives, exact params, CR-raising attachment sources |
 | 8 | Glancing (擦伤) — **REMOVED 2026-09-03 (U2, beta artifact)** — no longer a modeled mechanic | REMOVED (tombstone) | — | research.md §3.6 / register tombstone |
@@ -50,7 +50,7 @@ Legend: **CONFIRMED** = verified by a primary source or reproduced in-game durin
 
 ## 2. NOT IMPLEMENTED (deliberately out of MVP scope)
 
-APL/auto-AI (U12), movement/positioning, **Cover — explicitly deferred** (incl. cover damage reductions 35/30/25/20% and the stability-cover 60% reduction), maps, enemy turns/AI, phase-wheel table (U15-adjacent), DoT damage effects for unverified elements (U16), extra actions, status purge/removal, durations > 7 turns.
+APL/auto-AI (U12), movement/positioning, **Cover — explicitly deferred** (incl. cover damage reductions 35/30/25/20% and the stability-cover 60% reduction), maps, enemy turns/AI, DoT damage effects for unverified elements (U16), extra actions, status purge/removal, durations > 7 turns. (No phase-wheel table — the elemental counter-wheel premise was corrected/removed 2026, docs/research.md §3.4.)
 
 ## 3. Every UNVERIFIED value that affects Qiongjiu's simulation — override coverage
 
@@ -85,7 +85,7 @@ Every damaging `LogEvent` records: `round`, `turn`, `unit`, `action`, `attackerA
 
 ## 6. Validation evidence
 
-- `npm test` → 127/127 pass (92 base + 7 U5 boss-Stability + 2 U7/U8 status-timing + 2 U14 boss-DEF + 10 Ammo Weakness Upgrade + 4 Phase-elemental-weakness U15b + 4 weakness-matching U15a + 1 AWU persistence + 5 weakness-stability U15).
+- `npm test` → 126/126 pass (92 base + 7 U5 boss-Stability + 2 U7/U8 status-timing + 2 U14 boss-DEF + 10 Ammo Weakness Upgrade + 4 Phase-elemental-weakness U15b + 4 weakness-matching U15a + 1 AWU persistence + 5 weakness-stability U15 − 1 premise-based 'phase countering ×1.2/×0.8' test removed 2026).
 - CLI: 7-turn example and 4-turn rotation walkthrough verified by hand (see report).
 - 8+ turns rejected with a clear error message (CLI + engine tests).
 

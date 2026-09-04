@@ -16,9 +16,12 @@ import { applyStabilityDamage, endOfRoundStability } from "./stability.js";
 import { createState, DEFAULT_CONFIG, supportAttackQuota, type SimulationState, type UnitState } from "./state.js";
 
 /**
- * Phase countering — research §3.4 CONFIRMS ×1.2/×0.8 for counter/countered,
- * but the full phase-wheel relations are UNVERIFIED. The MVP ships no wheel
- * table, so interactions resolve neutral (1.0) and a warning is emitted.
+ * Element/Phase interactions — CORRECTED 2026: GFL2 has NO elemental counter
+ * wheel and no ×1.2/×0.8 counter relationships between elements. Weakness
+ * matching is the ONLY relevant element interaction (validated: +10% damage
+ * and +2 stability per exploited weakness — see docs/research.md §3.4/§3.5).
+ * The factor below is structurally present but always neutral (1.0); it is
+ * never a counter mechanic.
  */
 export function phaseMultiplier(_attack: Element, _targetPhase: Element | null): number {
   return 1.0;
@@ -402,7 +405,7 @@ function collectWarnings(state: SimulationState): void {
     // U11 is RESOLVED (wait N full turns after the cast turn); the alternative is selectable for testing only.
     warn.add(`cooldown model = ${c.cooldownModel} — non-confirmed alternative (confirmed rule: wait N full turns after the cast turn, U11 RESOLVED 2026-09-03)`);
   }
-  warn.add("phase wheel not populated — phase interactions resolve neutral 1.0 (research §3.4: ×1.2/×0.8 confirmed, wheel UNVERIFIED)");
+  // No elemental counter wheel exists in GFL2 (corrected 2026) — no phase warning is emitted.
   const referenced = new Set<string>();
   for (const u of state.units) {
     const def = u.def;

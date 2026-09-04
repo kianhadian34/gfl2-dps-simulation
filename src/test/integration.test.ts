@@ -75,7 +75,9 @@ test("integration: 7-round fixed rotation (MVP cap), all aggregations consistent
   assert.equal(JSON.stringify(r.log), JSON.stringify(r2.log));
 
   // Accuracy-first: the run must WARN about every unverified value it leans on.
-  for (const needle of ["support_boost_ii", "support_boost_i", "phase wheel"]) {
+  // (The former "phase wheel" warning was removed 2026 — no elemental counter
+  // wheel exists in GFL2; docs/research.md §3.4.)
+  for (const needle of ["support_boost_ii", "support_boost_i"]) {
     assert.ok(r.warnings.some((w) => w.includes(needle)), `expected a warning mentioning "${needle}"`);
   }
 });

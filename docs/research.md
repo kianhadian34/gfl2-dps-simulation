@@ -20,7 +20,7 @@ Confidence levels: **CONFIRMED** (primary/official source, or independently repr
 
 What we know with high confidence, in one paragraph:
 
-1. **Damage pipeline** — `final = ceil( base × defense_ratio × (1 + Σ additive bonuses) × phase × weakness × reductions × crit )`, where `defense_ratio = ATK/(1+DEF/ATK)`, all damage bonuses (self buffs, target vulnerability) are **additive in one bracket** (**no generic Confectance damage bonus — U10 disproven 2026-09-03**), phase countering is ×1.2/×0.8, each exploited weakness is +10% with the factor **additive across weaknesses: `1 + 0.10 × #exploited`** (Burn ×1.10; Burn + AR ammo ×1.20 — U20 confirmed in-game 2026-09-03, see §3.5), and the result is ceiling-rounded. **Crit multiplier = the attacker's Crit DMG stat** (e.g. ×1.20 at 120%), applied to the *unrounded* damage before the final ceiling round (CONFIRMED in-game 2026-09-03 — see §3.3). Reproduced against real in-game numbers (Reddit test: `1213/(1+194/1213) × 1 × 1.1 = 1150.4 → 1151` in game).
+1. **Damage pipeline** — `final = ceil( base × defense_ratio × (1 + Σ additive bonuses) × weakness × reductions × crit )`, where `defense_ratio = ATK/(1+DEF/ATK)`, all damage bonuses (self buffs, target vulnerability) are **additive in one bracket** (**no generic Confectance damage bonus — U10 disproven 2026-09-03**), **no elemental counter wheel exists** (corrected 2026 — weakness matching is the only element interaction), each exploited weakness is +10% with the factor **additive across weaknesses: `1 + 0.10 × #exploited`** (Burn ×1.10; Burn + AR ammo ×1.20 — U20 confirmed in-game 2026-09-03, see §3.5), and the result is ceiling-rounded. **Crit multiplier = the attacker's Crit DMG stat** (e.g. ×1.20 at 120%), applied to the *unrounded* damage before the final ceiling round (CONFIRMED in-game 2026-09-03 — see §3.3). Reproduced against real in-game numbers (Reddit test: `1213/(1+194/1213) × 1 × 1.1 = 1150.4 → 1151` in game).
 2. **Stability (稳态) is a fully separate resource** from HP: per-hit fixed stability damage (independent of ATK/DEF/crit), break at 0 → "Exposed" state with a damage-taken window; **recovery timing CONFIRMED in-game (2026-09-03): stability is restored exactly 2 turns after the break (break Turn N → restored Turn N+2, back to max)** — see §3.7.
 3. **There are no ACC/EVA stats in GFL2.** Against a stationary, uncovered dummy, attacks always hit; there is no miss mechanic and no "Glancing" (擦伤) mechanic in the live formula — a beta-era 擦伤 claim was removed (see §3.6 / U2 tombstone).
 4. **Kit structure is fixed data**: 1 basic attack + 2 actives + 1 ultimate + 1 passive, all with explicit %-of-ATK multipliers. Cooldowns are small integers (0/1/2…). Confectance (导染) is an event-driven resource (e.g. Qiongjiu gains **+1 per damage event**, ultimate costs **3**), **not** a `damage × m` formula.
@@ -37,7 +37,7 @@ What we know with high confidence, in one paragraph:
 
 | Source | What it provided | Reachability (2026-09-03) |
 |---|---|---|
-| `wiki.biligame.com/gf2/伤害算法` (BWIKI damage algorithm) | Formula structure, additive bonus rule, phase ×1.2/×0.8, crit ×1.5, panel formula, tested numbers | ✅ reachable |
+| `wiki.biligame.com/gf2/伤害算法` (BWIKI damage algorithm) | Formula structure, additive bonus rule, crit ×1.5 (superseded), panel formula, tested numbers; a claimed phase counter table (×1.2/×0.8) — **superseded 2026: no elemental counter wheel exists in GFL2** | ✅ reachable |
 | `wiki.biligame.com/gf2/闪电, /琼玖, /可露凯, /莉塔拉, /罗蕾莱, /武器, /导染指数, /战斗玩法` | Buff/debuff texts, values, durations, stat panels, weapon scaling, cooldown/confectance examples | ✅ reachable (some pages are beta-era, flagged below) |
 | Reddit `r/GirlsFrontline2/comments/1hgw4zn` (via pullpush.io archive) | **In-game reproduction** of the damage formula incl. defense term | ✅ reachable via archive API |
 | `iopwiki.com/wiki/GFL2_Combat`, `/wiki/Qiongjiu`, `/wiki/Common_Keys` | Stability/weakness/cover rules, turns, support attacks, keys taxonomy | ✅ reachable |
@@ -63,7 +63,7 @@ What we know with high confidence, in one paragraph:
 raw       = finalATK × skillMultiplier                      # skill describes its own % of ATK
 mitigated = raw × finalATK / (finalATK + finalDEF)          # ≡ ATK/(1+DEF/ATK); final = post buff/debuff values
 bonus     = 1 + Σ additive_bonuses                          # ALL additive: own dmg-up, target vuln (no generic Confectance bonus — U10 disproven)
-phase     = 1.2 (counter) | 0.8 (countered) | 1.0 (neutral) # 属性克制
+phase     = 1.0 (always)                  # NO elemental counter wheel (corrected 2026); weakness is the only element interaction
 weakness  = 1 + 0.10 × (# exploited weaknesses)          # additive across weaknesses (U20); separate factor, outside the additive DMG bucket
 reduction = (1 − stability_red) × (1 − dmg_red) × (1 − cover_red)   # dummy: cover_red = 0
 crit      = 1 + critDmg (attacker's Crit DMG stat)          # e.g. ×1.20 at 120% CDMG (CONFIRMED in-game, §3.3)
@@ -119,17 +119,13 @@ Formula reproduction (ATK 1958): `1958 × 0.80 × (1958/(1958+5000)) × 1.20 ≈
 
 **Open items (U19 — DATA POPULATION for future characters, not unresolved mechanics):** which characters carry such a conversion passive and their exact parameters; how Crit Rate is raised past 100% (attachment/stat sources). (CDMG linearity CONFIRMED to the tested 123.5%; anti-crit mechanics are PvP — out of scope anyway.)
 
-### 3.4 Phase countering (属性克制)
+### 3.4 Element/Phase interactions — NO counter wheel (CORRECTED 2026)
 
-**Mechanic** — 6-element counter wheel: 物理/physical, 燃烧/burn, 电导/electric, 冷凝/ice, 酸蚀/acid, 浊刻/decay.
+**CORRECTION (validated in-game 2026):** GFL2 does **NOT** have an elemental/Phase counter wheel. There is **no** relationship such as "Burn counters X", "Phase A counters Phase B", or **×1.2 counter / ×0.8 countered** interactions between elements. The earlier §3.4 reading (a 6-element counter wheel with ×1.2/×0.8, sourced from a BWIKI table) was **erroneous/superseded** and is removed.
 
-**Source** — `wiki.biligame.com/gf2/伤害算法` (tested table, e.g. 114 vs 95 → ×1.2, 76 vs 95 → ×0.8).
+**The only relevant element interaction is weakness matching:** targets expose elemental weakness(es) and/or ammo-type weakness(es); an attack exploits whichever weaknesses it matches. Per exploited weakness: **+10% damage** and **+2 Stability Damage** (validated 2026 — §3.5, U15a/U15b, weakness-stability). No element is inherently strong/weak against another element.
 
-**Confidence** — CONFIRMED (tested data groups).
-
-**Implementation interpretation** — phase attribute on attack and target; `counter → ×1.2`, `countered → ×0.8`, else 1.0. Phase is a **separate multiplicative factor from weakness exploit**. Dummy default: no phase (neutral).
-
-**Unknowns** — a rumored newer "Resonance" phase extension (2026 news, unverified).
+**Model status** — no counter mechanic exists: the engine's `phaseMultiplier` is structurally present but always neutral (1.0); `DummyConfig.phase`/`CharacterDef.phase` remain as element identity data only. The once-"UNKNOWN" phase-wheel question is **REMOVED from the unresolved register** (premise invalid).
 
 ### 3.5 Weakness exploit (弱点)
 
@@ -176,7 +172,7 @@ AWU is a separate Physical-only damage mechanic and is NOT mixed into this stabi
 - **Test B — target WITH Burn weakness (DEF 1286):** same setup, ×1.10 → **2340**.
 - Conclusion: elemental weakness contributes ×1.10 on Phase damage through the SAME generic count-driven rule (`1 + 0.10 × #matched`); AWU must NOT apply to Phase damage (it remains Physical-only — §3.18); generic weakness matching stays responsible for this behavior.
 
-**Unknowns** — U15a matched-count cases (1 vs 2 matched weaknesses incl. the Ammo tag → ×1.10/×1.20) are RESOLVED (2026); the partial-match EDGE (a target exposing weaknesses the attack does NOT match) remains UNTESTED (dummy limitations: no zero-weakness Phase target, no Ammo-only Phase target); phase×weakness for ELEMENT weakness matches is RESOLVED (U15b, 2026); the phase-WHEEL (counter-relation) interaction remains UNKNOWN until the wheel is populated.
+**Unknowns** — U15a matched-count cases (1 vs 2 matched weaknesses incl. the Ammo tag → ×1.10/×1.20) are RESOLVED (2026); the partial-match EDGE (a target exposing weaknesses the attack does NOT match) remains UNTESTED (dummy limitations: no zero-weakness Phase target, no Ammo-only Phase target); phase×weakness for ELEMENT weakness matches is RESOLVED (U15b, 2026). (No phase-WHEEL counter-relation exists — the counter-wheel premise was corrected/removed 2026, §3.4.)
 
 ### 3.6 Glancing (擦伤) — REMOVED (beta artifact)
 
@@ -429,9 +425,9 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 | U12 | Auto-battle AI priority | UNKNOWN | Whole-sim fidelity | Auto-battle recording; default is a labeled model assumption |
 | U13 | Live level cap & endgame stat magnitudes | UNKNOWN (2024 data) | Absolute numbers | In-game panel read |
 | U14 | ~~Enemy/dummy DEF magnitudes~~ → **RESOLVED (mechanic + current data point)**: engine capability RESOLVED — target DEF is per-target configurable data (`dummy.defense`), applied via the confirmed factor `ATK/(ATK+DEF)` (the formula itself was already resolved separately). **Current boss DEF CONFIRMED in-game: 5,001** (displayed stat of the current tested target). Future boss rotations = **DATA POPULATION** (new `dummy.defense` per target — no engine change). An earlier validation target (Blaze Master) displayed DEF 5,000 and reproduced its observed damage (529/635/1091/1310/1191) — target-specific displays, **no universal boss DEF is implied** | ~~UNKNOWN~~ → **CONFIRMED (current target) / mechanics RESOLVED** | Defense term scale | ✅ resolved — `boss-def-validation.test.ts` pins the current boss's DEF 5,001 as data through the engine; no engine change |
-| U15 | Weakness partial-match (U15a) & phase×weakness interaction (U15b) — **U15b RESOLVED 2026** (generic element weakness → ×1.10 on Phase damage: Burn Common Rail 2233 no-weak baseline → 2340 with Burn weakness; separate from AWU, no new Phase mechanic; phase-WHEEL counter-relation still depends on the unpopulated wheel). **U15a PARTIALLY RESOLVED 2026**: matched-count rule validated for 1 and 2 MATCHED weaknesses incl. the Ammo tag (Burn-only → 1091 ×4 = ×1.10; Burn + Ammo → 1191 / crit 1470 @123.5% = ×1.20; additive `1 + 0.10 × n`); the partial-match EDGE (target exposes weaknesses the attack does NOT match) remains UNTESTED — no zero-weakness Phase dummy and no Ammo-only Phase dummy available; **weakness Stability Damage validated 2026** (total = attack base + 2 × # exploited, element + ammo tag; see §3.5) | U15b **CONFIRMED (in-game)** / U15a matched-count **CONFIRMED (in-game)** / weakness-stab **CONFIRMED (in-game)** — partial-match edge UNTESTED | Edge-case damage | U15b: `phase-weakness-validation.test.ts` ✅; U15a counts: `weakness-matching-validation.test.ts` ✅; weakness-stab: `weakness-stability.test.ts` ✅; partial-match edge: weakness test |
+| U15 | Weakness partial-match (U15a) & phase×weakness interaction (U15b) — **U15b RESOLVED 2026** (generic element weakness → ×1.10 on Phase damage: Burn Common Rail 2233 no-weak baseline → 2340 with Burn weakness; separate from AWU, no new Phase mechanic). **U15a PARTIALLY RESOLVED 2026**: matched-count rule validated for 1 and 2 MATCHED weaknesses incl. the Ammo tag (Burn-only → 1091 ×4 = ×1.10; Burn + Ammo → 1191 / crit 1470 @123.5% = ×1.20; additive `1 + 0.10 × n`); the partial-match EDGE (target exposes weaknesses the attack does NOT match) remains UNTESTED — no zero-weakness Phase dummy and no Ammo-only Phase dummy available; **weakness Stability Damage validated 2026** (total = attack base + 2 × # exploited, element + ammo tag; see §3.5). (No phase-WHEEL counter-relation exists — premise corrected/removed 2026, §3.4.) | U15b **CONFIRMED (in-game)** / U15a matched-count **CONFIRMED (in-game)** / weakness-stab **CONFIRMED (in-game)** — partial-match edge UNTESTED | Edge-case damage | U15b: `phase-weakness-validation.test.ts` ✅; U15a counts: `weakness-matching-validation.test.ts` ✅; weakness-stab: `weakness-stability.test.ts` ✅; partial-match edge: weakness test |
 | U16 | Element DoTs (electric/ice/decay) full definitions | UNKNOWN | DoT modeling | Skill doc read (deferred — not required for first dolls) |
-| U17 | "Resonance" phase extension (2026) | UNKNOWN | Future-proofing | Watch patch notes; not in MVP |
+| U17 | ~~"Resonance" phase extension (2026)~~ → **REMOVED (premise erroneous)**: the rumored extension was tied to the (nonexistent) elemental counter wheel; GFL2 has no counter wheel (corrected 2026, §3.4) — no such extension is pending | ~~UNKNOWN~~ → **REMOVED (invalid premise)** | — | — |
 | U18 | "Nixie/交换机" term | UNKNOWN (no evidence) | — | Needs user clarification, not code |
 | U19 | ~~CDMG linearity beyond 120% + Crit-Rate cap/overflow~~ → **RESOLVED 2026-09-03**: (C) **Crit multiplier = 1 + Crit DMG, linear** — 120.0% → ×1.20 (Basic crit 635), 123.5% → ×1.235 (crit 654×4), applied to unrounded damage before the final ceil; (A) **universal Crit system** — Crit Rate decides whether the attack crits, **effective Crit Rate caps at 100%**, overflow is discarded unless a character passive converts it; (B) **passive-specific conversion** — confirmed passive ("every 1% of overflow critical rate is converted to 1% critical damage"): threshold 100%, **ratio 1:1 CONFIRMED**, optional cap; data-driven `excess_crit_conversion` (no character IDs, never a global rule) | CDMG **CONFIRMED (in-game, numeric)** / CR cap + 1:1 conversion **CONFIRMED** (in-game passive text; conversion ratio additionally confirmed by testing) | Crit-damage scaling + crit frequency | ✅ resolved — engine derives `1 + critDmg` (no hardcoded default); applies the 100% cap and converts overflow only via per-character passive data; all paths numerically locked (`critdmg-validation.test.ts`, `crit-overflow-validation.test.ts`). Remaining items are DATA POPULATION only (which characters carry such passives + exact params, CR-raising attachment sources) — not unresolved mechanics |
 | U20 | ~~Multi-weakness stacking (multiplicative vs additive)~~ → **RESOLVED 2026-09-03**: weakness factor is **additive across exploited weaknesses**: `1 + 0.10 × count` — 1 weakness ×1.10 (Burn → 1091); 2 weaknesses ×1.20 (Burn + Assault Rifle ammo → 1191); multiplicative ×1.21 ruled out (would give 1201 ≠ 1191) | ~~UNKNOWN~~ → **CONFIRMED (in-game)** | Multi-weakness damage | ✅ resolved — engine `weaknessFactor = 1 + 0.10 × #exploited`, count-driven and generic; regression tests added |
@@ -464,7 +460,7 @@ Only CONFIRMED values become defaults; everything else is a **config key** (docu
 |---|---|---|
 | Defense term | `ATK/(1+DEF/ATK)` | CONFIRMED |
 | Crit multiplier | `1 + Crit DMG stat` (×1.20 at 120%; linear — confirmed at 123.5% → ×1.235), applied to unrounded damage before final ceil | **CONFIRMED in-game** (U1 + U19 CDMG half, 2026-09-03). Engine derives `1 + critDmg` from attacker data (no hardcoded default); `configOverrides.critMultiplier` = test-only alternative |
-| Phase counter | `×1.2 / ×0.8 / 1.0` | CONFIRMED |
+| Element counter wheel | **DOES NOT EXIST** (corrected 2026) — weakness matching is the only element interaction; no ×1.2/×0.8 counter relationships; engine `phaseMultiplier` is always 1.0 | **REMOVED (erroneous premise)** |
 | Weakness exploit | factor = `1 + 0.10 × #exploited weaknesses` (+2 stab each) — separate factor, outside the additive DMG bucket, **additive across weaknesses** | CONFIRMED (in-game: Burn ×1.10; Burn + AR ammo ×1.20 — U20 2026-09-03) |
 | Stability-cover reduction (60%, stable + in cover) | **Cover mechanic — DEFERRED**; MVP target always No Cover → term never fires (1.0) | — |
 | Exposed window | fixed 2-turn broken-state window (U4); **no universal damage multiplier (U3)** | U4 ✅ / U3 ✅ |
@@ -491,7 +487,7 @@ Only CONFIRMED values become defaults; everything else is a **config key** (docu
 | 稳态 / 稳定性 | Stability / Steadiness |
 | 稳态崩溃 / 破稳 | Stability Collapse / Exposed |
 | 弱点 | Weakness |
-| 属性克制 | Phase countering |
+| 属性克制 | ~~Phase countering~~ — **REMOVED (erroneous premise, corrected 2026): GFL2 has no elemental counter wheel; weakness matching is the only element interaction** |
 | 支援攻击 | Action Support |
 | 额外行动 | Extra Action |
 | 擦伤 | Glancing — *(removed beta-era term — see §3.6 / U2 tombstone)* |

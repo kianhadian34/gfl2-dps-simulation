@@ -103,11 +103,11 @@ Phases within a round (deterministic, fixed order — §7).
 raw        = unit.finalATK  × skill.multiplier          (or fixedDamage → separate branch)
 mitigated  = raw × finalATK/(finalATK + finalDEF)
 bonus      = 1 + Σ additiveBonuses                       (dmg-up, vuln — one bracket; no generic Confectance bonus — U10 disproven)
-phase      = 1.2 | 0.8 | 1.0
+phase      = 1.0 (always)                                  (NO elemental counter wheel in GFL2 — corrected 2026, docs §3.4; weakness matching is the only element interaction)
 weakness   = 1 + 0.10 × (# exploited weaknesses)   (+2 stab per weakness, applied in stability module; Burn ×1.10, Burn + AR ×1.20 confirmed in-game — U20; separate factor, outside the additive bracket)
 reduction  = (1 − stabilityReduction) × (1 − damageReduction)   (stabilityReduction is COVER-deferred → 1.0 in MVP; target always No Cover)
 crit       = rng.roll(effCritRate) ? (1 + effCritDmg) : 1.0   (effCritRate = min(CritRate, 100%); effCritDmg = Crit DMG + passive-driven 1:1 overflow conversion — U19 confirmed; CDMG linear: 1.20@120%, 1.235@123.5%; configOverrides.critMultiplier = test-only alternative)
-final      = ceil( mitigated × bonus × phase × weakness × reduction × crit )
+final      = ceil( mitigated × bonus × weakness × reduction × crit )
 fixed      = ceil(absolute fixed component)                  (U21: added POST-chain with its own ceil — never scaled by the chain; normal path unchanged)
 total      = normalChainFinal + fixed                        (total game damage = ceil(normal) + ceil(fixed))
 ```

@@ -38,10 +38,10 @@ test("all additive bonuses share one bracket (1 + 0.2 + 0.15 = 1.35)", () => {
   assert.equal(hit({ additiveBonus: 1.35 }).finalDamage, 1350);
 });
 
-test("phase countering ×1.2 and ×0.8", () => {
-  assert.equal(hit({ phaseMult: 1.2 }).finalDamage, 1200);
-  assert.equal(hit({ phaseMult: 0.8 }).finalDamage, 800);
-});
+// CORRECTED 2026: GFL2 has NO elemental counter wheel and no ×1.2/×0.8 phase
+// counter relationships; weakness matching is the only element interaction
+// (validated — see docs/research.md §3.4/§3.5). The old 'phase countering ×1.2
+// and ×0.8' test was removed because it asserted a nonexistent mechanic.
 
 test("weakness exploit +10% per weakness (additive across weaknesses — U20)", () => {
   assert.equal(hit({ weaknessMult: 1.1 }).finalDamage, 1100);
