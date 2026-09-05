@@ -41,9 +41,14 @@ export const STATUS_DEFS: StatusDef[] = [
     durationRounds: 2,
     tickAt: "ownActionEnd",
     purgeable: true,
-    effects: [],
-    verified: false,
-    note: "Overburn applied for 2 rounds (research §3.11); its damage/effect values are UNVERIFIED (docs/research.md §4)",
+    effects: [
+      // VALIDATED in-game (2026): fixed damage = 10% of the EFFECT APPLIER's ATK,
+      // once immediately on gain (onApply), then at EACH of the holder's next two
+      // action ends (onTick); the second tick fires and Overburn then expires.
+      { kind: "fixed_damage", percentOfAtk: 0.1, applies: ["onApply", "onTick"] },
+    ],
+    verified: true,
+    note: "Validated in-game (2026): applier-ATK 1974 → 198 per trigger; sequence apply + holder action-end ×2 = 594, then expires (see docs/research.md §3.10)",
   },
 {
     id: "ammo_weakness_upgrade",

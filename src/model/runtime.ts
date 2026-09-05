@@ -14,6 +14,8 @@ export interface ActiveStatus {
   statusId: string;
   stacks: number;
   durationLeft: number;
+  /** Effect applier captured at application time (applier-ATK fixed damage, Overburn 2026). Optional. */
+  applier?: { id: string; atk: number };
 }
 
 /** Structured event per resolved action/hit — docs/schemas.md §9. */
@@ -22,7 +24,7 @@ export interface LogEvent {
   turn: number;
   unit: string;
   action: string;
-  actionType: "basic" | "active" | "ultimate" | "support";
+  actionType: "basic" | "active" | "ultimate" | "support" | "status_tick";
   target: string;
   source: SourceKind;
   supportAttack: boolean;
@@ -47,6 +49,8 @@ export interface LogEvent {
   statusesExpired: string[];
   /** Snapshot of permanent target 'upgrade' statuses after the hit (e.g. Ammo Weakness Upgrade stacks, 2026) — absent when none. */
   upgradeStacks?: { statusId: string; stacks: number }[];
+  /** Status-sourced fixed damage fired on application or at an ownActionEnd tick (Overburn, 2026) — absent for normal actions. */
+  statusTick?: { statusId: string; amount: number };
   /** Independently ceiled Fixed Damage component (U21) — absent for normal-only hits. */
   fixedDamage?: number;
 }

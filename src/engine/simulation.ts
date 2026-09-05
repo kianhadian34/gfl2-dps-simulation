@@ -1,5 +1,5 @@
 import type { Element } from "../model/types.js";
-import type { ActionSlot, PassiveEffect, Scenario, SkillDef, SourceKind, StatusApplySpec } from "../model/types.js";
+import type { ActionSlot, PassiveEffect, Scenario, SkillDef, SourceKind, StatusApplySpec, StatusEffect } from "../model/types.js";
 import type { LogEvent, SimulationResult } from "../model/runtime.js";
 import type { Registry } from "../data/registry.js";
 import { rollHit } from "./damage.js";
@@ -228,9 +228,69 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
 function applySkillStatuses(state: SimulationState, actor: UnitState, target: UnitState, specs: StatusApplySpec[] | undefined, ev: LogEvent): void {
   for (const spec of specs ?? []) {
     const t = spec.target === "self" ? actor : target;
-    applyStatus(state, t, spec);
+    // Capture the applier (id + ATK at cast) so applier-ATK fixed damage works (Overburn 2026).
+    const full = { ...spec, applier: spec.applier ?? { id: actor.id, atk: actor.panelAtk } };
+    const created = applyStatus(state, t, full);
     ev.statusesApplied.push(spec.statusId);
+    // Validated (2026): gaining Overburn immediately deals fixed damage = 10% of the APPLIER's ATK.
+    if (created) applyStatusFixedDamage(state, t, spec.statusId, "onApply", state.round);
   }
+}
+
+/**
+ * Status-sourced fixed damage (Overburn, validated 2026): absolute damage =
+ * ceil(percentOfAtk × applier ATK captured at application time), applied to the
+ * status HOLDER, logged as a status_tick event, and added to totals WITHOUT
+ * counting an action (aggregations stay consistent with the log). Data-driven —
+ * no per-status branch.
+ */
+function applyStatusFixedDamage(state: SimulationState, holder: UnitState, statusId: string, applies: "onApply" | "onTick", turn: number): void {
+  const def = state.statusRegistry.get(statusId);
+  if (!def) return;
+  const active = holder.statuses.find((s) => s.statusId === statusId);
+  const applier = active?.applier;
+  if (!applier) return;
+  const eff = def.effects.find(
+    (e): e is Extract<StatusEffect, { kind: "fixed_damage" }> => e.kind === "fixed_damage" && e.applies.includes(applies),
+  );
+  if (!eff) return;
+  const raw = applier.atk * eff.percentOfAtk;
+  const amount = Math.ceil(Math.round(raw * 1e6) / 1e6); // same round6 guard as the damage pipeline
+  holder.hp = Math.max(0, holder.hp - amount);
+  accumulateDamage(state, applier.id, amount);
+  state.log.push({
+    round: state.round,
+    turn,
+    unit: applier.id,
+    action: def.id,
+    actionType: "status_tick",
+    target: holder.id,
+    source: "passive",
+    supportAttack: false,
+    weaknessExploited: [],
+    phaseMult: 1,
+    bonusBracket: 1,
+    reductionMult: 1,
+    attackerAtk: applier.atk,
+    targetDef: holder.defStat,
+    finalDamage: amount,
+    fixedDamage: amount,
+    statusTick: { statusId: def.id, amount },
+    cooldownAfter: {},
+    statusesApplied: [],
+    statusesExpired: [],
+  });
+}
+
+/** Add damage to aggregates WITHOUT consuming an action (status-sourced damage, 2026). */
+function accumulateDamage(state: SimulationState, unitId: string, damage: number): void {
+  state.accum.damage += damage;
+  const c = state.accum.byCharacter.get(unitId) ?? { damage: 0, actions: 0 };
+  c.damage += damage;
+  state.accum.byCharacter.set(unitId, c);
+  const s = state.accum.bySource.get("passive") ?? { damage: 0, actions: 0 };
+  s.damage += damage;
+  state.accum.bySource.set("passive", s);
 }
 
 function resolveMainAction(state: SimulationState, doll: UnitState, slot: ActionSlot, k: number, turn: number): void {
@@ -370,9 +430,13 @@ function accumulate(state: SimulationState, doll: UnitState, source: SourceKind,
   state.accum.bySource.set(source, s);
 }
 
-function endOfOwnTurn(state: SimulationState, doll: UnitState): void {
-  tickCooldowns(doll); // U11 model assumption
-  tickStatuses(state, doll, "ownActionEnd"); // U7 CONFIRMED 2026-09-03: normal timed buffs tick at the recipient's action end
+function endOfOwnTurn(state: SimulationState, unit: UnitState): void {
+  tickCooldowns(unit); // U11 model assumption
+  // U7 CONFIRMED 2026-09-03: normal timed buffs tick at the recipient's action end.
+  // onTick fires status-sourced fixed damage (Overburn, 2026) before each decrement.
+  tickStatuses(state, unit, "ownActionEnd", (st, u, def, active) => {
+    if (active.applier) applyStatusFixedDamage(st, u, def.id, "onTick", st.round);
+  });
 }
 
 function endOfRound(state: SimulationState): void {
@@ -467,6 +531,11 @@ export function simulate(scenario: Scenario, registry: Registry): SimulationResu
       fireSupportAttacks(state, doll, turn);
       endOfOwnTurn(state, doll);
     }
+    // Dummy pass-turn (validated 2026): the stationary dummy advances through a
+    // no-op action cycle (no attacks/skills/resources/AI) so target-side
+    // ownActionEnd statuses (e.g. Overburn) tick naturally. Invisible otherwise.
+    state.appliedThisAction = [];
+    endOfOwnTurn(state, state.dummy);
     endOfRound(state);
   }
   return buildResults(state, scenario);

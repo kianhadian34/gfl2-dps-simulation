@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
 import { scenario } from "./helpers.js";
 
-function actionsOf(r: { log: { action: string }[] }): string[] {
-  return r.log.map((e) => e.action);
+function actionsOf(r: { log: { action: string; actionType?: string }[] }): string[] {
+  // Main actions only — status_tick events (Overburn 2026) are not rotation actions.
+  return r.log.filter((e) => e.actionType !== "status_tick").map((e) => e.action);
 }
 
 test("fixed rotation cycles through the declared slots", () => {

@@ -270,7 +270,7 @@ Level-60 base magnitudes (CONFIRMED, 2024 BWIKI data): Qiongjiu `ATK 119→1224,
 - "不可驱散" (un-dispellable) flag exists: CONFIRMED.
 - Official control-type set: taunt/evasion/lure/stun: CONFIRMED (out of MVP scope, but note).
 
-**Implementation interpretation** — generic `Status` records: `id, stacks, maxStacks, duration (big-rounds), tickAt (actionEnd|roundEnd|ownTurnStart), instanceKey (caster), purgeable, statMods[], dmgMods[], stabilityMods[], hooks[]`. DoT fixed damage uses caster ATK at cast time and does **not** crit or use DEF (fixed-damage branch). Duration model default for MVP: decrement at the recipient's own action end — **CONFIRMED (U7, in-game 2026-09-03)**, configurable per status for alternative testing.
+**Implementation interpretation** — generic `Status` records: `id, stacks, maxStacks, duration (big-rounds), tickAt (actionEnd|roundEnd|ownTurnStart), instanceKey (caster), purgeable, statMods[], dmgMods[], stabilityMods[], hooks[]`. DoT/status-sourced fixed damage uses the EFFECT APPLIER's ATK at cast time and does **not** crit or use DEF (fixed-damage branch) — **VALIDATED 2026 (Overburn: 10% of the applier's ATK, ceiled; triggers immediately on gain, then at the end of each of the HOLDER's next two actions, then expires — sequence 198/198/198 = 594 at 1974 ATK)**. Duration model default for MVP: decrement at the recipient's own action end — **CONFIRMED (U7, in-game 2026-09-03)**; the stationary target now takes a minimal pass-turn each round so target-side `ownActionEnd` statuses tick naturally (§3.16).
 
 **Unknowns** — status-specific timings/stacking beyond the observed default (statuses with their own tick/stacking text); full element-DoT definitions for electric/ice/decay (only burn & acid are textually documented).
 
@@ -340,7 +340,7 @@ Level-60 base magnitudes (CONFIRMED, 2024 BWIKI data): Qiongjiu `ATK 119→1224,
 
 **Confidence** — Dummy stats: UNKNOWN → fully configurable.
 
-**Implementation interpretation** — recommended defaults: `DEF 0, HP 1e9, stability 0, weaknesses [], phase neutral, cover none`. With `stability 0`, the stability-reduction term (§3.7) can never fire, so its unknown rule does not block correctness.
+**Implementation interpretation** — recommended defaults: `DEF 0, HP 1e9, stability 0, weaknesses [], phase neutral, cover none`. With `stability 0`, the stability-reduction term (§3.7) can never fire, so its unknown rule does not block correctness. **Pass-turn lifecycle (added 2026):** the stationary dummy takes a minimal pass-turn each round (no attacks, no skills, no resource gains, no AI) so target-side `ownActionEnd` statuses — e.g. Overburn (§3.10) — tick and expire naturally; it is invisible when the dummy has no such statuses.
 
 **Unknowns** — everything about the "real" in-game dummy → covered by the in-game test plan.
 

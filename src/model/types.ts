@@ -28,6 +28,8 @@ export interface StatusApplySpec {
   stacks?: number;
   /** Where the status lands. Default "target". */
   target?: "self" | "target";
+  /** Source of the application (for applier-ATK fixed damage / later source rules). Optional; captures id + ATK at cast time. */
+  applier?: { id: string; atk: number };
 }
 
 export interface SkillDef {
@@ -136,6 +138,18 @@ export type StatusEffect =
       value: number;
     }
   | { kind: "damage_reduction"; value: number }
+  | {
+      /**
+       * Status-sourced fixed damage (Overburn, validated 2026): absolute damage =
+       * ceil(percentOfAtk × the EFFECT APPLIER's ATK captured at application time).
+       * `applies`: "onApply" fires immediately when the status is newly applied;
+       * "onTick" fires at each matching ownActionEnd tick (before expiry).
+       * Data-driven — no per-status branch in the engine.
+       */
+      kind: "fixed_damage";
+      percentOfAtk: number;
+      applies: ("onApply" | "onTick")[];
+    }
   | {
       /**
        * Stack-tier damage modifier (Ammo Weakness Upgrade, validated 2026):

@@ -21,14 +21,16 @@ test("integration: 7-round fixed rotation (MVP cap), all aggregations consistent
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
   });
 
-  // One main action per round (solo team, no supports).
+  // One main action per round (solo team, no supports); status_tick events
+  // (Overburn, 2026) are extra log entries, not actions.
   assert.equal(r.totals.actions, 7);
-  assert.equal(r.log.length, 7);
+  const mains = r.log.filter((e) => e.actionType !== "status_tick");
+  assert.equal(mains.length, 7);
 
   // Exact rotation execution: ultimate re-casts whenever Confectance (3) covers the cost.
   // FK1 start 3 → r1 ult (0); dmg gains +1: r2 1, r3 2, r4 3; r5 ult again…
   assert.deepEqual(
-    r.log.map((e) => e.action),
+    mains.map((e) => e.action),
     [
       "qiongjiu_pressing_momentum",
       "qiongjiu_common_rail",
@@ -51,13 +53,14 @@ test("integration: 7-round fixed rotation (MVP cap), all aggregations consistent
   assert.equal(sourceSum, logSum);
   assert.deepEqual(
     r.bySource.map((s) => s.source).sort(),
-    ["active", "basic", "ultimate"],
+    ["active", "basic", "passive", "ultimate"], // "passive" = status-sourced Overburn damage (2026)
   );
 
   // Log detail: every damaging action records its damage-pipeline inputs for
   // comparison against an in-game test (attacker ATK, target DEF, bracket…).
   for (const e of r.log) {
     if (e.action === "qiongjiu_pressing_momentum") continue; // no damage
+    if (e.actionType === "status_tick") continue; // status-sourced fixed damage (no mitigated chain)
     assert.equal(typeof e.attackerAtk, "number");
     assert.equal(typeof e.targetDef, "number");
     assert.equal(typeof e.bonusBracket, "number");

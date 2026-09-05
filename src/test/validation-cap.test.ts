@@ -57,8 +57,9 @@ test("manual 4-turn rotation: Skill1 → Skill2 → Basic → Ultimate (validati
   const r = simulateScenario(
     scenario({ turns: 4, rotation: ["active1", "active2", "basic", "ultimate"], keys: ["qiongjiu_fk1_concentration"] }),
   );
+  // Main actions only — status_tick events (Overburn 2026) are not rotation actions.
   assert.deepEqual(
-    r.log.map((e) => e.action),
+    r.log.filter((e) => e.actionType !== "status_tick").map((e) => e.action),
     [
       "qiongjiu_common_rail", // Turn 1: Skill 1
       "qiongjiu_guide_to_victory", // Turn 2: Skill 2

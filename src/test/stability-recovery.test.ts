@@ -24,7 +24,11 @@ test("break during Turn 2 → stability restored on Turn 4 (confirmed in-game)",
   const r = simulateScenario(
     scenario({ turns: 5, seed: 7, rotation: ["basic", "basic", "active2", "basic", "active2"], dummy: { stability: 4 } }),
   );
-  assert.deepEqual(r.log.map((e) => e.exposed), [false, true, true, false, false]);
+  // Main actions only — status_tick events (Overburn 2026) carry no exposed flag.
+  assert.deepEqual(
+    r.log.filter((e) => e.actionType !== "status_tick").map((e) => e.exposed),
+    [false, true, true, false, false],
+  );
 });
 
 test("break during Turn 1 → stability restored on Turn 3 (confirmed in-game)", () => {
@@ -33,15 +37,23 @@ test("break during Turn 1 → stability restored on Turn 3 (confirmed in-game)",
   const r = simulateScenario(
     scenario({ turns: 3, seed: 7, rotation: ["basic", "active2", "ultimate"], dummy: { stability: 2 } }),
   );
+  // Main actions only — status_tick events (Overburn 2026) carry no exposed flag;
   // `?? false`: the ultimate is a non-damaging action (no hit → no exposed flag).
-  assert.deepEqual(r.log.map((e) => e.exposed ?? false), [true, true, false]);
+  assert.deepEqual(
+    r.log.filter((e) => e.actionType !== "status_tick").map((e) => e.exposed ?? false),
+    [true, true, false],
+  );
 });
 
 test("no earlier restoration: the 2-turn delay is exact (confirmed rule)", () => {
   // Turn 2 must still show the window — recovery ticks only after 2 full rounds.
   const run = () => scenario({ turns: 2, seed: 7, rotation: ["basic", "active2"], dummy: { stability: 2 } });
   const r = simulateScenario(run());
-  assert.deepEqual(r.log.map((e) => e.exposed), [true, true]);
+  // Main actions only — status_tick events (Overburn 2026) carry no exposed flag.
+  assert.deepEqual(
+    r.log.filter((e) => e.actionType !== "status_tick").map((e) => e.exposed ?? false),
+    [true, true],
+  );
   const again = simulateScenario(run());
   assert.equal(JSON.stringify(r.log), JSON.stringify(again.log));
 });

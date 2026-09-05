@@ -1,8 +1,9 @@
 import type { Element, StatusApplySpec } from "../model/types.js";
+import type { ActiveStatus } from "../model/runtime.js";
 import type { EffectiveStatusDef, SimulationState, UnitState } from "./state.js";
 
-/** Status expiry bookkeeping. Tick timing is CONFIRMED (U7, in-game 2026-09-03: normal timed buffs tick at the recipient's action end); the tick point stays config-overridable per scenario for alternative testing. */
-export function applyStatus(state: SimulationState, target: UnitState, spec: StatusApplySpec): void {
+/** Status expiry bookkeeping. Tick timing is CONFIRMED (U7, in-game 2026-09-03: normal timed buffs tick at the recipient's action end); the tick point stays config-overridable per scenario for alternative testing. Returns true when a NEW active status was created. */
+export function applyStatus(state: SimulationState, target: UnitState, spec: StatusApplySpec): boolean {
   const def = state.statusRegistry.get(spec.statusId);
   if (!def) throw new Error(`Unknown status: ${spec.statusId}`);
   // Applied duration = per-status config override (validation mode) else the skill's spec.
@@ -15,10 +16,12 @@ export function applyStatus(state: SimulationState, target: UnitState, spec: Sta
     // Attack Up II): same-tier reapplication refreshes the duration and does NOT add a stack.
     existing.durationLeft = Math.max(existing.durationLeft, dur);
     if (def.stackable) existing.stacks = Math.min(def.maxStacks, existing.stacks + stacks);
+    return false;
   } else {
-    const active = { statusId: spec.statusId, stacks: Math.min(def.maxStacks, stacks), durationLeft: dur };
+    const active = { statusId: spec.statusId, stacks: Math.min(def.maxStacks, stacks), durationLeft: dur, applier: spec.applier };
     target.statuses.push(active);
     state.appliedThisAction.push(active);
+    return true;
   }
 }
 
@@ -26,9 +29,16 @@ export function applyStatus(state: SimulationState, target: UnitState, spec: Sta
  * Tick durations for one unit. `ownActionEnd`: decremented at the end of the
  * OWNER's action phase (CONFIRMED for normal timed buffs — U7, in-game 2026-09-03);
  * statuses applied during that same action are skipped (a 1-round status cast on
- * turn N covers the owner's turn N+1).
+ * turn N covers the owner's turn N+1). `onTick` (optional) fires per status
+ * right before it is decremented — used for status-sourced fixed damage on the
+ * tick (Overburn, 2026) including the finally-expiring tick.
  */
-export function tickStatuses(state: SimulationState, unit: UnitState, at: "ownActionEnd" | "roundEnd"): string[] {
+export function tickStatuses(
+  state: SimulationState,
+  unit: UnitState,
+  at: "ownActionEnd" | "roundEnd",
+  onTick?: (state: SimulationState, unit: UnitState, def: EffectiveStatusDef, active: ActiveStatus) => void,
+): string[] {
   const expired: string[] = [];
   const isRoundEnd = at === "roundEnd";
   for (const s of unit.statuses) {
@@ -38,6 +48,7 @@ export function tickStatuses(state: SimulationState, unit: UnitState, at: "ownAc
     if (!matches) continue;
     if (!isRoundEnd && state.appliedThisAction.includes(s)) continue; // applied this action
     if (def.durationRounds === null) continue; // permanent
+    if (onTick) onTick(state, unit, def, s);
     s.durationLeft -= 1;
     if (s.durationLeft <= 0) expired.push(s.statusId);
   }
