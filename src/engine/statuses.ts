@@ -116,9 +116,9 @@ export function tierValue(tiers: Record<number, number>, stacks: number): number
 }
 
 /**
- * Final DMG modifier chain for FIXED damage ONLY (validated 2026):
- *   fixed = ceil(scaling × (1 + Σ applier-side final DMG increase) × (1 − Σ holder-side final DMG reduction))
- * Increase and reduction are DISTINCT buckets (fixed_dmg_modifier) — ordinary
+ * Fixed DMG modifier chain for FIXED damage ONLY (validated 2026):
+ *   fixed = ceil(scaling × (1 + Σ applier-side Fixed DMG Buffs) × (1 − Σ holder-side Final DMG Reduction))
+ * Buff and reduction are DISTINCT buckets (fixed_dmg_modifier) — ordinary
  * damage increase/reduction never enter this product. Reduction effects are
  * SUMMED (source: "Final DMG Reduction = sum of enemy final DMG reduction
  * effects") and clamped so the multiplier cannot go negative.
@@ -128,12 +128,12 @@ export function fixedDmgMods(
   holder: UnitState,
   statusRegistry: Map<string, EffectiveStatusDef>,
 ): number {
-  let inc = 0;
+  let buff = 0;
   for (const s of applier?.statuses ?? []) {
     const def = statusRegistry.get(s.statusId);
     if (!def) continue;
     for (const e of def.effects) {
-      if (e.kind === "fixed_dmg_modifier" && e.mode === "increase") inc += e.value * s.stacks;
+      if (e.kind === "fixed_dmg_modifier" && e.mode === "buff") buff += e.value * s.stacks;
     }
   }
   let red = 0;
@@ -144,7 +144,7 @@ export function fixedDmgMods(
       if (e.kind === "fixed_dmg_modifier" && e.mode === "reduction") red += e.value * s.stacks;
     }
   }
-  return (1 + inc) * Math.max(0, 1 - red);
+  return (1 + buff) * Math.max(0, 1 - red);
 }
 
 /** Multiplicative taken modifiers (e.g. boss Stability passives, U5) or reductions. */

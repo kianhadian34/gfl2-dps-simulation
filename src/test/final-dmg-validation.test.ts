@@ -4,15 +4,18 @@ import { simulateScenario } from "../simulate.js";
 import { customRegistry } from "./helpers.js";
 import type { CharacterDef, PassiveEffect, StatusApplySpec } from "../model/types.js";
 
-// Final DMG modifiers on FIXED damage — validated in-game (2026, docs §3.10/U21).
-// fixed = ceil(scaling × (1 + Σ applier Final DMG Increase) × (1 − Σ holder Final DMG Reduction))
+// Fixed DMG modifiers on FIXED damage — validated in-game (2026, docs §3.10/U21).
+// fixed = ceil(scaling × (1 + Σ applier Fixed DMG Buffs) × (1 − Σ holder Final DMG Reduction))
 // Ordinary Damage Reduction/Increase are SEPARATE buckets and never enter this
 // product (boss −80% ordinary DR and No-Cover +20% are bypassed; validated).
 // Ordering: modifier chain applied to the UNROUNDED value, then ceil.
-//   reduction 60% only:   1931 × 0.10 × 0.40 = 77.24 → 78
-//   increase 10% + red 60%: 3471 × 0.10 × 1.10 × 0.40 = 152.724 → 153
-//   increase 10% only:     1931 × 0.10 × 1.10 = 212.41 → 213
-//   no modifiers:          1949 × 0.10 = 194.9 → 195
+//   Final DMG Reduction 60% only:     1931 × 0.10 × 0.40 = 77.24 → 78
+//   Fixed DMG Buff +10% + red 60%:    3471 × 0.10 × 1.10 × 0.40 = 152.724 → 153
+//   Fixed DMG Buff +10% only:         1931 × 0.10 × 1.10 = 212.41 → 213
+//   no modifiers:                     1949 × 0.10 = 194.9 → 195
+// NOTE (2026): the earlier project label "Final DMG Increase" was reclassified
+// to the authoritative source term "Fixed DMG Buff"/"Fixed DMG Buffs"; the
+// validated +10% Fixed DMG Key behavior is unchanged.
 
 function makeOverburnApplier(
   id: string,
@@ -22,7 +25,7 @@ function makeOverburnApplier(
   const specs: StatusApplySpec[] = [{ statusId: "overburn", durationRounds: 2, target: "target" }];
   const passive: PassiveEffect[] = [];
   if (opts.increase) {
-    specs.unshift({ statusId: "final_dmg_increase", durationRounds: 1, target: "self" });
+    specs.unshift({ statusId: "fixed_dmg_buff", durationRounds: 1, target: "self" });
   }
   if (opts.ordinaryNoCover) {
     passive.push({ kind: "conditional_damage_modifier", scope: "dealt", mode: "additive", value: opts.ordinaryNoCover, when: "target.noCover" });
@@ -79,11 +82,11 @@ test("fixed: Final DMG Reduction 60% → 1931 × 0.10 × 0.40 = 77.24 → 78", (
   assert.deepEqual(overburnAmounts(runOverburn(1931, { reduction: true })), [78, 78]);
 });
 
-test("fixed: Final DMG Increase +10% and Reduction 60% → 152.724 → 153 (unrounded chain, no early round)", () => {
+test("fixed: Fixed DMG Buff +10% and Final DMG Reduction 60% → 152.724 → 153 (unrounded chain, no early round)", () => {
   assert.deepEqual(overburnAmounts(runOverburn(3471, { increase: true, reduction: true })), [153, 153]);
 });
 
-test("fixed: Final DMG Increase +10% only → 193.1 × 1.10 = 212.41 → 213", () => {
+test("fixed: Fixed DMG Buff +10% only → 193.1 × 1.10 = 212.41 → 213", () => {
   assert.deepEqual(overburnAmounts(runOverburn(1931, { increase: true })), [213, 213]);
 });
 

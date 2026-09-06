@@ -167,17 +167,22 @@ export type StatusEffect =
     }
   | {
       /**
-       * Final DMG modifier (fixed-damage chain, validated 2026): applies ONLY to
-       * fixed damage. Final DMG Increase is summed from APPLIER-side effects;
-       * Final DMG Reduction is summed from HOLDER/TARGET-side effects. Both are
-       * multiplied into the UNROUNDED fixed value before the final ceil:
-       *   fixed = ceil(scaling × (1 + Σincrease) × (1 − Σreduction))
+       * Fixed DMG modifier chain (validated 2026), naming per the authoritative
+       * source: "Fixed DMG Buffs" (applier-side, e.g. the validated +10% Fixed
+       * DMG Key; source examples: Common Key - Source of Pride, Ultimate
+       * Brilliance — not individually tested) and "Final DMG Reduction"
+       * (holder/target-side, summed). Applies ONLY to fixed damage on the
+       * UNROUNDED value before the final ceil:
+       *   fixed = ceil(scaling × (1 + Σ Fixed DMG Buffs) × (1 − Σ Final DMG Reduction))
        * Ordinary Damage Increase/Reduction are separate buckets and never touch
        * fixed damage (validated: boss −80% ordinary DR and No-Cover +20% are
-       * bypassed; Final DMG Reduction 60% and Final DMG Increase +10% apply).
+       * bypassed; Final DMG Reduction 60% and the +10% Fixed DMG Key apply).
+       * NOTE: the earlier project label "Final DMG Increase" was reclassified
+       * (2026) to the source term "Fixed DMG Buff"/"Fixed DMG Buffs" — there is
+       * no separate "Final DMG Increase" mechanic.
        */
       kind: "fixed_dmg_modifier";
-      mode: "increase" | "reduction";
+      mode: "buff" | "reduction";
       value: number;
     };
 

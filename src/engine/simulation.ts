@@ -257,8 +257,8 @@ function applyStatusFixedDamage(state: SimulationState, holder: UnitState, statu
     (e): e is Extract<StatusEffect, { kind: "fixed_damage" }> => e.kind === "fixed_damage" && e.applies.includes(applies),
   );
   if (!eff) return;
-  // Final DMG modifier chain (validated 2026): apply to the UNROUNDED value
-  // before the final ceil. Applier-side Final DMG Increase, holder-side Final
+  // Fixed DMG modifier chain (validated 2026): apply to the UNROUNDED value
+  // before the final ceil. Applier-side Fixed DMG Buffs, holder-side Final
   // DMG Reduction — ordinary damage increase/reduction never enter this product.
   const actorUnit = state.units.find((u) => u.id === applier.id);
   const finalMult = fixedDmgMods(actorUnit, holder, state.statusRegistry);
