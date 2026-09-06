@@ -9,6 +9,7 @@ import {
   additiveDealtBonus,
   additiveTakenBonus,
   applyStatus,
+  fixedDmgMods,
   multiplicativeTakenMods,
   tickStatuses,
 } from "./statuses.js";
@@ -180,7 +181,9 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     atk: actor.panelAtk,
     def: dummy.defStat,
     multiplier: skill.multiplier ?? 0,
-    fixedDamage: skill.fixedDamage,
+    // Final DMG modifier chain applied to the UNROUNDED absolute fixed value;
+    // rollHit then ceils (validated 2026). Ordinary factors are never applied.
+    fixedDamage: skill.fixedDamage !== undefined ? skill.fixedDamage * fixedDmgMods(actor, dummy, state.statusRegistry) : undefined,
     additiveBonus: 1 + addDealt + addTaken,
     phaseMult,
     weaknessMult,
@@ -254,7 +257,12 @@ function applyStatusFixedDamage(state: SimulationState, holder: UnitState, statu
     (e): e is Extract<StatusEffect, { kind: "fixed_damage" }> => e.kind === "fixed_damage" && e.applies.includes(applies),
   );
   if (!eff) return;
-  const raw = applier.atk * eff.percentOfAtk;
+  // Final DMG modifier chain (validated 2026): apply to the UNROUNDED value
+  // before the final ceil. Applier-side Final DMG Increase, holder-side Final
+  // DMG Reduction — ordinary damage increase/reduction never enter this product.
+  const actorUnit = state.units.find((u) => u.id === applier.id);
+  const finalMult = fixedDmgMods(actorUnit, holder, state.statusRegistry);
+  const raw = applier.atk * eff.percentOfAtk * finalMult;
   const amount = Math.ceil(Math.round(raw * 1e6) / 1e6); // same round6 guard as the damage pipeline
   holder.hp = Math.max(0, holder.hp - amount);
   accumulateDamage(state, applier.id, amount);

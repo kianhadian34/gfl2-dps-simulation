@@ -72,6 +72,32 @@ export const STATUS_DEFS: StatusDef[] = [
     verified: true,
     note: "Validated in-game (2026): triggered by Ammo-weakness exploits on Physical attacks; bonus additive in the DMG% bucket, post generic weakness; see docs/research.md §3.18",
   },
+  {
+    id: "final_dmg_increase",
+    name: "Final DMG Increase",
+    category: "buff",
+    stackable: false,
+    maxStacks: 1,
+    durationRounds: 1,
+    tickAt: "ownActionEnd",
+    purgeable: true,
+    effects: [{ kind: "fixed_dmg_modifier", mode: "increase", value: 0.1 }],
+    verified: true,
+    note: "Test fixture exemplar of the validated Final DMG Increase bucket (2026, +10% example); real character data supplies its own value",
+  },
+  {
+    id: "final_dmg_reduction",
+    name: "Final DMG Reduction",
+    category: "debuff",
+    stackable: false,
+    maxStacks: 1,
+    durationRounds: 2, // persists across the target's ownActionEnd ticks so both status- and skill-sourced fixed tests can read it
+    tickAt: "ownActionEnd",
+    purgeable: true,
+    effects: [{ kind: "fixed_dmg_modifier", mode: "reduction", value: 0.6 }],
+    verified: true,
+    note: "Test fixture exemplar of the validated Final DMG Reduction bucket (2026, 60% example); real enemy/boss data supplies its own value",
+  },
 ];
 
 export function statusMap(): Map<string, StatusDef> {

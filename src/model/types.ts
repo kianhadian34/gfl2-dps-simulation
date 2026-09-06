@@ -164,6 +164,21 @@ export type StatusEffect =
       mode: "additive";
       tiers: Record<number, number>;
       when?: { element: Element[] };
+    }
+  | {
+      /**
+       * Final DMG modifier (fixed-damage chain, validated 2026): applies ONLY to
+       * fixed damage. Final DMG Increase is summed from APPLIER-side effects;
+       * Final DMG Reduction is summed from HOLDER/TARGET-side effects. Both are
+       * multiplied into the UNROUNDED fixed value before the final ceil:
+       *   fixed = ceil(scaling × (1 + Σincrease) × (1 − Σreduction))
+       * Ordinary Damage Increase/Reduction are separate buckets and never touch
+       * fixed damage (validated: boss −80% ordinary DR and No-Cover +20% are
+       * bypassed; Final DMG Reduction 60% and Final DMG Increase +10% apply).
+       */
+      kind: "fixed_dmg_modifier";
+      mode: "increase" | "reduction";
+      value: number;
     };
 
 export interface StatusDef {
