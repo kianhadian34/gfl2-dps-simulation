@@ -84,3 +84,28 @@ test("integration: target flat DEF modifier changes the defender's effective DEF
   const expected = Math.ceil(hit.baseDamage! * (hit.attackerAtk! / (hit.attackerAtk! + hit.targetDef!)));
   assert.equal(hit.finalDamage, expected);
 });
+
+test("DEF Down II: percentage DEF reduction applies directly to effective DEF — 5000 × (1 − 0.30) = 3500 (validated)", () => {
+  const state = createState(scenario({ turns: 1 }), REGISTRY, new Set());
+  const doll = state.units[0];
+  applyStatus(state, doll, { statusId: "stat_def_down_ii_pct", durationRounds: 2 });
+  assert.equal(statModifier(doll, state.statusRegistry, "def", 5000), 3500); // ceil(5000 × 0.70)
+});
+
+test("integration: DEF Down II on the target → effective target DEF 3500, damage recomputed (validated)", () => {
+  const c = makeStatChar("statdd", 2000, [], [{ statusId: "stat_def_down_ii_pct", durationRounds: 2, target: "target" }]);
+  const r = simulateScenario(
+    {
+      version: 1,
+      seed: 3,
+      turns: 2,
+      team: [{ characterId: c.id, rotation: ["active1", "basic"], equippedFixedKeys: [] }],
+      dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 0, weaknesses: [], phase: null, cover: "none" },
+    },
+    customRegistry({ [c.id]: c }),
+  );
+  const hit = r.log.find((e) => e.action === "statdd_basic")!;
+  assert.equal(hit.targetDef, 3500); // 5000 × (1 − 0.30) — validated DEF Down II
+  const expected = Math.ceil(hit.baseDamage! * (hit.attackerAtk! / (hit.attackerAtk! + hit.targetDef!)));
+  assert.equal(hit.finalDamage, expected);
+});

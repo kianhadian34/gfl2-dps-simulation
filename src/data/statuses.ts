@@ -150,6 +150,19 @@ export const STATUS_DEFS: StatusDef[] = [
     verified: true,
     note: "Test fixture for stat_modifier flat CritRate",
   },
+  {
+    id: "stat_def_down_ii_pct",
+    name: "Stat DEF Down II (test)",
+    category: "debuff",
+    stackable: false,
+    maxStacks: 1,
+    durationRounds: null,
+    tickAt: "ownActionEnd",
+    purgeable: true,
+    effects: [{ kind: "stat_modifier", stat: "def", mode: "pct", value: -0.3 }],
+    verified: true,
+    note: "Test fixture of the validated DEF Down II behavior (2026: 5000 × (1 − 0.30) = 3500 effective DEF); negative percentage stat modifier",
+  },
 ];
 
 export function statusMap(): Map<string, StatusDef> {
