@@ -78,8 +78,6 @@ export interface SimulationState {
   statusRegistry: Map<string, EffectiveStatusDef>;
   log: LogEvent[];
   warnings: Set<string>;
-  /** Statuses applied during the current action — excluded from its own end-of-turn tick. */
-  appliedThisAction: ActiveStatus[];
   accum: Accumulators;
 }
 
@@ -259,7 +257,6 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
     statusRegistry: applyStatusOverrides(registry.getStatusMap(), config.statusOverrides),
     log: [],
     warnings,
-    appliedThisAction: [],
     accum: {
       actions: 0,
       damage: 0,

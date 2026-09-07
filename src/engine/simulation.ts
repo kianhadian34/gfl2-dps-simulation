@@ -11,6 +11,7 @@ import {
   applyStatus,
   fixedDmgMods,
   multiplicativeTakenMods,
+  statModifier,
   tickStatuses,
 } from "./statuses.js";
 import { applyStabilityDamage, endOfRoundStability } from "./stability.js";
@@ -175,11 +176,13 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   // Confirmed rule (U1 + U19): crit multiplier = 1 + attacker Crit DMG, where Crit DMG
   // includes any passive overflow conversion; effective Crit Rate caps at 100%.
   // configOverrides.critMultiplier is a test-only alternative hypothesis.
-  const crit = resolveCritStats(actor.critRate, actor.critDmg, passiveEffects(actor));
+  const crit = resolveCritStats(statModifier(actor, state.statusRegistry, "critRate", actor.critRate), actor.critDmg, passiveEffects(actor));
   const critMult = state.config.critMultiplier ?? 1 + crit.critDmg;
+  const effAtk = statModifier(actor, state.statusRegistry, "atk", actor.panelAtk);
+  const effDef = statModifier(dummy, state.statusRegistry, "def", dummy.defStat);
   const hit = rollHit({
-    atk: actor.panelAtk,
-    def: dummy.defStat,
+    atk: effAtk,
+    def: effDef,
     multiplier: skill.multiplier ?? 0,
     // Final DMG modifier chain applied to the UNROUNDED absolute fixed value;
     // rollHit then ceils (validated 2026). Ordinary factors are never applied.
@@ -212,8 +215,8 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   }
   ev.baseDamage = hit.baseDamage;
   ev.mitigatedDamage = hit.mitigatedDamage;
-  ev.attackerAtk = actor.panelAtk;
-  ev.targetDef = dummy.defStat;
+  ev.attackerAtk = effAtk;
+  ev.targetDef = effDef;
   ev.critical = hit.critical;
   ev.critMultiplier = critMult;
   ev.weaknessExploited = weaknesses;
@@ -533,7 +536,6 @@ export function simulate(scenario: Scenario, registry: Registry): SimulationResu
     state.round = round;
     for (const doll of state.units) {
       beginUnitRound(doll);
-      state.appliedThisAction = [];
       const { slot, k } = pickAction(state, doll);
       resolveMainAction(state, doll, slot, k, ++turn);
       fireSupportAttacks(state, doll, turn);
@@ -542,7 +544,6 @@ export function simulate(scenario: Scenario, registry: Registry): SimulationResu
     // Dummy pass-turn (validated 2026): the stationary dummy advances through a
     // no-op action cycle (no attacks/skills/resources/AI) so target-side
     // ownActionEnd statuses (e.g. Overburn) tick naturally. Invisible otherwise.
-    state.appliedThisAction = [];
     endOfOwnTurn(state, state.dummy);
     endOfRound(state);
   }

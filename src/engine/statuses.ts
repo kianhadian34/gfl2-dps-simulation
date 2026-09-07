@@ -20,18 +20,18 @@ export function applyStatus(state: SimulationState, target: UnitState, spec: Sta
   } else {
     const active = { statusId: spec.statusId, stacks: Math.min(def.maxStacks, stacks), durationLeft: dur, applier: spec.applier };
     target.statuses.push(active);
-    state.appliedThisAction.push(active);
     return true;
   }
 }
 
 /**
  * Tick durations for one unit. `ownActionEnd`: decremented at the end of the
- * OWNER's action phase (CONFIRMED for normal timed buffs — U7, in-game 2026-09-03);
- * statuses applied during that same action are skipped (a 1-round status cast on
- * turn N covers the owner's turn N+1). `onTick` (optional) fires per status
- * right before it is decremented — used for status-sourced fixed damage on the
- * tick (Overburn, 2026) including the finally-expiring tick.
+ * OWNER's action phase (CONFIRMED for normal timed buffs — U7, in-game 2026-09-03;
+ * and for SELF-applied buffs, in-game 2026: a buff a unit applies to itself is
+ * ticked at the END of that same action — e.g. Positive Charge 3 → 2 at the
+ * caster's action end; the old same-action skip was removed). `onTick` (optional)
+ * fires per status right before it is decremented — used for status-sourced
+ * fixed damage on the tick (Overburn, 2026) including the finally-expiring tick.
  */
 export function tickStatuses(
   state: SimulationState,
@@ -46,7 +46,6 @@ export function tickStatuses(
     if (!def) continue;
     const matches = isRoundEnd ? def.tickAt === "roundEnd" : def.tickAt === "ownActionEnd";
     if (!matches) continue;
-    if (!isRoundEnd && state.appliedThisAction.includes(s)) continue; // applied this action
     if (def.durationRounds === null) continue; // permanent
     if (onTick) onTick(state, unit, def, s);
     s.durationLeft -= 1;
@@ -113,6 +112,37 @@ export function tierValue(tiers: Record<number, number>, stacks: number): number
     best = tiers[k];
   }
   return best;
+}
+
+/**
+ * Effective combat stat from active `stat_modifier` status effects (2026):
+ *   effective = (baseStat + Σ flat) × (1 + Σ pct)
+ * ATK/HP/DEF are rounded UP (validated 2026 — e.g. ATK Up II: 1933 × 1.15 =
+ * 2222.95 → 2223); CritRate stays continuous (no established integer rule).
+ * Only the stat fields declared by the type are consumed; character/weapon
+ * data and out-of-combat panel rules are untouched.
+ */
+export function statModifier(
+  unit: UnitState,
+  statusRegistry: Map<string, EffectiveStatusDef>,
+  stat: "atk" | "def" | "hp" | "critRate",
+  base: number,
+): number {
+  let flat = 0;
+  let pct = 0;
+  for (const s of unit.statuses) {
+    const def = statusRegistry.get(s.statusId);
+    if (!def) continue;
+    for (const e of def.effects) {
+      if (e.kind !== "stat_modifier" || e.stat !== stat) continue;
+      if (e.mode === "flat") flat += e.value * s.stacks;
+      else pct += e.value * s.stacks;
+    }
+  }
+  // No modifiers → preserve the exact base/panel value (no spurious rounding).
+  if (flat === 0 && pct === 0) return base;
+  const combined = (base + flat) * (1 + pct);
+  return stat === "critRate" ? combined : Math.ceil(Math.round(combined * 1e6) / 1e6);
 }
 
 /**

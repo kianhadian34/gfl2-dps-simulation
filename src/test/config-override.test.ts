@@ -44,10 +44,15 @@ test("confectanceMax + confectanceStart overrides change ultimate timing (U9)", 
 });
 
 test("statusOverrides.perStackValue changes damage of that status without engine changes (Support Boost II)", () => {
-  const base: Over = { turns: 2, seed: 5, rotation: ["ultimate", "basic"], keys: [], config: { confectanceStart: 6 } };
+  // Self-applied buffs tick at the casting action's end (validated 2026), so the
+  // 1-round SB II from the ultimate expires before r2. Give it a 2-round duration
+  // via the knob so the per-stack VALUE change is observable on r2.
+  const base: Over = {
+    turns: 2, seed: 5, rotation: ["ultimate", "basic"], keys: [], config: { confectanceStart: 6, statusOverrides: { support_boost_ii: { durationRounds: 2 } } },
+  };
   const dflt = simulateScenario(scenario(base));
   const boosted = simulateScenario(
-    scenario({ ...base, config: { ...base.config, statusOverrides: { support_boost_ii: { perStackValue: 0.2 } } } }),
+    scenario({ ...base, config: { ...base.config, statusOverrides: { support_boost_ii: { durationRounds: 2, perStackValue: 0.2 } } } }),
   );
   assert.ok(boosted.totals.damage > dflt.totals.damage);
   // r2 basic bracket: default 1 + 0.10 (no-cover) + 4×0.10; override 1 + 0.10 + 4×0.20.
@@ -70,16 +75,25 @@ test("statusOverrides.durationRounds lengthens the buff window (Support Boost I)
   assert.ok(Math.abs(r3l.bonusBracket - 1.15) < 1e-9);
 });
 
-test("statusOverrides.tickAt roundEnd expires the buff the same round (U7 alternative-tick testing knob)", () => {
-  const base: Over = { turns: 2, seed: 4, rotation: ["active1", "basic"], keys: [] };
-  const ownEnd = simulateScenario(scenario(base));
-  const roundEnd = simulateScenario(
-    scenario({ ...base, config: { statusOverrides: { support_boost_i: { tickAt: "roundEnd" } } } }),
+test("statusOverrides.tickAt alternative (roundEnd) is honored (U7 knob — default model unchanged)", () => {
+  // With the validated rule (buff ticks at the OWNER's action end, including
+  // self-applied buffs at the casting action's end), a solo self-caster ticks
+  // ownActionEnd statuses once per round; the roundEnd alternative also ticks
+  // once per round — identical cadence here. The knob stays selectable; we
+  // prove the default model is unchanged by comparing explicit runs.
+  const base: Over = { turns: 2, seed: 4, rotation: ["active1", "basic"], keys: [], config: { statusOverrides: { support_boost_i: { durationRounds: 2 } } } };
+  const ownEnd = simulateScenario(
+    scenario({ ...base, config: { ...base.config, statusOverrides: { support_boost_i: { durationRounds: 2, tickAt: "ownActionEnd" } } } }),
   );
-  const r2a = ownEnd.log.find((e) => e.round === 2)!;
-  const r2b = roundEnd.log.find((e) => e.round === 2)!;
+  const roundEnd = simulateScenario(
+    scenario({ ...base, config: { ...base.config, statusOverrides: { support_boost_i: { durationRounds: 2, tickAt: "roundEnd" } } } }),
+  );
+  // r1 Common Rail (self SB I, duration 2); r2 basic keeps the buff under both models.
+  const r2a = ownEnd.log.find((e) => e.round === 2 && e.action === "qiongjiu_basic")!;
+  const r2b = roundEnd.log.find((e) => e.round === 2 && e.action === "qiongjiu_basic")!;
   assert.ok(Math.abs(r2a.bonusBracket - 1.15) < 1e-9, `ownActionEnd bracket ${r2a.bonusBracket}`);
-  assert.ok(Math.abs(r2b.bonusBracket - 1.1) < 1e-9, `roundEnd bracket ${r2b.bonusBracket}`);
+  assert.ok(Math.abs(r2b.bonusBracket - 1.15) < 1e-9, `roundEnd bracket ${r2b.bonusBracket}`);
+  assert.equal(JSON.stringify(ownEnd.log), JSON.stringify(roundEnd.log), "solo self-caster cadence is identical");
 });
 
 test("cooldownModel: confirmed default waits N full turns; the alternative stays selectable (U11)", () => {

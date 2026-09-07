@@ -8,16 +8,15 @@ import { scenario } from "./helpers.js";
 /**
  * U7 CONFIRMED in-game (2026-09-03, Attack Up II): a normal timed buff's
  * duration is consumed at the END of the RECIPIENT's own action — not at the
- * turn start and not at round end. The buff below is applied before the
- * recipient acts (i.e. in a prior action), so the recipient's own action end
- * decrements it.
+ * turn start and not at round end. Self-applied buffs follow the same rule
+ * (VALIDATED 2026, Fortification Protocol / Positive Charge: 3 → 2 at the end
+ * of the casting unit's own action; no same-action skip).
  */
 test("U7: timed buff duration ticks at the recipient's action end, not at turn/round end", () => {
   const state = createState(scenario({ turns: 1, seed: 7 }), REGISTRY, new Set());
   const doll = state.units[0];
   // overburn: non-stackable, duration 2 — a plain timed buff for timing checks.
   applyStatus(state, doll, { statusId: "overburn", durationRounds: 2 });
-  state.appliedThisAction = []; // the application happened in a PRIOR action
   const active = () => doll.statuses.find((s) => s.statusId === "overburn");
   assert.ok(active(), "buff applied");
   assert.equal(active()!.stacks, 1);
@@ -37,6 +36,31 @@ test("U7: timed buff duration ticks at the recipient's action end, not at turn/r
 });
 
 /**
+ * VALIDATED in-game (2026, Fortification Protocol / Positive Charge):
+ * a buff a unit applies to ITSELF during its own action still ticks at the end
+ * of that same action — 3 turns applied → 2 after the action ends. This
+ * disproved the old `appliedThisAction` same-action skip, which was removed.
+ */
+test("U7 (2026): self-applied buff ticks at the end of the same action (Positive Charge 3 → 2)", () => {
+  const state = createState(scenario({ turns: 1, seed: 7 }), REGISTRY, new Set());
+  const doll = state.units[0];
+  // No reset/absent appliedThisAction: the status is applied during the cast action itself.
+  applyStatus(state, doll, { statusId: "overburn", durationRounds: 3 });
+  const active = () => doll.statuses.find((s) => s.statusId === "overburn");
+  assert.equal(active()!.durationLeft, 3, "applied with 3 turns");
+
+  // The casting unit's action end consumes one turn (no same-action skip).
+  tickStatuses(state, doll, "ownActionEnd");
+  assert.equal(active()!.durationLeft, 2, "3 → 2 at the end of the same action (validated)");
+
+  tickStatuses(state, doll, "ownActionEnd");
+  assert.equal(active()!.durationLeft, 1);
+
+  tickStatuses(state, doll, "ownActionEnd");
+  assert.ok(!active(), "expired after the second subsequent action end");
+});
+
+/**
  * U8 CONFIRMED in-game (2026-09-03, Attack Up II): reapplying the SAME status
  * tier while it is active REFRESHES the duration and does NOT add another
  * stack. This is the default same-tier convention; statuses whose text defines
@@ -46,7 +70,6 @@ test("U8: same-tier reapplication refreshes duration and keeps a single stack", 
   const state = createState(scenario({ turns: 1, seed: 7 }), REGISTRY, new Set());
   const doll = state.units[0];
   applyStatus(state, doll, { statusId: "overburn", durationRounds: 2 });
-  state.appliedThisAction = [];
   assert.equal(doll.statuses.length, 1);
   assert.equal(doll.statuses[0].stacks, 1);
   assert.equal(doll.statuses[0].durationLeft, 2, "initial duration and one stack");
