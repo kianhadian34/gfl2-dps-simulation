@@ -33,7 +33,7 @@ test("each damage event gains exactly +1 Confectance", () => {
   assert.deepEqual(r.log.map((e) => e.confectance!.before), [3, 4, 5]);
 });
 
-test("Ultimate costs exactly 3 Confectance, settled after the cast", () => {
+test("Ultimate costs exactly 3 Confectance, consumed immediately on activation", () => {
   const r = simulateScenario(scenario({ turns: 1, rotation: ["ultimate"], keys: [] }));
   assert.deepEqual(r.log[0].confectance, { before: 3, after: 0, cost: 3 });
 });

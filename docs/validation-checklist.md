@@ -86,7 +86,7 @@ Every damaging `LogEvent` records: `round`, `turn`, `unit`, `action`, `attackerA
 
 ## 6. Validation evidence
 
-- `npm test` → 145/145 pass (92 base + 7 U5 boss-Stability + 2 U7/U8 status-timing + 1 self-applied buff timing (2026) + 6 stat-modifier consumption incl. DEF Down II + 2 U14 boss-DEF + 10 Ammo Weakness Upgrade + 4 Phase-elemental-weakness U15b + 4 weakness-matching U15a + 1 AWU persistence + 5 weakness-stability U15 + 3 partial-match U15a + 2 Overburn validation + 7 final-DMG validation − 1 premise-based 'phase countering ×1.2/×0.8' test removed 2026).
+- `npm test` → 148/148 pass (92 base + 7 U5 boss-Stability + 2 U7/U8 status-timing + 1 self-applied buff timing (2026) + 6 stat-modifier consumption incl. DEF Down II + 2 U14 boss-DEF + 10 Ammo Weakness Upgrade + 4 Phase-elemental-weakness U15b + 4 weakness-matching U15a + 1 AWU persistence + 5 weakness-stability U15 + 3 partial-match U15a + 2 Overburn validation + 7 final-DMG validation + 5 determinism/state-isolation (2026) + 1 multi-gain Confectance regression (2026) − 1 premise-based 'phase countering ×1.2/×0.8' test removed 2026).
 - CLI: 7-turn example and 4-turn rotation walkthrough verified by hand (see report).
 - 8+ turns rejected with a clear error message (CLI + engine tests).
 

@@ -312,11 +312,8 @@ function resolveMainAction(state: SimulationState, doll: UnitState, slot: Action
   const ev: LogEvent = newEvent(state, doll, skill, dummy, source, false, turn);
   const beforeConfectance = doll.confectance;
 
-  if (skill.multiplier !== undefined || skill.fixedDamage !== undefined) {
-    dealDamageHit(state, doll, skill, ev);
-  }
-
-  // Ultimate at-max-Confectance hook (research §3.12): extra statuses + support quota.
+  // Activation-time at-max hook (research §3.12): extra statuses + support quota.
+  // Checked against the PRE-spend value (the unit was at cap when activating).
   if (slot === "ultimate" && skill.onCastAtMaxConfectance && beforeConfectance >= state.config.confectanceMax) {
     applySkillStatuses(state, doll, dummy, skill.onCastAtMaxConfectance.extraStatuses, ev);
     if (skill.onCastAtMaxConfectance.supportQuotaBonus) {
@@ -324,13 +321,19 @@ function resolveMainAction(state: SimulationState, doll: UnitState, slot: Action
     }
   }
 
-  applySkillStatuses(state, doll, dummy, skill.appliesStatuses, ev);
-
-  // Confectance cost settled AFTER the cast (research §3.12).
+  // Confectance is consumed IMMEDIATELY on activation (VALIDATED in-game 2026),
+  // BEFORE the action's damage/status/other effects resolve (research §3.12).
   const cost = skill.confectanceCost;
   if (cost > 0 && !spendConfectance(doll, cost)) {
     throw new Error(`Cannot pay Confectance cost ${cost} for ${skill.id} (has ${beforeConfectance})`);
   }
+
+  if (skill.multiplier !== undefined || skill.fixedDamage !== undefined) {
+    dealDamageHit(state, doll, skill, ev);
+  }
+
+  applySkillStatuses(state, doll, dummy, skill.appliesStatuses, ev);
+  // Log the end-of-action value: `before` = activation-time, `after` = post-spend + any gains from this action.
   ev.confectance = { before: beforeConfectance, after: doll.confectance, cost };
 
   setCooldown(doll, skill.id, skill.cooldown, state.config.cooldownModel); // model assumption U11 (overridable in scenario)
