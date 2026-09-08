@@ -184,15 +184,15 @@ All fields user-configurable except `cover` (always `"none"` in MVP). Stability 
     ]
   },
   "configOverrides": {            // research U-items: every engine default is overridable
-    "critMultiplier": 1.5,
-    "exposedDuration": 2,
-    "confectanceMax": null, "confectanceStart": null,
-    "cooldownModel": "endOfOwnTurn",              // U11: endOfOwnTurn | nextOwnTurnEnd
+    "critMultiplier": null,       // default null → engine derives 1 + Crit DMG per attacker (U19 CONFIRMED)
+    "exposedDurationRounds": 2,   // U4/U6: fixed 2-turn broken-window rule (override = test-only alternative)
+    "confectanceMax": 6, "confectanceStart": 3,   // U9 CONFIRMED in-game (battle start 3, cap 6)
+    "cooldownModel": "nextOwnTurnEnd",            // U11 CONFIRMED: wait N full turns after the cast turn
     "statusOverrides": {                          // U7/U8 + unverified status values
       "support_boost_ii": { "perStackValue": 0.1, "durationRounds": 1, "tickAt": "ownActionEnd" }
-    },
-    "buffTickModel": "ownActionEnd",
-    "stabilityReduction": { "enabled": true, "damageMult": 0.4 }
+    }
+    // NOTE: stability damage reduction is DATA, not a config key — DummyConfig.passives
+    // (conditional_damage_modifier, U5) model the boss's −80% 'damage taken' Stability passive.
   }
 }
 ```
@@ -210,9 +210,9 @@ All fields user-configurable except `cover` (always `"none"` in MVP). Stability 
 {
   "round": 2, "turn": 4, "unit": "qiongjiu", "action": "qiongjiu_common_rail", "actionType": "active",
   "target": "training_dummy",
-  "baseDamage": 1200, "mitigatedDamage": 1100, "critical": true, "critMultiplier": 1.5,
-  "weaknessExploited": ["heavy_ammo"], "phase": 1.0,
-  "bonusBracket": 1.2, "reduction": 1.0,
+  "baseDamage": 1200, "mitigatedDamage": 1100, "critical": true, "critMultiplier": 1.2,
+  "weaknessExploited": ["heavy_ammo"], "phaseMult": 1.0,
+  "bonusBracket": 1.2, "reductionMult": 1.0,
   "stabilityDamage": 4, "targetStabilityAfter": 0, "exposed": true,
   "finalDamage": 1842,
   "confectance": { "before": 4, "after": 1, "cost": 3 },
@@ -226,7 +226,7 @@ All fields user-configurable except `cover` (always `"none"` in MVP). Stability 
 
 ```json
 {
-  "turns": 10,
+  "turns": 7,
   "seed": 20260903,
   "totals": { "damage": 18342, "damagePerRound": 1834.2, "damagePerAction": 917.1, "actions": 20 },
   "byCharacter": [{ "id": "qiongjiu", "damage": 12481, "actions": 11 }],
@@ -237,7 +237,7 @@ All fields user-configurable except `cover` (always `"none"` in MVP). Stability 
     { "source": "passive", "damage": 707 }
   ],
   "summary": ["Turn 4 ... finalDamage 1842"],   // human-readable lines derived from the log
-  "warnings": ["confectanceMax = 6 — UNVERIFIED default (research U9)"]
+  "warnings": ["status \"support_boost_ii\": UNVERIFIED model default (docs/research.md §4)"]
 }
 ```
 
@@ -263,8 +263,7 @@ All fields user-configurable except `cover` (always `"none"` in MVP). Stability 
     }
   }],
   "dummy": { "id": "training_dummy", "hp": 999999999, "defense": 0, "stability": 0, "weaknesses": [], "phase": null, "cover": "none" },
-  "apl": { "mode": "default" },
-  "configOverrides": { "critMultiplier": 1.5 }
+  "configOverrides": { "critMultiplier": null }
 }
 ```
 
