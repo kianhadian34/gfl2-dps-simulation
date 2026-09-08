@@ -7,6 +7,9 @@ export type Element = "physical" | "burn" | "electric" | "ice" | "acid" | "decay
 /** Main-action slots in a user-defined fixed rotation. */
 export type ActionSlot = "basic" | "active1" | "active2" | "ultimate";
 
+/** All ability slots incl. the support (out-of-turn) ability and the passive — a Fortification can upgrade any of them. */
+export type AbilitySlot = ActionSlot | "support" | "passive";
+
 /** Damage-source category used for results aggregation (docs/schemas.md §10). */
 export type SourceKind = "basic" | "active" | "ultimate" | "passive";
 
@@ -32,7 +35,14 @@ export interface StatusApplySpec {
   applier?: { id: string; atk: number };
 }
 
-export interface SkillDef {
+/**
+ * Complete behavior definition of an ability AT ONE LEVEL (this is the shape
+ * previously called `SkillDef`, preserved field-for-field). A higher level is a
+ * FULL variant — it may change math, add hits/effects, alter durations,
+ * resources, cooldowns, Stability, targeting/AoE, triggers, or anything else.
+ * No numeric modifier is implied: the variant IS the behavior at that level.
+ */
+export interface SkillDefVariant {
   id: string;
   name: string;
   type: "basic" | "active" | "ultimate" | "support";
@@ -52,6 +62,38 @@ export interface SkillDef {
     supportQuotaBonus?: number;
     extraStatuses?: StatusApplySpec[];
   };
+  /** Authoritative higher-level text recorded but NOT executable yet (engine limitation) — the variant's fields above are the executable portion. */
+  deferredNote?: string;
+}
+
+/** Deprecated alias of `SkillDefVariant` (pre-levels name); kept for imports, prefer SKillDefVariant. */
+export type SkillDef = SkillDefVariant;
+
+/**
+ * One ability across its levels. Identity lives here (`id`/`name`/`type`);
+ * `levels` maps an ability level to its COMPLETE `SkillDefVariant`.
+ * Invariants: level 1 always exists in data except for abilities whose current
+ * definition lives at a validated higher level (baseline rule, engine `resolveSkill`);
+ * Basic Attack is level-1 only (engine clamps it to 1 regardless of Fortification level).
+ */
+export interface AbilityDef {
+  id: string;
+  name: string;
+  type: SkillDefVariant["type"];
+  levels: Record<number, SkillDefVariant>;
+}
+
+/**
+ * One Fortification → one ability upgrade with an EXPLICIT resulting level.
+ * "Fortification 3 increases Ability X from Lv1 to Lv2" = { v: 3, ability: "X", toLevel: 2 }.
+ * Levels are never inferred by counting Fortifications — the explicit toLevel wins.
+ */
+export interface FortificationUpgrade {
+  /** Fortification index, 1-based (e.g. 3). */
+  v: number;
+  ability: AbilitySlot;
+  /** Resulting ability level after this Fortification (e.g. 2). */
+  toLevel: number;
 }
 
 export type PassiveEffect =
@@ -109,13 +151,43 @@ export interface PassiveDef {
   id: string;
   name: string;
   effects: PassiveEffect[];
+  /**
+   * Level-indexed passive effect lists (Fortification can upgrade the passive,
+   * e.g. Steady Plan V3→Lv2, V6→Lv3). When present, the resolved level's list
+   * wins; `effects` remains the engine baseline (level 1 or lowest available).
+   */
+  levels?: Record<number, PassiveEffect[]>;
+  /** Per-level authoritative text that is NOT executable by the engine (recorded faithfully, deferred). */
+  deferredNotes?: Record<number, string>;
 }
 
 export interface KeyDef {
   id: string;
   name: string;
   verified: boolean;
+  /** Battle-start Confectance grants (FK1 Concentration). Keys without one use []. */
   battleStartEffects: { resource: "confectance"; amount: number }[];
+  /** In-game tooltip text, recorded verbatim from the panel. */
+  description?: string;
+  /** Set when the key's behavior is recorded but NOT implemented by the engine (see reason). */
+  deferredNote?: string;
+}
+
+/**
+ * Affinity Key (bond) — pure stat bonuses that apply when the character equips
+ * their OWN Affinity Key at a given Affinity Level. Recorded as data; engine
+ * consumption is deferred (bonuses affect the panel, and Crit Damage is not a
+ * `stat_modifier` stat). Only the levels present in `levels` are defined —
+ * intermediates are NOT assumed or interpolated.
+ */
+export interface AffinityKeyDef {
+  id: string;
+  name: string;
+  totalLevels: number;
+  /** Fractional bonuses per Affinity Level (e.g. 0.045 = +4.5%). */
+  levels: Record<number, { critDmg: number; atk: number; hp: number }>;
+  verified: boolean;
+  deferredNote?: string;
 }
 
 export interface CharacterDef {
@@ -124,9 +196,15 @@ export interface CharacterDef {
   phase: Element;
   base: { atk: number; hp: number; def: number; stability: number; critRate: number; critDmg: number };
   weapon: WeaponDef;
-  skills: { basic: SkillDef; active1: SkillDef; active2: SkillDef; ultimate: SkillDef; support?: SkillDef };
+  skills: { basic: AbilityDef; active1: AbilityDef; active2: AbilityDef; ultimate: AbilityDef; support?: AbilityDef };
   passive: PassiveDef;
   fixedKeys: KeyDef[];
+  /** Fortification → ability-level upgrades (V index → ONE ability, explicit resulting level). Empty/absent until mappings are collected & validated. */
+  fortificationMap?: FortificationUpgrade[];
+  /** Expansion Key (1 per doll) — recorded data; engine behavior deferred. */
+  expansionKey?: KeyDef;
+  /** Affinity Key (bond) — recorded data; engine consumption deferred. */
+  affinityKey?: AffinityKeyDef;
 }
 
 export type StatusEffect =
@@ -199,6 +277,8 @@ export interface StatusDef {
   effects: StatusEffect[];
   verified: boolean;
   note?: string;
+  /** Authoritative text recorded but NOT executable by the engine yet (scope/condition/timing limitation) — presence means: do not treat the numeric effects as complete semantics. */
+  deferredNote?: string;
 }
 
 /** Ammo/weapon-type weakness tags (project terminology: Assault Rifle Ammo, Shotgun Ammo). */
@@ -254,6 +334,12 @@ export interface ConfigOverrides {
    *   selectable for testing only.
    */
   cooldownModel?: "endOfOwnTurn" | "nextOwnTurnEnd";
+  /**
+   * Character Fortification level (V) for this run — default 0 (all abilities at
+   * Level 1 or their baseline). Mappings are per-character `fortificationMap`
+   * data; QJ's is empty until collected in-game.
+   */
+  fortificationLevel?: number;
 }
 
 export interface ScenarioTeamMember {

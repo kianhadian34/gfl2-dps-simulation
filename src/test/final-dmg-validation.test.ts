@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
-import { customRegistry } from "./helpers.js";
+import { abilities, customRegistry } from "./helpers.js";
 import type { CharacterDef, PassiveEffect, StatusApplySpec } from "../model/types.js";
 
 // Fixed DMG modifiers on FIXED damage — validated in-game (2026, docs §3.10/U21).
@@ -36,12 +36,12 @@ function makeOverburnApplier(
     phase: "burn",
     base: { atk, hp: 1000, def: 100, stability: 6, critRate: 0.8, critDmg: 0.2 },
     weapon: { id: `${id}_w`, name: "w", rarity: "standard", atkLvl1: 0, atkLvl60: 0, level: 60, subStats: [] },
-    skills: {
+    skills: abilities({
       basic: { id: `${id}_basic`, name: "Hit", type: "basic", element: "physical", multiplier: 0, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
       active1: { id: `${id}_apply`, name: "Apply", type: "active", element: "burn", multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0, appliesStatuses: specs },
       active2: { id: `${id}_a2`, name: "-", type: "active", element: "burn", multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 },
       ultimate: { id: `${id}_ult`, name: "-", type: "ultimate", element: "burn", multiplier: 0, stabDamage: 0, cooldown: 0, confectanceCost: 3 },
-    },
+    }),
     passive: { id: `${id}_passive`, name: "-", effects: passive },
     fixedKeys: [],
   };
@@ -54,7 +54,7 @@ function runOverburn(
   const specs: StatusApplySpec[] = [];
   if (opts.reduction) specs.push({ statusId: "final_dmg_reduction", durationRounds: 2, target: "target" });
   const c = makeOverburnApplier("fd", atk, { increase: opts.increase, ordinaryNoCover: opts.ordinaryNoCover ? 0.2 : 0 });
-  c.skills.active1.appliesStatuses = [...specs, ...(c.skills.active1.appliesStatuses ?? [])];
+  c.skills.active1.levels[1].appliesStatuses = [...specs, ...(c.skills.active1.levels[1].appliesStatuses ?? [])];
   const dummyPassives: PassiveEffect[] = opts.ordinaryDR
     ? [{ kind: "conditional_damage_modifier", scope: "taken", mode: "multiplicative", value: 0.2, when: "target.noCover" }]
     : [];
@@ -106,8 +106,8 @@ test("fixed: ordinary No-Cover Damage Increase is IGNORED, and fixed damage neve
 
 test("skill-sourced absolute fixed damage also receives the Final DMG chain (100 × 0.40 = 40)", () => {
   const c = makeOverburnApplier("sk", 1000);
-  c.skills.basic = { ...c.skills.basic, multiplier: 0, fixedDamage: 100 };
-  c.skills.active1.appliesStatuses = [{ statusId: "final_dmg_reduction", durationRounds: 2, target: "target" }];
+  c.skills.basic.levels[1] = { ...c.skills.basic.levels[1], multiplier: 0, fixedDamage: 100 };
+  c.skills.active1.levels[1].appliesStatuses = [{ statusId: "final_dmg_reduction", durationRounds: 2, target: "target" }];
   const r = simulateScenario(
     {
       version: 1,

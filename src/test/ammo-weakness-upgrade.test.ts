@@ -4,7 +4,7 @@ import { simulateScenario } from "../simulate.js";
 import { createState } from "../engine/state.js";
 import { additiveTakenBonus, applyStatus, tickStatuses } from "../engine/statuses.js";
 import { REGISTRY } from "../data/registry.js";
-import { customRegistry, scenario } from "./helpers.js";
+import { abilities, customRegistry, scenario } from "./helpers.js";
 import type { AmmoType, CharacterDef, Element, PassiveEffect } from "../model/types.js";
 
 // Ammo Weakness Upgrade (AWU) — validated 2026 (docs/research.md §3.18).
@@ -67,12 +67,12 @@ function skillsFor(opts: CharOpts): CharacterDef["skills"] {
     cooldown: type === "ultimate" ? 0 : 1,
     confectanceCost: 0,
   });
-  return {
+  return abilities({
     basic: base(`${opts.element}_basic`, opts.mult),
     active1: idle(`${opts.element}_a1`, "active"),
     active2: idle(`${opts.element}_a2`, "active"),
     ultimate: idle(`${opts.element}_ult`, "ultimate"),
-  };
+  });
 }
 
 /** Plain deterministic attacker for engine-level regression runs. */

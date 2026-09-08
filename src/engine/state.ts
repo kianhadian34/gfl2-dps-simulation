@@ -1,4 +1,4 @@
-import type { ActionSlot, AmmoType, CharacterDef, ConfigOverrides, Element, PassiveEffect, Scenario, SourceKind, StatusDef, StatusOverride } from "../model/types.js";
+import type { AbilityDef, AbilitySlot, ActionSlot, AmmoType, CharacterDef, ConfigOverrides, Element, PassiveEffect, Scenario, SkillDefVariant, SourceKind, StatusDef, StatusOverride } from "../model/types.js";
 import type { ActiveStatus, LogEvent, ResolvedConfig } from "../model/runtime.js";
 import { Rng } from "./rng.js";
 import type { Registry } from "../data/registry.js";
@@ -20,6 +20,7 @@ export const DEFAULT_CONFIG: ResolvedConfig = {
   confectanceStart: 3, // U9 CONFIRMED 2026-09-03 (in-game, Qiongjiu no keys)
   statusOverrides: {},
   cooldownModel: "nextOwnTurnEnd", // U11 CONFIRMED 2026-09-03: wait N full turns after the cast turn (CD1: cast N → unavailable N+1 → available N+2)
+  fortificationLevel: 0, // V0: all abilities resolve to Level 1 (or their validated baseline)
 };
 
 export interface UnitState {
@@ -58,6 +59,10 @@ export interface UnitState {
   actionBudget: number;
   /** Confirmed recovery (U6): rounds left until stability is restored to max after a break (0 = none pending). */
   stabilityRecoveryRoundsLeft: number;
+  /** Resolved ability level per slot (Basic is always 1). Set once at construction. */
+  skillLevels: Partial<Record<AbilitySlot, number>>;
+  /** Resolved SkillDefVariant per slot — the ONLY skill source consumers read. Computed once at construction. */
+  skills: Partial<Record<AbilitySlot, SkillDefVariant>>;
 }
 
 export interface Accumulators {
@@ -111,7 +116,62 @@ export function resolveConfig(overrides: ConfigOverrides | undefined): ResolvedC
     statusOverrides: overrides?.statusOverrides ?? {},
     cooldownModel: overrides?.cooldownModel ?? DEFAULT_CONFIG.cooldownModel,
     critMultiplier: overrides?.critMultiplier ?? null,
+    fortificationLevel: overrides?.fortificationLevel ?? DEFAULT_CONFIG.fortificationLevel,
   };
+}
+
+/**
+ * Resolve an ability to its complete behavior at the given ability level.
+ * Rules (approved skill-level/Fortification architecture):
+ * - level = 1 baseline; non-basic abilities may be raised by the highest applicable
+ *   Fortification upgrade (explicit toLevel; never inferred by counting).
+ * - Basic Attack is ALWAYS level 1 regardless of Fortification level.
+ * - An explicitly requested level with no variant fails clearly (Error).
+ * - Migration baseline: an un-upgraded ability whose level 1 is not in data yet
+ *   (e.g. Common Rail, where only the validated Lv2 exists) resolves to its
+ *   LOWEST AVAILABLE level — preserving pre-levels behavior without inventing Lv1.
+ */
+export function resolveSkill(def: AbilityDef, level: number): SkillDefVariant {
+  const explicit = def.levels[level];
+  if (explicit) return explicit;
+  if (level > 1) {
+    throw new Error(`Ability ${def.id}: requested level ${level} has no variant (available: ${Object.keys(def.levels).join(", ")})`);
+  }
+  const lowest = Math.min(...Object.keys(def.levels).map(Number));
+  if (!Number.isFinite(lowest)) {
+    throw new Error(`Ability ${def.id}: no level variants defined`);
+  }
+  return def.levels[lowest];
+}
+
+/** Effective ability level given Fortification state (V). Basic is always 1. */
+export function effectiveAbilityLevel(def: CharacterDef, slot: AbilitySlot, config: ResolvedConfig): number {
+  if (slot === "basic") return 1;
+  let level = 1;
+  for (const f of def.fortificationMap ?? []) {
+    if (f.ability === slot && f.v <= config.fortificationLevel && f.toLevel > level) {
+      level = f.toLevel;
+    }
+  }
+  return level;
+}
+
+/** Resolve every ability once for a doll; also marks the level for each slot. */
+export function resolveAbilitySet(
+  def: CharacterDef,
+  config: ResolvedConfig,
+): { skills: Partial<Record<AbilitySlot, SkillDefVariant>>; levels: Partial<Record<AbilitySlot, number>> } {
+  const skills: Partial<Record<AbilitySlot, SkillDefVariant>> = {};
+  const levels: Partial<Record<AbilitySlot, number>> = {};
+  const slots = ["basic", "active1", "active2", "ultimate", "support"] as const;
+  for (const slot of slots) {
+    const ability = def.skills[slot];
+    if (!ability) continue;
+    const level = effectiveAbilityLevel(def, slot, config);
+    skills[slot] = resolveSkill(ability, level);
+    levels[slot] = level;
+  }
+  return { skills, levels };
 }
 
 /**
@@ -157,13 +217,17 @@ function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], con
     }
   }
   confectance = Math.min(config.confectanceMax, Math.max(0, confectance));
-  const supportMax = supportAttackQuota(def);
+  const passiveEffectsList = resolvePassiveEffects(def, effectiveAbilityLevel(def, "passive", config));
+  const supportMax = supportAttackQuota(passiveEffectsList);
+  const { skills, levels } = resolveAbilitySet(def, config);
   return {
     kind: "doll",
     id: def.id,
     name: def.name,
     def,
-    passives: def.passive.effects,
+    skillLevels: levels,
+    skills,
+    passives: passiveEffectsList,
     weaknessElements: [],
     weaknessTags: [],
     cover: "none",
@@ -195,6 +259,8 @@ function makeDummy(d: Scenario["dummy"]): UnitState {
     id: d.id,
     name: d.name,
     def: null,
+    skillLevels: {},
+    skills: {},
     passives: (d.passives ?? []).flatMap((p) => p.effects),
     weaknessElements: d.weaknesses,
     weaknessTags: d.weaknessTags ?? [],
@@ -222,8 +288,17 @@ function makeDummy(d: Scenario["dummy"]): UnitState {
 }
 
 /** Per-round support-attack quota from the doll's passive (0 if none). */
-export function supportAttackQuota(def: CharacterDef): number {
-  const eff = def.passive.effects.find((e) => e.kind === "support_attack");
+export function resolvePassiveEffects(def: CharacterDef, level: number): PassiveEffect[] {
+  const levels = def.passive.levels;
+  if (levels && Object.keys(levels).length > 0) {
+    return levels[level] ?? levels[Math.min(...Object.keys(levels).map(Number))];
+  }
+  return def.passive.effects;
+}
+
+/** Number of support attacks the unit may perform per round (from the RESOLVED passive effects). */
+export function supportAttackQuota(effects: PassiveEffect[]): number {
+  const eff = effects.find((e) => e.kind === "support_attack");
   return eff && eff.kind === "support_attack" ? eff.perRoundMax : 0;
 }
 

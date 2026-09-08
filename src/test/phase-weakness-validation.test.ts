@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
-import { customRegistry } from "./helpers.js";
+import { abilities, customRegistry } from "./helpers.js";
 import type { CharacterDef, Element } from "../model/types.js";
 
 // U15b — Phase damage + elemental weakness (validated in-game, 2026).
@@ -27,12 +27,12 @@ function makeBurnMirror(id: string, critRate = 0): CharacterDef {
     phase: "burn",
     base: { atk: ATK, hp: 1000, def: 100, stability: 6, critRate, critDmg: 0.235 },
     weapon: { id: `${id}_w`, name: "w", rarity: "standard", atkLvl1: 0, atkLvl60: 0, level: 60, subStats: [] },
-    skills: {
+    skills: abilities({
       basic: { id: `${id}_burn`, name: "Burn", type: "basic", element: "burn", multiplier: MULT, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
       active1: { id: `${id}_a1`, name: "-", type: "active", element: "burn", multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 },
       active2: { id: `${id}_a2`, name: "-", type: "active", element: "burn", multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 },
       ultimate: { id: `${id}_ult`, name: "-", type: "ultimate", element: "burn", multiplier: 0, stabDamage: 0, cooldown: 0, confectanceCost: 3 },
-    },
+    }),
     passive: {
       id: `${id}_passive`,
       name: "-",
@@ -81,12 +81,15 @@ test("U15b: the ×1.10 elemental weakness is a SEPARATE factor on Phase damage, 
 });
 
 test("U15b: AWU stays out of Phase damage — no stack advancement and no AWU term, even with the ammo context present", () => {
+  const base = makeBurnMirror("d").skills;
   const c = {
     ...makeBurnMirror("d"),
-    skills: {
-      ...makeBurnMirror("d").skills,
+    skills: abilities({
       basic: { id: "d_burn", name: "Burn", type: "basic" as const, element: "burn" as const, ammoType: "assault_rifle_ammo" as const, multiplier: MULT, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
-    },
+      active1: base.active1.levels[1],
+      active2: base.active2.levels[1],
+      ultimate: base.ultimate.levels[1],
+    }),
   };
   const ev = simulateScenario(
     {

@@ -14,10 +14,11 @@ export const STATUS_DEFS: StatusDef[] = [
     maxStacks: 9,
     durationRounds: 1,
     tickAt: "ownActionEnd",
-    purgeable: true,
+    purgeable: false, // authoritative: "This buff cannot be cleansed"
     effects: [{ kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.05 }],
     verified: false,
-    note: "Per-stack additive value & duration UNVERIFIED (docs/research.md §4) — overwrite after in-game test",
+    note: "Model default (generic dealt additive). Authoritative tooltip semantics (Support-Action-scoped value, an additional conditional component, 'activates 1 time', un-cleansable) are recorded in deferredNote and are NOT executable by the current engine.",
+    deferredNote: "Authoritative (screenshots): 'Increase damage dealt with Support Action by 15%. Damage against exposed units is increased by 10%. Activates 1 time. This buff cannot be cleansed.' Engine cannot scope damage_modifier to Support Actions or gate on Exposed — the generic 0.05 dealt remains a model default, NOT the tooltip value (do not treat as complete semantics). purgeable=false per 'cannot be cleansed'.",
   },
   {
     id: "support_boost_ii",
@@ -27,10 +28,11 @@ export const STATUS_DEFS: StatusDef[] = [
     maxStacks: 9,
     durationRounds: 1,
     tickAt: "ownActionEnd",
-    purgeable: true,
+    purgeable: false, // authoritative: "This buff cannot be cleansed"
     effects: [{ kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.1 }],
     verified: false,
-    note: "Per-stack additive value & duration UNVERIFIED (docs/research.md §4) — overwrite after in-game test",
+    note: "Model default (generic dealt additive). Authoritative tooltip semantics (Support-Action-scoped value, an additional conditional component, 'activates 1 time', un-cleansable) are recorded in deferredNote and are NOT executable by the current engine.",
+    deferredNote: "Authoritative (screenshots): 'Increase damage dealt with Support Action by 30%. Damage against exposed units is increased by 10%. Activates 1 time. This buff cannot be cleansed.' Engine cannot scope damage_modifier to Support Actions or gate on Exposed — the generic 0.1 dealt remains a model default, NOT the tooltip value (do not treat as complete semantics). purgeable=false per 'cannot be cleansed'.",
   },
   {
     id: "overburn",
@@ -49,6 +51,32 @@ export const STATUS_DEFS: StatusDef[] = [
     ],
     verified: true,
     note: "Validated in-game (2026): applier-ATK 1974 → 198 per trigger; sequence apply + holder action-end ×2 = 594, then expires (see docs/research.md §3.10)",
+  },
+  {
+    id: "vulnerable_i",
+    name: "Vulnerable I",
+    category: "debuff",
+    stackable: false,
+    maxStacks: 1,
+    durationRounds: null, // default duration UNKNOWN; Qiongjiu's application (Pressing the Momentum Lv2 / V4) is 1 turn
+    tickAt: "ownActionEnd",
+    purgeable: true, // cleansing UNKNOWN — engine default
+    effects: [{ kind: "damage_modifier", scope: "taken", mode: "additive", value: 0.1 }],
+    verified: true,
+    note: 'Tooltip (authoritative): "Increases damage taken by 10%. This is considered a defense debuff." Target-side; duration/stacking/fixed-damage/cleansing interactions NOT established — do not infer.',
+  },
+  {
+    id: "damage_up_ii",
+    name: "Damage Up II",
+    category: "buff",
+    stackable: false,
+    maxStacks: 1,
+    durationRounds: null, // default duration UNKNOWN; Qiongjiu's application (Pressing the Momentum Lv3 / V5) is 1 turn
+    tickAt: "ownActionEnd",
+    purgeable: true, // cleansing UNKNOWN — engine default
+    effects: [{ kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.2 }],
+    verified: true,
+    note: 'Tooltip (authoritative): "Increases damage dealt by 20%. Considered a buff." Source-side; duration/stacking/fixed-damage interactions NOT established — do not infer.',
   },
 {
     id: "ammo_weakness_upgrade",

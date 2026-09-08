@@ -1,5 +1,5 @@
 import type { Element } from "../model/types.js";
-import type { ActionSlot, PassiveEffect, Scenario, SkillDef, SourceKind, StatusApplySpec, StatusEffect } from "../model/types.js";
+import type { ActionSlot, PassiveEffect, Scenario, SkillDefVariant, SourceKind, StatusApplySpec, StatusEffect } from "../model/types.js";
 import type { LogEvent, SimulationResult } from "../model/runtime.js";
 import type { Registry } from "../data/registry.js";
 import { rollHit } from "./damage.js";
@@ -93,8 +93,8 @@ function slotAvailable(state: SimulationState, doll: UnitState, slot: ActionSlot
   return true;
 }
 
-function skillForSlot(doll: UnitState, slot: ActionSlot): SkillDef | null {
-  return doll.def?.skills[slot] ?? null;
+function skillForSlot(doll: UnitState, slot: ActionSlot): SkillDefVariant | null {
+  return doll.skills[slot] ?? null;
 }
 
 function passiveEffects(unit: UnitState): PassiveEffect[] {
@@ -129,11 +129,11 @@ function targetPassiveTakenMods(target: UnitState): TakenMods {
 
 function beginUnitRound(doll: UnitState): void {
   doll.actionBudget = 1; // one main action per round (research §3.15)
-  doll.supportQuota = doll.def ? supportAttackQuota(doll.def) : 0;
+  doll.supportQuota = doll.def ? supportAttackQuota(doll.passives) : 0;
 }
 
 /** Match the attack's element AND ammo type against the target's exposed weaknesses: +10% damage and +2 stability each (research §3.5 / U20 / 2026 ammo dimension). */
-function exploitedWeaknesses(target: UnitState, skill: SkillDef): { weaknesses: string[]; mult: number; ammoExploited: boolean } {
+function exploitedWeaknesses(target: UnitState, skill: SkillDefVariant): { weaknesses: string[]; mult: number; ammoExploited: boolean } {
   const elementMatches = target.weaknessElements.filter((w) => w === skill.element);
   const ammoExploited = skill.ammoType !== undefined && target.weaknessTags.includes(skill.ammoType);
   const weaknesses = ammoExploited ? [...elementMatches, skill.ammoType as string] : [...elementMatches];
@@ -158,7 +158,7 @@ function conditionalNoCoverBonus(actor: UnitState, target: UnitState): number {
 }
 
 /** Damage + stability + Confectance-gain application for a single hit; fills the event's damage fields. */
-function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef, ev: LogEvent): number {
+function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDefVariant, ev: LogEvent): number {
   const dummy = state.dummy;
   const { weaknesses, mult: weaknessMult, ammoExploited } = exploitedWeaknesses(dummy, skill);
   // AWU trigger fires BEFORE the hit resolves: the first exploiting attack already
@@ -354,19 +354,19 @@ function resolveMainAction(state: SimulationState, doll: UnitState, slot: Action
 function fireSupportAttacks(state: SimulationState, triggerActor: UnitState, turn: number): void {
   for (const shooter of state.units) {
     if (shooter === triggerActor || !shooter.def) continue;
-    const eff = shooter.def.passive.effects.find(
+    const eff = shooter.passives.find(
       (e): e is Extract<PassiveEffect, { kind: "support_attack" }> => e.kind === "support_attack",
     );
     if (!eff || eff.trigger !== "onAllySingleTargetHit") continue;
     if (shooter.supportQuota <= 0) continue;
-    const skill = shooter.def.skills.support;
+    const skill = shooter.skills.support;
     if (!skill) continue;
     shooter.supportQuota -= 1;
     resolveSupportHit(state, shooter, skill, turn);
   }
 }
 
-function resolveSupportHit(state: SimulationState, shooter: UnitState, skill: SkillDef, turn: number): void {
+function resolveSupportHit(state: SimulationState, shooter: UnitState, skill: SkillDefVariant, turn: number): void {
   const dummy = state.dummy;
   const ev = newEvent(state, shooter, skill, dummy, "passive", true, turn);
   const beforeConfectance = shooter.confectance;
@@ -383,7 +383,7 @@ function resolveSupportHit(state: SimulationState, shooter: UnitState, skill: Sk
 function newEvent(
   state: SimulationState,
   actor: UnitState,
-  skill: SkillDef,
+  skill: SkillDefVariant,
   target: UnitState,
   source: SourceKind,
   supportAttack: boolean,
@@ -418,7 +418,7 @@ function newEvent(
  * maxStacks are data-driven — the 2/1/5 progression is NOT in the formula.
  * applyStatus keeps U7/U8 semantics (refresh; stack; cap at StatusDef.maxStacks).
  */
-function grantStackOnWeaknessExploit(state: SimulationState, target: UnitState, skill: SkillDef, ammoExploited: boolean): void {
+function grantStackOnWeaknessExploit(state: SimulationState, target: UnitState, skill: SkillDefVariant, ammoExploited: boolean): void {
   if (!ammoExploited) return;
   for (const p of target.passives) {
     if (p.kind !== "grant_stacks_on_weakness_exploit") continue;
@@ -483,13 +483,18 @@ function collectWarnings(state: SimulationState): void {
     // U11 is RESOLVED (wait N full turns after the cast turn); the alternative is selectable for testing only.
     warn.add(`cooldown model = ${c.cooldownModel} — non-confirmed alternative (confirmed rule: wait N full turns after the cast turn, U11 RESOLVED 2026-09-03)`);
   }
+  if (c.fortificationLevel > 0) {
+    warn.add(`fortificationLevel = ${c.fortificationLevel} — Fortification→ability mappings not yet collected/validated (QJ fortificationMap is empty); levels resolve to 1 or an ability's baseline`);
+  }
   // No elemental counter wheel exists in GFL2 (corrected 2026) — no phase warning is emitted.
   const referenced = new Set<string>();
   for (const u of state.units) {
     const def = u.def;
     if (!def) continue;
-    for (const sk of [def.skills.basic, def.skills.active1, def.skills.active2, def.skills.ultimate]) {
-      for (const spec of sk.appliesStatuses ?? []) referenced.add(spec.statusId);
+    for (const ability of [def.skills.basic, def.skills.active1, def.skills.active2, def.skills.ultimate]) {
+      for (const sk of Object.values(ability.levels)) {
+        for (const spec of sk.appliesStatuses ?? []) referenced.add(spec.statusId);
+      }
     }
   }
   for (const id of referenced) {

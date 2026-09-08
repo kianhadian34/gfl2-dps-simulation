@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
-import { customRegistry } from "./helpers.js";
+import { abilities, customRegistry } from "./helpers.js";
 import type { CharacterDef, DummyConfig } from "../model/types.js";
 
 // U14 — current boss DEF data validation (in-game displayed stats, 2026):
@@ -28,12 +28,12 @@ function makeAttacker(id: string, atk: number): CharacterDef {
     phase: "physical",
     base: { atk, hp: 1000, def: 100, stability: 6, critRate: 0, critDmg: 0.2 },
     weapon: { id: `${id}_w`, name: "w", rarity: "standard", atkLvl1: 0, atkLvl60: 0, level: 60, subStats: [] },
-    skills: {
+    skills: abilities({
       basic: { id: `${id}_basic`, name: "Hit", type: "basic", element: "physical", multiplier: 1.0, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
       active1: { id: `${id}_a1`, name: "-", type: "active", element: "physical", multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 },
       active2: { id: `${id}_a2`, name: "-", type: "active", element: "physical", multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 },
       ultimate: { id: `${id}_ult`, name: "-", type: "ultimate", element: "physical", multiplier: 0, stabDamage: 0, cooldown: 0, confectanceCost: 3 },
-    },
+    }),
     passive: { id: `${id}_passive`, name: "-", effects: [] },
     fixedKeys: [],
   };

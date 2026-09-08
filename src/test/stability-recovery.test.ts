@@ -11,29 +11,30 @@ import { STABILITY_RECOVERY_DELAY } from "../engine/stability.js";
 //
 // Observation via log: ev.exposed is true for hits while the target is broken
 // and false after recovery. Qiongjiu basic deals 2 stability damage and the
-// ultimate deals 0; active2 (Guide to Victory) deals 0 base stability damage,
-// while active1 (Common Rail) has base 3 (validated 2026) — rotating between
-// them lets us watch the window without re-breaking. NOTE (U11 confirmed): CD-1
-// skills are unavailable on the immediately following turn, so 0-stab
-// observation turns must NOT chain two actives back-to-back (the ultimate is a
-// 0-stab, cd-0 option for observation turns after recovery).
+// ultimate deals 0. NOTE (authoritative kit sync 2026): Guide to Victory Lv1
+// Stability Damage is 3 (not 0 as previously modeled) — 0-stab observation
+// turns therefore use the ultimate (0 stab, cd 0), NOT active2. (U11 confirmed:
+// CD-1 skills are unavailable on the immediately following turn, so 0-stab
+// observation turns must NOT chain two actives back-to-back.)
 
 test("break during Turn 2 → stability restored on Turn 4 (confirmed in-game)", () => {
   // stability 4: r1 basic 4→2 (no break), r2 basic 2→0 (break), r3 exposed
-  // (active2, 0 stab), r4 restored + basic 4→2 (unexposed), r5 active2 (unexposed).
+  // (active2 — hits a broken target, stab floored at 0, exposed flag true),
+  // r4 restored + basic 4→2 (unexposed), r5 ultimate (unexposed, no hit → `?? false`).
   const r = simulateScenario(
-    scenario({ turns: 5, seed: 7, rotation: ["basic", "basic", "active2", "basic", "active2"], dummy: { stability: 4 } }),
+    scenario({ turns: 5, seed: 7, rotation: ["basic", "basic", "active2", "basic", "ultimate"], dummy: { stability: 4 } }),
   );
-  // Main actions only — status_tick events (Overburn 2026) carry no exposed flag.
+  // Main actions only — status_tick events (Overburn 2026) carry no exposed flag;
+  // `?? false`: the ultimate is a non-damaging action (no hit → no exposed flag).
   assert.deepEqual(
-    r.log.filter((e) => e.actionType !== "status_tick").map((e) => e.exposed),
+    r.log.filter((e) => e.actionType !== "status_tick").map((e) => e.exposed ?? false),
     [false, true, true, false, false],
   );
 });
 
 test("break during Turn 1 → stability restored on Turn 3 (confirmed in-game)", () => {
-  // stability 2: r1 basic 2→0 (break), r2 exposed (active2, 0 stab),
-  // r3 ultimate (0 stab, cd 0 — first cast — cannot re-break after recovery).
+  // stability 2: r1 basic 2→0 (break), r2 exposed (active2 — broken target, stab
+  // floored at 0, exposed flag true), r3 ultimate (0 stab, cd 0 — no re-break).
   const r = simulateScenario(
     scenario({ turns: 3, seed: 7, rotation: ["basic", "active2", "ultimate"], dummy: { stability: 2 } }),
   );

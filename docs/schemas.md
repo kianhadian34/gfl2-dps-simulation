@@ -188,6 +188,7 @@ All fields user-configurable except `cover` (always `"none"` in MVP). Stability 
     "exposedDurationRounds": 2,   // U4/U6: fixed 2-turn broken-window rule (override = test-only alternative)
     "confectanceMax": 6, "confectanceStart": 3,   // U9 CONFIRMED in-game (battle start 3, cap 6)
     "cooldownModel": "nextOwnTurnEnd",            // U11 CONFIRMED: wait N full turns after the cast turn
+    "fortificationLevel": 0,                  // V (default 0): per-character fortificationMap raises abilities
     "statusOverrides": {                          // U7/U8 + unverified status values
       "support_boost_ii": { "perStackValue": 0.1, "durationRounds": 1, "tickAt": "ownActionEnd" }
     }
@@ -196,6 +197,29 @@ All fields user-configurable except `cover` (always `"none"` in MVP). Stability 
   }
 }
 ```
+
+### Skill levels & Fortifications (2026 architecture)
+
+Every ability is level-indexed — each level holds the **complete** behavior of the ability at that level (a `SkillDefVariant`: element, ammo, multiplier/fixedDamage, Stability, cooldown, Confectance cost, applied statuses, at-max hook). A higher level is NOT a numeric modifier; it may change any or all of those fields.
+
+```jsonc
+"skills": {
+  "basic":  { "id": "qiongjiu_basic", "name": "Fuse", "type": "basic",
+              "levels": { "1": { "element": "physical", "multiplier": 0.8, "stabDamage": 2, "cooldown": 0, "confectanceCost": 0 } } },
+  "active1": { "id": "qiongjiu_common_rail", "name": "Common Rail", "type": "active",
+               "levels": { "2": { "element": "burn", "multiplier": 1.5, "stabDamage": 3, "cooldown": 1, "confectanceCost": 0, "appliesStatuses": [{ "statusId": "support_boost_i", "durationRounds": 1, "stacks": 1, "target": "self" }] } } }
+}
+"fortificationMap": [{ "v": 3, "ability": "active1", "toLevel": 2 }],
+"configOverrides": { "fortificationLevel": 0 }
+```
+
+Rules (implemented in `src/engine/state.ts` — `resolveSkill`/`effectiveAbilityLevel`/`resolveAbilitySet`):
+- Every ability starts at **Level 1**; **Basic Attack is always Level 1** regardless of Fortification level.
+- Each Fortification raises **ONE specific ability** to an **explicit** resulting level (`fortificationMap`: `{ v, ability, toLevel }`) — levels are never inferred by counting Fortifications.
+- At run level V, an ability's level = the `toLevel` of the applicable entry with the **highest `v ≤ V`**.
+- An **explicitly requested level with no variant** is a **clear error** (never a silent fallback).
+- **Baseline rule (migration):** an un-upgraded ability whose data only contains a higher validated level (e.g. Qiongjiu's Common Rail — only Lv2 is in-game-validated) resolves to its **lowest available** variant, preserving pre-levels behavior without inventing Lv1.
+- Qiongjiu's `fortificationMap` is **empty** until the real Fortification→ability mappings are collected in-game; runs with `fortificationLevel > 0` surface a warning.
 
 > **Duration cap (validation mode):** `turns` accepts integers **1–7** only
 > (`MAX_TURNS = 7` in the engine). Anything outside — including 8+, 0,

@@ -8,6 +8,8 @@ export interface ResolvedConfig {
   confectanceStart: number;
   statusOverrides: Record<string, StatusOverride>;
   cooldownModel: "endOfOwnTurn" | "nextOwnTurnEnd";
+  /** Fortification level (V) of the run — default 0; abilities resolve per character fortificationMap. */
+  fortificationLevel: number;
 }
 
 export interface ActiveStatus {
