@@ -57,14 +57,21 @@ export function tickStatuses(
   return expired;
 }
 
-/** Σ additive damage-dealt bonuses from the unit's own statuses (tier effects gated on the hit element). */
-export function additiveDealtBonus(unit: UnitState, statusRegistry: Map<string, EffectiveStatusDef>, element: Element): number {
+/** Σ additive damage-dealt bonuses from the unit's own statuses (tier effects gated on the hit element).
+ *  `ctx.supportAttack` distinguishes a Support Action so `actions: "support"` modifiers apply only there. */
+export function additiveDealtBonus(
+  unit: UnitState,
+  statusRegistry: Map<string, EffectiveStatusDef>,
+  element: Element,
+  ctx: { supportAttack: boolean },
+): number {
   let sum = 0;
   for (const s of unit.statuses) {
     const def = statusRegistry.get(s.statusId);
     if (!def) continue;
     for (const e of def.effects) {
       if (e.kind === "damage_modifier" && e.scope === "dealt" && e.mode === "additive") {
+        if (e.actions === "support" && !ctx.supportAttack) continue;
         sum += e.value * s.stacks;
       }
       if (e.kind === "stack_tier_modifier" && e.scope === "dealt") {

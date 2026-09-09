@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
-import { scenario } from "./helpers.js";
+import { scenario, customRegistry, makeAlly } from "./helpers.js";
+import type { ConfigOverrides, Scenario } from "../model/types.js";
 
 // Every UNVERIFIED value that affects Qiongjiu's simulation must be changeable
 // through scenario config alone — no engine edits (docs/research.md §4 items:
@@ -43,56 +44,82 @@ test("confectanceMax + confectanceStart overrides change ultimate timing (U9)", 
   assert.equal(bigR.log[0].action, "qiongjiu_pressing_momentum");
 });
 
-test("statusOverrides.perStackValue changes damage of that status without engine changes (Support Boost II)", () => {
-  // Self-applied buffs tick at the casting action's end (validated 2026), so the
-  // 1-round SB II from the ultimate expires before r2. Give it a 2-round duration
-  // via the knob so the per-stack VALUE change is observable on r2.
-  const base: Over = {
-    turns: 2, seed: 5, rotation: ["ultimate", "basic"], keys: [], config: { confectanceStart: 6, statusOverrides: { support_boost_ii: { durationRounds: 2 } } },
+/** Two-doll scenario (ally first) so Qiongjiu's Support Action fires each round AFTER the ally's hit. */
+function qjSupportScenario(rotation: ("basic" | "active1" | "active2" | "ultimate")[], cfg: ConfigOverrides, turns = 2): Scenario {
+  return {
+    version: 1,
+    seed: 5,
+    turns,
+    team: [
+      { characterId: "over_ally", rotation: ["basic"], equippedFixedKeys: [] },
+      { characterId: "qiongjiu", rotation, equippedFixedKeys: ["qiongjiu_fk1_concentration"] },
+    ],
+    dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
+    configOverrides: cfg,
   };
-  const dflt = simulateScenario(scenario(base));
+}
+
+test("statusOverrides.perStackValue changes damage of that status without engine changes (Support Boost II, support-scoped)", () => {
+  // Authoritative (2026): SB II is +30% Support ACTION damage (generic `actions:'support'`).
+  // r1: ally basic → QJ support (no SB yet); QJ ultimate at max Confectance → 4 SB II stacks
+  // (3 + 1 at-max), 2-round duration via the knob. r2: ally basic → QJ support with 4×0.30.
+  const base: ConfigOverrides = { confectanceStart: 6, statusOverrides: { support_boost_ii: { durationRounds: 2 } } };
+  const ally = makeAlly("over_ally", 1000);
+  const dflt = simulateScenario(qjSupportScenario(["ultimate", "basic"], base), customRegistry({ over_ally: ally }));
   const boosted = simulateScenario(
-    scenario({ ...base, config: { ...base.config, statusOverrides: { support_boost_ii: { durationRounds: 2, perStackValue: 0.2 } } } }),
+    qjSupportScenario(["ultimate", "basic"], { ...base, statusOverrides: { support_boost_ii: { durationRounds: 2, perStackValue: 0.45 } } }),
+    customRegistry({ over_ally: ally }),
   );
-  assert.ok(boosted.totals.damage > dflt.totals.damage);
-  // r2 basic bracket: default 1 + 0.10 (no-cover) + 4×0.10; override 1 + 0.10 + 4×0.20.
-  const a = dflt.log.find((e) => e.action === "qiongjiu_basic")!;
-  const b = boosted.log.find((e) => e.action === "qiongjiu_basic")!;
-  assert.ok(Math.abs(a.bonusBracket - 1.5) < 1e-9, `default bracket ${a.bonusBracket}`);
-  assert.ok(Math.abs(b.bonusBracket - 1.9) < 1e-9, `override bracket ${b.bonusBracket}`);
+  const supD = dflt.log.find((e) => e.supportAttack && e.round === 2)!;
+  const supB = boosted.log.find((e) => e.supportAttack && e.round === 2)!;
+  assert.ok(supB.finalDamage > supD.finalDamage);
+  // r2 support bracket: default 1 + 0.10 (no-cover) + 4×0.30 = 2.30; override 1 + 0.10 + 4×0.45 = 2.90.
+  assert.ok(Math.abs(supD.bonusBracket - 2.3) < 1e-9, `default support bracket ${supD.bonusBracket}`);
+  assert.ok(Math.abs(supB.bonusBracket - 2.9) < 1e-9, `override support bracket ${supB.bonusBracket}`);
+  // Authoritative scoping: SB II must NOT affect Qiongjiu's normal attack (no-cover only).
+  const main = dflt.log.find((e) => e.action === "qiongjiu_basic")!;
+  assert.ok(Math.abs(main.bonusBracket - 1.1) < 1e-9, `main bracket ${main.bonusBracket}`);
 });
 
-test("statusOverrides.durationRounds lengthens the buff window (Support Boost I)", () => {
-  const base: Over = { turns: 3, seed: 3, rotation: ["active1", "basic", "basic"], keys: [] };
-  const dflt = simulateScenario(scenario(base)); // boost covers r2 only
+test("statusOverrides.durationRounds lengthens the buff window (Support Boost I, support-scoped)", () => {
+  // r1: ally basic → support (no SB); QJ Common Rail (self SB I ×1). Default 1r SB I ticks off
+  // at the casting action's end → absent r2; a 3r override keeps it through r2/r3 support hits.
+  const ally = makeAlly("over_ally", 1000);
+  const dflt = simulateScenario(
+    qjSupportScenario(["active1", "basic", "basic"], {}, 3),
+    customRegistry({ over_ally: ally }),
+  );
   const longer = simulateScenario(
-    scenario({ ...base, config: { statusOverrides: { support_boost_i: { durationRounds: 3 } } } }),
+    qjSupportScenario(["active1", "basic", "basic"], { statusOverrides: { support_boost_i: { durationRounds: 3 } } }, 3),
+    customRegistry({ over_ally: ally }),
   );
   assert.ok(longer.totals.damage > dflt.totals.damage);
-  const r3d = dflt.log.find((e) => e.round === 3 && e.action === "qiongjiu_basic")!;
-  const r3l = longer.log.find((e) => e.round === 3 && e.action === "qiongjiu_basic")!;
-  assert.ok(Math.abs(r3d.bonusBracket - 1.1) < 1e-9);
-  assert.ok(Math.abs(r3l.bonusBracket - 1.15) < 1e-9);
+  const r2d = dflt.log.find((e) => e.supportAttack && e.round === 2)!;
+  const r2l = longer.log.find((e) => e.supportAttack && e.round === 2)!;
+  assert.ok(Math.abs(r2d.bonusBracket - 1.1) < 1e-9, `default r2 support bracket ${r2d.bonusBracket}`);
+  assert.ok(Math.abs(r2l.bonusBracket - 1.25) < 1e-9, `3-round r2 support bracket ${r2l.bonusBracket}`); // +0.15 SB I
 });
 
 test("statusOverrides.tickAt alternative (roundEnd) is honored (U7 knob — default model unchanged)", () => {
-  // With the validated rule (buff ticks at the OWNER's action end, including
-  // self-applied buffs at the casting action's end), a solo self-caster ticks
-  // ownActionEnd statuses once per round; the roundEnd alternative also ticks
-  // once per round — identical cadence here. The knob stays selectable; we
-  // prove the default model is unchanged by comparing explicit runs.
-  const base: Over = { turns: 2, seed: 4, rotation: ["active1", "basic"], keys: [], config: { statusOverrides: { support_boost_i: { durationRounds: 2 } } } };
+  // With the validated rule (buff ticks at the OWNER's action end, including self-applied
+  // buffs at the casting action's end), a solo self-caster ticks ownActionEnd statuses once
+  // per round; the roundEnd alternative also ticks once per round — identical cadence. The
+  // knob stays selectable; we prove the default model is unchanged by comparing explicit runs.
+  const ally = makeAlly("over_ally", 1000);
+  const base: ConfigOverrides = { statusOverrides: { support_boost_i: { durationRounds: 2 } } };
   const ownEnd = simulateScenario(
-    scenario({ ...base, config: { ...base.config, statusOverrides: { support_boost_i: { durationRounds: 2, tickAt: "ownActionEnd" } } } }),
+    qjSupportScenario(["active1", "basic"], { ...base, statusOverrides: { support_boost_i: { durationRounds: 2, tickAt: "ownActionEnd" } } }),
+    customRegistry({ over_ally: ally }),
   );
   const roundEnd = simulateScenario(
-    scenario({ ...base, config: { ...base.config, statusOverrides: { support_boost_i: { durationRounds: 2, tickAt: "roundEnd" } } } }),
+    qjSupportScenario(["active1", "basic"], { ...base, statusOverrides: { support_boost_i: { durationRounds: 2, tickAt: "roundEnd" } } }),
+    customRegistry({ over_ally: ally }),
   );
-  // r1 Common Rail (self SB I, duration 2); r2 basic keeps the buff under both models.
-  const r2a = ownEnd.log.find((e) => e.round === 2 && e.action === "qiongjiu_basic")!;
-  const r2b = roundEnd.log.find((e) => e.round === 2 && e.action === "qiongjiu_basic")!;
-  assert.ok(Math.abs(r2a.bonusBracket - 1.15) < 1e-9, `ownActionEnd bracket ${r2a.bonusBracket}`);
-  assert.ok(Math.abs(r2b.bonusBracket - 1.15) < 1e-9, `roundEnd bracket ${r2b.bonusBracket}`);
+  // r1 Common Rail (self SB I, duration 2); r2 support keeps the buff under both models: 1 + 0.10 + 0.15 = 1.25.
+  const r2a = ownEnd.log.find((e) => e.supportAttack && e.round === 2)!;
+  const r2b = roundEnd.log.find((e) => e.supportAttack && e.round === 2)!;
+  assert.ok(Math.abs(r2a.bonusBracket - 1.25) < 1e-9, `ownActionEnd bracket ${r2a.bonusBracket}`);
+  assert.ok(Math.abs(r2b.bonusBracket - 1.25) < 1e-9, `roundEnd bracket ${r2b.bonusBracket}`);
   assert.equal(JSON.stringify(ownEnd.log), JSON.stringify(roundEnd.log), "solo self-caster cadence is identical");
 });
 

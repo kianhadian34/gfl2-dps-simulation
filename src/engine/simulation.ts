@@ -146,13 +146,19 @@ function exploitedWeaknesses(target: UnitState, skill: SkillDefVariant): { weakn
   return { weaknesses, mult, ammoExploited };
 }
 
-/** Passive "conditional_damage_modifier" bonuses (target.noCover) — Qiongjiu +10% (CONFIRMED). */
-function conditionalNoCoverBonus(actor: UnitState, target: UnitState): number {
+/**
+ * Passive conditional dealt bonuses for one condition (generic — reusable by any character).
+ * `when: "target.noCover"` requires the target to have no cover (MVP: dummy always "none");
+ * `when: "always"` is unconditional. `actions: "support"` entries only count for Support Actions.
+ */
+function conditionalDealtBonus(actor: UnitState, target: UnitState, when: "target.noCover" | "always", supportAttack: boolean): number {
   let sum = 0;
   for (const e of passiveEffects(actor)) {
-    if (e.kind === "conditional_damage_modifier" && e.when === "target.noCover" && target.cover === "none") {
-      sum += e.value;
-    }
+    if (e.kind !== "conditional_damage_modifier" || e.scope !== "dealt" || e.mode !== "additive") continue;
+    if (e.when !== when) continue;
+    if (e.actions === "support" && !supportAttack) continue;
+    if (when === "target.noCover" && target.cover !== "none") continue;
+    sum += e.value;
   }
   return sum;
 }
@@ -166,7 +172,10 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   // gated out by the trigger data (requiresElements) — they neither gain nor benefit.
   grantStackOnWeaknessExploit(state, dummy, skill, ammoExploited);
   const phaseMult = phaseMultiplier(skill.element, dummy.phase);
-  const addDealt = additiveDealtBonus(actor, state.statusRegistry, skill.element) + conditionalNoCoverBonus(actor, dummy);
+  const addDealt =
+    additiveDealtBonus(actor, state.statusRegistry, skill.element, { supportAttack: ev.supportAttack }) +
+    conditionalDealtBonus(actor, dummy, "target.noCover", ev.supportAttack) +
+    conditionalDealtBonus(actor, dummy, "always", ev.supportAttack);
   const targetMods = targetPassiveTakenMods(dummy); // U5 boss/target stability-conditional passives
   const addTaken = additiveTakenBonus(dummy, state.statusRegistry, skill.element) + targetMods.additive;
   const { mult, red } = multiplicativeTakenMods(dummy, state.statusRegistry);

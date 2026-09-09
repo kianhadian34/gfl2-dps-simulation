@@ -15,10 +15,10 @@ export const STATUS_DEFS: StatusDef[] = [
     durationRounds: 1,
     tickAt: "ownActionEnd",
     purgeable: false, // authoritative: "This buff cannot be cleansed"
-    effects: [{ kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.05 }],
+    effects: [{ kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.15, actions: "support" }],
     verified: false,
-    note: "Model default (generic dealt additive). Authoritative tooltip semantics (Support-Action-scoped value, an additional conditional component, 'activates 1 time', un-cleansable) are recorded in deferredNote and are NOT executable by the current engine.",
-    deferredNote: "Authoritative (screenshots): 'Increase damage dealt with Support Action by 15%. Damage against exposed units is increased by 10%. Activates 1 time. This buff cannot be cleansed.' Engine cannot scope damage_modifier to Support Actions or gate on Exposed — the generic 0.05 dealt remains a model default, NOT the tooltip value (do not treat as complete semantics). purgeable=false per 'cannot be cleansed'.",
+    note: "Authoritative Support-Action scope executed (2026): +15% dealt ONLY for Support Actions (generic `actions:'support'`). The +10% vs Exposed component and 'activates 1 time' remain deferred — see deferredNote.",
+    deferredNote: "Authoritative (screenshots): 'Increase damage dealt with Support Action by 15%. Damage against exposed units is increased by 10%. Activates 1 time. This buff cannot be cleansed.' Support-Action scope is now executed; the +10% vs Exposed (no exposed-target condition yet) and 1-activation consumption (no uses/consumeOn yet) are NOT implemented.",
   },
   {
     id: "support_boost_ii",
@@ -29,10 +29,10 @@ export const STATUS_DEFS: StatusDef[] = [
     durationRounds: 1,
     tickAt: "ownActionEnd",
     purgeable: false, // authoritative: "This buff cannot be cleansed"
-    effects: [{ kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.1 }],
+    effects: [{ kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.3, actions: "support" }],
     verified: false,
-    note: "Model default (generic dealt additive). Authoritative tooltip semantics (Support-Action-scoped value, an additional conditional component, 'activates 1 time', un-cleansable) are recorded in deferredNote and are NOT executable by the current engine.",
-    deferredNote: "Authoritative (screenshots): 'Increase damage dealt with Support Action by 30%. Damage against exposed units is increased by 10%. Activates 1 time. This buff cannot be cleansed.' Engine cannot scope damage_modifier to Support Actions or gate on Exposed — the generic 0.1 dealt remains a model default, NOT the tooltip value (do not treat as complete semantics). purgeable=false per 'cannot be cleansed'.",
+    note: "Authoritative Support-Action scope executed (2026): +30% dealt ONLY for Support Actions (generic `actions:'support'`). The +10% vs Exposed component and 'activates 1 time' remain deferred — see deferredNote.",
+    deferredNote: "Authoritative (screenshots): 'Increase damage dealt with Support Action by 30%. Damage against exposed units is increased by 10%. Activates 1 time. This buff cannot be cleansed.' Support-Action scope is now executed; the +10% vs Exposed (no exposed-target condition yet) and 1-activation consumption (no uses/consumeOn yet) are NOT implemented.",
   },
   {
     id: "overburn",

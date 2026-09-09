@@ -104,8 +104,10 @@ export type PassiveEffect =
       scope: "dealt" | "taken";
       mode: "additive" | "multiplicative";
       value: number;
-      /** Condition evaluated against the receiving target unit. */
-      when: "target.noCover" | "target.stabilityAboveZero";
+      /** Condition evaluated against the receiving target unit. "always" = unconditional (e.g. Steady Plan Lv2 Support Action +10%). */
+      when: "target.noCover" | "target.stabilityAboveZero" | "always";
+      /** NEW (2026) — default "all": "support" restricts a dealt bonus to Support Actions only (generic, reusable by any character). Ignored on taken side. */
+      actions?: "all" | "support";
     }
   | {
       kind: "support_attack";
@@ -214,6 +216,8 @@ export type StatusEffect =
       scope: "dealt" | "taken";
       mode: "additive" | "multiplicative";
       value: number;
+      /** NEW (2026) — default "all": "support" restricts a dealt bonus to Support Actions only (generic, reusable by any character). Ignored on taken side. */
+      actions?: "all" | "support";
     }
   | { kind: "damage_reduction"; value: number }
   | {

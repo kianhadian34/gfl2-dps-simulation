@@ -244,8 +244,17 @@ export const QIONGJIU: CharacterDef = {
         },
       ],
       2: [
-        // Lv2 executable portion = Lv1 (the additions below are deferred, not executed).
+        // Lv2 (V3): +10% Support Action damage — EXECUTED via the generic support scope.
+        // Overburn-after-Support Action remains deferred (see deferredNotes[2]).
         { kind: "resource_gain", resource: "confectance", amount: 1, on: "onDamageDealt" },
+        {
+          kind: "conditional_damage_modifier",
+          scope: "dealt",
+          mode: "additive",
+          value: 0.1,
+          when: "always",
+          actions: "support",
+        },
         {
           kind: "conditional_damage_modifier",
           scope: "dealt",
@@ -290,7 +299,7 @@ export const QIONGJIU: CharacterDef = {
       ],
     },
     deferredNotes: {
-      2: "Lv2 (V3): 'After Support Action, apply Overburn to the target for 2 turns. Support Action's damage increases by 10%.' After-support status application and Support-Action-scoped damage are NOT executable by the current engine — recorded, deferred (not collapsed into other modifiers).",
+      2: "Lv2 (V3): 'After Support Action, apply Overburn to the target for 2 turns. Support Action's damage increases by 10%.' The Support Action +10% damage is EXECUTED (generic `actions:'support'` dealt modifier, see levels[2]); Overburn-after-Support Action is NOT executable (no after-support status hook) — recorded, deferred.",
       3: "Lv3 (V6): 'Increases damage by 10% against targets without Cover protection.' Executed as a SECOND independent +10% No-Cover component (see levels[3]); the two components are kept separate — not collapsed.",
     },
   },
