@@ -244,8 +244,7 @@ export const QIONGJIU: CharacterDef = {
         },
       ],
       2: [
-        // Lv2 (V3): +10% Support Action damage — EXECUTED via the generic support scope.
-        // Overburn-after-Support Action remains deferred (see deferredNotes[2]).
+        // Lv2 (V3): CUMULATIVE — Lv1 + Support Action damage +10% + Overburn after Support Action.
         { kind: "resource_gain", resource: "confectance", amount: 1, on: "onDamageDealt" },
         {
           kind: "conditional_damage_modifier",
@@ -254,6 +253,11 @@ export const QIONGJIU: CharacterDef = {
           value: 0.1,
           when: "always",
           actions: "support",
+        },
+        {
+          kind: "after_support_status",
+          statusId: "overburn",
+          durationRounds: 2,
         },
         {
           kind: "conditional_damage_modifier",
@@ -271,22 +275,27 @@ export const QIONGJIU: CharacterDef = {
         },
       ],
       3: [
+        // Lv3 (V6): CUMULATIVE — Lv2 retained + No-Cover as a SINGLE +0.20 TOTAL (the V6 screenshot
+        // displays "20% No-Cover", NOT two +10% components; do not duplicate as +30%).
         { kind: "resource_gain", resource: "confectance", amount: 1, on: "onDamageDealt" },
-        // Component 1 of the No-Cover bonus (Lv1).
         {
           kind: "conditional_damage_modifier",
           scope: "dealt",
           mode: "additive",
           value: 0.1,
-          when: "target.noCover",
+          when: "always",
+          actions: "support",
         },
-        // Component 2 of the No-Cover bonus (Lv3) — a SECOND independent +10% component, NOT collapsed
-        // with Lv1's (validated datasets show the two components stacking additively: 1 + 0.10 + 0.10 = 1.20).
+        {
+          kind: "after_support_status",
+          statusId: "overburn",
+          durationRounds: 2,
+        },
         {
           kind: "conditional_damage_modifier",
           scope: "dealt",
           mode: "additive",
-          value: 0.1,
+          value: 0.2,
           when: "target.noCover",
         },
         {
@@ -298,10 +307,7 @@ export const QIONGJIU: CharacterDef = {
         },
       ],
     },
-    deferredNotes: {
-      2: "Lv2 (V3): 'After Support Action, apply Overburn to the target for 2 turns. Support Action's damage increases by 10%.' The Support Action +10% damage is EXECUTED (generic `actions:'support'` dealt modifier, see levels[2]); Overburn-after-Support Action is NOT executable (no after-support status hook) — recorded, deferred.",
-      3: "Lv3 (V6): 'Increases damage by 10% against targets without Cover protection.' Executed as a SECOND independent +10% No-Cover component (see levels[3]); the two components are kept separate — not collapsed.",
-    },
+    deferredNotes: {},
   },
   // Authoritative Fortification map (character screens, 2026): each Fortification raises exactly one ability.
   fortificationMap: [

@@ -58,13 +58,21 @@ test("V3 → Steady Plan Lv2 and V6 → Steady Plan Lv3 resolve the passive's ef
   assert.equal(res6, QIONGJIU.passive.levels?.[3]); // V6 → Lv3 list
 });
 
-test("Steady Plan Lv3 carries a SECOND +10% No-Cover component (not collapsed); Lv2 defers its additions", () => {
-  const lv1NoCover = (QIONGJIU.passive.levels?.[1] ?? []).filter((e) => e.kind === "conditional_damage_modifier" && e.when === "target.noCover").length;
-  const lv3NoCover = (QIONGJIU.passive.levels?.[3] ?? []).filter((e) => e.kind === "conditional_damage_modifier" && e.when === "target.noCover").length;
-  assert.equal(lv1NoCover, 1);
-  assert.equal(lv3NoCover, 2); // Lv1 component + Lv3 component, kept separate
-  assert.ok(QIONGJIU.passive.deferredNotes?.[2]?.includes("Overburn"));
-  assert.ok(QIONGJIU.passive.deferredNotes?.[3]?.includes("10%"));
+test("Steady Plan: No-Cover is +10% at Lv1/V3 and a SINGLE +20% total at V6 (cumulative); Lv2/Lv3 carry the support +10% + after-support Overburn", () => {
+  const nc = (lv: number) => (QIONGJIU.passive.levels?.[lv] ?? []).filter((e) => e.kind === "conditional_damage_modifier" && e.when === "target.noCover");
+  assert.equal(nc(1).length, 1);
+  assert.equal((nc(1)[0] as { value: number }).value, 0.1);
+  assert.equal(nc(2).length, 1);
+  assert.equal((nc(2)[0] as { value: number }).value, 0.1);
+  assert.equal(nc(3).length, 1); // SINGLE +20% TOTAL per the V6 screenshot (never two +10%, never +30%)
+  assert.equal((nc(3)[0] as { value: number }).value, 0.2);
+  // Cumulative V3/V6 additions are present at BOTH ranks (support +10% + after-support Overburn).
+  for (const lv of [2, 3] as const) {
+    const list = QIONGJIU.passive.levels?.[lv] ?? [];
+    assert.equal(list.filter((e) => e.kind === "conditional_damage_modifier" && e.actions === "support").length, 1, `Lv${lv} support +10%`);
+    const after = list.filter((e) => e.kind === "after_support_status" && e.statusId === "overburn" && e.durationRounds === 2);
+    assert.equal(after.length, 1, `Lv${lv} after-support Overburn`);
+  }
 });
 
 test("Ultimate: V4 → Lv2 and V5 → Lv3 (both deferred-annotated, same executable base as Lv1)", () => {

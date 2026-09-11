@@ -433,6 +433,24 @@ function resolveSupportHit(state: SimulationState, shooter: UnitState, skill: Sk
   if (skill.multiplier !== undefined || skill.fixedDamage !== undefined) {
     dealDamageHit(state, shooter, skill, ev);
   }
+  // "After Support Action" passive statuses (Steady Plan Lv2/Lv3: Overburn 2r, SOURCE 2026):
+  // applied to the support target whenever a Support Action is performed — no extra gate
+  // (the generic trigger flow already ensures supports fire on qualifying ally damage).
+  for (const pe of shooter.passives) {
+    if (pe.kind !== "after_support_status") continue;
+    const label = passiveSourceLabel(shooter.def!, shooter.passiveLevel);
+    const appliedId = applyStatus(state, dummy, {
+      statusId: pe.statusId,
+      durationRounds: pe.durationRounds,
+      stacks: pe.stacks,
+      applier: { id: shooter.id, atk: shooter.panelAtk },
+      source: label,
+    });
+    if (appliedId) {
+      ev.statusesApplied.push(pe.statusId);
+      (ev.appliedSources ??= []).push({ statusId: pe.statusId, source: label });
+    }
+  }
   applySkillStatuses(state, shooter, dummy, skill.appliesStatuses, ev, abilitySourceLabel(shooter.def!, "support", shooter.skillLevels.support ?? 1));
   ev.confectance = { before: beforeConfectance, after: shooter.confectance, cost: 0 };
   ev.cooldownAfter = Object.fromEntries(shooter.cooldowns);

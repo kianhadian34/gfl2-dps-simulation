@@ -153,12 +153,10 @@ Conservative mapping under the project-wide standard (source authority and evide
 | Ult Lv2 (Vulnerable, No-Cover-gated) / Lv3 (Damage Up II pre-ally) | **Not Tested** | text; deferred (Cover-gate, pre-ally timing absent) |
 | Steady Plan Lv1: +1 Confectance per damage | **Validated** | U9 in-game |
 | Steady Plan Lv1: No-Cover +10% | **Source fact** (authoritative input); combined 1.20 total additionally **Validated** | tooltip states +10% vs No-Cover; U20/U15b brackets reproduce the combined 1.20 at V6 |
-| Steady Plan Lv2: Support Action damage +10% | **Not Tested** | architected 2026; source-stated but not observed or derived in-game |
-| Steady Plan Lv3 (V6): additional +10% No-Cover | **Source fact** (authoritative input) | tooltip explicitly states +10% vs targets without Cover; authoritative mapping V6 → Lv3 — a lower-Fortification gameplay test is NOT required |
-| Steady Plan Lv3: distinct second +10% component | **Mathematically Proven** | see derivation below |
-| Steady Plan Lv3: the two +10% components are additive | **Mathematically Proven** | see derivation below |
-| V6 total No-Cover bonus = +20% (bracket 1.20) | **Mathematically Proven** (additionally supported by direct observations) | derivation below; in-game 1091/1191/992/1207/2233/2340 reproduce the 1.20 bracket exactly |
-| Steady Plan Lv2: Overburn after Support Action | **Not Tested** | text; deferred |
+| Steady Plan Lv2 (V3): Support Action damage +10% (cumulative, retained at V6) | **Validated** | the 735/747/883 support-hit validations all include the Out-of-Turn/V3 +10% alongside No-Cover |
+| Steady Plan Lv2 (V3): Overburn (2 turns) after each Support Action | **Source fact / implemented** | authoritative cumulative V3 screen text; implemented via the generic `after_support_status` effect; combat behavior not separately in-game tested |
+| Steady Plan Lv3 (V6): No-Cover **+20% TOTAL** (SINGLE component, per the V6 display) | **Source fact** (authoritative input) | the V6 screenshot displays one "20% No-Cover" value — NOT two +10% components and never +30%; observed V6 brackets reproduce 1.20 (1091/1191/992/1207/2233/2340) |
+| Steady Plan Lv3 (V6): cumulative — retains V3 Support +10% and Overburn-after-Support | **Source fact** | V6 screenshot's complete accumulated text lists both alongside the 20% No-Cover; engine resolves the full cumulative set |
 | Support Action: 90% ATK | **Not Tested** | source text (no in-game numeric); simulated value 0.9 |
 | Support Action: Stability 2, max 3/round, no chain | **Not Tested** | source text (trigger/quota mechanics not in-game-reproduced) |
 | Support Action: range requirement | **Not Tested** | unverified (checklist row 24) |
@@ -193,9 +191,4 @@ Conservative mapping under the project-wide standard (source authority and evide
 | Fixed-damage chain & damage-dealt/DEF-scaling | **Validated** | U21 (ATK-sourced); damage-dealt/DEF-sourced validated 2026 (Negative Charge, Winter's Wrath) |
 | AWU tiers (physical, 2→7%…5→25%, permanent) | **Validated** | §3.18 datasets |
 
-**Derivation — Steady Plan V6 No-Cover (Mathematically Proven):**
-1. Source facts (authoritative, no gameplay test required): Lv1 states "+10% damage against targets without Cover"; the V6/Lv3 upgrade states it increases damage against targets without Cover by another +10%.
-2. Validated observation: the V6 in-game brackets reproduce 1.20 exactly (1091/1191/992/1207/2233/2340).
-3. Additive-bracket prediction: `1 + 0.10 (Lv1) + 0.10 (V6) = 1.20` — matches the observed bracket.
-4. Alternative excluded: multiplicative `1.10 × 1.10 = 1.21` is inconsistent with the observed results (would give e.g. 1100 ≠ 1091 and 1000 ≠ 992).
-5. Conclusion: the V6 total No-Cover bonus is **+20%**, composed of two **distinct, additive** +10% components — **Mathematically Proven** (source facts + validated 1.20 observation + reproducible arithmetic; no V0 gameplay observation is claimed or required). If a future in-game observation contradicts this split, downgrade to **Not Tested**.
+**Note — V6 No-Cover (source-superseded):** the earlier "1 + 0.10 + 0.10 Mathematically Proven" split derivation is **superseded** by the authoritative V6 screenshot, which displays the No-Cover bonus as a SINGLE **+20% total** value (one component). Under the source hierarchy that displayed value is the **Source fact**; the observed V6 brackets reproduce the 1.20 total (1091/1191/992/1207/2233/2340), and the single-+20% interpretation (never two +10%, never +30%) is what the engine now represents — the split claim is dropped.

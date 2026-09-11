@@ -5,7 +5,7 @@ import { createState, passiveSourceLabel, abilitySourceLabel } from "../engine/s
 import { REGISTRY } from "../data/registry.js";
 import { QIONGJIU } from "../data/qiongjiu.js";
 import { scenario, customRegistry, makeAlly, abilities } from "./helpers.js";
-import type { CharacterDef, Scenario, StatusApplySpec } from "../model/types.js";
+import type { CharacterDef, PassiveEffect, Scenario, StatusApplySpec } from "../model/types.js";
 
 // Effect provenance (2026): every active effect carries a human-readable source
 // (ability/passive/key + level + fortification tag). The source and its resulting
@@ -27,18 +27,22 @@ test("provenance: ability/passive labels resolve fortification indices (Steady P
   assert.equal(abilitySourceLabel(QIONGJIU, "active2", 2), "Guide to Victory Lv.2 (V2)");
 });
 
-test("provenance/dedup: QJ data contains exactly ONE support-scoped +10% dealt entry (the Out-of-Turn line is it)", () => {
-  const all = [
-    ...(QIONGJIU.passive.levels?.[1] ?? []),
-    ...(QIONGJIU.passive.levels?.[2] ?? []),
-    ...(QIONGJIU.passive.levels?.[3] ?? []),
-  ];
-  const supportScoped = all.filter(
-    (e): e is Extract<(typeof all)[number], { kind: "conditional_damage_modifier" }> =>
-      e.kind === "conditional_damage_modifier" && e.actions === "support",
-  );
-  assert.equal(supportScoped.length, 1, "one source → one modifier (V3's +10% = Out-of-Turn +10%), never two same-named +10% modifiers");
-  assert.equal(supportScoped[0].value, 0.1);
+test("provenance/dedup: each resolved Steady Plan level carries exactly ONE support-scoped +10% dealt entry (the Out-of-Turn line is it)", () => {
+  // Cumulative levels: Lv2 and Lv3 EACH contain the +10% (it appears once per RESOLVED set,
+  // never twice within one level; Lv1 has none). One source → one modifier.
+  for (const level of [1, 2, 3] as const) {
+    const list = QIONGJIU.passive.levels?.[level] ?? [];
+    const supportScoped = list.filter(
+      (e): e is Extract<PassiveEffect, { kind: "conditional_damage_modifier" }> =>
+        e.kind === "conditional_damage_modifier" && e.actions === "support",
+    );
+    if (level === 1) {
+      assert.equal(supportScoped.length, 0, "Lv1 has no support-scoped bonus");
+    } else {
+      assert.equal(supportScoped.length, 1, `Lv${level}: exactly one support-scoped +10% (V3's +10% = Out-of-Turn +10%), never two`);
+      assert.equal(supportScoped[0].value, 0.1);
+    }
+  }
 });
 
 test("provenance: effectSources list the contributing passive sources (deduplicated) on a hit", () => {

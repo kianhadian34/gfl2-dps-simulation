@@ -120,6 +120,18 @@ export type PassiveEffect =
     }
   | {
       /**
+       * NEW (2026) — "after Support Action" status application (Steady Plan Lv2/Lv3: Overburn 2r).
+       * Apply the status to the SUPPORT target whenever a Support Action is performed
+       * (generic — no extra damage-on-the-support-hit requirement; the support fires only via
+       * the generic qualifying-damage trigger flow).
+       */
+      kind: "after_support_status";
+      statusId: string;
+      durationRounds?: number;
+      stacks?: number;
+    }
+  | {
+      /**
        * U19 Crit-Rate overflow conversion (CONFIRMED by in-game passive text, 2026-09-03):
        * effective Crit Rate caps at `threshold` (default 1.0 = 100%); every 1% of overflow
        * Crit Rate converts to 1% Crit DMG (ratio, default 1.0 — 1:1). `cap` optionally
