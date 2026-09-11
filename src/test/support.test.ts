@@ -56,3 +56,33 @@ test("a solo doll never fires support attacks (no allies)", () => {
   });
   assert.ok(r.log.every((e) => !e.supportAttack));
 });
+
+test("trigger fidelity: an ally action that deals NO damage does NOT trigger a Support Action (2026)", () => {
+  // Steady Plan source fact: Support Action fires when an enemy "receives targeted damage
+  // from an ally". An ally ultimate (0 damage) must not trigger Qiongjiu's support.
+  const r = simulateScenario(
+    {
+      version: 1,
+      seed: 7,
+      turns: 2,
+      team: [
+        { characterId: "test_ally", rotation: ["ultimate"], equippedFixedKeys: [] },
+        { characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"] },
+      ],
+      dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
+      configOverrides: { confectanceStart: 6 }, // keep the 0-damage ally ultimate affordable every round (no basic fallback)
+    },
+    customRegistry({ test_ally: ALLY }),
+  );
+  // Qiongjiu's own basic deals damage but cannot self-trigger; the ally's 0-damage
+  // ultimate must not trigger either → zero support actions over two rounds.
+  assert.equal(r.log.filter((e) => e.supportAttack).length, 0);
+  assert.ok(r.log.some((e) => e.action === "test_ally_ult"), "ally ultimate was cast");
+});
+
+test("trigger fidelity: a damaging ally hit triggers exactly one Support Action and quota persists (2026)", () => {
+  // Control for the fidelity gate: the ally's targeted basic (damage > 0) triggers exactly
+  // one QJ support per hit; 3 damaging ally hits over 3 rounds → exactly 3 supports (quota).
+  const r = simulateScenario(twoDollScenario(3), customRegistry({ test_ally: ALLY }));
+  assert.equal(r.log.filter((e) => e.supportAttack).length, 3);
+});

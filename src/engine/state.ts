@@ -61,6 +61,8 @@ export interface UnitState {
   stabilityRecoveryRoundsLeft: number;
   /** Resolved ability level per slot (Basic is always 1). Set once at construction. */
   skillLevels: Partial<Record<AbilitySlot, number>>;
+  /** Resolved PASSIVE level (Fortification-raised passive, e.g. Steady Plan Lv.3 at V6). */
+  passiveLevel: number;
   /** Resolved SkillDefVariant per slot — the ONLY skill source consumers read. Computed once at construction. */
   skills: Partial<Record<AbilitySlot, SkillDefVariant>>;
 }
@@ -217,7 +219,8 @@ function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], con
     }
   }
   confectance = Math.min(config.confectanceMax, Math.max(0, confectance));
-  const passiveEffectsList = resolvePassiveEffects(def, effectiveAbilityLevel(def, "passive", config));
+  const passiveLevel = effectiveAbilityLevel(def, "passive", config);
+  const passiveEffectsList = resolvePassiveEffects(def, passiveLevel);
   const supportMax = supportAttackQuota(passiveEffectsList);
   const { skills, levels } = resolveAbilitySet(def, config);
   return {
@@ -226,6 +229,7 @@ function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], con
     name: def.name,
     def,
     skillLevels: levels,
+    passiveLevel,
     skills,
     passives: passiveEffectsList,
     weaknessElements: [],
@@ -260,6 +264,7 @@ function makeDummy(d: Scenario["dummy"]): UnitState {
     name: d.name,
     def: null,
     skillLevels: {},
+    passiveLevel: 1,
     skills: {},
     passives: (d.passives ?? []).flatMap((p) => p.effects),
     weaknessElements: d.weaknesses,
@@ -294,6 +299,25 @@ export function resolvePassiveEffects(def: CharacterDef, level: number): Passive
     return levels[level] ?? levels[Math.min(...Object.keys(levels).map(Number))];
   }
   return def.passive.effects;
+}
+
+/**
+ * Human-readable provenance label for a passive-granted effect (2026):
+ * "Steady Plan Lv.2 (V3)" — the fortification index comes from the character's
+ * fortificationMap reverse lookup (which V raised the passive to this level).
+ */
+export function passiveSourceLabel(def: CharacterDef, level: number): string {
+  const v = (def.fortificationMap ?? []).find((f) => f.ability === "passive" && f.toLevel === level)?.v;
+  return `${def.passive.name} Lv.${level}${v !== undefined ? ` (V${v})` : ""}`;
+}
+
+/** Human-readable provenance label for an ability-granted effect (2026): "Common Rail Lv.1 (V1)". */
+export function abilitySourceLabel(def: CharacterDef, slot: AbilitySlot, level: number): string {
+  if (slot === "passive") return passiveSourceLabel(def, level);
+  const ability = def.skills[slot];
+  if (!ability) return `${slot} Lv.${level}`;
+  const v = (def.fortificationMap ?? []).find((f) => f.ability === slot && f.toLevel === level)?.v;
+  return `${ability.name} Lv.${level}${v !== undefined ? ` (V${v})` : ""}`;
 }
 
 /** Number of support attacks the unit may perform per round (from the RESOLVED passive effects). */

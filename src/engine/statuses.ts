@@ -18,7 +18,7 @@ export function applyStatus(state: SimulationState, target: UnitState, spec: Sta
     if (def.stackable) existing.stacks = Math.min(def.maxStacks, existing.stacks + stacks);
     return false;
   } else {
-    const active = { statusId: spec.statusId, stacks: Math.min(def.maxStacks, stacks), durationLeft: dur, applier: spec.applier };
+    const active = { statusId: spec.statusId, stacks: Math.min(def.maxStacks, stacks), durationLeft: dur, applier: spec.applier, source: spec.source };
     target.statuses.push(active);
     return true;
   }

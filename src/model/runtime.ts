@@ -18,6 +18,8 @@ export interface ActiveStatus {
   durationLeft: number;
   /** Effect applier captured at application time (applier-ATK fixed damage, Overburn 2026). Optional. */
   applier?: { id: string; atk: number };
+  /** Provenance: the ability/passive/key that granted this effect (human-readable, 2026). */
+  source?: string;
 }
 
 /** Structured event per resolved action/hit — docs/schemas.md §9. */
@@ -48,6 +50,10 @@ export interface LogEvent {
   confectance?: { before: number; after: number; cost: number };
   cooldownAfter: Record<string, number>;
   statusesApplied: string[];
+  /** Provenance of every effect applied by this action (statusId → granting ability/passive/key), deduplicated (2026). */
+  appliedSources?: { statusId: string; source: string }[];
+  /** Provenance of the damage modifiers that contributed to THIS event's buckets (deduplicated labels, 2026). */
+  effectSources?: string[];
   statusesExpired: string[];
   /** Snapshot of permanent target 'upgrade' statuses after the hit (e.g. Ammo Weakness Upgrade stacks, 2026) — absent when none. */
   upgradeStacks?: { statusId: string; stacks: number }[];

@@ -15,7 +15,7 @@ import {
   tickStatuses,
 } from "./statuses.js";
 import { applyStabilityDamage, endOfRoundStability } from "./stability.js";
-import { createState, DEFAULT_CONFIG, supportAttackQuota, type SimulationState, type UnitState } from "./state.js";
+import { abilitySourceLabel, createState, DEFAULT_CONFIG, passiveSourceLabel, supportAttackQuota, type SimulationState, type UnitState } from "./state.js";
 
 /**
  * Element/Phase interactions — CORRECTED 2026: GFL2 has NO elemental counter
@@ -178,6 +178,40 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     conditionalDealtBonus(actor, dummy, "always", ev.supportAttack);
   const targetMods = targetPassiveTakenMods(dummy); // U5 boss/target stability-conditional passives
   const addTaken = additiveTakenBonus(dummy, state.statusRegistry, skill.element) + targetMods.additive;
+  // Effect provenance (2026): deduplicated, human-readable sources of the modifiers that
+  // contributed to this hit's buckets — a source (ability/passive/key) and its resulting
+  // effect are ONE modifier, never double-counted just because both names appear.
+  const sources = new Set<string>();
+  for (const s of actor.statuses) {
+    const def = state.statusRegistry.get(s.statusId);
+    if (!def) continue;
+    const contributes = def.effects.some(
+      (e) =>
+        (e.kind === "damage_modifier" && e.scope === "dealt" && e.mode === "additive" && !(e.actions === "support" && !ev.supportAttack)) ||
+        (e.kind === "stack_tier_modifier" && e.scope === "dealt"),
+    );
+    if (contributes) sources.add(s.source ?? def.name);
+  }
+  for (const e of passiveEffects(actor)) {
+    if (
+      e.kind === "conditional_damage_modifier" &&
+      e.scope === "dealt" &&
+      e.mode === "additive" &&
+      e.when !== "target.stabilityAboveZero" &&
+      !(e.actions === "support" && !ev.supportAttack)
+    ) {
+      sources.add(actor.def ? passiveSourceLabel(actor.def, actor.passiveLevel) : "attacker passive");
+    }
+  }
+  for (const s of dummy.statuses) {
+    const def = state.statusRegistry.get(s.statusId);
+    if (!def) continue;
+    if (def.effects.some((e) => e.kind === "damage_modifier" && e.scope === "taken" && e.mode === "additive")) {
+      sources.add(s.source ?? def.name);
+    }
+  }
+  if (targetMods.additive > 0) sources.add("Target passive (DummyConfig)");
+  if (sources.size > 0) ev.effectSources = [...sources];
   const { mult, red } = multiplicativeTakenMods(dummy, state.statusRegistry);
   // no stability-cover reduction: dummy has no cover (Cover permanently out of scope)
   // U3: NO universal Exposed damage multiplier — the reduction chain contains none.
@@ -240,13 +274,15 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   return totalDamage;
 }
 
-function applySkillStatuses(state: SimulationState, actor: UnitState, target: UnitState, specs: StatusApplySpec[] | undefined, ev: LogEvent): void {
+function applySkillStatuses(state: SimulationState, actor: UnitState, target: UnitState, specs: StatusApplySpec[] | undefined, ev: LogEvent, sourceLabel: string): void {
   for (const spec of specs ?? []) {
     const t = spec.target === "self" ? actor : target;
-    // Capture the applier (id + ATK at cast) so applier-ATK fixed damage works (Overburn 2026).
-    const full = { ...spec, applier: spec.applier ?? { id: actor.id, atk: actor.panelAtk } };
+    // Capture the applier (id + ATK at cast) so applier-ATK fixed damage works (Overburn 2026),
+    // and the human-readable provenance (sourceLabel) of the granting ability/passive/key.
+    const full = { ...spec, applier: spec.applier ?? { id: actor.id, atk: actor.panelAtk }, source: spec.source ?? sourceLabel };
     const created = applyStatus(state, t, full);
     ev.statusesApplied.push(spec.statusId);
+    (ev.appliedSources ??= []).push({ statusId: spec.statusId, source: full.source });
     // Validated (2026): gaining Overburn immediately deals fixed damage = 10% of the APPLIER's ATK.
     if (created) applyStatusFixedDamage(state, t, spec.statusId, "onApply", state.round);
   }
@@ -313,18 +349,19 @@ function accumulateDamage(state: SimulationState, unitId: string, damage: number
   state.accum.bySource.set("passive", s);
 }
 
-function resolveMainAction(state: SimulationState, doll: UnitState, slot: ActionSlot, k: number, turn: number): void {
+function resolveMainAction(state: SimulationState, doll: UnitState, slot: ActionSlot, k: number, turn: number): LogEvent {
   const skill = skillForSlot(doll, slot);
   if (!skill) throw new Error(`Character ${doll.id} has no skill for slot ${slot}`);
   const dummy = state.dummy;
   const source: SourceKind = skill.type === "ultimate" ? "ultimate" : skill.type === "basic" ? "basic" : "active";
+  const sourceLabel = abilitySourceLabel(doll.def!, slot, doll.skillLevels[slot] ?? 1);
   const ev: LogEvent = newEvent(state, doll, skill, dummy, source, false, turn);
   const beforeConfectance = doll.confectance;
 
   // Activation-time at-max hook (research §3.12): extra statuses + support quota.
   // Checked against the PRE-spend value (the unit was at cap when activating).
   if (slot === "ultimate" && skill.onCastAtMaxConfectance && beforeConfectance >= state.config.confectanceMax) {
-    applySkillStatuses(state, doll, dummy, skill.onCastAtMaxConfectance.extraStatuses, ev);
+    applySkillStatuses(state, doll, dummy, skill.onCastAtMaxConfectance.extraStatuses, ev, sourceLabel);
     if (skill.onCastAtMaxConfectance.supportQuotaBonus) {
       doll.supportQuota += skill.onCastAtMaxConfectance.supportQuotaBonus;
     }
@@ -341,7 +378,7 @@ function resolveMainAction(state: SimulationState, doll: UnitState, slot: Action
     dealDamageHit(state, doll, skill, ev);
   }
 
-  applySkillStatuses(state, doll, dummy, skill.appliesStatuses, ev);
+  applySkillStatuses(state, doll, dummy, skill.appliesStatuses, ev, sourceLabel);
   // Log the end-of-action value: `before` = activation-time, `after` = post-spend + any gains from this action.
   ev.confectance = { before: beforeConfectance, after: doll.confectance, cost };
 
@@ -352,6 +389,7 @@ function resolveMainAction(state: SimulationState, doll: UnitState, slot: Action
 
   accumulate(state, doll, source, ev.finalDamage);
   state.log.push(ev);
+  return ev;
 }
 
 /**
@@ -382,7 +420,7 @@ function resolveSupportHit(state: SimulationState, shooter: UnitState, skill: Sk
   if (skill.multiplier !== undefined || skill.fixedDamage !== undefined) {
     dealDamageHit(state, shooter, skill, ev);
   }
-  applySkillStatuses(state, shooter, dummy, skill.appliesStatuses, ev);
+  applySkillStatuses(state, shooter, dummy, skill.appliesStatuses, ev, abilitySourceLabel(shooter.def!, "support", shooter.skillLevels.support ?? 1));
   ev.confectance = { before: beforeConfectance, after: shooter.confectance, cost: 0 };
   ev.cooldownAfter = Object.fromEntries(shooter.cooldowns);
   accumulate(state, shooter, "passive", ev.finalDamage);
@@ -426,6 +464,11 @@ function newEvent(
  * neither receive the bonus nor advance stacks). firstGain / gainPerEvent /
  * maxStacks are data-driven — the 2/1/5 progression is NOT in the formula.
  * applyStatus keeps U7/U8 semantics (refresh; stack; cap at StatusDef.maxStacks).
+ *
+ * INTENTIONAL PROVENANCE EXCEPTION (2026): AWU applies via this direct applyStatus path
+ * WITHOUT a granting source — it is a generic target-side upgrade, not a per-ability/key
+ * grant, so it deliberately carries no `source` label and records no `appliedSources`
+ * entry (see docs/validation-checklist.md §0). Do NOT "fix" this by threading a source.
  */
 function grantStackOnWeaknessExploit(state: SimulationState, target: UnitState, skill: SkillDefVariant, ammoExploited: boolean): void {
   if (!ammoExploited) return;
@@ -554,8 +597,11 @@ export function simulate(scenario: Scenario, registry: Registry): SimulationResu
     for (const doll of state.units) {
       beginUnitRound(doll);
       const { slot, k } = pickAction(state, doll);
-      resolveMainAction(state, doll, slot, k, ++turn);
-      fireSupportAttacks(state, doll, turn);
+      const ev = resolveMainAction(state, doll, slot, k, ++turn);
+      // Trigger fidelity (2026): Support Action fires only when an ally's action actually
+      // dealt damage to an enemy (source fact: "receives targeted damage from an ally") —
+      // a non-damaging ally action (e.g. a 0-damage ultimate) must NOT trigger it.
+      if (ev.finalDamage > 0) fireSupportAttacks(state, doll, turn);
       endOfOwnTurn(state, doll);
     }
     // Dummy pass-turn (validated 2026): the stationary dummy advances through a

@@ -26,6 +26,8 @@ export interface WeaponDef {
 
 export interface StatusApplySpec {
   statusId: string;
+  /** Human-readable provenance of who grants this effect (ability/passive/key/status + level), e.g. "Common Rail Lv.1". */
+  source?: string;
   /** Applied duration in rounds — omit to use the status definition's own duration (permanent for durationRounds: null). */
   durationRounds?: number;
   stacks?: number;

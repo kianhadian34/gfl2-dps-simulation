@@ -2,7 +2,41 @@
 
 Status: validation mode · 2026-09-03 · Built from `docs/research.md` (§4 uncertainty register + §5 in-game test plan) against the implemented engine (commits `a8f69ca`, `99340e5`, `c2a1ba7`).
 
-Legend: **CONFIRMED** = verified by a primary source or reproduced in-game during research · **UNVERIFIED** = research says so but the exact value/rule is not confirmed — must be overridable, never hardcoded as fact · **PROBABLE** = single reliable secondary source · **NOT IMPLEMENTED** = deliberately deferred, out of MVP scope.
+## Project-wide validation standard (AUTHORITATIVE — adopted 2026)
+
+Every gameplay mechanic/claim has exactly ONE validation state:
+
+- **`Validated`** — directly tested in-game under controlled conditions; the observed result provides evidence for the specific claim. Tooltips, code, plausibility, or a passing unit test do NOT make something Validated.
+- **`Mathematically Proven`** — not necessarily tested at the exact state, but uniquely established by already-validated mechanics + authoritative data + a reproducible mathematical derivation that excludes plausible alternatives. Every such claim must reference its derivation. If multiple interpretations produce the same observation, it stays `Not Tested`.
+- **`Not Tested`** — everything else (implementation exists, tooltip known, timing/stacking/consumption unknown, evidence insufficient). This is a legitimate state, not a failure.
+
+Rules:
+- Validation state is SEPARATE from implementation status (implemented + Not Tested, data-only + Not Tested, etc. are all valid combinations). Never infer validation from implementation.
+- Record at the smallest meaningful claim level (e.g. Support Boost I: +15% Support Action damage — Not Tested; +10% vs Exposed — Not Tested; activates 1 time — Not Tested).
+- Fortification/V6 limitation: lower-level relationships may be marked `Mathematically Proven` from V6 evidence only when the derivation uniquely establishes them; if cumulative and replacement readings both fit the observation, the mechanic stays `Not Tested`. Never invent lower-Fortification behavior. (A source fact that explicitly states a lower-level effect is an authoritative input and does NOT require a lower-Fortification gameplay test.)
+- Proof ≠ consistency: if two models predict the same observed number, the mechanic is NOT proven.
+
+### Source hierarchy (AUTHORITATIVE — adopted 2026)
+
+Source authority and evidence status are separate dimensions. Authority ranks the *input's* legitimacy; evidence status ranks the claim's confidence. The six levels:
+
+1. **Direct user-provided in-game evidence** — screenshots of tooltips, skill levels, Fortification upgrades, stat screens, combat results; explicit game information from the user. Establishes **what the game states**.
+2. **Direct in-game testing** — controlled tests in the game. Establishes **what the game does**. If a test conflicts with a source fact, document the discrepancy and investigate; never silently replace either.
+3. **Mathematically derived conclusions** — uniquely established from authoritative source facts + validated mechanics + reproducible calculation. A lower-investment gameplay state is NOT required when the available state and source data uniquely determine the conclusion (V6 is the primary experimental state for Qiongjiu because it is the available character state).
+4. **Repository implementation** — data, engine, tests, simulator behavior: what the simulator models. Never game correctness by itself.
+5. **Secondary/community sources** — discovery and hypothesis generation only.
+6. **Assumptions/speculation** — always explicitly marked, never silently promoted to an established mechanic.
+
+**Critical rule:** the absence of a gameplay test does NOT invalidate an explicit source fact. Source facts are authoritative inputs (usable in mathematical proofs) and are NOT a fourth evidence status; they establish what the game states, not that the behavior is gameplay-validated.
+
+**Effect provenance & dedup (adopted 2026):** every active buff/effect carries a human-readable SOURCE (ability/passive/key/status + level + fortification tag, e.g. `Damage Up II (Source: Pressing the Momentum Lv.3 (V5))`, `Out-of-Turn Damage +10% (Source: Steady Plan Lv.2 (V3))`). The source that grants an effect and the resulting effect are distinct views of the SAME modifier — they must never be counted as two modifiers merely because both names appear (e.g. V3's "+10% Support Action damage" IS the Out-of-Turn Damage +10% line: one modifier). Before damage calculation, the engine inventories applicable effects, identifies their sources, deduplicates same-source representations, applies scope/timing, and then assigns them to damage buckets; provenance is exposed per event as `LogEvent.appliedSources` / `LogEvent.effectSources` (see `docs/schemas.md` §9).
+
+**INTENTIONAL EXCEPTION — Ammo Weakness Upgrade (AWU):** AWU's target-side stack application deliberately uses the existing direct `applyStatus` path **without** a granting source (`grantStackOnWeaknessExploit` → `applyStatus`). AWU is an explicit exception to the effect-provenance requirement: it is a generic target-side upgrade (not a per-ability/key grant), so it carries no `source` label and does not record an `appliedSources` entry; its bucket contribution is attributed by its status name/definition. This is by design, NOT a provenance bug — do not "fix" it by threading a granting source. All other applying paths continue to record provenance as above.
+
+**Mapping of the old labels (kept in the table below as metadata only):**
+`CONFIRMED (in-game …)` → `Validated` · `CONFIRMED` from a primary/tooltip source alone → `Not Tested` (source-confirmed) · `UNVERIFIED`/`PROBABLE`/`UNCERTAIN` → `Not Tested` · `NOT IMPLEMENTED`/`REMOVED` → implementation/deferred status, not a validation state. Existing rows are intentionally NOT mass-upgraded; each claim's true state is given by the evidence descriptions in the rows and in §2.
+
+Legacy legend (source-confidence + implementation metadata, NOT validation states): **CONFIRMED** = verified by a primary source or reproduced in-game during research · **UNVERIFIED** = research says so but the exact value/rule is not confirmed — must be overridable, never hardcoded as fact · **PROBABLE** = single reliable secondary source · **NOT IMPLEMENTED** = deliberately deferred, out of MVP scope.
 
 **MVP scope constraint (2026-09-03):** the target is **always No Cover** (dummy `cover` fixed `"none"`); **Stability + Exposed are mandatory mechanics**; **Cover is explicitly deferred** — cover damage reductions (35/30/25/20%) and the stability-cover 60% reduction are recorded in research but never modeled.
 
@@ -97,3 +131,54 @@ All three Exposed-related uncertainties are resolved:
 - **U4 (window duration)** — fixed 2-turn broken window (broken through N/N+1, restored at START N+2; U6-validated). `stability-recovery.test.ts`.
 - **U6 (recovery)** — confirmed (2026-09-03): restored exactly 2 turns after the break, restored to max. `stability-recovery.test.ts`, `boss-stability.test.ts`.
 - **U3 (damage modifier)** — **no universal Exposed/Broken damage multiplier exists**; the generic `exposedDamageMult` was removed from the engine. A Broken target with no character-specific Broken-target effect takes normal damage (`stability.test.ts` "U3 resolved…"). Any future "bonus vs Broken/Exposed" is a CHARACTER-specific mechanic modeled in that Doll's data.
+
+## 8. Qiongjiu evidence states (project-wide standard, claim-level)
+
+Conservative mapping under the project-wide standard (source authority and evidence status are separate). **Validated** = direct in-game observation (recorded in `docs/research.md` datasets). **Mathematically Proven** = derivation referenced. **Source fact** = tooltip/screenshot-stated (authoritative input, NOT a fourth evidence status — usable in proofs; absence of a gameplay test does not invalidate it). Everything else **Not Tested**.
+
+| Claim | State | Basis (per rules) |
+|---|---|---|
+| Basic: 80% ATK multiplier | **Not Tested** | source text only (no numeric in-game reproduction) |
+| Basic: Stability 2 / weakness +2 stab | **Validated** | U15 datasets (stability sequences, 65→58 etc.) |
+| Common Rail Lv1: 150% ATK, stab 3 | **Validated** | U15a/U20 datasets (1091, 1191, 1207, 1491, 2233, 2340) |
+| Common Rail Lv2: kill → SB I bonus 30% | **Not Tested** | tooltip; deferred |
+| Guide Lv1: 110% ATK, stab 3, Overburn 2r | **Not Tested** | tooltip/source (AoE single-dummy untested in-game) |
+| Guide Lv1: applies Overburn 2 turns | **Not Tested** | application text; Overburn *value* validated separately |
+| Guide Lv2: +100% crit vs Overburn | **Not Tested** | tooltip; deferred |
+| Overburn: 10% applier ATK, onApply + 2 ticks, own ceil, DR-bypass, Final-DMG chain | **Validated** | U21 datasets (196/195/78/153/594) |
+| Ult Lv1: Confectance cost 3 | **Validated** | U9 in-game |
+| Ult Lv1: +3 SB II / at-cap +1 stack & +1 Support Action | **Not Tested** | grants/at-cap behavior tooltip-derived, no direct in-game observation |
+| Ult Lv2 (Vulnerable, No-Cover-gated) / Lv3 (Damage Up II pre-ally) | **Not Tested** | text; deferred (Cover-gate, pre-ally timing absent) |
+| Steady Plan Lv1: +1 Confectance per damage | **Validated** | U9 in-game |
+| Steady Plan Lv1: No-Cover +10% | **Source fact** (authoritative input); combined 1.20 total additionally **Validated** | tooltip states +10% vs No-Cover; U20/U15b brackets reproduce the combined 1.20 at V6 |
+| Steady Plan Lv2: Support Action damage +10% | **Not Tested** | architected 2026; source-stated but not observed or derived in-game |
+| Steady Plan Lv3 (V6): additional +10% No-Cover | **Source fact** (authoritative input) | tooltip explicitly states +10% vs targets without Cover; authoritative mapping V6 → Lv3 — a lower-Fortification gameplay test is NOT required |
+| Steady Plan Lv3: distinct second +10% component | **Mathematically Proven** | see derivation below |
+| Steady Plan Lv3: the two +10% components are additive | **Mathematically Proven** | see derivation below |
+| V6 total No-Cover bonus = +20% (bracket 1.20) | **Mathematically Proven** (additionally supported by direct observations) | derivation below; in-game 1091/1191/992/1207/2233/2340 reproduce the 1.20 bracket exactly |
+| Steady Plan Lv2: Overburn after Support Action | **Not Tested** | text; deferred |
+| Support Action: 90% ATK | **Not Tested** | source text (no in-game numeric); simulated value 0.9 |
+| Support Action: Stability 2, max 3/round, no chain | **Not Tested** | source text (trigger/quota mechanics not in-game-reproduced) |
+| Support Action: range requirement | **Not Tested** | unverified (checklist row 24) |
+| Support Boost I/II: +15%/+30% SUPPORT-Action-only scope | **Not Tested** | tooltip-derived (scope generic, executable; never in-game validated) |
+| Support Boost I/II: +10% vs Exposed | **Not Tested** | text; deferred |
+| Support Boost I/II: activates 1 time / duration-persistence | **Not Tested** | unknown consumption model (current 1-round self-tick makes them expire at the casting action's end) |
+| Vulnerable I: +10% taken; Damage Up II: +20% dealt | **Not Tested** | tooltip magnitude; duration/stacking/cleansing unknown |
+| Defense Down II: −30% DEF (via target stat modifier) | **Validated** | in-game 5000 → 3500 (2026) |
+| Blazing Assault II | **Not Tested** | absent from data (FK5 reference only) |
+| FK1: +3 Confectance battle start | **Not Tested** | source (no direct in-game numeric; U9 datasets were no-keys) |
+| FK2–FK6, Ruined Gem, Warm as Jade | **Not Tested** | text only; deferred |
+| Confectance cap 6 / start 3 / +1 per damage / cost 3 | **Validated** | U9 in-game |
+| Cooldown CD-N waits N full turns | **Validated** | U11 in-game |
+| Stability recovery (2 turns, restore to max) | **Validated** | U6 in-game |
+| Weakness factor 1 + 0.10 × n (additive, +2 stab each, partial-match, Phase-weakness applies) | **Validated** | U15a/U15b/U20 datasets |
+| Crit multiplier = 1 + Crit DMG, cap 100%, overflow 1:1 conversion | **Validated** | U19 datasets |
+| Fixed-damage chain & damage-dealt/DEF-scaling | **Validated** | U21 (ATK-sourced); damage-dealt/DEF-sourced validated 2026 (Negative Charge, Winter's Wrath) |
+| AWU tiers (physical, 2→7%…5→25%, permanent) | **Validated** | §3.18 datasets |
+
+**Derivation — Steady Plan V6 No-Cover (Mathematically Proven):**
+1. Source facts (authoritative, no gameplay test required): Lv1 states "+10% damage against targets without Cover"; the V6/Lv3 upgrade states it increases damage against targets without Cover by another +10%.
+2. Validated observation: the V6 in-game brackets reproduce 1.20 exactly (1091/1191/992/1207/2233/2340).
+3. Additive-bracket prediction: `1 + 0.10 (Lv1) + 0.10 (V6) = 1.20` — matches the observed bracket.
+4. Alternative excluded: multiplicative `1.10 × 1.10 = 1.21` is inconsistent with the observed results (would give e.g. 1100 ≠ 1091 and 1000 ≠ 992).
+5. Conclusion: the V6 total No-Cover bonus is **+20%**, composed of two **distinct, additive** +10% components — **Mathematically Proven** (source facts + validated 1.20 observation + reproducible arithmetic; no V0 gameplay observation is claimed or required). If a future in-game observation contradicts this split, downgrade to **Not Tested**.

@@ -241,7 +241,11 @@ Rules (implemented in `src/engine/state.ts` — `resolveSkill`/`effectiveAbility
   "finalDamage": 1842,
   "confectance": { "before": 4, "after": 1, "cost": 3 },
   "cooldownAfter": { "qiongjiu_common_rail": 1 },
-  "statusesApplied": [{ "id": "overburn", "stacks": 1, "duration": 2 }],
+  "statusesApplied": ["overburn"],
+  // Provenance (2026): sources of the effects THIS action applied, and of the modifiers
+  // that contributed to this event's damage buckets (deduplicated; one source = one modifier).
+  "appliedSources": [{ "statusId": "support_boost_i", "source": "Common Rail Lv.1" }],
+  "effectSources": ["Steady Plan Lv.3 (V6)", "Common Rail Lv.1"],
   "statusesExpired": []
 }
 ```
