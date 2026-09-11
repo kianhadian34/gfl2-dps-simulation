@@ -277,7 +277,11 @@ export interface StatusDef {
   name: string;
   category: "buff" | "debuff" | "state" | "upgrade";
   stackable: boolean;
-  maxStacks: number;
+  /**
+   * Maximum stacks. ABSENT = unbounded (no observed cap — Support Boost I, VALIDATED 2026:
+   * 4 stacks reached with none observed). Never invent a cap: set this only when validated.
+   */
+  maxStacks?: number;
   /** null = permanent until ticked/removed. */
   durationRounds: number | null;
   tickAt: "ownActionEnd" | "roundEnd";
@@ -296,6 +300,14 @@ export interface StatusDef {
    * Only affects `damage_modifier {scope:"dealt", mode:"additive"}`.
    */
   scaleWithStacks?: boolean;
+  /**
+   * NEW (2026) — cross-buff relations (VALIDATED 2026 for Support Boost I/II):
+   * `replaces` — applying this status REMOVES the listed statuses (SB II replaces SB I).
+   * `blockedBy` — this status cannot be applied while ANY listed status is active (SB I is
+   * blocked by SB II). Generic + data-driven; no other status uses them yet.
+   */
+  replaces?: string[];
+  blockedBy?: string[];
   verified: boolean;
   note?: string;
   /** Authoritative text recorded but NOT executable by the engine yet (scope/condition/timing limitation) — presence means: do not treat the numeric effects as complete semantics. */

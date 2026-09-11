@@ -78,11 +78,10 @@ test("integration: 7-round fixed rotation (MVP cap), all aggregations consistent
   assert.equal(JSON.stringify(r.log), JSON.stringify(r2.log));
 
   // Accuracy-first: the run must WARN about every unverified value it leans on.
-  // (The former "phase wheel" warning was removed 2026 — no elemental counter
-  // wheel exists in GFL2; docs/research.md §3.4.)
-  for (const needle of ["support_boost_ii", "support_boost_i"]) {
-    assert.ok(r.warnings.some((w) => w.includes(needle)), `expected a warning mentioning "${needle}"`);
-  }
+  // Accuracy-first: every unverified default must be warned. Support Boost I/II and
+  // Overburn are now VERIFIED (validated in-game 2026, U21), so this canonical default
+  // run emits NO warnings (the former SB warning-only check was removed with validation).
+  assert.ok(r.warnings.length === 0, `unexpected warnings: ${JSON.stringify(r.warnings)}`);
 });
 
 test("validation: unknown character and non-empty rotations are rejected", () => {

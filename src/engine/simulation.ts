@@ -285,9 +285,17 @@ function applySkillStatuses(state: SimulationState, actor: UnitState, target: Un
     // Capture the applier (id + ATK at cast) so applier-ATK fixed damage works (Overburn 2026),
     // and the human-readable provenance (sourceLabel) of the granting ability/passive/key.
     const full = { ...spec, applier: spec.applier ?? { id: actor.id, atk: actor.panelAtk }, source: spec.source ?? sourceLabel };
+    const removedBefore = t.statuses.map((s) => s.statusId);
     const created = applyStatus(state, t, full);
-    ev.statusesApplied.push(spec.statusId);
-    (ev.appliedSources ??= []).push({ statusId: spec.statusId, source: full.source });
+    // Report statuses REPLACED by this application (VALIDATED 2026: SB II replaces SB I).
+    const replaced = removedBefore.filter((id) => !t.statuses.some((s) => s.statusId === id));
+    if (replaced.length > 0) (ev.statusesExpired ??= []).push(...replaced);
+    // Only report an actual application: a BLOCKED application (VALIDATED 2026: SB II blocks
+    // SB I) neither adds the status nor records provenance.
+    if (t.statuses.some((s) => s.statusId === spec.statusId)) {
+      ev.statusesApplied.push(spec.statusId);
+      (ev.appliedSources ??= []).push({ statusId: spec.statusId, source: full.source });
+    }
     // Validated (2026): gaining Overburn immediately deals fixed damage = 10% of the APPLIER's ATK.
     if (created) applyStatusFixedDamage(state, t, spec.statusId, "onApply", state.round);
   }

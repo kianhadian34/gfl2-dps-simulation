@@ -11,12 +11,13 @@ export const STATUS_DEFS: StatusDef[] = [
     name: "Support Boost I",
     category: "buff",
     stackable: true,
-    maxStacks: 9,
+    // NO maxStacks: unbounded (VALIDATED 2026 — 4 stacks reached with no cap observed; never invent a cap)
     durationRounds: null, // persistent — no duration expiry (VALIDATED 2026: remains active indefinitely until used)
     tickAt: "ownActionEnd",
     purgeable: false, // authoritative: "This buff cannot be cleansed"
     consumeOneOnUse: true, // VALIDATED 2026: one Support Action consumes exactly ONE stack (stacks = activations)
     scaleWithStacks: false, // VALIDATED 2026: 1 stack and 2 stacks deal identical damage — stacks are activations only, never a magnitude multiplier
+    blockedBy: ["support_boost_ii"], // VALIDATED 2026: while SB II is active, SB I applications are blocked (SB II has priority)
     // Support Boost I = ONE buff instance with TWO effects, VALIDATED 2026 (538 & 883):
     // +15% Support Action damage and +10% vs Exposed — both SUPPORT-Action-scoped
     // (Basic Attack vs Exposed showed NO +10% → 538 with factor 1.20).
@@ -31,15 +32,21 @@ export const STATUS_DEFS: StatusDef[] = [
     id: "support_boost_ii",
     name: "Support Boost II",
     category: "buff",
-    stackable: true,
-    maxStacks: 9,
-    durationRounds: 1,
+    stackable: true, // unbounded stacks — rank-inherited from SB I (no validated cap; do NOT invent one)
+    durationRounds: null, // persistent proc — rank-inherited from SB I (VALIDATED 2026)
     tickAt: "ownActionEnd",
     purgeable: false, // authoritative: "This buff cannot be cleansed"
-    effects: [{ kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.3, actions: "support" }],
-    verified: false,
-    note: "Authoritative Support-Action scope executed (2026): +30% dealt ONLY for Support Actions (generic `actions:'support'`). The +10% vs Exposed component and 'activates 1 time' remain deferred — see deferredNote.",
-    deferredNote: "Authoritative (screenshots): 'Increase damage dealt with Support Action by 30%. Damage against exposed units is increased by 10%. Activates 1 time. This buff cannot be cleansed.' Support-Action scope is now executed; the +10% vs Exposed (no exposed-target condition yet) and 1-activation consumption (no uses/consumeOn yet) are NOT implemented.",
+    consumeOneOnUse: true, // VALIDATED 2026: one Support Action consumes exactly ONE stack (×3 → ×2)
+    replaces: ["support_boost_i"], // VALIDATED 2026: applying SB II removes ALL SB I stacks (full replacement)
+    scaleWithStacks: false, // rank-inherited from SB I: stacks = activations, never a magnitude multiplier
+    // Rank 2 of Support Boost: same tooltip structure as SB I (identical Exposed component);
+    // the ONLY explicit rank difference is the Support Action damage value (30% vs 15%).
+    effects: [
+      { kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.3, actions: "support" },
+      { kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.1, actions: "support", whenTarget: "exposed" },
+    ],
+    verified: true,
+    note: "SB II = rank 2 of Support Boost. RANK-INHERITS SB I's validated generic behavior (project rule, validation-checklist.md §0): persistent/proc-based; stackable with no invented maximum; stacks = available activations; one Support Action consumes exactly one stack; stack count does NOT multiply the modifier; Support Action scope; Basic Attack neither benefits nor consumes; cannot be cleansed. Rank-specific: +30% Support Action damage instead of +15% — SOURCE FACT (tooltip); NO in-game combat number has been validated for the 30% (do not claim one). Presents the same +10%-vs-Exposed component by identical tooltip structure (source fact / inherited). Replacement of SB I and blocking of SB I are VALIDATED 2026. No Support Boost III exists (source).",
   },
   {
     id: "overburn",

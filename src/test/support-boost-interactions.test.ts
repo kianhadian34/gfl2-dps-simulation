@@ -1,0 +1,106 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { simulateScenario } from "../simulate.js";
+import { REGISTRY } from "../data/registry.js";
+import { abilities, customRegistry } from "./helpers.js";
+import type { CharacterDef, Scenario } from "../model/types.js";
+
+/**
+ * Support Boost cross-buff interactions — ALL VALIDATED in-game 2026:
+ *   1. SB I has NO stack cap (4 stacks reached, none observed) — unbounded in data.
+ *   2. SB I → SB II: applying SB II replaces/removes ALL SB I stacks.
+ *   3. SB II → SB I: while SB II is active, SB I applications are BLOCKED.
+ *   4. SB II consumes exactly ONE stack per Support Action.
+ *
+ * The ally has a COST-0, 0-damage ultimate (unlimited idle rounds) so no consumption happens
+ * during "idle" windows. confectanceStart 3 keeps QJ below cap (no at-max bonus) while still
+ * letting her Ultimate cast.
+ */
+
+const ALLY: CharacterDef = {
+  id: "int_ally",
+  name: "int_ally",
+  phase: "physical",
+  base: { atk: 1000, hp: 1000, def: 100, stability: 6, critRate: 0, critDmg: 0.2 },
+  weapon: { id: "int_ally_w", name: "w", rarity: "standard", atkLvl1: 0, atkLvl60: 0, level: 60, subStats: [] },
+  skills: abilities({
+    basic: { id: "int_ally_basic", name: "Hit", type: "basic", element: "physical", multiplier: 1.0, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
+    active1: { id: "int_ally_a1", name: "-", type: "active", element: "physical", multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 },
+    active2: { id: "int_ally_a2", name: "-", type: "active", element: "physical", multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 },
+    ultimate: { id: "int_ally_ult", name: "-", type: "ultimate", element: "physical", multiplier: 0, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
+  }),
+  passive: { id: "int_ally_p", name: "-", effects: [] },
+  fixedKeys: [],
+};
+
+/** QJ FIRST. SB II keeps its data duration untouched — the knob gives it a long duration so the
+ *  validated cross-round interactions are observable (replacement/blocking/consumption). */
+function sc(opts: { turns: number; qjRotation: string[]; allyRotation: ("basic" | "ultimate")[] }): Scenario {
+  return {
+    version: 1,
+    seed: 7,
+    turns: opts.turns,
+    team: [
+      { characterId: "qiongjiu", rotation: opts.qjRotation as ("basic" | "active1" | "ultimate")[], equippedFixedKeys: [] },
+      { characterId: "int_ally", rotation: opts.allyRotation, equippedFixedKeys: [] },
+    ],
+    dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 0, weaknesses: [], phase: null, cover: "none" },
+    configOverrides: { confectanceStart: 3, statusOverrides: { support_boost_ii: { durationRounds: 5 } } },
+  };
+}
+
+const reg = customRegistry({ int_ally: ALLY });
+const supports = (r: ReturnType<typeof simulateScenario>) => r.log.filter((e) => e.supportAttack);
+
+test("SB I: data is UNBOUNDED (no maxStacks) and 4 applications + 3 consuming Supports leave no cap-2 expiry", () => {
+  // VALIDATED: 4 stacks reached with no cap observed — represented by `maxStacks: undefined`.
+  assert.equal(REGISTRY.getStatus("support_boost_i")!.maxStacks, undefined);
+  // QJ applies Common Rail at r1/r3/r5/r7 (4 stacks); the ally idles r1–r4 (0-damage ults) and
+  // triggers Supports at r5–r7 (3 consumes → 1 stack left). A cap of 2 would expire at r6;
+  // a cap of 1 at r5; unbounded (or cap ≥ 3) shows NO expiry inside the 7-turn run.
+  const r = simulateScenario(
+    sc({
+      turns: 7,
+      qjRotation: ["active1", "basic", "active1", "basic", "active1", "basic", "active1", "basic", "basic", "basic"],
+      allyRotation: ["ultimate", "ultimate", "ultimate", "ultimate", "basic", "basic", "basic"],
+    }),
+    reg,
+  );
+  assert.equal(supports(r).length, 3, "expected 3 consuming Supports (r5–r7)");
+  const expiryRounds = r.log.filter((e) => (e.statusesExpired ?? []).includes("support_boost_i")).map((e) => e.round);
+  assert.deepEqual(expiryRounds, [], `unexpected SB I expiry at ${JSON.stringify(expiryRounds)}`);
+});
+
+test("SB I → SB II: casting the Ultimate replaces SB I entirely (all SB I stacks removed)", () => {
+  // r1 Common Rail (SB I ×1, persistent), r2 Ult (SB II ×3) → SB I must be gone.
+  const r = simulateScenario(
+    sc({ turns: 2, qjRotation: ["active1", "ultimate"], allyRotation: ["ultimate", "ultimate"] }),
+    reg,
+  );
+  const ult = r.log.find((e) => e.action === "qiongjiu_pressing_momentum")!;
+  assert.ok(ult.statusesExpired?.includes("support_boost_i"), `SB I not removed on ult: ${JSON.stringify(ult.statusesExpired)}`);
+});
+
+test("SB II blocks SB I: while SB II is active, Common Rail applies NO SB I", () => {
+  // r1 Ult (SB II ×3), r2 Common Rail → no SB I applied (SB II priority).
+  const r = simulateScenario(
+    sc({ turns: 2, qjRotation: ["ultimate", "active1"], allyRotation: ["ultimate", "ultimate"] }),
+    reg,
+  );
+  const rail = r.log.find((e) => e.action === "qiongjiu_common_rail")!;
+  const sb1 = (rail.appliedSources ?? []).filter((s) => s.statusId === "support_boost_i");
+  assert.equal(sb1.length, 0, `SB I must be blocked while SB II is active: ${JSON.stringify(rail.appliedSources)}`);
+});
+
+test("SB II consumes exactly ONE stack per Support Action (×3 → ×2 → ×1 → removed)", () => {
+  // r1 Ult (SB II ×3); r2–r4 ally basics each trigger one Support Action.
+  const r = simulateScenario(
+    sc({ turns: 4, qjRotation: ["ultimate", "basic", "basic", "basic"], allyRotation: ["ultimate", "basic", "basic", "basic"] }),
+    reg,
+  );
+  const sup = supports(r);
+  assert.equal(sup.length, 3, `expected 3 consuming supports, got ${sup.length}`);
+  const expiredOn = r.log.filter((e) => (e.statusesExpired ?? []).includes("support_boost_ii")).map((e) => e.round);
+  // 3 stacks, one consumed per Support Action → expiry only after the THIRD support.
+  assert.deepEqual(expiredOn, [4], `SB II expiry rounds ${JSON.stringify(expiredOn)} — expected only the 3rd support`);
+});

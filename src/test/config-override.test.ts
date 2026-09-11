@@ -60,9 +60,9 @@ function qjSupportScenario(rotation: ("basic" | "active1" | "active2" | "ultimat
 }
 
 test("statusOverrides.perStackValue changes damage of that status without engine changes (Support Boost II, support-scoped)", () => {
-  // Authoritative (2026): SB II is +30% Support ACTION damage (generic `actions:'support'`).
-  // r1: ally basic → QJ support (no SB yet); QJ ultimate at max Confectance → 4 SB II stacks
-  // (3 + 1 at-max), 2-round duration via the knob. r2: ally basic → QJ support with 4×0.30.
+  // Authoritative (2026): SB II is +30% Support ACTION damage (generic `actions:'support'`),
+  // flat magnitude under the RANK-INHERITANCE rule (stacks = activations, not a multiplier).
+  // r1: QJ ultimate (SB II ×3…×4 at max); r2: ally basic → QJ support with SB II (+0.30 once).
   const base: ConfigOverrides = { confectanceStart: 6, statusOverrides: { support_boost_ii: { durationRounds: 2 } } };
   const ally = makeAlly("over_ally", 1000);
   const dflt = simulateScenario(qjSupportScenario(["ultimate", "basic"], base), customRegistry({ over_ally: ally }));
@@ -73,9 +73,9 @@ test("statusOverrides.perStackValue changes damage of that status without engine
   const supD = dflt.log.find((e) => e.supportAttack && e.round === 2)!;
   const supB = boosted.log.find((e) => e.supportAttack && e.round === 2)!;
   assert.ok(supB.finalDamage > supD.finalDamage);
-  // r2 support bracket: default 1 + 0.10 (no-cover) + 4×0.30 = 2.30; override 1 + 0.10 + 4×0.45 = 2.90.
-  assert.ok(Math.abs(supD.bonusBracket - 2.3) < 1e-9, `default support bracket ${supD.bonusBracket}`);
-  assert.ok(Math.abs(supB.bonusBracket - 2.9) < 1e-9, `override support bracket ${supB.bonusBracket}`);
+  // r2 support bracket: default 1 + 0.10 (no-cover) + 0.30 (SB II, flat) = 1.40; perStackValue override 1 + 0.10 + 0.45 = 1.55.
+  assert.ok(Math.abs(supD.bonusBracket - 1.4) < 1e-9, `default support bracket ${supD.bonusBracket}`);
+  assert.ok(Math.abs(supB.bonusBracket - 1.55) < 1e-9, `override support bracket ${supB.bonusBracket}`);
   // Authoritative scoping: SB II must NOT affect Qiongjiu's normal attack (no-cover only).
   const main = dflt.log.find((e) => e.action === "qiongjiu_basic")!;
   assert.ok(Math.abs(main.bonusBracket - 1.1) < 1e-9, `main bracket ${main.bonusBracket}`);

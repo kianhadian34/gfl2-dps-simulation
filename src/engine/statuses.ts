@@ -6,19 +6,29 @@ import type { EffectiveStatusDef, SimulationState, UnitState } from "./state.js"
 export function applyStatus(state: SimulationState, target: UnitState, spec: StatusApplySpec): boolean {
   const def = state.statusRegistry.get(spec.statusId);
   if (!def) throw new Error(`Unknown status: ${spec.statusId}`);
+  // Cross-buff relations (VALIDATED 2026, Support Boost I/II): a status listed in `blockedBy`
+  // that is currently active BLOCKS this application entirely (SB II blocks SB I).
+  if (def.blockedBy && def.blockedBy.some((id) => target.statuses.some((s) => s.statusId === id))) {
+    return false;
+  }
   // Applied duration = per-status config override (validation mode) else the skill's spec.
   // Permanent statuses (def.durationRounds === null) never tick (tickStatuses skips them).
   const dur = def.effectiveDurationRounds ?? spec.durationRounds ?? (def.durationRounds === null ? Infinity : def.durationRounds);
   const stacks = spec.stacks ?? 1;
+  const cap = (n: number) => (def.maxStacks === undefined ? n : Math.min(def.maxStacks, n)); // absent maxStacks = unbounded
+  // Applying this status REPLACES the listed statuses (SB II removes all SB I stacks).
+  if (def.replaces && def.replaces.length > 0) {
+    target.statuses = target.statuses.filter((s) => !def.replaces!.includes(s.statusId));
+  }
   const existing = target.statuses.find((s) => s.statusId === spec.statusId);
   if (existing) {
     // Re-apply: refresh duration; stack if stackable — CONFIRMED (U8, in-game 2026-09-03,
     // Attack Up II): same-tier reapplication refreshes the duration and does NOT add a stack.
     existing.durationLeft = Math.max(existing.durationLeft, dur);
-    if (def.stackable) existing.stacks = Math.min(def.maxStacks, existing.stacks + stacks);
+    if (def.stackable) existing.stacks = cap(existing.stacks + stacks);
     return false;
   } else {
-    const active = { statusId: spec.statusId, stacks: Math.min(def.maxStacks, stacks), durationLeft: dur, applier: spec.applier, source: spec.source };
+    const active = { statusId: spec.statusId, stacks: cap(stacks), durationLeft: dur, applier: spec.applier, source: spec.source };
     target.statuses.push(active);
     return true;
   }
