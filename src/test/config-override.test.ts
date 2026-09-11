@@ -81,23 +81,24 @@ test("statusOverrides.perStackValue changes damage of that status without engine
   assert.ok(Math.abs(main.bonusBracket - 1.1) < 1e-9, `main bracket ${main.bonusBracket}`);
 });
 
-test("statusOverrides.durationRounds lengthens the buff window (Support Boost I, support-scoped)", () => {
-  // r1: ally basic → support (no SB); QJ Common Rail (self SB I ×1). Default 1r SB I ticks off
-  // at the casting action's end → absent r2; a 3r override keeps it through r2/r3 support hits.
+test("SB I is persistent; a finite durationRounds override SHORTENS the window (Support Boost I, support-scoped)", () => {
+  // r1: ally basic → support (no SB); QJ Common Rail applies SB I (self, persistent). Default
+  // SB I has NO duration — it survives to r2's support (1.25); a durationRounds:1 override
+  // (self-tick at the casting action's end) expires it before r2 (1.10).
   const ally = makeAlly("over_ally", 1000);
   const dflt = simulateScenario(
     qjSupportScenario(["active1", "basic", "basic"], {}, 3),
     customRegistry({ over_ally: ally }),
   );
-  const longer = simulateScenario(
-    qjSupportScenario(["active1", "basic", "basic"], { statusOverrides: { support_boost_i: { durationRounds: 3 } } }, 3),
+  const shorter = simulateScenario(
+    qjSupportScenario(["active1", "basic", "basic"], { statusOverrides: { support_boost_i: { durationRounds: 1 } } }, 3),
     customRegistry({ over_ally: ally }),
   );
-  assert.ok(longer.totals.damage > dflt.totals.damage);
+  assert.ok(dflt.totals.damage > shorter.totals.damage, "persistent SB I out-damages a 1-round-capped copy");
   const r2d = dflt.log.find((e) => e.supportAttack && e.round === 2)!;
-  const r2l = longer.log.find((e) => e.supportAttack && e.round === 2)!;
-  assert.ok(Math.abs(r2d.bonusBracket - 1.1) < 1e-9, `default r2 support bracket ${r2d.bonusBracket}`);
-  assert.ok(Math.abs(r2l.bonusBracket - 1.25) < 1e-9, `3-round r2 support bracket ${r2l.bonusBracket}`); // +0.15 SB I
+  const r2s = shorter.log.find((e) => e.supportAttack && e.round === 2)!;
+  assert.ok(Math.abs(r2d.bonusBracket - 1.25) < 1e-9, `default (persistent) r2 support bracket ${r2d.bonusBracket}`);
+  assert.ok(Math.abs(r2s.bonusBracket - 1.1) < 1e-9, `1-round override r2 support bracket ${r2s.bonusBracket}`);
 });
 
 test("statusOverrides.tickAt alternative (roundEnd) is honored (U7 knob — default model unchanged)", () => {

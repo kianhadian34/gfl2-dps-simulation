@@ -220,6 +220,8 @@ export type StatusEffect =
       value: number;
       /** NEW (2026) — default "all": "support" restricts a dealt bonus to Support Actions only (generic, reusable by any character). Ignored on taken side. */
       actions?: "all" | "support";
+      /** NEW (2026) — optional target condition for a dealt bonus: "exposed" = only while the target is Exposed/Broken (Support Boost I's +10%). */
+      whenTarget?: "exposed";
     }
   | { kind: "damage_reduction"; value: number }
   | {
@@ -281,6 +283,19 @@ export interface StatusDef {
   tickAt: "ownActionEnd" | "roundEnd";
   purgeable: boolean;
   effects: StatusEffect[];
+  /**
+   * NEW (2026) — consumption-of-use status (Support Boost I/II): the status is persistent
+   * (no duration) and each qualifying damage event the status contributes to consumes ONE
+   * STACK (stacks = activations); removed at 0. Absent = no such consumption (all others).
+   */
+  consumeOneOnUse?: boolean;
+  /**
+   * NEW (2026) — default true: additive dealt modifiers scale by `value × stacks`. Set false
+   * for statuses whose stack count does NOT multiply the bonus (Support Boost I: stacks are
+   * remaining activations only — VALIDATED 2026 that 1 and 2 stacks deal identical damage).
+   * Only affects `damage_modifier {scope:"dealt", mode:"additive"}`.
+   */
+  scaleWithStacks?: boolean;
   verified: boolean;
   note?: string;
   /** Authoritative text recorded but NOT executable by the engine yet (scope/condition/timing limitation) — presence means: do not treat the numeric effects as complete semantics. */

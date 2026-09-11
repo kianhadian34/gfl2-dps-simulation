@@ -25,6 +25,35 @@ export function applyStatus(state: SimulationState, target: UnitState, spec: Sta
 }
 
 /**
+ * Consumption-of-use (Support Boost I/II "Activates 1 time", VALIDATED 2026):
+ * each qualifying damage event the status contributes to consumes exactly ONE STACK
+ * (stacks = activations; e.g. 2 stacks + one Support Action → 1 stack), and the
+ * status is removed when the last stack is consumed. Only Support-Action-scoped
+ * events consume; Basic Attacks and other non-qualifying hits never do.
+ * Returns the ids of statuses that expired.
+ */
+export function consumeOneOnUseStacks(state: SimulationState, unit: UnitState, supportAttack: boolean): string[] {
+  const expired: string[] = [];
+  for (const s of [...unit.statuses]) {
+    const def = state.statusRegistry.get(s.statusId);
+    if (!def || !def.consumeOneOnUse) continue;
+    // Only statuses that actually contributed to THIS event consume a stack.
+    const contributed = def.effects.some(
+      (e) => e.kind === "damage_modifier" && e.scope === "dealt" && !(e.actions === "support" && !supportAttack),
+    );
+    if (!contributed) continue;
+    const left = s.stacks - 1;
+    if (left <= 0) {
+      unit.statuses = unit.statuses.filter((x) => x !== s);
+      expired.push(s.statusId);
+    } else {
+      s.stacks = left;
+    }
+  }
+  return expired;
+}
+
+/**
  * Tick durations for one unit. `ownActionEnd`: decremented at the end of the
  * OWNER's action phase (CONFIRMED for normal timed buffs — U7, in-game 2026-09-03;
  * and for SELF-applied buffs, in-game 2026: a buff a unit applies to itself is
@@ -46,7 +75,7 @@ export function tickStatuses(
     if (!def) continue;
     const matches = isRoundEnd ? def.tickAt === "roundEnd" : def.tickAt === "ownActionEnd";
     if (!matches) continue;
-    if (def.durationRounds === null) continue; // permanent
+    if (def.durationRounds === null && def.effectiveDurationRounds === undefined) continue; // permanently-applied (never ticks)
     if (onTick) onTick(state, unit, def, s);
     s.durationLeft -= 1;
     if (s.durationLeft <= 0) expired.push(s.statusId);
@@ -58,12 +87,13 @@ export function tickStatuses(
 }
 
 /** Σ additive damage-dealt bonuses from the unit's own statuses (tier effects gated on the hit element).
- *  `ctx.supportAttack` distinguishes a Support Action so `actions: "support"` modifiers apply only there. */
+ *  `ctx.supportAttack` distinguishes a Support Action so `actions: "support"` modifiers apply only there;
+ *  `ctx.targetExposed` gates `whenTarget: "exposed"` bonuses (Support Boost I's +10% vs Exposed, 2026). */
 export function additiveDealtBonus(
   unit: UnitState,
   statusRegistry: Map<string, EffectiveStatusDef>,
   element: Element,
-  ctx: { supportAttack: boolean },
+  ctx: { supportAttack: boolean; targetExposed: boolean },
 ): number {
   let sum = 0;
   for (const s of unit.statuses) {
@@ -72,7 +102,10 @@ export function additiveDealtBonus(
     for (const e of def.effects) {
       if (e.kind === "damage_modifier" && e.scope === "dealt" && e.mode === "additive") {
         if (e.actions === "support" && !ctx.supportAttack) continue;
-        sum += e.value * s.stacks;
+        if (e.whenTarget === "exposed" && !ctx.targetExposed) continue;
+        // scaleWithStacks === false → the bonus applies ONCE per status (Support Boost I:
+        // stacks are remaining activations, NOT a magnitude multiplier — VALIDATED 2026).
+        sum += def.scaleWithStacks === false ? e.value : e.value * s.stacks;
       }
       if (e.kind === "stack_tier_modifier" && e.scope === "dealt") {
         if (e.when && e.when.element && !e.when.element.includes(element)) continue;

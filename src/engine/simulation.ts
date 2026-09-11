@@ -9,6 +9,7 @@ import {
   additiveDealtBonus,
   additiveTakenBonus,
   applyStatus,
+  consumeOneOnUseStacks,
   fixedDmgMods,
   multiplicativeTakenMods,
   statModifier,
@@ -173,7 +174,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   grantStackOnWeaknessExploit(state, dummy, skill, ammoExploited);
   const phaseMult = phaseMultiplier(skill.element, dummy.phase);
   const addDealt =
-    additiveDealtBonus(actor, state.statusRegistry, skill.element, { supportAttack: ev.supportAttack }) +
+    additiveDealtBonus(actor, state.statusRegistry, skill.element, { supportAttack: ev.supportAttack, targetExposed: dummy.exposed }) +
     conditionalDealtBonus(actor, dummy, "target.noCover", ev.supportAttack) +
     conditionalDealtBonus(actor, dummy, "always", ev.supportAttack);
   const targetMods = targetPassiveTakenMods(dummy); // U5 boss/target stability-conditional passives
@@ -247,6 +248,10 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   //   (generic across Physical/Phase; independent of the damage multiplier; AWU untouched).
   const stabAmount = (skill.stabDamage ?? 0) + 2 * weaknesses.length;
   const { broke } = applyStabilityDamage(state, dummy, stabAmount);
+  // Consumption-of-use statuses (Support Boost I/II, VALIDATED 2026): a status that
+  // contributed to THIS Support Action consumes exactly ONE stack and is removed at 0.
+  const consumed = consumeOneOnUseStacks(state, actor, ev.supportAttack);
+  if (consumed.length > 0) (ev.statusesExpired ??= []).push(...consumed);
   const upgrades = dummy.statuses
     .filter((s) => state.statusRegistry.get(s.statusId)?.category === "upgrade")
     .map((s) => ({ statusId: s.statusId, stacks: s.stacks }));

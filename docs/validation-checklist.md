@@ -160,9 +160,18 @@ Conservative mapping under the project-wide standard (source authority and evide
 | Support Action: 90% ATK | **Not Tested** | source text (no in-game numeric); simulated value 0.9 |
 | Support Action: Stability 2, max 3/round, no chain | **Not Tested** | source text (trigger/quota mechanics not in-game-reproduced) |
 | Support Action: range requirement | **Not Tested** | unverified (checklist row 24) |
-| Support Boost I/II: +15%/+30% SUPPORT-Action-only scope | **Not Tested** | tooltip-derived (scope generic, executable; never in-game validated) |
-| Support Boost I/II: +10% vs Exposed | **Not Tested** | text; deferred |
-| Support Boost I/II: activates 1 time / duration-persistence | **Not Tested** | unknown consumption model (current 1-round self-tick makes them expire at the casting action's end) |
+| Support Boost I: +15% Support Action damage (support-scoped) | **Validated** | in-game 883 (ATK 1977 support hit, factor 1.75 incl. SB I's two effects) |
+| Support Boost I: +10% vs Exposed (same buff instance) | **Validated** | 883 (contribution) + **538** (Basic Attack vs Exposed → NO +10%) — both effects are Support-Action-scoped; requires an Exposed target |
+| Support Boost I: both effects Support-Action-scoped | **Validated** | 538: Basic vs Exposed = `ceil(1977×0.80×(1977/6977)×1.20) = 538` (would be 583 if the +10% applied) |
+| Support Boost I: one buff instance with two effects, source = Common Rail | **Validated** (883/538) + source fact | tooltip states one buff; engine holds one status id with two effects, applied once with the Common Rail source |
+| Support Boost I: persistent — no duration | **Validated** | remains active indefinitely with no Support Action; Basic Attacks do not consume it |
+| Support Boost I: stackable (each application +1 stack) | **Validated** | Skill 1 once → 1 stack; again → 2 stacks |
+| Support Boost I: one Support Action consumes exactly ONE stack | **Validated** | 2 stacks → one supported hit → 1 stack; remaining stack applies to the next Support Action |
+| Support Boost I: "activates 1 time" = per-stack (stacks = activations) | **Validated** | the two rows above directly establish per-stack consumption behavior |
+| Support Boost I: stack count does NOT increase damage magnitude | **Validated** | SB I with 1 stack and with 2 stacks both deal 883 — the +15%/+10% apply once while ≥1 stack remains (stacks = remaining activations, never a multiplier) |
+| Support Boost I: cannot be cleansed | **Source fact** | tooltip; engine flags `purgeable: false` (no cleanse mechanic exists in the MVP) |
+| Support Boost II: +30% SUPPORT-Action-only scope | **Not Tested** | tooltip-derived; never in-game validated |
+| Support Boost II: +10% vs Exposed | **Not Tested** | text; deferred |
 | Vulnerable I: +10% taken; Damage Up II: +20% dealt | **Not Tested** | tooltip magnitude; duration/stacking/cleansing unknown |
 | Defense Down II: −30% DEF (via target stat modifier) | **Validated** | in-game 5000 → 3500 (2026) |
 | Blazing Assault II | **Not Tested** | absent from data (FK5 reference only) |

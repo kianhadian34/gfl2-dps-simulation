@@ -12,13 +12,20 @@ export const STATUS_DEFS: StatusDef[] = [
     category: "buff",
     stackable: true,
     maxStacks: 9,
-    durationRounds: 1,
+    durationRounds: null, // persistent — no duration expiry (VALIDATED 2026: remains active indefinitely until used)
     tickAt: "ownActionEnd",
     purgeable: false, // authoritative: "This buff cannot be cleansed"
-    effects: [{ kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.15, actions: "support" }],
-    verified: false,
-    note: "Authoritative Support-Action scope executed (2026): +15% dealt ONLY for Support Actions (generic `actions:'support'`). The +10% vs Exposed component and 'activates 1 time' remain deferred — see deferredNote.",
-    deferredNote: "Authoritative (screenshots): 'Increase damage dealt with Support Action by 15%. Damage against exposed units is increased by 10%. Activates 1 time. This buff cannot be cleansed.' Support-Action scope is now executed; the +10% vs Exposed (no exposed-target condition yet) and 1-activation consumption (no uses/consumeOn yet) are NOT implemented.",
+    consumeOneOnUse: true, // VALIDATED 2026: one Support Action consumes exactly ONE stack (stacks = activations)
+    scaleWithStacks: false, // VALIDATED 2026: 1 stack and 2 stacks deal identical damage — stacks are activations only, never a magnitude multiplier
+    // Support Boost I = ONE buff instance with TWO effects, VALIDATED 2026 (538 & 883):
+    // +15% Support Action damage and +10% vs Exposed — both SUPPORT-Action-scoped
+    // (Basic Attack vs Exposed showed NO +10% → 538 with factor 1.20).
+    effects: [
+      { kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.15, actions: "support" },
+      { kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.1, actions: "support", whenTarget: "exposed" },
+    ],
+    verified: true,
+    note: "One buff instance, two support-scoped effects (source: Common Rail): +15% Support Action damage + +10% vs Exposed, additive in the Damage Buff Factor. VALIDATED in-game 2026: Basic Attack vs Exposed receives NO +10% (538 = 1.20 factor); persistent with no duration; stackable (each application +1 stack); one Support Action consumes exactly one stack (2→1); **stack count does NOT multiply either effect — 1 and 2 stacks deal identical damage (883 both)**; stacks are remaining activations only; the 883 support hit confirms both effects. Cannot be cleansed.",
   },
   {
     id: "support_boost_ii",
