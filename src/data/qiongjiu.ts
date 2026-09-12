@@ -60,7 +60,9 @@ export const QIONGJIU: CharacterDef = {
           cooldown: 1,
           confectanceCost: 0,
           appliesStatuses: [
-            { statusId: "support_boost_i", durationRounds: 1, stacks: 1, target: "self" },
+            // SB I granted WITHOUT a duration — the established SB persistence rules apply
+            // (VALIDATED: no expiry; stacks remain until consumed) — corrected 2026.
+            { statusId: "support_boost_i", stacks: 1, target: "self" },
           ],
         },
         2: {
@@ -74,7 +76,7 @@ export const QIONGJIU: CharacterDef = {
           cooldown: 1,
           confectanceCost: 0,
           appliesStatuses: [
-            { statusId: "support_boost_i", durationRounds: 1, stacks: 1, target: "self" },
+            { statusId: "support_boost_i", stacks: 1, target: "self" },
           ],
           deferredNote: "Lv2 (V1): 'If a kill is scored, increase the damage bonus of Support Boost I to 30%.' Kill-condition behavior and the Support-Boost scoping are NOT executable by the current engine — recorded, deferred. No multiplier change at Lv2.",
         },
