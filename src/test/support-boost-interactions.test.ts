@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
 import { REGISTRY } from "../data/registry.js";
 import { abilities, customRegistry } from "./helpers.js";
-import type { CharacterDef, Scenario } from "../model/types.js";
+import type { ActionSlot, CharacterDef, Scenario } from "../model/types.js";
 
 /**
  * Support Boost cross-buff interactions — ALL VALIDATED in-game 2026:
@@ -134,4 +134,56 @@ test("Ultimate-granted SB II is PERSISTENT: an unused stack survives the round b
   // exposed is break-triggered, default false). Under the old durationRounds:1 data this support
   // would sit at 1.10 (SB II expired at the r1 round end).
   assert.ok(Math.abs(sup.bonusBracket - 1.4) < 1e-9, `r2 support bracket ${sup.bonusBracket} — SB II must still be active across rounds`);
+});
+
+test("Max-Confectance Ultimate (VALIDATED 2026): 4 SB II stacks AND 4 Support Actions that turn — vs the normal cap of 3", () => {
+  // 5 damaging allies hit the dummy once in round 1 (budget = 1 action/unit/round) — 5 triggers,
+  // more than either Support quota (3 normal / 4 at-max) can serve.
+  const allys = ["int_ally_1", "int_ally_2", "int_ally_3", "int_ally_4", "int_ally_5"];
+  const sixReg = customRegistry(
+    Object.fromEntries(allys.map((id) => [
+      id,
+      {
+        ...ALLY,
+        id,
+        name: id,
+        skills: abilities({
+          basic: { ...ALLY.skills.basic.levels[1], id: `${id}_basic` },
+          active1: ALLY.skills.active1.levels[1],
+          active2: ALLY.skills.active2.levels[1],
+          ultimate: ALLY.skills.ultimate.levels[1],
+        }),
+      },
+    ])),
+  );
+  const maxSc = (qjRotation: ActionSlot[]): Scenario => ({
+    version: 1 as const,
+    seed: 7,
+    turns: 1,
+    team: [
+      { characterId: "qiongjiu", rotation: qjRotation, equippedFixedKeys: [] },
+      ...allys.map((id) => ({ characterId: id, rotation: ["basic"] as ActionSlot[], equippedFixedKeys: [] })),
+    ],
+    dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 0, weaknesses: [], phase: null, cover: "none" },
+    configOverrides: { confectanceStart: 6 }, // AT MAX → the at-max bonuses fire
+  });
+  const r = simulateScenario(maxSc(["ultimate"]), sixReg);
+  const sups = supports(r);
+  // (B) +1 Support Action quota: 3 (Steady Plan) + 1 (Ultimate at max) = 4 this turn (5 triggers → 4 fired).
+  assert.equal(sups.length, 4, `expected 4 Supports that turn (3+1 quota; 5 triggers), got ${sups.length}`);
+  // (A) +1 SB II stack: 3 + 1 = 4 stacks, one consumed per Support Action → expiry only after the 4th.
+  const expiredOn = r.log.filter((e) => (e.statusesExpired ?? []).includes("support_boost_ii")).map((e) => e.round);
+  assert.deepEqual(expiredOn, [1], `SB II expiry ${JSON.stringify(expiredOn)} — expected only after the 4th support`);
+  const ult = r.log.find((e) => e.action === "qiongjiu_pressing_momentum")!;
+  // Both bonuses are separate effects: the Ult records 3+1 SB II applications and pays the normal cost.
+  assert.equal(ult.statusesApplied.filter((s) => s === "support_boost_ii").length, 2, "two SB II applications (3 + 1)");
+  assert.equal(ult.confectance!.cost, 3, "Ultimate still pays its normal 3 Confectance");
+
+  // Control: the SAME 5 triggers on a NON-at-max turn stay capped at the normal 3 Supports.
+  const c = simulateScenario(
+    { ...maxSc(["basic"]), configOverrides: { confectanceStart: 3 } },
+    sixReg,
+  );
+  assert.equal(supports(c).length, 3, `normal turn must stay capped at 3 Supports, got ${supports(c).length}`);
+  assert.equal(c.log.some((e) => (e.statusesExpired ?? []).includes("support_boost_ii")), false, "no SB II on the control turn");
 });
