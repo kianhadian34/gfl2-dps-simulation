@@ -7,7 +7,7 @@ import type { AmmoType, CharacterDef, Element } from "../model/types.js";
 // U15a — weakness-matching counts (validated in-game, 2026).
 // One matched weakness → ×1.10; two matched weaknesses → ×1.20; the factor is
 // ADDITIVE across matched weaknesses: 1 + 0.10 × matchedWeaknesses. Both
-// element weaknesses and the Ammo weakness tag (assault_rifle_ammo) count into
+// element weaknesses and the Ammo weakness tag (medium_ammo) count into
 // the SAME factor (U20 + 2026 ammo dimension). AWU stays separate (Physical-only).
 //
 // Validated Qiongjiu dataset (Common Rail Lv.2, Burn, 150% ATK, ATK 1958,
@@ -31,7 +31,7 @@ function makeCommonRail(id: string, critRate: number, critDmg: number): Characte
     base: { atk: ATK, hp: 1000, def: 100, stability: 6, critRate, critDmg },
     weapon: { id: `${id}_w`, name: "w", rarity: "standard", atkLvl1: 0, atkLvl60: 0, level: 60, subStats: [] },
     skills: abilities({
-      basic: { id: `${id}_rail`, name: "Common Rail", type: "basic", element: "burn", ammoType: "assault_rifle_ammo", multiplier: MULT, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
+      basic: { id: `${id}_rail`, name: "Common Rail", type: "basic", element: "burn", ammoType: "medium_ammo", multiplier: MULT, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
       active1: { id: `${id}_a1`, name: "-", type: "active", element: "burn", multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 },
       active2: { id: `${id}_a2`, name: "-", type: "active", element: "burn", multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 },
       ultimate: { id: `${id}_ult`, name: "-", type: "ultimate", element: "burn", multiplier: 0, stabDamage: 0, cooldown: 0, confectanceCost: 3 },
@@ -68,15 +68,15 @@ test("U15a Test B: one matched Element weakness (Burn only) → ×1.10 → 1091,
 });
 
 test("U15a Test A: two matched weaknesses (Burn element + Ammo tag) → ×1.20 → 1191", () => {
-  const ev = railRun(makeCommonRail("a", 0, 0.2), ["burn"], ["assault_rifle_ammo"]).log[0];
+  const ev = railRun(makeCommonRail("a", 0, 0.2), ["burn"], ["medium_ammo"]).log[0];
   assert.equal(ev.finalDamage, 1191); // ceil(826.48 × 1.20 × 1.20) — validated
-  assert.deepEqual(ev.weaknessExploited, ["burn", "assault_rifle_ammo"]);
+  assert.deepEqual(ev.weaknessExploited, ["burn", "medium_ammo"]);
   // Exactly two +10% steps: multiplicative 1.21 would give 1201 ≠ 1191 (U20 discriminant).
   assert.equal(Math.ceil(ev.mitigatedDamage! * ev.bonusBracket * 1.21), 1201);
 });
 
 test("U15a Test A crit: two matched weaknesses, 123.5% Crit DMG → 1470 (validated)", () => {
-  const ev = railRun(makeCommonRail("ac", 1, 0.235), ["burn"], ["assault_rifle_ammo"]).log[0];
+  const ev = railRun(makeCommonRail("ac", 1, 0.235), ["burn"], ["medium_ammo"]).log[0];
   assert.equal(ev.finalDamage, 1470); // 1190.13 × 1.235 → ceil 1470 — validated
   assert.equal(ev.critical, true);
 });

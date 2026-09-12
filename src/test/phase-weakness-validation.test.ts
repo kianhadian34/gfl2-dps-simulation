@@ -85,7 +85,7 @@ test("U15b: AWU stays out of Phase damage — no stack advancement and no AWU te
   const c = {
     ...makeBurnMirror("d"),
     skills: abilities({
-      basic: { id: "d_burn", name: "Burn", type: "basic" as const, element: "burn" as const, ammoType: "assault_rifle_ammo" as const, multiplier: MULT, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
+      basic: { id: "d_burn", name: "Burn", type: "basic" as const, element: "burn" as const, ammoType: "medium_ammo" as const, multiplier: MULT, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
       active1: base.active1.levels[1],
       active2: base.active2.levels[1],
       ultimate: base.ultimate.levels[1],
@@ -99,8 +99,8 @@ test("U15b: AWU stays out of Phase damage — no stack advancement and no AWU te
       team: [{ characterId: c.id, rotation: ["basic"], equippedFixedKeys: [] }],
       dummy: {
         id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0,
-        weaknesses: ["burn"], weaknessTags: ["assault_rifle_ammo"], phase: null, cover: "none",
-        passives: [{ id: "awu", name: "AWU trigger", effects: [{ kind: "grant_stacks_on_weakness_exploit", weaknessTag: "assault_rifle_ammo", statusId: "ammo_weakness_upgrade", firstGain: 2, gainPerEvent: 1, maxStacks: 5, requiresElements: ["physical"] }] }],
+        weaknesses: ["burn"], weaknessTags: ["medium_ammo"], phase: null, cover: "none",
+        passives: [{ id: "awu", name: "AWU trigger", effects: [{ kind: "grant_stacks_on_weakness_exploit", weaknessTag: "medium_ammo", statusId: "ammo_weakness_upgrade", firstGain: 2, gainPerEvent: 1, maxStacks: 5, requiresElements: ["physical"] }] }],
       },
     },
     customRegistry({ [c.id]: c }),

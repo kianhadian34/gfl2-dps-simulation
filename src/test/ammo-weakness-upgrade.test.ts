@@ -20,7 +20,7 @@ const AWU = "ammo_weakness_upgrade";
 
 /** Target-side trigger (declared on the dummy, U5-style passive channel). */
 function awuPassive(
-  tag: string,
+  tag: AmmoType,
   over: Partial<{ firstGain: number; gainPerEvent: number; maxStacks: number }> = {},
 ): PassiveEffect {
   return {
@@ -192,10 +192,10 @@ test("ammo weakness tag WITHOUT the AWU trigger: generic ×1.10 applies, stacks 
 // ---------------------------------------------------------------------------
 
 const QJ_ATK = 1958;
-const QJ = makeChar("qj_mirror", { atk: QJ_ATK, mult: 0.8, element: "physical", ammoType: "assault_rifle_ammo", noCover: 0.2 });
+const QJ = makeChar("qj_mirror", { atk: QJ_ATK, mult: 0.8, element: "physical", ammoType: "medium_ammo", noCover: 0.2 });
 
 test("Qiongjiu AWU regression: 616/636/665/704/704/704 (no-cover 20% + AWU in the same DMG% bucket)", () => {
-  const r = run(QJ, { weaknessTags: ["assault_rifle_ammo"], passives: [{ id: "awu", name: "AWU trigger", effects: [awuPassive("assault_rifle_ammo")] }] });
+  const r = run(QJ, { weaknessTags: ["medium_ammo"], passives: [{ id: "awu", name: "AWU trigger", effects: [awuPassive("medium_ammo")] }] });
   assert.deepEqual(r.log.map((e) => e.finalDamage), [616, 636, 665, 704, 704, 704]);
   assert.ok(Math.abs(r.log[0].bonusBracket - (1 + 0.2 + 0.07)) < 1e-9);
   assert.ok(Math.abs(r.log[4].bonusBracket - (1 + 0.2 + 0.25)) < 1e-9);
@@ -213,7 +213,7 @@ test("Qiongjiu baseline: no ammo weakness → 529 non-crit (validated)", () => {
 
 function burnMirror(critRate: number, critDmg: number): CharacterDef {
   return makeChar("qj_rail", {
-    atk: QJ_ATK, mult: 1.5, element: "burn", ammoType: "assault_rifle_ammo", critRate, critDmg, noCover: 0.2,
+    atk: QJ_ATK, mult: 1.5, element: "burn", ammoType: "medium_ammo", critRate, critDmg, noCover: 0.2,
   });
 }
 
@@ -226,8 +226,8 @@ function burnRun(c: CharacterDef): ReturnType<typeof simulateScenario> {
       team: [{ characterId: c.id, rotation: ["basic"], equippedFixedKeys: [] }],
       dummy: {
         id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 0,
-        weaknesses: ["burn"], weaknessTags: ["assault_rifle_ammo"], phase: null, cover: "none",
-        passives: [{ id: "awu", name: "AWU trigger", effects: [awuPassive("assault_rifle_ammo")] }],
+        weaknesses: ["burn"], weaknessTags: ["medium_ammo"], phase: null, cover: "none",
+        passives: [{ id: "awu", name: "AWU trigger", effects: [awuPassive("medium_ammo")] }],
       },
     },
     customRegistry({ [c.id]: c }),
@@ -237,7 +237,7 @@ function burnRun(c: CharacterDef): ReturnType<typeof simulateScenario> {
 test("Phase control: Burn+Ammo two weaknesses → 1191 non-crit (AWU absent from Burn damage)", () => {
   const ev = burnRun(burnMirror(0, 0.2)).log[0];
   assert.equal(ev.finalDamage, 1191); // ceil(826.48 × 1.20 bracket × 1.20 two-weakness) — validated
-  assert.deepEqual(ev.weaknessExploited, ["burn", "assault_rifle_ammo"]);
+  assert.deepEqual(ev.weaknessExploited, ["burn", "medium_ammo"]);
   assert.ok(ev.upgradeStacks === undefined, "Phase exploits neither gain nor receive AWU");
 });
 
@@ -250,9 +250,9 @@ test("Phase control crit: 1470 at 123.5% Crit DMG (validated; AWU still absent)"
 // ---------------------------------------------------------------------------
 
 test("trigger values are data-driven: firstGain 3 / gainPerEvent 2 caps at 5", () => {
-  const passive = awuPassive("assault_rifle_ammo", { firstGain: 3, gainPerEvent: 2 });
-  const c = makeChar("qj_mirror", { atk: QJ_ATK, mult: 0.8, element: "physical", ammoType: "assault_rifle_ammo", noCover: 0.2 });
-  const r = run(c, { weaknessTags: ["assault_rifle_ammo"], passives: [{ id: "awu", name: "AWU trigger", effects: [passive] }] });
+  const passive = awuPassive("medium_ammo", { firstGain: 3, gainPerEvent: 2 });
+  const c = makeChar("qj_mirror", { atk: QJ_ATK, mult: 0.8, element: "physical", ammoType: "medium_ammo", noCover: 0.2 });
+  const r = run(c, { weaknessTags: ["medium_ammo"], passives: [{ id: "awu", name: "AWU trigger", effects: [passive] }] });
   assert.deepEqual(
     r.log.map((e) => e.upgradeStacks),
     [

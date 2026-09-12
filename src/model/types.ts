@@ -147,15 +147,15 @@ export type PassiveEffect =
       /**
        * Target-side stack trigger (Ammo Weakness Upgrade, validated 2026):
        * declared on the TARGET (DummyConfig.passives). Fires when an attack
-       * exploits `weaknessTag` AND its element is in `requiresElements`
-       * (AWU: physical-only — Phase/elemental exploits do not advance stacks
-       * unless later validated otherwise). The first exploit applies
-       * `firstGain` stacks, every subsequent exploit adds `gainPerEvent`,
+       * exploits `weaknessTag` (an authoritative ammo category) AND its element
+       * is in `requiresElements` (AWU: physical-only — Phase/elemental exploits
+       * do not advance stacks unless later validated otherwise). The first exploit
+       * applies `firstGain` stacks, every subsequent exploit adds `gainPerEvent`,
        * capped at `maxStacks`. Data-driven — the 2/1/5 progression lives here,
        * not in the damage formula. `statusId` must be a stackable target status.
        */
       kind: "grant_stacks_on_weakness_exploit";
-      weaknessTag: string;
+      weaknessTag: AmmoType;
       statusId: string;
       firstGain: number;
       gainPerEvent: number;
@@ -326,8 +326,13 @@ export interface StatusDef {
   deferredNote?: string;
 }
 
-/** Ammo/weapon-type weakness tags (project terminology: Assault Rifle Ammo, Shotgun Ammo). */
-export type AmmoType = "assault_rifle_ammo" | "shotgun_ammo";
+/**
+ * Ammo weakness categories (authoritative game terminology, 2026): Heavy Ammo, Medium Ammo,
+ * Light Ammo, Melee, Shotgun Ammo. `melee` is a valid TARGET weakness category only — an attack
+ * without an ammo-based category simply omits `ammoType` (which never matches).
+ * `medium_ammo` represents Qiongjiu's Medium Ammo attacks ("Ammo Type: Medium" in-game).
+ */
+export type AmmoType = "heavy_ammo" | "medium_ammo" | "light_ammo" | "shotgun_ammo" | "melee";
 
 export interface DummyConfig {
   id: string;

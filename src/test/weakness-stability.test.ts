@@ -25,7 +25,7 @@ test("stab: Basic, 0 exploited weaknesses → total 2 (65→63, validated)", () 
 
 test("stab: Basic, 1 Ammo weakness exploited → total 4 (65→61, validated)", () => {
   const r = simulateScenario(
-    scenario({ turns: 1, seed: 5, rotation: ["basic"], dummy: { stability: 65, weaknessTags: ["assault_rifle_ammo"] } }),
+    scenario({ turns: 1, seed: 5, rotation: ["basic"], dummy: { stability: 65, weaknessTags: ["medium_ammo"] } }),
   );
   const ev = r.log[0];
   assert.equal(ev.stabilityDamage, 4); // 2 base + 2 × 1 (ammo tag)
@@ -47,7 +47,7 @@ test("stab: Common Rail (Burn), 2 exploited (Burn + Ammo) → total 7 (65→58, 
       turns: 1,
       seed: 5,
       rotation: ["active1"],
-      dummy: { stability: 65, weaknesses: ["burn"], weaknessTags: ["assault_rifle_ammo"] },
+      dummy: { stability: 65, weaknesses: ["burn"], weaknessTags: ["medium_ammo"] },
     }),
   );
   const ev = r.log[0];
@@ -66,8 +66,8 @@ test("stab: AWU does NOT affect the stability calculation (stacks present → st
       dummy: {
         stability: 65,
         weaknesses: ["burn"],
-        weaknessTags: ["assault_rifle_ammo"],
-        passives: [{ id: "awu", name: "AWU trigger", effects: [{ kind: "grant_stacks_on_weakness_exploit", weaknessTag: "assault_rifle_ammo", statusId: "ammo_weakness_upgrade", firstGain: 2, gainPerEvent: 1, maxStacks: 5, requiresElements: ["physical"] }] }],
+        weaknessTags: ["medium_ammo"],
+        passives: [{ id: "awu", name: "AWU trigger", effects: [{ kind: "grant_stacks_on_weakness_exploit", weaknessTag: "medium_ammo", statusId: "ammo_weakness_upgrade", firstGain: 2, gainPerEvent: 1, maxStacks: 5, requiresElements: ["physical"] }] }],
       },
     }),
   );

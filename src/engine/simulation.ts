@@ -138,7 +138,7 @@ function exploitedWeaknesses(target: UnitState, skill: SkillDefVariant): { weakn
   const elementMatches = target.weaknessElements.filter((w) => w === skill.element);
   const ammoExploited = skill.ammoType !== undefined && target.weaknessTags.includes(skill.ammoType);
   const weaknesses = ammoExploited ? [...elementMatches, skill.ammoType as string] : [...elementMatches];
-  // U20 CONFIRMED 2026-09-03 (in-game: Burn → 1091; Burn + Assault Rifle ammo → 1191):
+  // U20 CONFIRMED 2026-09-03 (in-game: Burn → 1091; Burn + Medium ammo (Qiongjiu) → 1191):
   // the weakness factor is ADDITIVE across exploited weaknesses: 1 + 0.10 × count.
   // (1 → ×1.10; 2 → ×1.20; multiplicative ×1.21 is ruled out.) Element matches AND
   // ammo-tag matches count into the SAME generic multiplier AND into the +2 stability

@@ -98,7 +98,7 @@ test("deterministic: identical inputs reproduce the observed repeats exactly", (
   assert.deepEqual(seq.map((h) => h.finalDamage), again.map((h) => h.finalDamage));
 });
 
-test("two weaknesses → ×1.20 additive (U20 confirmed: Burn + Assault Rifle ammo → 1191)", () => {
+test("two weaknesses → ×1.20 additive (U20 confirmed: Burn + Medium ammo → 1191)", () => {
   // Same setup as the single-weakness case; the second weakness (ammo) adds +0.10
   // rather than multiplying: 991.77 × 1.20 = 1190.13 → 1191 (multiplicative 1.21 → 1201 ruled out).
   const two = rollHit({
