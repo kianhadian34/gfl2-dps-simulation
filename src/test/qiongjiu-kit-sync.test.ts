@@ -75,11 +75,16 @@ test("Steady Plan: No-Cover is +10% at Lv1/V3 and a SINGLE +20% total at V6 (cum
   }
 });
 
-test("Ultimate: V4 → Lv2 and V5 → Lv3 (both deferred-annotated, same executable base as Lv1)", () => {
+test("Ultimate: V4 → Lv2 is IMPLEMENTED (before-support Vulnerable I); V5 → Lv3 still deferred-annotated", () => {
   assert.equal(qjState(4).units[0].skillLevels.ultimate, 2);
   assert.equal(qjState(5).units[0].skillLevels.ultimate, 3);
-  assert.match(QIONGJIU.skills.ultimate.levels[2].deferredNote ?? "", /Vulnerable/);
+  // V4: no longer a placeholder — declares the before-support Vulnerable I application.
+  assert.equal(QIONGJIU.skills.ultimate.levels[2].deferredNote, undefined, "V4 deferredNote must be gone (implemented)");
+  assert.deepEqual(QIONGJIU.skills.ultimate.levels[2].beforeSupportStatuses, [
+    { statusId: "vulnerable_i", durationRounds: 1, target: "target" },
+  ]);
   assert.match(QIONGJIU.skills.ultimate.levels[3].deferredNote ?? "", /Damage Up II/);
+  assert.equal(QIONGJIU.skills.ultimate.levels[3].beforeSupportStatuses, undefined, "V5 must NOT declare before-support statuses yet");
 });
 
 test("Vulnerable I = +10% damage taken, defense debuff; Damage Up II = +20% damage dealt, buff", () => {

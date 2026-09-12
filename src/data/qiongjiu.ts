@@ -154,13 +154,18 @@ export const QIONGJIU: CharacterDef = {
           cooldown: 0,
           confectanceCost: 3,
           appliesStatuses: [
-            { statusId: "support_boost_ii", durationRounds: 1, stacks: 3, target: "self" },
+            // SB II granted WITHOUT a duration (established SB persistence) — corrected 2026.
+            { statusId: "support_boost_ii", stacks: 3, target: "self" },
           ],
           onCastAtMaxConfectance: {
             supportQuotaBonus: 1,
-            extraStatuses: [{ statusId: "support_boost_ii", durationRounds: 1, stacks: 1, target: "self" }],
+            extraStatuses: [{ statusId: "support_boost_ii", stacks: 1, target: "self" }],
           },
-          deferredNote: "Lv2 (V4): 'Applies Vulnerable to targets that are not protected by Cover for 1 turn.' Vulnerable I status exists (taken +10%); Cover-gated application is NOT executable by the current engine — NOT applied here (would be silent wrong behavior), recorded, deferred.",
+          // V4 (VALIDATED in-game 2026): on the EXISTING Support Action trigger, applies
+          // Vulnerable I to the target (MVP dummy: always No-Cover) immediately BEFORE
+          // Qiongjiu's Support Action resolves — for 1 turn (expires when the target finishes
+          // its own turn). Independent of Confectance level / the max-Confectance branch.
+          beforeSupportStatuses: [{ statusId: "vulnerable_i", durationRounds: 1, target: "target" }],
         },
         3: {
           id: "qiongjiu_pressing_momentum",

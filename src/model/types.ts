@@ -59,6 +59,14 @@ export interface SkillDefVariant {
   cooldown: number;
   confectanceCost: number;
   appliesStatuses?: StatusApplySpec[];
+  /**
+   * NEW (2026) — statuses applied to the SUPPORT target immediately BEFORE Qiongjiu's/future
+   * dolls' Support Action resolves (V4 Vulnerable I: applied on the existing Steady Plan support
+   * trigger, before the support hit — so the target already carries them when the Support Action
+   * resolves). Generic, data-driven; read from the RESOLVED ultimate variant. Independent of the
+   * at-max-Confectance branch.
+   */
+  beforeSupportStatuses?: StatusApplySpec[];
   /** Generic ultimate hook: effects applied only when cast while Confectance is at cap (research §3.12). */
   onCastAtMaxConfectance?: {
     supportQuotaBonus?: number;

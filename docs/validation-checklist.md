@@ -150,7 +150,7 @@ Conservative mapping under the project-wide standard (source authority and evide
 | Overburn: 10% applier ATK, onApply + 2 ticks, own ceil, DR-bypass, Final-DMG chain | **Validated** | U21 datasets (196/195/78/153/594) |
 | Ult Lv1: Confectance cost 3 | **Validated** | U9 in-game |
 | Ult Lv1: +3 SB II / at-cap +1 stack & +1 Support Action | **Not Tested** | grants/at-cap behavior tooltip-derived, no direct in-game observation |
-| Ult Lv2 (Vulnerable, No-Cover-gated) / Lv3 (Damage Up II pre-ally) | **Not Tested** | text; deferred (Cover-gate, pre-ally timing absent) |
+| Ult Lv2/V4: Vulnerable I applied on the existing Support Action trigger, BEFORE QJ's Support Action (1 turn; expires when the target finishes its turn; independent of Confectance / max-Confectance branch) | **Validated** (in-game 2026) | direct in-game testing; regression: below-max cast also applies it; present when the Support Action resolves (+10% taken in that hit); gone at the target's turn-end; MVP dummy is always No-Cover → unconditional application in-sim (no Cover system) |
 | Steady Plan Lv1: +1 Confectance per damage | **Validated** | U9 in-game |
 | Steady Plan Lv1: No-Cover +10% | **Source fact** (authoritative input); combined 1.20 total additionally **Validated** | tooltip states +10% vs No-Cover; U20/U15b brackets reproduce the combined 1.20 at V6 |
 | Steady Plan Lv2 (V3): Support Action damage +10% (cumulative, retained at V6) | **Validated** | the 735/747/883 support-hit validations all include the Out-of-Turn/V3 +10% alongside No-Cover |
@@ -178,7 +178,8 @@ Conservative mapping under the project-wide standard (source authority and evide
 | Support Boost II: +30% Support Action damage | **Source fact** | tooltip value; identical structure to SB I except 15%→30%; NO in-game combat number validated for SB II (do not claim one) |
 | Support Boost II: +10% vs Exposed component | **Source fact (inherited)** | identical tooltip structure to SB I; behavior inherited; not separately combat-validated |
 | Support Boost III | **Source fact (ABSENT)** | the game screenshot shows exactly two ranks; no SB III is modeled |
-| Vulnerable I: +10% taken; Damage Up II: +20% dealt | **Not Tested** | tooltip magnitude; duration/stacking/cleansing unknown |
+| Vulnerable I: +10% taken (V4 application) | **Validated** (2026) | V4 applies it BEFORE QJ's Support Action on the existing trigger; 1 turn — expires when the target finishes its turn; independent of Confectance; magnitude +10% enters the target's additive bracket (regression bracket 1.60); duration/stacking/cleansing beyond V4 1-turn usage unobserved |
+| Damage Up II: +20% dealt (Ult Lv3/V5) | **Not Tested** | tooltip magnitude; V5 deferred (pre-ally timing absent) |
 | Defense Down II: −30% DEF (via target stat modifier) | **Validated** | in-game 5000 → 3500 (2026) |
 | Blazing Assault II | **Not Tested** | absent from data (FK5 reference only) |
 | FK1: +3 Confectance battle start | **Not Tested** | source (no direct in-game numeric; U9 datasets were no-keys) |

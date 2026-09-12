@@ -430,6 +430,28 @@ function resolveSupportHit(state: SimulationState, shooter: UnitState, skill: Sk
   const dummy = state.dummy;
   const ev = newEvent(state, shooter, skill, dummy, "passive", true, turn);
   const beforeConfectance = shooter.confectance;
+  // "BEFORE Support Action" statuses (V4 Vulnerable I, VALIDATED in-game 2026): declared on the
+  // RESOLVED ultimate variant (generic `beforeSupportStatuses`), applied to the support target
+  // immediately before the Support Action resolves — the target already carries them when the
+  // support hit lands (taken modifiers contribute to that hit). Independent of Confectance level.
+  const ult = shooter.skills.ultimate;
+  if (ult?.beforeSupportStatuses) {
+    const label = abilitySourceLabel(shooter.def!, "ultimate", shooter.skillLevels.ultimate ?? 1);
+    for (const spec of ult.beforeSupportStatuses) {
+      const appliedId = applyStatus(state, dummy, {
+        statusId: spec.statusId,
+        durationRounds: spec.durationRounds,
+        stacks: spec.stacks,
+        target: spec.target,
+        applier: { id: shooter.id, atk: shooter.panelAtk },
+        source: spec.source ?? label,
+      });
+      if (appliedId) {
+        ev.statusesApplied.push(spec.statusId);
+        (ev.appliedSources ??= []).push({ statusId: spec.statusId, source: label });
+      }
+    }
+  }
   if (skill.multiplier !== undefined || skill.fixedDamage !== undefined) {
     dealDamageHit(state, shooter, skill, ev);
   }

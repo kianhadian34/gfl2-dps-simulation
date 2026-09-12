@@ -72,12 +72,12 @@ export const STATUS_DEFS: StatusDef[] = [
     category: "debuff",
     stackable: false,
     maxStacks: 1,
-    durationRounds: null, // default duration UNKNOWN; Qiongjiu's application (Pressing the Momentum Lv2 / V4) is 1 turn
+    durationRounds: 1, // VALIDATED 2026 (V4): 1 turn — disappears when the target finishes its own turn; other applications unobserved
     tickAt: "ownActionEnd",
     purgeable: true, // cleansing UNKNOWN — engine default
     effects: [{ kind: "damage_modifier", scope: "taken", mode: "additive", value: 0.1 }],
     verified: true,
-    note: 'Tooltip (authoritative): "Increases damage taken by 10%. This is considered a defense debuff." Target-side; duration/stacking/fixed-damage/cleansing interactions NOT established — do not infer.',
+    note: 'Tooltip (authoritative): "Increases damage taken by 10%. This is considered a defense debuff." Target-side; V4 applies it for 1 turn (expires at the target\'s own turn-end, VALIDATED 2026); stacking/fixed-damage/cleansing interactions NOT established — do not infer.',
   },
   {
     id: "damage_up_ii",
