@@ -104,3 +104,34 @@ test("SB II consumes exactly ONE stack per Support Action (×3 → ×2 → ×1 �
   // 3 stacks, one consumed per Support Action → expiry only after the THIRD support.
   assert.deepEqual(expiredOn, [4], `SB II expiry rounds ${JSON.stringify(expiredOn)} — expected only the 3rd support`);
 });
+
+test("Ultimate-granted SB II is PERSISTENT: an unused stack survives the round boundary (no Ultimate-imposed duration)", () => {
+  // Regression for the corrected data: the Ultimate must NOT impose durationRounds on SB II.
+  // r1: QJ casts the Ultimate (SB II ×3) while the ally idles with a 0-damage active (NO support,
+  // stacks untouched); r2: the ally lands a basic → a Support Action fires.
+  // NO statusOverrides here — the data default must keep the stack alive across the round end
+  // (a durationRounds:1 application would expire it at end of r1 and the r2 support would lose SB II).
+  const r = simulateScenario(
+    {
+      version: 1,
+      seed: 7,
+      turns: 2,
+      team: [
+        { characterId: "qiongjiu", rotation: ["ultimate", "basic"], equippedFixedKeys: [] },
+        { characterId: "int_ally", rotation: ["active1", "basic"], equippedFixedKeys: [] },
+      ],
+      dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 0, weaknesses: [], phase: null, cover: "none" },
+      configOverrides: { confectanceStart: 3 }, // below cap: no at-max extras; only the 3 base stacks
+    },
+    reg,
+  );
+  assert.equal(supports(r).filter((e) => e.round === 1).length, 0, "no Support Action may fire during the idle r1 (stacks untouched)");
+  const ult = r.log.find((e) => e.action === "qiongjiu_pressing_momentum")!;
+  assert.ok(ult.statusesApplied.includes("support_boost_ii"), "Ultimate must grant SB II");
+  const sup = supports(r).find((e) => e.round === 2)!;
+  // Passive Lv1 No-Cover +0.10 + SB II +0.30 (Support-scoped) = bracket 1.40 (the +0.10 vs
+  // Exposed is NOT in play: the dummy starts stability 0 but is not in the broken/exposed state —
+  // exposed is break-triggered, default false). Under the old durationRounds:1 data this support
+  // would sit at 1.10 (SB II expired at the r1 round end).
+  assert.ok(Math.abs(sup.bonusBracket - 1.4) < 1e-9, `r2 support bracket ${sup.bonusBracket} — SB II must still be active across rounds`);
+});

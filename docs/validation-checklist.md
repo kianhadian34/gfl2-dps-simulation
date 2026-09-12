@@ -184,6 +184,7 @@ Conservative mapping under the project-wide standard (source authority and evide
 | FK1: +3 Confectance battle start | **Not Tested** | source (no direct in-game numeric; U9 datasets were no-keys) |
 | FK2–FK6, Ruined Gem, Warm as Jade | **Not Tested** | text only; deferred |
 | Confectance cap 6 / start 3 / +1 per damage / cost 3 | **Validated** | U9 in-game |
+| Ultimate-granted Support Boost II obeys SB persistence — the Ultimate imposes NO duration (stacks survive until consumed) | **Validated** (via established SB I/II persistence — rank-inherited, not a new mechanic) | SB I/II persistence already in-game validated (no-duration, stacks = activations); regression: unused ult-granted stack remains available after a round passes |
 | Cooldown CD-N waits N full turns | **Validated** | U11 in-game |
 | Stability recovery (2 turns, restore to max) | **Validated** | U6 in-game |
 | Weakness factor 1 + 0.10 × n (additive, +2 stab each, partial-match, Phase-weakness applies) | **Validated** | U15a/U15b/U20 datasets |

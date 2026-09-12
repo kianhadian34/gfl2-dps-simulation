@@ -133,13 +133,15 @@ export const QIONGJIU: CharacterDef = {
           cooldown: 0,
           confectanceCost: 3,
           appliesStatuses: [
-            { statusId: "support_boost_ii", durationRounds: 1, stacks: 3, target: "self" },
+            // SB II granted WITHOUT a duration: the established SB persistence rules apply
+            // (no expiry; stacks remain until consumed by Support Actions) — corrected 2026.
+            { statusId: "support_boost_ii", stacks: 3, target: "self" },
           ],
           // At max Confectance (cap 6, U9 CONFIRMED): +1 extra Support Boost II stack and
           // +1 support-attack capacity this round.
           onCastAtMaxConfectance: {
             supportQuotaBonus: 1,
-            extraStatuses: [{ statusId: "support_boost_ii", durationRounds: 1, stacks: 1, target: "self" }],
+            extraStatuses: [{ statusId: "support_boost_ii", stacks: 1, target: "self" }],
           },
         },
         2: {
