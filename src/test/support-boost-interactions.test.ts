@@ -159,18 +159,21 @@ test("Max-Confectance Ultimate (VALIDATED 2026): 4 SB II stacks AND 4 Support Ac
   const maxSc = (qjRotation: ActionSlot[]): Scenario => ({
     version: 1 as const,
     seed: 7,
-    turns: 1,
+    turns: 2, // r1 = at-max cast turn; r2 = following turn (quota must reset to 3)
     team: [
       { characterId: "qiongjiu", rotation: qjRotation, equippedFixedKeys: [] },
-      ...allys.map((id) => ({ characterId: id, rotation: ["basic"] as ActionSlot[], equippedFixedKeys: [] })),
+      // 5 damaging allies hit the dummy once per round (budget = 1 action/unit/round) — 5 triggers.
+      ...allys.map((id) => ({ characterId: id, rotation: ["basic", "basic"] as ActionSlot[], equippedFixedKeys: [] })),
     ],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 0, weaknesses: [], phase: null, cover: "none" },
-    configOverrides: { confectanceStart: 6 }, // AT MAX → the at-max bonuses fire
+    configOverrides: { confectanceStart: 6 }, // AT MAX → the at-max bonuses fire (r1 cast only)
   });
-  const r = simulateScenario(maxSc(["ultimate"]), sixReg);
+  const r = simulateScenario(maxSc(["ultimate", "basic"]), sixReg);
   const sups = supports(r);
-  // (B) +1 Support Action quota: 3 (Steady Plan) + 1 (Ultimate at max) = 4 this turn (5 triggers → 4 fired).
-  assert.equal(sups.length, 4, `expected 4 Supports that turn (3+1 quota; 5 triggers), got ${sups.length}`);
+  // (B) +1 Support Action quota: 3 (Steady Plan) + 1 (Ultimate at max) = 4 THIS turn (5 triggers → 4 fired).
+  assert.equal(sups.filter((e) => e.round === 1).length, 4, `expected 4 Supports in the casting turn (3+1 quota; 5 triggers), got ${sups.filter((e) => e.round === 1).length}`);
+  // STRICTLY TURN-SCOPED: the +1 does NOT carry over — the following round resets to the normal 3.
+  assert.equal(sups.filter((e) => e.round === 2).length, 3, `expected 3 Supports next round (reset, no carry-over), got ${sups.filter((e) => e.round === 2).length}`);
   // (A) +1 SB II stack: 3 + 1 = 4 stacks, one consumed per Support Action → expiry only after the 4th.
   const expiredOn = r.log.filter((e) => (e.statusesExpired ?? []).includes("support_boost_ii")).map((e) => e.round);
   assert.deepEqual(expiredOn, [1], `SB II expiry ${JSON.stringify(expiredOn)} — expected only after the 4th support`);
@@ -179,11 +182,15 @@ test("Max-Confectance Ultimate (VALIDATED 2026): 4 SB II stacks AND 4 Support Ac
   assert.equal(ult.statusesApplied.filter((s) => s === "support_boost_ii").length, 2, "two SB II applications (3 + 1)");
   assert.equal(ult.confectance!.cost, 3, "Ultimate still pays its normal 3 Confectance");
 
-  // Control: the SAME 5 triggers on a NON-at-max turn stay capped at the normal 3 Supports.
+  // Control: the SAME 5 triggers on a NON-at-max turn stay capped at the normal 3 Supports (every round).
   const c = simulateScenario(
     { ...maxSc(["basic"]), configOverrides: { confectanceStart: 3 } },
     sixReg,
   );
-  assert.equal(supports(c).length, 3, `normal turn must stay capped at 3 Supports, got ${supports(c).length}`);
+  assert.deepEqual(
+    [supports(c).filter((e) => e.round === 1).length, supports(c).filter((e) => e.round === 2).length],
+    [3, 3],
+    `normal turns must stay capped at 3 Supports each round, got ${JSON.stringify(supports(c).map((e) => e.round))}`,
+  );
   assert.equal(c.log.some((e) => (e.statusesExpired ?? []).includes("support_boost_ii")), false, "no SB II on the control turn");
 });
