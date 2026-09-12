@@ -406,6 +406,41 @@ function resolveMainAction(state: SimulationState, doll: UnitState, slot: Action
 }
 
 /**
+ * V5 (VALIDATED in-game 2026): immediately BEFORE an ally's damaging main action that would
+ * trigger a support owner's Support Action (existing Steady Plan trigger), apply the owner's
+ * resolved-ultimate `beforeSupportTrigger` statuses — Damage Up II to the owner (Qiongjiu) and
+ * to the triggering ally. No new trigger, no Confectance coupling, generic (any future owner
+ * may declare it). A damaging action (multiplier/fixedDamage > 0) plus owner quota left mirrors
+ * the real trigger condition. Returns what was applied so the actor's event records provenance.
+ */
+function applyBeforeSupportTriggerStatuses(state: SimulationState, actor: UnitState, slot: ActionSlot): { statusId: string; source: string }[] {
+  const skill = actor.skills[slot];
+  const damaging = skill !== undefined && ((skill.multiplier ?? 0) > 0 || (skill.fixedDamage ?? 0) > 0);
+  if (!damaging) return [];
+  const applied: { statusId: string; source: string }[] = [];
+  for (const owner of state.units) {
+    if (owner.id === actor.id) continue;
+    if (owner.supportQuota <= 0) continue;
+    const hook = owner.skills.ultimate?.beforeSupportTrigger;
+    if (!hook) continue;
+    const label = abilitySourceLabel(owner.def!, "ultimate", owner.skillLevels.ultimate ?? 1);
+    const pushStatus = (target: UnitState, spec: StatusApplySpec) => {
+      const ok = applyStatus(state, target, {
+        statusId: spec.statusId,
+        stacks: spec.stacks,
+        durationRounds: spec.durationRounds,
+        source: spec.source ?? label,
+        applier: { id: owner.id, atk: owner.panelAtk },
+      });
+      if (ok) applied.push({ statusId: spec.statusId, source: label });
+    };
+    for (const spec of hook.owner ?? []) pushStatus(owner, spec);
+    for (const spec of hook.triggeringAlly ?? []) pushStatus(actor, spec);
+  }
+  return applied;
+}
+
+/**
  * Support attacks: fired after a doll's main action for every OTHER doll whose
  * passive declares a support attack with quota left (research §3.14). Support
  * attacks consume no action, no Confectance, no cooldown, and never chain
@@ -650,7 +685,17 @@ export function simulate(scenario: Scenario, registry: Registry): SimulationResu
     for (const doll of state.units) {
       beginUnitRound(doll);
       const { slot, k } = pickAction(state, doll);
+      // V5 (VALIDATED in-game 2026): immediately BEFORE an ally's damaging main action that will
+      // trigger the support owner's Support Action, apply the owner's `beforeSupportTrigger`
+      // statuses — Damage Up II to the owner (Qiongjiu) and to the triggering ally — so the
+      // triggering attack and the ensuing Support Action both benefit. Uses the EXISTING trigger
+      // sequence; no new trigger; no Confectance coupling.
+      const preApplied = applyBeforeSupportTriggerStatuses(state, doll, slot);
       const ev = resolveMainAction(state, doll, slot, k, ++turn);
+      for (const p of preApplied) {
+        ev.statusesApplied.push(p.statusId);
+        (ev.appliedSources ??= []).push({ statusId: p.statusId, source: p.source });
+      }
       // Trigger fidelity (2026): Support Action fires only when an ally's action actually
       // dealt damage to an enemy (source fact: "receives targeted damage from an ally") —
       // a non-damaging ally action (e.g. a 0-damage ultimate) must NOT trigger it.

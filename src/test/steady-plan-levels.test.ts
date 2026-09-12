@@ -70,8 +70,9 @@ test("C — Steady Plan V6/Lv3: No-Cover +20% TOTAL, Support Action +10% and Ove
   const norm = r.log.find((e) => e.action === "qiongjiu_basic")!;
   assert.ok(Math.abs(norm.bonusBracket - 1.2) < 1e-9, `V6 normal bracket ${norm.bonusBracket}`); // +0.20 total, single
   const sup = r.log.find((e) => e.supportAttack)!;
-  // 1 + 0.20 (No-Cover total) + 0.10 (support) = 1.30 — proves cumulative AND no +10% duplication (would be 1.40).
-  assert.ok(Math.abs(sup.bonusBracket - 1.3) < 1e-9, `V6 support bracket ${sup.bonusBracket}`);
+  // 1 + 0.20 (No-Cover total) + 0.10 (support) + 0.20 (V5 Damage Up II, owner) = 1.50 —
+  // V6 = V5 active: the V5 before-trigger DU2 (VALIDATED 747 composition) is part of the V6 support.
+  assert.ok(Math.abs(sup.bonusBracket - 1.5) < 1e-9, `V6 support bracket ${sup.bonusBracket}`);
   const ob = (sup.appliedSources ?? []).filter((s) => s.statusId === "overburn");
   assert.equal(ob.length, 1, `Overburn not applied by V6 support: ${JSON.stringify(sup.appliedSources)}`);
   // Timing (VALIDATED in-game 2026): the Support Action event is the FIRST place Overburn appears —

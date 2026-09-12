@@ -85,7 +85,7 @@ export const STATUS_DEFS: StatusDef[] = [
     category: "buff",
     stackable: false,
     maxStacks: 1,
-    durationRounds: null, // default duration UNKNOWN; Qiongjiu's application (Pressing the Momentum Lv3 / V5) is 1 turn
+    durationRounds: 1, // VALIDATED 2026 (V5): 1 turn — holder keeps it through their turn, expires at their own turn-end (ally: its turn; Qiongjiu: her next turn); other applications unobserved
     tickAt: "ownActionEnd",
     purgeable: true, // cleansing UNKNOWN — engine default
     effects: [{ kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.2 }],

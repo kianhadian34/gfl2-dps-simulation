@@ -75,7 +75,7 @@ test("Steady Plan: No-Cover is +10% at Lv1/V3 and a SINGLE +20% total at V6 (cum
   }
 });
 
-test("Ultimate: V4 → Lv2 is IMPLEMENTED (before-support Vulnerable I); V5 → Lv3 still deferred-annotated", () => {
+test("Ultimate: V4 → Lv2 (before-support Vulnerable I) and V5 → Lv3 (before-trigger Damage Up II) both IMPLEMENTED", () => {
   assert.equal(qjState(4).units[0].skillLevels.ultimate, 2);
   assert.equal(qjState(5).units[0].skillLevels.ultimate, 3);
   // V4: no longer a placeholder — declares the before-support Vulnerable I application.
@@ -83,8 +83,12 @@ test("Ultimate: V4 → Lv2 is IMPLEMENTED (before-support Vulnerable I); V5 → 
   assert.deepEqual(QIONGJIU.skills.ultimate.levels[2].beforeSupportStatuses, [
     { statusId: "vulnerable_i", durationRounds: 1, target: "target" },
   ]);
-  assert.match(QIONGJIU.skills.ultimate.levels[3].deferredNote ?? "", /Damage Up II/);
-  assert.equal(QIONGJIU.skills.ultimate.levels[3].beforeSupportStatuses, undefined, "V5 must NOT declare before-support statuses yet");
+  // V5: implemented — declares the before-trigger Damage Up II (owner + triggering ally), 1 turn.
+  assert.equal(QIONGJIU.skills.ultimate.levels[3].deferredNote, undefined, "V5 deferredNote must be gone (implemented)");
+  assert.deepEqual(QIONGJIU.skills.ultimate.levels[3].beforeSupportTrigger, {
+    owner: [{ statusId: "damage_up_ii", durationRounds: 1 }],
+    triggeringAlly: [{ statusId: "damage_up_ii", durationRounds: 1 }],
+  });
 });
 
 test("Vulnerable I = +10% damage taken, defense debuff; Damage Up II = +20% damage dealt, buff", () => {

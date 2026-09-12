@@ -72,6 +72,15 @@ export interface SkillDefVariant {
     supportQuotaBonus?: number;
     extraStatuses?: StatusApplySpec[];
   };
+  /**
+   * NEW (2026) — V5 Damage Up II: statuses applied by the SUPPORT OWNER's resolved ultimate
+   * BEFORE an eligible ally's damaging main action triggers the owner's Support Action (the
+   * existing Steady Plan trigger; NO new trigger). `owner` lands on the support owner (Qiongjiu),
+   * `triggeringAlly` lands on the ally whose action triggers the support — both BEFORE the ally's
+   * action resolves so the triggering attack and the ensuing Support Action both benefit. 1-turn /
+   * holder own-turn-end duration via the existing generic status system. Independent of Confectance.
+   */
+  beforeSupportTrigger?: { owner?: StatusApplySpec[]; triggeringAlly?: StatusApplySpec[] };
   /** Authoritative higher-level text recorded but NOT executable yet (engine limitation) — the variant's fields above are the executable portion. */
   deferredNote?: string;
 }

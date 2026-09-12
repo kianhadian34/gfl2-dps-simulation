@@ -179,7 +179,7 @@ Conservative mapping under the project-wide standard (source authority and evide
 | Support Boost II: +10% vs Exposed component | **Source fact (inherited)** | identical tooltip structure to SB I; behavior inherited; not separately combat-validated |
 | Support Boost III | **Source fact (ABSENT)** | the game screenshot shows exactly two ranks; no SB III is modeled |
 | Vulnerable I: +10% taken (V4 application) | **Validated** (2026) | V4 applies it BEFORE QJ's Support Action on the existing trigger; 1 turn — expires when the target finishes its turn; independent of Confectance; magnitude +10% enters the target's additive bracket (regression bracket 1.60); duration/stacking/cleansing beyond V4 1-turn usage unobserved |
-| Damage Up II: +20% dealt (Ult Lv3/V5) | **Not Tested** | tooltip magnitude; V5 deferred (pre-ally timing absent) |
+| Damage Up II: +20% dealt — V5 applies it for 1 turn to Qiongjiu AND the triggering ally BEFORE that ally's attack (the triggering attack and Qiongjiu's Support both benefit; ally expires at its turn end, Qiongjiu at her next turn end; recipients exactly those two) | **Validated** (in-game 2026) | in-game testing incl. the 747 example (ATK 1962 · 90% · DEF 5000 · 1.50 → 747); regression: recipient scoping, pre-attack timing, both-benefit, per-holder expiry |
 | Defense Down II: −30% DEF (via target stat modifier) | **Validated** | in-game 5000 → 3500 (2026) |
 | Blazing Assault II | **Not Tested** | absent from data (FK5 reference only) |
 | FK1: +3 Confectance battle start | **Not Tested** | source (no direct in-game numeric; U9 datasets were no-keys) |

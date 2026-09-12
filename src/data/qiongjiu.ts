@@ -177,13 +177,22 @@ export const QIONGJIU: CharacterDef = {
           cooldown: 0,
           confectanceCost: 3,
           appliesStatuses: [
-            { statusId: "support_boost_ii", durationRounds: 1, stacks: 3, target: "self" },
+            // SB II granted WITHOUT a duration (established SB persistence) — corrected 2026.
+            { statusId: "support_boost_ii", stacks: 3, target: "self" },
           ],
           onCastAtMaxConfectance: {
             supportQuotaBonus: 1,
-            extraStatuses: [{ statusId: "support_boost_ii", durationRounds: 1, stacks: 1, target: "self" }],
+            extraStatuses: [{ statusId: "support_boost_ii", stacks: 1, target: "self" }],
           },
-          deferredNote: "Lv3 (V5): 'When performing Support Action, applies Damage Up II to self and the allied unit for 1 turn before the aforementioned allied unit makes their attack.' Damage Up II status exists (dealt +20%); the pre-ally-hit support timing is NOT executable (same limitation as FK3) and the ally-targeted application is unsupported — recorded, deferred.",
+          // V5 (VALIDATED in-game 2026): on the EXISTING support trigger — immediately BEFORE an
+          // eligible ally's damaging main action — apply Damage Up II (1 turn, holder own-turn-end
+          // via the generic status system) to Qiongjiu (owner) AND to the triggering ally, so the
+          // triggering attack and Qiongjiu's ensuing Support Action both benefit. Independent of
+          // Confectance level / the max-Confectance branch. No new trigger.
+          beforeSupportTrigger: {
+            owner: [{ statusId: "damage_up_ii", durationRounds: 1 }],
+            triggeringAlly: [{ statusId: "damage_up_ii", durationRounds: 1 }],
+          },
         },
       },
     },
