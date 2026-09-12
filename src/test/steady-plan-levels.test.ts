@@ -74,4 +74,9 @@ test("C — Steady Plan V6/Lv3: No-Cover +20% TOTAL, Support Action +10% and Ove
   assert.ok(Math.abs(sup.bonusBracket - 1.3) < 1e-9, `V6 support bracket ${sup.bonusBracket}`);
   const ob = (sup.appliedSources ?? []).filter((s) => s.statusId === "overburn");
   assert.equal(ob.length, 1, `Overburn not applied by V6 support: ${JSON.stringify(sup.appliedSources)}`);
+  // Timing (VALIDATED in-game 2026): the Support Action event is the FIRST place Overburn appears —
+  // applied at/after the support resolution, never before it (no earlier event carries it).
+  const firstOb = r.log.findIndex((e) => (e.appliedSources ?? []).some((s) => s.statusId === "overburn"));
+  const supIdx = r.log.findIndex((e) => e.supportAttack);
+  assert.equal(firstOb, supIdx);
 });
