@@ -78,7 +78,10 @@ export const QIONGJIU: CharacterDef = {
           appliesStatuses: [
             { statusId: "support_boost_i", stacks: 1, target: "self" },
           ],
-          deferredNote: "Lv2 (V1): 'If a kill is scored, increase the damage bonus of Support Boost I to 30%.' Kill-condition behavior and the Support-Boost scoping are NOT executable by the current engine — recorded, deferred. No multiplier change at Lv2.",
+          // V1 (VALIDATED in-game 2026): when COMMON RAIL ITSELF delivers the killing blow
+          // (target >0 → 0 on this hit), grant the +30% Support Boost variant to Qiongjiu —
+          // persistent, activation-consumed, un-cleansable (generic onKillStatuses hook).
+          onKillStatuses: [{ statusId: "support_boost_i_30", stacks: 1, target: "self" }],
         },
       },
     },

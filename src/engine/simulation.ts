@@ -242,7 +242,11 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   // U21: normal chain and fixed component are both final game damage —
   //  finalDamage = ceil(normalChain) + ceil(fixed).
   const totalDamage = hit.finalDamage + hit.fixedDamage;
+  const hpBefore = dummy.hp;
   dummy.hp = Math.max(0, dummy.hp - totalDamage);
+  // V1 (VALIDATED 2026): a KILLING BLOW = THIS hit reduced the target from >0 to 0 HP —
+  // transition-guarded so post-death follow-up hits are never misflagged.
+  if (totalDamage > 0 && hpBefore > 0 && dummy.hp === 0) ev.killingBlow = true;
   // Validated 2026: Total Stability Damage = attack base stability damage
   //   + 2 × (# weaknesses exploited) — element AND ammo-tag matches both count
   //   (generic across Physical/Phase; independent of the damage multiplier; AWU untouched).
@@ -392,6 +396,13 @@ function resolveMainAction(state: SimulationState, doll: UnitState, slot: Action
   }
 
   applySkillStatuses(state, doll, dummy, skill.appliesStatuses, ev, sourceLabel);
+  // V1 (VALIDATED in-game 2026): skill-specific KILLING-BLOW self statuses — tied to THIS
+  // skill's actual killing hit (ev.killingBlow), never to "any enemy died" (Common Rail Lv2:
+  // +30% Support Boost variant). Applied AFTER the skill's normal statuses so the kill-upgrade
+  // (replaces the +15% base) wins. Generic and data-driven; no character-ID conditionals.
+  if (ev.killingBlow && skill.onKillStatuses) {
+    applySkillStatuses(state, doll, dummy, skill.onKillStatuses, ev, sourceLabel);
+  }
   // Log the end-of-action value: `before` = activation-time, `after` = post-spend + any gains from this action.
   ev.confectance = { before: beforeConfectance, after: doll.confectance, cost };
 

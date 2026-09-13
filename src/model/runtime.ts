@@ -47,6 +47,8 @@ export interface LogEvent {
   targetStabilityAfter?: number;
   exposed?: boolean;
   finalDamage: number;
+  /** TRUE when THIS event's hit delivered the killing blow (target went from >0 to 0 HP on this hit) — V1 (2026). */
+  killingBlow?: boolean;
   confectance?: { before: number; after: number; cost: number };
   cooldownAfter: Record<string, number>;
   statusesApplied: string[];

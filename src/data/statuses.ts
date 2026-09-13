@@ -27,6 +27,32 @@ export const STATUS_DEFS: StatusDef[] = [
     ],
     verified: true,
     note: "One buff instance, two support-scoped effects (source: Common Rail): +15% Support Action damage + +10% vs Exposed, additive in the Damage Buff Factor. VALIDATED in-game 2026: Basic Attack vs Exposed receives NO +10% (538 = 1.20 factor); persistent with no duration; stackable (each application +1 stack); one Support Action consumes exactly one stack (2→1); **stack count does NOT multiply either effect — 1 and 2 stacks deal identical damage (883 both)**; stacks are remaining activations only; the 883 support hit confirms both effects. Cannot be cleansed.",
+    // Representation edge (2026, NOT separately in-game observed): the V1 +30% member belongs to
+    // the SAME in-game "Support Boost I" family, so re-applying the +15% version refreshes the
+    // family (replaces the +30% member) — keeps one family buff active, never two magnitudes counted.
+    replaces: ["support_boost_i_30"],
+  },
+  {
+    id: "support_boost_i_30", // repo-internal id — the game displays this as "Support Boost I" (V1, +30%);
+    // the exact in-game status id is UNSPECIFIED (no authoritative data). Representative, not an ID claim.
+    name: "Support Boost I (V1 kill, +30%)",
+    category: "buff",
+    stackable: true, // unbounded activations — same family mechanics as SB I (no validated cap)
+    durationRounds: null, // persistent — no duration (VALIDATED V1 screenshot: "Activates 1 time", no duration invented)
+    tickAt: "ownActionEnd",
+    purgeable: false, // authoritative: "Cannot be cleansed"
+    consumeOneOnUse: true, // one Support Action consumes exactly ONE activation (family behavior)
+    replaces: ["support_boost_i"], // representation edge (2026, not separately in-game observed): the +30% kill version replaces the +15% base within the family
+    blockedBy: ["support_boost_ii"], // same family: SB II blocks/outranks the V1 variant too (representation edge, not separately in-game observed)
+    scaleWithStacks: false, // stacks = activations, never a magnitude multiplier (family rule)
+    // VALIDATED (V1 screenshot, in-game 2026): Support Action damage +30% and +10% vs Exposed —
+    // both SUPPORT-Action-scoped, one buff instance / one source mechanic (dedup, not two modifiers).
+    effects: [
+      { kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.3, actions: "support" },
+      { kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.1, actions: "support", whenTarget: "exposed" },
+    ],
+    verified: true,
+    note: "V1 'support_boost_i' at +30%: granted ONLY when Common Rail itself delivers the killing blow (skill-specific onKillStatuses, VALIDATED 2026). Persistence, activation consumption, flat magnitude, un-cleansable, support-scoping, and the Exposed component follow the established Support Boost family rules (rank-inherited). Not to be confused with the normal +15% Support Boost I.",
   },
   {
     id: "support_boost_ii",
@@ -37,7 +63,7 @@ export const STATUS_DEFS: StatusDef[] = [
     tickAt: "ownActionEnd",
     purgeable: false, // authoritative: "This buff cannot be cleansed"
     consumeOneOnUse: true, // VALIDATED 2026: one Support Action consumes exactly ONE stack (×3 → ×2)
-    replaces: ["support_boost_i"], // VALIDATED 2026: applying SB II removes ALL SB I stacks (full replacement)
+    replaces: ["support_boost_i", "support_boost_i_30"], // VALIDATED 2026: SB II removes ALL SB I stacks (full replacement) — extended 2026 to the V1 +30% member of the same in-game "Support Boost I" family (representation edge, not separately in-game observed)
     scaleWithStacks: false, // rank-inherited from SB I: stacks = activations, never a magnitude multiplier
     // Rank 2 of Support Boost: same tooltip structure as SB I (identical Exposed component);
     // the ONLY explicit rank difference is the Support Action damage value (30% vs 15%).

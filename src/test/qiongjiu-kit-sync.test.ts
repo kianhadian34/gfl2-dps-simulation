@@ -15,7 +15,7 @@ test("QJ Basic Attack is Level 1 at Fortification 0 and at V6 (never upgraded)",
   assert.deepEqual(Object.keys(QIONGJIU.skills.basic.levels).map(Number), [1]); // Lv1 only
 });
 
-test("Common Rail Lv1 = 150% ATK / Stability 3 (authoritative), and V1 → Lv2 (deferred kill behavior, no multiplier change)", () => {
+test("Common Rail Lv1 = 150% ATK / Stability 3 (authoritative), and V1 → Lv2 (skill-specific killing-blow +30% Support Boost)", () => {
   const lv1 = QIONGJIU.skills.active1.levels[1];
   assert.equal(lv1.multiplier, 1.5);
   assert.equal(lv1.stabDamage, 3);
@@ -24,7 +24,9 @@ test("Common Rail Lv1 = 150% ATK / Stability 3 (authoritative), and V1 → Lv2 (
   assert.equal(qjState(1).units[0].skillLevels.active1, 2); // V1 → Common Rail Lv2
   const lv2 = QIONGJIU.skills.active1.levels[2];
   assert.equal(lv2.multiplier, 1.5); // no multiplier change at Lv2
-  assert.match(lv2.deferredNote ?? "", /kill/);
+  // V1 is now IMPLEMENTED: killing-blow → +30% Support Boost variant (no longer deferred).
+  assert.equal(lv2.deferredNote, undefined, "V1 deferredNote must be gone (implemented)");
+  assert.deepEqual(lv2.onKillStatuses, [{ statusId: "support_boost_i_30", stacks: 1, target: "self" }]);
 });
 
 test("Guide to Victory Lv1 Stability = 3 (corrected from 0), and V2 → Lv2 (deferred +100% crit vs Overburn)", () => {

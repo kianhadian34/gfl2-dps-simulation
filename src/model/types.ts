@@ -81,6 +81,13 @@ export interface SkillDefVariant {
    * holder own-turn-end duration via the existing generic status system. Independent of Confectance.
    */
   beforeSupportTrigger?: { owner?: StatusApplySpec[]; triggeringAlly?: StatusApplySpec[] };
+  /**
+   * NEW (2026) — V1 skill-specific killing-blow statuses (Common Rail Lv2: +30% Support Boost
+   * variant): applied to SELF immediately when THIS skill's hit delivers the killing blow
+   * (target reduced from >0 to 0 HP on this hit). Generic and data-driven — never triggered by
+   * "any enemy died" from another skill/unit.
+   */
+  onKillStatuses?: StatusApplySpec[];
   /** Authoritative higher-level text recorded but NOT executable yet (engine limitation) — the variant's fields above are the executable portion. */
   deferredNote?: string;
 }
