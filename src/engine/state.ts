@@ -1,4 +1,5 @@
 import type { AbilityDef, AbilitySlot, ActionSlot, AmmoType, CharacterDef, ConfigOverrides, Element, PassiveEffect, Scenario, SkillDefVariant, SourceKind, StatusDef, StatusOverride } from "../model/types.js";
+import { buildGrid, type GridState } from "./grid.js";
 import type { ActiveStatus, LogEvent, ResolvedConfig } from "../model/runtime.js";
 import { Rng } from "./rng.js";
 import type { Registry } from "../data/registry.js";
@@ -82,6 +83,8 @@ export interface SimulationState {
   config: ResolvedConfig;
   units: UnitState[];
   dummy: UnitState;
+  /** GRID (2026): spatial facts when the scenario provides a battle grid (absent = no positions). */
+  grid?: GridState;
   statusRegistry: Map<string, EffectiveStatusDef>;
   log: LogEvent[];
   warnings: Set<string>;
@@ -353,6 +356,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
     config,
     units,
     dummy,
+    grid: scenario.grid ? buildGrid(scenario.grid) : undefined,
     statusRegistry: applyStatusOverrides(registry.getStatusMap(), config.statusOverrides),
     log: [],
     warnings,

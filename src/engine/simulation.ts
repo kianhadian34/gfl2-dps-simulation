@@ -5,6 +5,7 @@ import type { Registry } from "../data/registry.js";
 import { rollHit } from "./damage.js";
 import { cooldownRemaining, setCooldown, tickCooldowns } from "./cooldowns.js";
 import { gainConfectance, spendConfectance } from "./resources.js";
+import { attackHeightEffect, legalDestinations, moveCost, tileKey } from "./grid.js";
 import {
   additiveDealtBonus,
   additiveTakenBonus,
@@ -165,8 +166,10 @@ function conditionalDealtBonus(actor: UnitState, target: UnitState, when: "targe
 }
 
 /** Damage + stability + Confectance-gain application for a single hit; fills the event's damage fields. */
-function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDefVariant, ev: LogEvent): number {
+function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDefVariant, ev: LogEvent, opts?: { exposedOverride?: boolean }): number {
   const dummy = state.dummy;
+  // GRID (2026): High Ground → Ground ADDS Exposed; otherwise the normal exposed state governs.
+  const targetExposed = opts?.exposedOverride === true ? true : dummy.exposed;
   const { weaknesses, mult: weaknessMult, ammoExploited } = exploitedWeaknesses(dummy, skill);
   // AWU trigger fires BEFORE the hit resolves: the first exploiting attack already
   // benefits from its own 2 stacks (validated T1 = 616 / 105). Phase attacks are
@@ -174,7 +177,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   grantStackOnWeaknessExploit(state, dummy, skill, ammoExploited);
   const phaseMult = phaseMultiplier(skill.element, dummy.phase);
   const addDealt =
-    additiveDealtBonus(actor, state.statusRegistry, skill.element, { supportAttack: ev.supportAttack, targetExposed: dummy.exposed }) +
+    additiveDealtBonus(actor, state.statusRegistry, skill.element, { supportAttack: ev.supportAttack, targetExposed }) +
     conditionalDealtBonus(actor, dummy, "target.noCover", ev.supportAttack) +
     conditionalDealtBonus(actor, dummy, "always", ev.supportAttack);
   const targetMods = targetPassiveTakenMods(dummy); // U5 boss/target stability-conditional passives
@@ -392,7 +395,7 @@ function resolveMainAction(state: SimulationState, doll: UnitState, slot: Action
   }
 
   if (skill.multiplier !== undefined || skill.fixedDamage !== undefined) {
-    dealDamageHit(state, doll, skill, ev);
+    dealDamageHit(state, doll, skill, ev, { exposedOverride: highGroundExposes(state, doll) });
   }
 
   applySkillStatuses(state, doll, dummy, skill.appliesStatuses, ev, sourceLabel);
@@ -452,6 +455,45 @@ function applyBeforeSupportTriggerStatuses(state: SimulationState, actor: UnitSt
 }
 
 /**
+ * GRID (2026): High Ground attacker vs Ground target → the target counts as EXPOSED for that
+ * attack (existing Exposed pipeline; same-height / unresolved Ground→High = no effect).
+ */
+function highGroundExposes(state: SimulationState, actor: UnitState): boolean {
+  const placement = state.grid?.placements.get(actor.id);
+  if (!placement) return false; // no grid / unplaced unit → no height interaction
+  const attackerHeight = placement.height ?? "ground";
+  const targetHeight = state.grid!.boss.height ?? "ground";
+  return attackHeightEffect(attackerHeight, targetHeight) === "exposed";
+}
+
+/**
+ * GRID (2026): apply a scripted pre-action move (deterministic — no movement AI).
+ * Validates legality with the pure grid API; throws on any illegal move. Action → move is
+ * impossible by construction (moves are only applied here, before the unit's action).
+ */
+function applyScriptedMove(state: SimulationState, doll: UnitState, round: number): boolean {
+  const move = state.grid?.moves?.find((m) => m.unitId === doll.id && m.round === round);
+  if (!move) return false;
+  const grid = state.grid!;
+  const placement = grid.placements.get(doll.id);
+  if (!placement) throw new Error(`grid move for ${doll.id} has no placement`);
+  const mobility = doll.def?.mobility ?? 0;
+  if (mobility <= 0) throw new Error(`grid move for ${doll.id} is illegal: Mobility ${mobility}`);
+  const dests = legalDestinations(grid, placement.coord, mobility);
+  const key = tileKey(move.to.x, move.to.y);
+  if (!dests.has(key)) {
+    throw new Error(
+      `grid move for ${doll.id} to (${move.to.x},${move.to.y}) is illegal (cost ${moveCost(grid, placement.coord, move.to)}, Mobility ${mobility})`,
+    );
+  }
+  const oldKey = tileKey(placement.coord.x, placement.coord.y);
+  grid.allyTiles.delete(oldKey);
+  grid.allyTiles.set(key, doll.id);
+  grid.placements.set(doll.id, { ...placement, coord: { x: move.to.x, y: move.to.y } });
+  return true;
+}
+
+/**
  * Support attacks: fired after a doll's main action for every OTHER doll whose
  * passive declares a support attack with quota left (research §3.14). Support
  * attacks consume no action, no Confectance, no cooldown, and never chain
@@ -499,7 +541,7 @@ function resolveSupportHit(state: SimulationState, shooter: UnitState, skill: Sk
     }
   }
   if (skill.multiplier !== undefined || skill.fixedDamage !== undefined) {
-    dealDamageHit(state, shooter, skill, ev);
+    dealDamageHit(state, shooter, skill, ev, { exposedOverride: highGroundExposes(state, shooter) });
   }
   // "After Support Action" passive statuses (Steady Plan Lv2/Lv3: Overburn 2r, SOURCE 2026):
   // applied to the support target whenever a Support Action is performed — no extra gate
@@ -695,6 +737,15 @@ export function simulate(scenario: Scenario, registry: Registry): SimulationResu
     state.round = round;
     for (const doll of state.units) {
       beginUnitRound(doll);
+      // GRID (2026): movement occurs BEFORE the action; action → move is impossible
+      // (moves are only applied here); a unit may move and then voluntarily end its turn.
+      if (applyScriptedMove(state, doll, round)) {
+        const m = state.grid!.moves!.find((x) => x.unitId === doll.id && x.round === round);
+        if (m!.endTurnWithoutAction) {
+          endOfOwnTurn(state, doll);
+          continue;
+        }
+      }
       const { slot, k } = pickAction(state, doll);
       // V5 (VALIDATED in-game 2026): immediately BEFORE an ally's damaging main action that will
       // trigger the support owner's Support Action, apply the owner's `beforeSupportTrigger`

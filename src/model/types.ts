@@ -2,6 +2,8 @@
 // are UNVERIFIED in research (docs/research.md §4) and are surfaced in
 // SimulationResult.warnings instead of being silently assumed.
 
+import type { GridConfig } from "./grid.js";
+
 export type Element = "physical" | "burn" | "electric" | "ice" | "acid" | "decay";
 
 /** Main-action slots in a user-defined fixed rotation. */
@@ -245,6 +247,11 @@ export interface CharacterDef {
   expansionKey?: KeyDef;
   /** Affinity Key (bond) — recorded data; engine consumption deferred. */
   affinityKey?: AffinityKeyDef;
+  /**
+   * GRID (2026): Mobility stat used by the core grid system (movement budget per turn).
+   * Optional — absent means the unit cannot move; existing characters are unaffected.
+   */
+  mobility?: number;
 }
 
 export type StatusEffect =
@@ -429,5 +436,7 @@ export interface Scenario {
   turns: number;
   team: ScenarioTeamMember[];
   dummy: DummyConfig;
+  /** GRID (2026): optional 15×15 battlefield configuration. Absent ⇒ simulation runs without positions (unchanged). */
+  grid?: GridConfig;
   configOverrides?: ConfigOverrides;
 }
