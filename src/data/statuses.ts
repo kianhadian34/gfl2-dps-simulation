@@ -132,13 +132,13 @@ export const STATUS_DEFS: StatusDef[] = [
         kind: "stack_tier_modifier",
         scope: "taken",
         mode: "additive",
-        // Validated in-game (2026): Physical-only; tiers 2→+7% / 3→+11% / 4→+17% / 5→+25%, capped at 5.
+        // Validated in-game (2026): phase-less (physical-ammo) attacks only; tiers 2→+7% / 3→+11% / 4→+17% / 5→+25%, capped at 5.
         tiers: { 2: 0.07, 3: 0.11, 4: 0.17, 5: 0.25 },
-        when: { element: ["physical"] }, // Phase damage naturally bypasses (no AWU special-case branch)
+        when: { element: [null] }, // phase-less attacks only — Phase damage naturally bypasses (no AWU special-case branch)
       },
     ],
     verified: true,
-    note: "Validated in-game (2026): triggered by Ammo-weakness exploits on Physical attacks; bonus additive in the DMG% bucket, post generic weakness; see docs/research.md §3.18",
+    note: "Validated in-game (2026): triggered by Ammo-weakness exploits on phase-less (physical-ammo) attacks; bonus additive in the DMG% bucket, post generic weakness; see docs/research.md §3.18",
   },
   {
     id: "fixed_dmg_buff",

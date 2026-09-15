@@ -20,7 +20,7 @@ const ALLY2 = makeAlly("v5_ally2", 1000);
 
 /** 0-damage idle ult for the no-trigger rounds (existing pattern: cost-0, multiplier 0). */
 function idleUlt(id: string): SkillDefVariant {
-  return { id: `${id}_ult`, name: "-", type: "ultimate", element: "physical", multiplier: 0, stabDamage: 0, cooldown: 0, confectanceCost: 0 };
+  return { id: `${id}_ult`, name: "-", type: "ultimate", element: null, multiplier: 0, stabDamage: 0, cooldown: 0, confectanceCost: 0 };
 }
 
 /** Clone an ally but swap in the idle 0-damage ultimate (all other skills kept at their Lv1 variants). */

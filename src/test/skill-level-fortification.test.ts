@@ -14,21 +14,21 @@ function makeAbility(s: SkillDefVariant): AbilityDef {
 const BASE = {
   id: "lc",
   name: "lc",
-  phase: "physical" as const,
+  phase: null,
   base: { atk: 1000, hp: 1000, def: 100, stability: 6, critRate: 0, critDmg: 0.2 },
   weapon: { id: "lc_w", name: "w", rarity: "standard" as const, atkLvl1: 0, atkLvl60: 0, level: 60, subStats: [] },
   passive: { id: "lc_passive", name: "-", effects: [] as never[] },
   fixedKeys: [] as never[],
 };
 
-const PHYSICAL = "physical" as const;
+const PHASE_LESS = null; // phase-less (physical-ammo) attack marker — Physical is the Ammo dimension, not an element
 
 /** active1 variants: Lv1 ×1.0, Lv2 ×2.0, Lv3 ×3.0 (Lv1+Lv3-only variant for the missing-level test). */
 function active1Levels(levelsToInclude: number[]): Record<number, SkillDefVariant> {
   const all: Record<number, SkillDefVariant> = {
-    1: { id: "lc_a1", name: "Lv1", type: "active", element: PHYSICAL, multiplier: 1.0, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
-    2: { id: "lc_a1", name: "Lv2", type: "active", element: PHYSICAL, multiplier: 2.0, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
-    3: { id: "lc_a1", name: "Lv3", type: "active", element: PHYSICAL, multiplier: 3.0, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
+    1: { id: "lc_a1", name: "Lv1", type: "active", element: PHASE_LESS, multiplier: 1.0, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
+    2: { id: "lc_a1", name: "Lv2", type: "active", element: PHASE_LESS, multiplier: 2.0, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
+    3: { id: "lc_a1", name: "Lv3", type: "active", element: PHASE_LESS, multiplier: 3.0, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
   };
   const out: Record<number, SkillDefVariant> = {};
   for (const l of levelsToInclude) out[l] = all[l];
@@ -39,10 +39,10 @@ function leveledChar(active1: Record<number, SkillDefVariant>, map?: Fortificati
   return {
     ...BASE,
     skills: {
-      basic: makeAbility({ id: "lc_basic", name: "Hit", type: "basic", element: PHYSICAL, multiplier: 1.0, stabDamage: 0, cooldown: 0, confectanceCost: 0 }),
+      basic: makeAbility({ id: "lc_basic", name: "Hit", type: "basic", element: PHASE_LESS, multiplier: 1.0, stabDamage: 0, cooldown: 0, confectanceCost: 0 }),
       active1: { id: "lc_a1", name: "Common", type: "active", levels: active1 },
-      active2: makeAbility({ id: "lc_a2", name: "-", type: "active", element: PHYSICAL, multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 }),
-      ultimate: makeAbility({ id: "lc_ult", name: "-", type: "ultimate", element: PHYSICAL, multiplier: 0, stabDamage: 0, cooldown: 0, confectanceCost: 3 }),
+      active2: makeAbility({ id: "lc_a2", name: "-", type: "active", element: PHASE_LESS, multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 }),
+      ultimate: makeAbility({ id: "lc_ult", name: "-", type: "ultimate", element: PHASE_LESS, multiplier: 0, stabDamage: 0, cooldown: 0, confectanceCost: 3 }),
     },
     ...(map ? { fortificationMap: map } : {}),
   };

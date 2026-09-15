@@ -27,7 +27,7 @@ import { abilitySourceLabel, createState, DEFAULT_CONFIG, passiveSourceLabel, su
  * The factor below is structurally present but always neutral (1.0); it is
  * never a counter mechanic.
  */
-export function phaseMultiplier(_attack: Element, _targetPhase: Element | null): number {
+export function phaseMultiplier(_attack: Element | null, _targetPhase: Element | null): number {
   return 1.0;
 }
 
@@ -252,7 +252,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   if (totalDamage > 0 && hpBefore > 0 && dummy.hp === 0) ev.killingBlow = true;
   // Validated 2026: Total Stability Damage = attack base stability damage
   //   + 2 × (# weaknesses exploited) — element AND ammo-tag matches both count
-  //   (generic across Physical/Phase; independent of the damage multiplier; AWU untouched).
+  //   (generic across phase-less/Phase; independent of the damage multiplier; AWU untouched).
   const stabAmount = (skill.stabDamage ?? 0) + 2 * weaknesses.length;
   const { broke } = applyStabilityDamage(state, dummy, stabAmount);
   // Consumption-of-use statuses (Support Boost I/II, VALIDATED 2026): a status that
@@ -601,8 +601,8 @@ function newEvent(
  * Target-side stack trigger (Ammo Weakness Upgrade, validated 2026): declared
  * on the TARGET via DummyConfig.passives. Fires when the attack exploited
  * `weaknessTag` (ammo dimension) and its element is allowed by
- * `requiresElements` (AWU data: physical only — Phase/elemental exploits
- * neither receive the bonus nor advance stacks). firstGain / gainPerEvent /
+ * `requiresElements` (AWU data: phase-less attacks only — `[null]`; Phase/elemental
+ * exploits neither receive the bonus nor advance stacks). firstGain / gainPerEvent /
  * maxStacks are data-driven — the 2/1/5 progression is NOT in the formula.
  * applyStatus keeps U7/U8 semantics (refresh; stack; cap at StatusDef.maxStacks).
  *

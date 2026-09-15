@@ -15,7 +15,7 @@ import type { CharacterDef, Scenario } from "../model/types.js";
 // RESOLVED (U19 2026-09-03) — locked numerically in crit-overflow-validation.test.ts.
 
 const ATK = 1958; // Qiongjiu, Retired OTs-14 R1 Lv.2, no keys
-const DEF = 5000; // dummy, No Cover, no weakness for Basic (physical)
+const DEF = 5000; // dummy, No Cover, no weakness for Basic (phase-less)
 const MULT = 0.8; // Basic Attack
 const BRACKET = 1.2; // 1 + 0.10 passive no-cover + 0.10 V6
 
@@ -60,14 +60,14 @@ function makeCritDmgChar(id: string, critDmg: number, critRate = 1): CharacterDe
   return {
     id,
     name: id,
-    phase: "physical",
+    phase: null,
     base: { atk: 1000, hp: 1000, def: 100, stability: 6, critRate, critDmg },
     weapon: { id: `${id}_w`, name: "w", rarity: "standard", atkLvl1: 0, atkLvl60: 0, level: 60, subStats: [] },
     skills: abilities({
-      basic: { id: `${id}_basic`, name: "Hit", type: "basic", element: "physical", multiplier: 1.0, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
-      active1: { id: `${id}_a1`, name: "-", type: "active", element: "physical", multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 },
-      active2: { id: `${id}_a2`, name: "-", type: "active", element: "physical", multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 },
-      ultimate: { id: `${id}_ult`, name: "-", type: "ultimate", element: "physical", multiplier: 0, stabDamage: 0, cooldown: 0, confectanceCost: 3 },
+      basic: { id: `${id}_basic`, name: "Hit", type: "basic", element: null, multiplier: 1.0, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
+      active1: { id: `${id}_a1`, name: "-", type: "active", element: null, multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 },
+      active2: { id: `${id}_a2`, name: "-", type: "active", element: null, multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 },
+      ultimate: { id: `${id}_ult`, name: "-", type: "ultimate", element: null, multiplier: 0, stabDamage: 0, cooldown: 0, confectanceCost: 3 },
     }),
     passive: { id: `${id}_passive`, name: "-", effects: [] },
     fixedKeys: [],

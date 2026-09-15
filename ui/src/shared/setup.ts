@@ -6,11 +6,12 @@
  * WEAKNESSES (2026): the authoritative weakness system is
  *   Phase — Burn, Hydro, Freeze, Electric, Corrosion
  *   Ammo  — Heavy / Medium / Light / Shotgun / Melee
- * The engine represents phase weaknesses in `Element` (burn/electric/ice/...), where
- * Burn/Electric match directly and Freeze maps to the engine element `ice`; **Hydro and
- * Corrosion have NO engine Element yet** (audit mismatch — reported; never silently mapped
- * to acid/decay). Ammo weaknesses map 1:1 onto the engine `AmmoType` union and flow through
- * `dummy.weaknessTags`.
+ * The engine element vocabulary is exactly the five phases `burn | hydro | freeze |
+ * electric | corrosion` (ice→freeze and acid→corrosion were renames; hydro is distinct).
+ * `physical` and `decay` are REMOVED from the taxonomy: "Physical" is the Ammo Weakness
+ * dimension (AmmoType) — phase-less attacks carry `element: null`; Decay is not part of
+ * the project taxonomy. Ammo weaknesses map 1:1 onto the engine `AmmoType` union and flow
+ * through `dummy.weaknessTags`. Phase and Ammo are separate dimensions.
  */
 import type { ScenarioView } from "./engine-types.js";
 import { sampleScenario } from "./sample-scenario.js";
@@ -22,12 +23,12 @@ export const ROTATION_SLOTS: RotationSlot[] = ["basic", "active1", "active2", "u
  * Authoritative PHASE weakness options. `elementId` is the engine Element it maps to
  * (absent => the engine has no representation for it; never mapped to a wrong element).
  */
-export const PHASE_WEAKNESSES: Array<{ label: string; elementId?: string; engineUnavailable?: string }> = [
+export const PHASE_WEAKNESSES: Array<{ label: string; elementId: string }> = [
   { label: "Burn", elementId: "burn" },
-  { label: "Hydro" }, // engine Element for Hydro does not exist yet (audit mismatch — not selectable)
-  { label: "Freeze", elementId: "ice" },
+  { label: "Hydro", elementId: "hydro" },
+  { label: "Freeze", elementId: "freeze" },
   { label: "Electric", elementId: "electric" },
-  { label: "Corrosion" }, // engine Element for Corrosion does not exist yet (audit mismatch — not selectable)
+  { label: "Corrosion", elementId: "corrosion" },
 ];
 
 /** Authoritative AMMO weakness options — engine `AmmoType` 1:1. */
@@ -39,8 +40,8 @@ export const AMMO_WEAKNESSES: Array<{ label: string; tag: string }> = [
   { label: "Melee", tag: "melee" },
 ];
 
-/** Engine elements that can actually serve as phase weaknesses. */
-export const REPRESENTABLE_PHASE_IDS = PHASE_WEAKNESSES.filter((p) => p.elementId).map((p) => p.elementId!);
+/** Engine elements that can actually serve as phase weaknesses (Phase Weakness dimension only). */
+export const REPRESENTABLE_PHASE_IDS = PHASE_WEAKNESSES.map((p) => p.elementId);
 
 export interface SetupCharacter {
   id: string;
@@ -102,11 +103,12 @@ export function buildScenario(setup: SetupState): ScenarioView {
   if (!Number.isInteger(setup.turns) || setup.turns < 1 || setup.turns > 7) {
     throw new SetupError("Turns must be an integer between 1 and 7 (engine MVP cap).");
   }
-  // Phase weaknesses must map onto real engine Elements — never invented (Hydro/Corrosion guarded).
+  // Phase weaknesses must be exactly one of the five authoritative phases (burn/hydro/freeze/
+  // electric/corrosion). physical and decay are NOT part of the taxonomy (rejected).
   const weaknesses = setup.dummy.weaknesses.filter((w) => REPRESENTABLE_PHASE_IDS.includes(w));
   const nonRepresentable = setup.dummy.weaknesses.filter((w) => !REPRESENTABLE_PHASE_IDS.includes(w));
   if (nonRepresentable.length > 0) {
-    throw new SetupError(`Phase weakness(es) not representable in the engine yet: ${nonRepresentable.join(", ")} (never mapped to a wrong element).`);
+    throw new SetupError(`Phase weakness(es) not in the authoritative taxonomy: ${nonRepresentable.join(", ")} (never mapped to a wrong element).`);
   }
   // Ammo weaknesses map 1:1 onto the engine AmmoType union → dummy.weaknessTags.
   const tagSet = new Set(AMMO_WEAKNESSES.map((a) => a.tag));
@@ -128,7 +130,7 @@ export function buildScenario(setup: SetupState): ScenarioView {
               firstGain: 2,
               gainPerEvent: 1,
               maxStacks: 5,
-              requiresElements: ["physical"],
+              requiresElements: [null], // phase-less (physical-ammo) attacks only — Physical is the Ammo dimension
             })),
           },
         ]

@@ -18,7 +18,7 @@ function makeAmmoChar(id: string, ammo: AmmoType | undefined, mult = 1.0): Chara
     id: `${id}_basic`,
     name: "Hit",
     type: "basic",
-    element: "physical",
+    element: null,
     multiplier: mult,
     stabDamage: 0,
     cooldown: 0,
@@ -61,10 +61,13 @@ test("newly representable categories: heavy and light ammo exploit their target 
   assert.equal(hv.finalDamage, expected(1.1), "heavy: ×1.10 single weakness");
   assert.ok(hv.finalDamage > BASE, "exploited weakness deals more than the no-weakness baseline");
 
-  const light = run(makeAmmoChar("light_doll", "light_ammo"), ["light_ammo"], ["physical"]);
+  // Light ammo + a PHASE weakness row (burn): the phase-less attack exploits ONLY the ammo
+  // row (it has no phase element) — Phase and Ammo remain independent dimensions, and there
+  // is no Physical weakness row anymore (Physical = the Ammo dimension itself).
+  const light = run(makeAmmoChar("light_doll", "light_ammo"), ["light_ammo"], ["burn"]);
   const lv = light.log.find((e) => e.action === "light_doll_basic")!;
-  assert.deepEqual(lv.weaknessExploited, ["physical", "light_ammo"], "element + ammo categories co-exploit");
-  assert.equal(lv.finalDamage, expected(1.2), "light: 1 + 0.10×2 additive");
+  assert.deepEqual(lv.weaknessExploited, ["light_ammo"], "ammo-only exploit; phase row untouched by a phase-less attack");
+  assert.equal(lv.finalDamage, expected(1.1), "light: ammo-only ×1.10");
 });
 
 test("melee: valid TARGET weakness category only — an attack without ammoType never exploits it", () => {

@@ -25,7 +25,7 @@ Conventions:
     "pctAtk": 0, "pctHp": 0, "pctDef": 0,
     "extraFlatAtk": 0, "extraFlatHp": 0, "extraFlatDef": 0, "extraStabilityDamageReduction": 0
   },
-  "weaknesses": ["heavy_ammo", "acid"],
+  "weaknesses": ["heavy_ammo", "corrosion"],
   "weapon": { "id": "jinshizou", "level": 60, "calibration": 6 },
   "skills": { "basic": "qiongjiu_basic", "active1": "qiongjiu_common_rail", "active2": "qiongjiu_guide_to_victory", "ultimate": "qiongjiu_pressing_momentum", "passive": "qiongjiu_steady_plan" },
   "keys": { "fixed": ["qiongjiu_fk1", "qiongjiu_fk3", "qiongjiu_fk4"], "common": "strategic_negotiation", "expansion": "qiongjiu_ruined_gem", "affinity": ["qiongjiu_aff_atk"] }
@@ -60,7 +60,7 @@ Level value: `ceil(atkBase1 × coefficient/1000)` (research §3.9). Calibration 
   "type": "basic",                    // basic | active | ultimate | passive | support
   "multiplier": 0.80,                 // fraction of final ATK
   "fixedDamage": null,
-  "element": "physical",
+  "element": null,
   "range": 8, "aoe": false,
   "stabDamage": 2,
   "cooldown": 0,
@@ -146,7 +146,7 @@ Timing: every status carries `tickAt`: `ownActionEnd | roundEnd | ownTurnStart` 
 }
 ```
 
-`broken_state`/Exposed: pure state — duration fixed by the always-2-turn recovery rule (research U4 — non-configurable), **no damage effect (U3 resolved — no universal Exposed multiplier)**. DoT statuses (burn/acid) use `{ "kind": "fixed_damage", "percentOfAtk": 0.10, "tickAt": "actionEnd" }`.
+`broken_state`/Exposed: pure state — duration fixed by the always-2-turn recovery rule (research U4 — non-configurable), **no damage effect (U3 resolved — no universal Exposed multiplier)**. DoT statuses (burn/corrosion) use `{ "kind": "fixed_damage", "percentOfAtk": 0.10, "tickAt": "actionEnd" }`.
 
 ## 7. Dummy (handoff §4)
 
@@ -205,7 +205,7 @@ Every ability is level-indexed — each level holds the **complete** behavior of
 ```jsonc
 "skills": {
   "basic":  { "id": "qiongjiu_basic", "name": "Fuse", "type": "basic",
-              "levels": { "1": { "element": "physical", "multiplier": 0.8, "stabDamage": 2, "cooldown": 0, "confectanceCost": 0 } } },
+              "levels": { "1": { "element": null, "multiplier": 0.8, "stabDamage": 2, "cooldown": 0, "confectanceCost": 0 } } },
   "active1": { "id": "qiongjiu_common_rail", "name": "Common Rail", "type": "active",
                "levels": { "2": { "element": "burn", "multiplier": 1.5, "stabDamage": 3, "cooldown": 1, "confectanceCost": 0, "appliesStatuses": [{ "statusId": "support_boost_i", "durationRounds": 1, "stacks": 1, "target": "self" }] } } }
 }
@@ -282,7 +282,7 @@ Rules (implemented in `src/engine/state.ts` — `resolveSkill`/`effectiveAbility
     "character": { "id": "qiongjiu", "level": 60, "base": { "atk": 1224, "hp": 2494, "def": 695, "stability": 9, "critRate": 0.2, "critDmg": 0.2 }, "phase": "burn" },
     "build": { "weapon": { "id": "jinshizou", "atkBase1": 53, "lvlCoefficient60": 18.4, "subStats": [{ "stat": "pctAtk", "value": 0.15 }] }, "keys": { "fixed": ["qiongjiu_fk1_concentration"] } },
     "skills": {
-      "basic": { "id": "qiongjiu_basic", "multiplier": 0.8, "stabDamage": 2, "cooldown": 0, "element": "physical" },
+      "basic": { "id": "qiongjiu_basic", "multiplier": 0.8, "stabDamage": 2, "cooldown": 0, "element": null },
       "active1": { "id": "qiongjiu_common_rail", "multiplier": 1.5, "stabDamage": 0, "cooldown": 1, "element": "burn" },
       "active2": { "id": "qiongjiu_guide_to_victory", "multiplier": 1.1, "stabDamage": 0, "cooldown": 1, "element": "burn", "appliesStatuses": [{ "status": "overburn", "duration": 2 }] },
       "ultimate": { "id": "qiongjiu_pressing_momentum", "multiplier": 0, "confectanceCost": 3, "cooldown": 0 },

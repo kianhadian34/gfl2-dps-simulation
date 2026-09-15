@@ -9,7 +9,7 @@ import type { AmmoType, CharacterDef, Element, PassiveEffect } from "../model/ty
 
 // Ammo Weakness Upgrade (AWU) — validated 2026 (docs/research.md §3.18).
 // SEPARATE from the generic weakness multiplier: triggered by exploiting an
-// Ammo weakness (first exploit 2 stacks, subsequent +1, max 5); Physical-only
+// Ammo weakness (first exploit 2 stacks, subsequent +1, max 5); phase-less (physical-ammo)
 // bonus tiers 2→+7% / 3→+11% / 4→+17% / 5→+25%; Phase damage exempt.
 // Damage placement (validated): base → generic weakness ×(1+0.10×n) → additive
 // DMG% bucket (1 + no-cover + AWU tier …) → existing pipeline → ceil.
@@ -30,14 +30,14 @@ function awuPassive(
     firstGain: over.firstGain ?? 2,
     gainPerEvent: over.gainPerEvent ?? 1,
     maxStacks: over.maxStacks ?? 5,
-    requiresElements: ["physical"], // Phase exploits neither gain nor benefit (validated scope)
+    requiresElements: [null], // Phase exploits neither gain nor benefit (validated scope)
   };
 }
 
 interface CharOpts {
   atk: number;
   mult: number;
-  element: Element;
+  element: Element | null;
   ammoType?: AmmoType;
   critRate?: number;
   critDmg?: number;
@@ -80,7 +80,7 @@ function makeChar(id: string, opts: CharOpts): CharacterDef {
   return {
     id,
     name: id,
-    phase: "physical",
+    phase: null,
     base: { atk: opts.atk, hp: 1000, def: 100, stability: 6, critRate: opts.critRate ?? 0, critDmg: opts.critDmg ?? 0.2 },
     weapon: { id: `${id}_w`, name: "w", rarity: "standard", atkLvl1: 0, atkLvl60: 0, level: 60, subStats: [] },
     skills: skillsFor(opts),
@@ -107,32 +107,32 @@ function run(char: CharacterDef, dummy: object, turns = 6) {
 }
 
 // ---------------------------------------------------------------------------
-// Tier values + Physical gate (unit level, target-side status engine)
+// Tier values + phase-less gate (unit level, target-side status engine)
 // ---------------------------------------------------------------------------
 
-function takenBonus(stacks: number, element: Element): number {
+function takenBonus(stacks: number, element: Element | null): number {
   const st = createState(scenario({ turns: 1 }), REGISTRY, new Set());
   applyStatus(st, st.dummy, { statusId: AWU, stacks });
   return additiveTakenBonus(st.dummy, st.statusRegistry, element);
 }
 
 test("AWU tier values: 2→0.07, 3→0.11, 4→0.17, 5→0.25; below 2 and above 5 stay capped", () => {
-  assert.equal(takenBonus(2, "physical"), 0.07);
-  assert.equal(takenBonus(3, "physical"), 0.11);
-  assert.equal(takenBonus(4, "physical"), 0.17);
-  assert.equal(takenBonus(5, "physical"), 0.25);
-  assert.equal(takenBonus(1, "physical"), 0, "below the lowest tier contributes 0");
+  assert.equal(takenBonus(2, null), 0.07);
+  assert.equal(takenBonus(3, null), 0.11);
+  assert.equal(takenBonus(4, null), 0.17);
+  assert.equal(takenBonus(5, null), 0.25);
+  assert.equal(takenBonus(1, null), 0, "below the lowest tier contributes 0");
   // Stacks above maxStacks (manually raised) stay at the top tier.
   const st = createState(scenario({ turns: 1 }), REGISTRY, new Set());
   applyStatus(st, st.dummy, { statusId: AWU, stacks: 5 });
   st.dummy.statuses[0].stacks = 7;
-  assert.equal(additiveTakenBonus(st.dummy, st.statusRegistry, "physical"), 0.25);
+  assert.equal(additiveTakenBonus(st.dummy, st.statusRegistry, null), 0.25);
 });
 
-test("AWU is Physical-only: the tier bonus does not apply to Phase attack elements", () => {
+test("AWU is phase-less-only: the tier bonus does not apply to Phase attack elements", () => {
   assert.equal(takenBonus(5, "burn"), 0);
   assert.equal(takenBonus(5, "electric"), 0);
-  assert.equal(takenBonus(5, "physical"), 0.25, "Physical still receives it");
+  assert.equal(takenBonus(5, null), 0.25, "phase-less attacks still receive it");
 });
 
 test("AWU persistence: stacks do NOT expire from elapsed turns (validated in-game: 6 skipped turns)", () => {
@@ -149,14 +149,14 @@ test("AWU persistence: stacks do NOT expire from elapsed turns (validated in-gam
   const active = st.dummy.statuses.find((s) => s.statusId === AWU);
   assert.ok(active, "AWU status still present after 6 elapsed turns");
   assert.equal(active!.stacks, 5, "stacks unchanged (no time-based expiry)");
-  assert.equal(additiveTakenBonus(st.dummy, st.statusRegistry, "physical"), 0.25, "tier bonus intact");
+  assert.equal(additiveTakenBonus(st.dummy, st.statusRegistry, null), 0.25, "tier bonus intact");
 });
 
 // ---------------------------------------------------------------------------
 // Shotgun-character regression (validated 2026): 89 → 105/109/114/122, capped
 // ---------------------------------------------------------------------------
 
-const SHOTGUN = makeChar("shotgun", { atk: 801, mult: 0.8, element: "physical", ammoType: "shotgun_ammo" });
+const SHOTGUN = makeChar("shotgun", { atk: 801, mult: 0.8, element: null, ammoType: "shotgun_ammo" });
 
 test("AWU progression + damage (shotgun mirror): 105/109/114/122/122/122 with stacks 2,3,4,5,5,5", () => {
   const r = run(SHOTGUN, { weaknessTags: ["shotgun_ammo"], passives: [{ id: "awu", name: "AWU trigger", effects: [awuPassive("shotgun_ammo")] }] });
@@ -192,7 +192,7 @@ test("ammo weakness tag WITHOUT the AWU trigger: generic ×1.10 applies, stacks 
 // ---------------------------------------------------------------------------
 
 const QJ_ATK = 1958;
-const QJ = makeChar("qj_mirror", { atk: QJ_ATK, mult: 0.8, element: "physical", ammoType: "medium_ammo", noCover: 0.2 });
+const QJ = makeChar("qj_mirror", { atk: QJ_ATK, mult: 0.8, element: null, ammoType: "medium_ammo", noCover: 0.2 });
 
 test("Qiongjiu AWU regression: 616/636/665/704/704/704 (no-cover 20% + AWU in the same DMG% bucket)", () => {
   const r = run(QJ, { weaknessTags: ["medium_ammo"], passives: [{ id: "awu", name: "AWU trigger", effects: [awuPassive("medium_ammo")] }] });
@@ -251,7 +251,7 @@ test("Phase control crit: 1470 at 123.5% Crit DMG (validated; AWU still absent)"
 
 test("trigger values are data-driven: firstGain 3 / gainPerEvent 2 caps at 5", () => {
   const passive = awuPassive("medium_ammo", { firstGain: 3, gainPerEvent: 2 });
-  const c = makeChar("qj_mirror", { atk: QJ_ATK, mult: 0.8, element: "physical", ammoType: "medium_ammo", noCover: 0.2 });
+  const c = makeChar("qj_mirror", { atk: QJ_ATK, mult: 0.8, element: null, ammoType: "medium_ammo", noCover: 0.2 });
   const r = run(c, { weaknessTags: ["medium_ammo"], passives: [{ id: "awu", name: "AWU trigger", effects: [passive] }] });
   assert.deepEqual(
     r.log.map((e) => e.upgradeStacks),

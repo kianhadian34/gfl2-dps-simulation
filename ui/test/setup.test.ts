@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildScenario, DEFAULT_SETUP, SetupError, SetupStore, PHASE_WEAKNESSES, AMMO_WEAKNESSES, type SetupState } from "../src/shared/setup.js";
+import { buildScenario, DEFAULT_SETUP, SetupError, SetupStore, PHASE_WEAKNESSES, AMMO_WEAKNESSES, REPRESENTABLE_PHASE_IDS, type SetupState } from "../src/shared/setup.js";
 import type { LogEventView, ScenarioView } from "../src/shared/engine-types.js";
 
 function setupWith(): SetupState {
@@ -53,7 +53,7 @@ test("setup: a 7-turn configuration is preserved into the engine contract", () =
 test("setup: unknown phase weakness ids are rejected loudly (no silent filtering)", () => {
   assert.throws(
     () => buildScenario({ ...setupWith(), dummy: { ...DEFAULT_SETUP.dummy, weaknesses: ["burn", "nonsense"], ammoWeaknesses: [] } }),
-    (e: unknown) => e instanceof SetupError && /not representable/.test(e.message),
+    (e: unknown) => e instanceof SetupError && /authoritative taxonomy/.test(e.message),
   );
 });
 
@@ -71,7 +71,7 @@ test("setup: Training Dummy with an Ammo Weakness automatically receives the AWU
   assert.equal(effect.firstGain, 2);
   assert.equal(effect.gainPerEvent, 1);
   assert.equal(effect.maxStacks, 5);
-  assert.deepEqual(effect.requiresElements, ["physical"]);
+  assert.deepEqual(effect.requiresElements, [null], "AWU trigger limited to phase-less (physical-ammo) attacks — the Ammo dimension");
   // The basic ammo weakness dimension is also preserved.
   assert.deepEqual((sc.dummy as never as { weaknessTags: string[] }).weaknessTags, ["medium_ammo"]);
 });
@@ -97,12 +97,14 @@ test("weakness options: exactly the five authoritative PHASE weaknesses (no Phys
   assert.equal(labels.has("Physical"), false);
   assert.equal(labels.has("Acid"), false);
   assert.equal(labels.has("Decay"), false);
-  // Burn/Freeze/Electric map onto engine Elements; Hydro/Corrosion are pending (no mapping invented).
+  // All five phases map onto real engine Elements (hydro first-class since 2026; ice→freeze,
+  // acid→corrosion renames). physical/decay are NOT part of the taxonomy (removed).
   assert.equal(PHASE_WEAKNESSES.find((p) => p.label === "Burn")!.elementId, "burn");
-  assert.equal(PHASE_WEAKNESSES.find((p) => p.label === "Freeze")!.elementId, "ice");
+  assert.equal(PHASE_WEAKNESSES.find((p) => p.label === "Hydro")!.elementId, "hydro");
+  assert.equal(PHASE_WEAKNESSES.find((p) => p.label === "Freeze")!.elementId, "freeze");
   assert.equal(PHASE_WEAKNESSES.find((p) => p.label === "Electric")!.elementId, "electric");
-  assert.equal(PHASE_WEAKNESSES.find((p) => p.label === "Hydro")!.elementId, undefined);
-  assert.equal(PHASE_WEAKNESSES.find((p) => p.label === "Corrosion")!.elementId, undefined);
+  assert.equal(PHASE_WEAKNESSES.find((p) => p.label === "Corrosion")!.elementId, "corrosion");
+  assert.equal(new Set(REPRESENTABLE_PHASE_IDS).size, 5);
 });
 
 test("weakness options: exactly the five authoritative AMMO weaknesses (engine AmmoType 1:1)", () => {
@@ -114,9 +116,9 @@ test("weakness options: exactly the five authoritative AMMO weaknesses (engine A
 test("weakness preservation: selected phase weaknesses survive into the engine contract", () => {
   const sc = buildScenario({
     ...setupWith(),
-    dummy: { ...DEFAULT_SETUP.dummy, weaknesses: ["burn", "ice", "electric"], ammoWeaknesses: [] },
+    dummy: { ...DEFAULT_SETUP.dummy, weaknesses: ["burn", "freeze", "electric", "hydro", "corrosion"], ammoWeaknesses: [] },
   });
-  assert.deepEqual((sc.dummy as never as { weaknesses: string[] }).weaknesses, ["burn", "ice", "electric"]);
+  assert.deepEqual((sc.dummy as never as { weaknesses: string[] }).weaknesses, ["burn", "freeze", "electric", "hydro", "corrosion"]);
 });
 
 test("weakness preservation: selected ammo weaknesses flow through dummy.weaknessTags", () => {
@@ -131,13 +133,20 @@ test("weakness preservation: selected ammo weaknesses flow through dummy.weaknes
   assert.deepEqual((sc.dummy as never as { weaknessTags: string[] }).weaknessTags, ["medium_ammo", "shotgun_ammo", "melee"]);
 });
 
-test("weakness guard: Hydro/Corrosion are rejected, never mapped to a wrong engine element", () => {
+test("weakness guard: all five phases accepted; physical/decay rejected as never-selectable attack elements", () => {
+  // Hydro + Corrosion are first-class phase weaknesses now (no longer rejected).
+  const sc = buildScenario({
+    ...setupWith(),
+    dummy: { ...DEFAULT_SETUP.dummy, weaknesses: ["hydro", "corrosion"], ammoWeaknesses: [] },
+  });
+  assert.deepEqual((sc.dummy as never as { weaknesses: string[] }).weaknesses, ["hydro", "corrosion"]);
+  // Physical and Decay are attack elements — NOT phase weaknesses (never mapped in).
   assert.throws(
-    () => buildScenario({ ...setupWith(), dummy: { ...DEFAULT_SETUP.dummy, weaknesses: ["hydro"], ammoWeaknesses: [] } }),
-    (e: unknown) => e instanceof SetupError && /not representable/.test(e.message),
+    () => buildScenario({ ...setupWith(), dummy: { ...DEFAULT_SETUP.dummy, weaknesses: ["physical"], ammoWeaknesses: [] } }),
+    (e: unknown) => e instanceof SetupError && /authoritative taxonomy/.test(e.message),
   );
   assert.throws(
-    () => buildScenario({ ...setupWith(), dummy: { ...DEFAULT_SETUP.dummy, weaknesses: ["corrosion"], ammoWeaknesses: [] } }),
+    () => buildScenario({ ...setupWith(), dummy: { ...DEFAULT_SETUP.dummy, weaknesses: ["decay"], ammoWeaknesses: [] } }),
     SetupError,
   );
 });

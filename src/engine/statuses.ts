@@ -102,7 +102,7 @@ export function tickStatuses(
 export function additiveDealtBonus(
   unit: UnitState,
   statusRegistry: Map<string, EffectiveStatusDef>,
-  element: Element,
+  element: Element | null,
   ctx: { supportAttack: boolean; targetExposed: boolean },
 ): number {
   let sum = 0;
@@ -127,7 +127,7 @@ export function additiveDealtBonus(
 }
 
 /** Σ additive damage-taken bonuses from the target's own statuses (tier effects gated on the hit element). */
-export function additiveTakenBonus(unit: UnitState, statusRegistry: Map<string, EffectiveStatusDef>, element: Element): number {
+export function additiveTakenBonus(unit: UnitState, statusRegistry: Map<string, EffectiveStatusDef>, element: Element | null): number {
   let sum = 0;
   for (const s of unit.statuses) {
     const def = statusRegistry.get(s.statusId);

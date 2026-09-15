@@ -81,7 +81,7 @@ export function SetupScreen(props: {
                 const id = p.elementId;
                 const disabled = id === undefined;
                 return (
-                  <label key={p.label} className="inline" title={p.engineUnavailable ?? (id ? p.label : "No engine Element yet — never mapped to a wrong element")}>
+                  <label key={p.label} className="inline" title={p.label}>
                     <input
                       type="checkbox"
                       disabled={disabled}

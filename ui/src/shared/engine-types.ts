@@ -5,7 +5,7 @@
  * behavior. Keep in sync with src/model/* when the engine contract changes.
  */
 
-export type Element = "physical" | "burn" | "electric" | "ice" | "acid" | "decay";
+export type Element = "burn" | "hydro" | "freeze" | "electric" | "corrosion";
 export type ActionSlot = "basic" | "active1" | "active2" | "ultimate";
 export type SourceKind = "basic" | "active" | "ultimate" | "passive" | "status" | "dummy";
 

@@ -100,7 +100,7 @@ test("U15b: AWU stays out of Phase damage — no stack advancement and no AWU te
       dummy: {
         id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0,
         weaknesses: ["burn"], weaknessTags: ["medium_ammo"], phase: null, cover: "none",
-        passives: [{ id: "awu", name: "AWU trigger", effects: [{ kind: "grant_stacks_on_weakness_exploit", weaknessTag: "medium_ammo", statusId: "ammo_weakness_upgrade", firstGain: 2, gainPerEvent: 1, maxStacks: 5, requiresElements: ["physical"] }] }],
+        passives: [{ id: "awu", name: "AWU trigger", effects: [{ kind: "grant_stacks_on_weakness_exploit", weaknessTag: "medium_ammo", statusId: "ammo_weakness_upgrade", firstGain: 2, gainPerEvent: 1, maxStacks: 5, requiresElements: [null] }] }],
       },
     },
     customRegistry({ [c.id]: c }),

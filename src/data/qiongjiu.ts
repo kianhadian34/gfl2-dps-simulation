@@ -31,7 +31,7 @@ export const QIONGJIU: CharacterDef = {
           id: "qiongjiu_basic",
           name: "Fuse",
           type: "basic",
-          element: "physical",
+          element: null, // phase-less (physical-ammo attack): Physical is the Ammo Weakness dimension, not an element
           ammoType: "medium_ammo",
           multiplier: 0.8,
           stabDamage: 2,
@@ -211,7 +211,7 @@ export const QIONGJIU: CharacterDef = {
           id: "qiongjiu_support",
           name: "Steady Plan — Support Shot",
           type: "support",
-          element: "physical",
+          element: null, // phase-less (physical-ammo attack): Physical is the Ammo Weakness dimension, not an element
           ammoType: "medium_ammo",
           multiplier: 0.9,
           stabDamage: 2,

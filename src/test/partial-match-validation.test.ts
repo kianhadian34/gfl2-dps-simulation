@@ -47,7 +47,7 @@ function makeCommonRail(id: string, critRate: number, critDmg: number): Characte
   };
 }
 
-/** Target exposing MANY weaknesses (all 6 elements + two ammo categories = 8 displayed), matching only Burn + Medium ammo. */
+/** Target exposing MANY weaknesses (all five phase elements + two ammo categories = 7 displayed), matching only Burn + Medium ammo. */
 function run(c: CharacterDef) {
   return simulateScenario(
     {
@@ -61,7 +61,7 @@ function run(c: CharacterDef) {
         hp: 999999999,
         defense: DEF,
         stability: 65,
-        weaknesses: ["physical", "burn", "electric", "ice", "acid", "decay"],
+        weaknesses: ["burn", "electric", "freeze", "hydro", "corrosion"],
         weaknessTags: ["medium_ammo", "shotgun_ammo"],
         phase: null,
         cover: "none",
@@ -71,10 +71,10 @@ function run(c: CharacterDef) {
   );
 }
 
-test("U15a partial-match: 8 displayed weaknesses, 2 matched (Burn + Medium ammo) → ×1.20 → 1207 (validated)", () => {
+test("U15a partial-match: 7 displayed weaknesses, 2 matched (Burn + Medium ammo) → ×1.20 → 1207 (validated)", () => {
   const ev = run(makeCommonRail("a", 0, 0.2)).log[0];
   assert.equal(ev.finalDamage, 1207); // validated normal
-  // ONLY the matched pair is exploited — the other 6 displayed weaknesses contribute nothing.
+  // ONLY the matched pair is exploited — the other 5 displayed weaknesses contribute nothing.
   assert.deepEqual(ev.weaknessExploited, ["burn", "medium_ammo"]);
   // Formula identity from the logged inputs: base × ATK/(ATK+DEF) × 1.20 bracket × 1.20 matched.
   const expected = Math.ceil(ev.baseDamage! * (ev.attackerAtk! / (ev.attackerAtk! + ev.targetDef!)) * ev.bonusBracket * 1.2);

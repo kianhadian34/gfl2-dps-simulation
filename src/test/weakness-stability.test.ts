@@ -67,7 +67,7 @@ test("stab: AWU does NOT affect the stability calculation (stacks present → st
         stability: 65,
         weaknesses: ["burn"],
         weaknessTags: ["medium_ammo"],
-        passives: [{ id: "awu", name: "AWU trigger", effects: [{ kind: "grant_stacks_on_weakness_exploit", weaknessTag: "medium_ammo", statusId: "ammo_weakness_upgrade", firstGain: 2, gainPerEvent: 1, maxStacks: 5, requiresElements: ["physical"] }] }],
+        passives: [{ id: "awu", name: "AWU trigger", effects: [{ kind: "grant_stacks_on_weakness_exploit", weaknessTag: "medium_ammo", statusId: "ammo_weakness_upgrade", firstGain: 2, gainPerEvent: 1, maxStacks: 5, requiresElements: [null] }] }],
       },
     }),
   );

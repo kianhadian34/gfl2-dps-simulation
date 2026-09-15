@@ -4,7 +4,12 @@
 
 import type { GridConfig } from "./grid.js";
 
-export type Element = "physical" | "burn" | "electric" | "ice" | "acid" | "decay";
+// FINAL Global-release element vocabulary (2026): exactly five PHASE elements.
+// ice→freeze and acid→corrosion were renames; hydro was added; `physical` and `decay`
+// are REMOVED from the element vocabulary — "Physical" is represented by the Ammo
+// Weakness dimension (AmmoType), and Decay is not part of the project taxonomy.
+// Attacks without a phase element carry `element: null` (phase-less = physical-ammo attacks).
+export type Element = "burn" | "hydro" | "freeze" | "electric" | "corrosion";
 
 /** Main-action slots in a user-defined fixed rotation. */
 export type ActionSlot = "basic" | "active1" | "active2" | "ultimate";
@@ -50,7 +55,7 @@ export interface SkillDefVariant {
   id: string;
   name: string;
   type: "basic" | "active" | "ultimate" | "support";
-  element: Element;
+  element: Element | null;
   /** Ammo/weapon type of the attack (matches `DummyConfig.weaknessTags` — Ammo Weakness dimension, 2026). */
   ammoType?: AmmoType;
   /** Fraction of final ATK — used unless fixedDamage is set. */
@@ -174,11 +179,12 @@ export type PassiveEffect =
        * Target-side stack trigger (Ammo Weakness Upgrade, validated 2026):
        * declared on the TARGET (DummyConfig.passives). Fires when an attack
        * exploits `weaknessTag` (an authoritative ammo category) AND its element
-       * is in `requiresElements` (AWU: physical-only — Phase/elemental exploits
-       * do not advance stacks unless later validated otherwise). The first exploit
-       * applies `firstGain` stacks, every subsequent exploit adds `gainPerEvent`,
-       * capped at `maxStacks`. Data-driven — the 2/1/5 progression lives here,
-       * not in the damage formula. `statusId` must be a stackable target status.
+       * is in `requiresElements` (AWU: phase-less attacks only — `[null]`;
+       * Phase/elemental exploits do not advance stacks unless later validated
+       * otherwise). The first exploit applies `firstGain` stacks, every
+       * subsequent exploit adds `gainPerEvent`, capped at `maxStacks`.
+       * Data-driven — the 2/1/5 progression lives here, not in the damage
+       * formula. `statusId` must be a stackable target status.
        */
       kind: "grant_stacks_on_weakness_exploit";
       weaknessTag: AmmoType;
@@ -186,7 +192,7 @@ export type PassiveEffect =
       firstGain: number;
       gainPerEvent: number;
       maxStacks: number;
-      requiresElements?: Element[];
+      requiresElements?: (Element | null)[];
     };
 
 export interface PassiveDef {
@@ -235,7 +241,8 @@ export interface AffinityKeyDef {
 export interface CharacterDef {
   id: string;
   name: string;
-  phase: Element;
+  /** Doll's own phase element (null = phase-less, e.g. physical-ammo dolls). */
+  phase: Element | null;
   base: { atk: number; hp: number; def: number; stability: number; critRate: number; critDmg: number };
   weapon: WeaponDef;
   skills: { basic: AbilityDef; active1: AbilityDef; active2: AbilityDef; ultimate: AbilityDef; support?: AbilityDef };
@@ -285,14 +292,15 @@ export type StatusEffect =
        * value is a per-stack TIER lookup (non-linear), not `value × stacks`.
        * `tiers[stacks]` is used; stacks above the highest tier stay at the top
        * tier; stacks below the lowest tier contribute 0. `when.element` gates
-       * the effect to specific attack elements (AWU: physical only — Phase
-       * damage bypasses it naturally; there is no AWU special-case branch).
+       * the effect to specific attack elements (AWU: phase-less attacks only
+       * — `[null]`; Phase damage bypasses it naturally; there is no AWU
+       * special-case branch).
        */
       kind: "stack_tier_modifier";
       scope: "dealt" | "taken";
       mode: "additive";
       tiers: Record<number, number>;
-      when?: { element: Element[] };
+      when?: { element: (Element | null)[] };
     }
   | {
       /**
