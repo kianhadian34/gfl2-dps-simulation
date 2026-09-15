@@ -123,14 +123,16 @@ test("engine-level U20: 1 weakness ×1.10, 2 weaknesses ×1.20 (count-driven, ad
   // dummy with one vs two matched element weaknesses. Common Rail base stability
   // damage = 3 (validated 2026), +2 per exploited weakness:
   //   1 weakness → stab 3 + 2 = 5; 2 weaknesses → stab 3 + 4 = 7.
-  // Engine uses Qiongjiu's data panel (ATK 1831.95, dummy DEF 0):
-  //   bracket = 1 + 0.10 no-cover = 1.1; base = 1831.95 × 1.5 × 1.1 = 3022.72
-  //   1 weakness → ×1.10 → ceil(3022.72 × 1.1) = 3325
-  //   2 weaknesses → ×1.20 → ceil(3022.72 × 1.2) = 3628   (ratio 1.2/1.1, additive)
+  // Engine uses Qiongjiu's data panel (ATK = ceil((1224+369)×1.15) = 1832 — 2026 authoritative
+  // final-stat rounding; integer ATK flows into damage. dummy DEF 0:
+  //   bracket = 1 + 0.10 no-cover = 1.1; base = 1832 × 1.5 × 1.1 = 3022.8
+  //   1 weakness → ×1.10 → ceil(3022.8 × 1.1) = 3326   (previously 3325 with the fractional
+  //   ATK 1831.95 — the +1 is caused directly by the validated final-stat rounding)
+  //   2 weaknesses → ×1.20 → ceil(3022.8 × 1.2) = 3628   (ratio 1.2/1.1, additive)
   // Same seed ⇒ identical crit outcome in both runs, so the ratio is exact.
   const r1 = simulateScenario(scenario({ turns: 1, rotation: ["active1"], dummy: { weaknesses: ["burn"] } }));
   const r2 = simulateScenario(scenario({ turns: 1, rotation: ["active1"], dummy: { weaknesses: ["burn", "burn"] } }));
-  assert.equal(r1.log[0].finalDamage, 3325);
+  assert.equal(r1.log[0].finalDamage, 3326);
   assert.equal(r2.log[0].finalDamage, 3628);
   assert.deepEqual(r1.log[0].weaknessExploited, ["burn"]);
   assert.deepEqual(r2.log[0].weaknessExploited, ["burn", "burn"]);

@@ -1,5 +1,6 @@
 import type { AbilityDef, AbilitySlot, ActionSlot, AmmoType, CharacterDef, ConfigOverrides, Element, PassiveEffect, Scenario, SkillDefVariant, SourceKind, StatusDef, StatusOverride } from "../model/types.js";
 import { buildGrid, type GridState } from "./grid.js";
+import { finalStat } from "./stats.js";
 import type { ActiveStatus, LogEvent, ResolvedConfig } from "../model/runtime.js";
 import { Rng } from "./rng.js";
 import type { Registry } from "../data/registry.js";
@@ -100,16 +101,18 @@ export function weaponAtk(def: CharacterDef): number {
   return Math.round(w.atkLvl1 + (w.atkLvl60 - w.atkLvl1) * t);
 }
 
-/** Panel formula: (Σ flat) × (1 + Σ pct) — CONFIRMED research §3.8. */
+/** Panel formula: Final Stat = ceil((Initial + Flat) × (1 + Stat%)) — formula Mathematically Proven; integer DISPLAY Validated; exact hidden rounding method Not Tested (stats.ts). */
 export function computePanel(def: CharacterDef): { atk: number; hp: number; def: number } {
   const weaponAtkBonus = weaponAtk(def);
   const pctAtk = def.weapon.subStats.filter((s) => s.stat === "pctAtk").reduce((a, s) => a + s.value, 0);
   const pctHp = def.weapon.subStats.filter((s) => s.stat === "pctHp").reduce((a, s) => a + s.value, 0);
   const pctDef = def.weapon.subStats.filter((s) => s.stat === "pctDef").reduce((a, s) => a + s.value, 0);
+  // Game-authoritative FINAL STAT rounding: the integer results feed every downstream consumer
+  // (damage ATK/DEF, applier-ATK fixed damage, HP pools).
   return {
-    atk: (def.base.atk + weaponAtkBonus) * (1 + pctAtk),
-    hp: def.base.hp * (1 + pctHp),
-    def: def.base.def * (1 + pctDef),
+    atk: finalStat(def.base.atk, weaponAtkBonus, pctAtk),
+    hp: finalStat(def.base.hp, 0, pctHp),
+    def: finalStat(def.base.def, 0, pctDef),
   };
 }
 

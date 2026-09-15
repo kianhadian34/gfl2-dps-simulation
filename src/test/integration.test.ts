@@ -4,10 +4,11 @@ import { simulateScenario } from "../simulate.js";
 import { computePanel, weaponAtk } from "../engine/state.js";
 import { QJ } from "./helpers.js";
 
-test("panel stats: weapon ATK adds to base, ATK% multiplies the flat sum (research §3.8)", () => {
+test("panel stats: FINAL STAT = ceil((base + flat) × (1 + Stat%)) — 2026 authoritative rounding", () => {
   assert.equal(weaponAtk(QJ), 369); // 金石奏 60
   const panel = computePanel(QJ);
-  assert.ok(Math.abs(panel.atk - (1224 + 369) * 1.15) < 1e-9, `panel.atk=${panel.atk}`);
+  // ceil((1224 + 369) × 1.15) = ceil(1831.95) = 1832 — the integer final stat used downstream.
+  assert.equal(panel.atk, 1832, `panel.atk=${panel.atk}`);
   assert.equal(panel.def, 695);
   assert.equal(panel.hp, 2494);
 });
