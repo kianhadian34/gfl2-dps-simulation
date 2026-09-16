@@ -9,6 +9,7 @@
     "declaration": false,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "jsx": "react-jsx",
     "types": ["node"]
   },
   "include": ["test", "src/shared"]

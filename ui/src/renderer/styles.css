@@ -139,6 +139,14 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .status-chip .tooltip .tooltip-note { display: block; margin: 3px 0; color: var(--text); }
 .status-chip .tooltip .tooltip-row { display: block; color: var(--muted); }
 
+/* --- effect-source references (same interaction pattern; visually distinct) --- */
+.effect-source-chip {
+  border-bottom-style: dashed;
+  border-bottom-color: var(--warn, var(--accent));
+  cursor: help;
+}
+.effect-source-chip:focus { outline: 1px solid var(--accent); outline-offset: 1px; }
+
 /* --- rotation --- */
 .member { margin-bottom: 12px; }
 .member .mname { font-weight: 600; font-size: 13px; }

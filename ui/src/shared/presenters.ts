@@ -20,6 +20,41 @@ export function resolveStatus(id: string, catalog: Record<string, StatusInfoView
   return catalog?.[id];
 }
 
+/**
+ * Effect-source references on a log event, as interactive labels (engine `effectSources`).
+ * Only usable, non-blank labels are surfaced; anything unresolvable/blank is dropped so the
+ * caller keeps rendering the raw value as plain text (never fabricated metadata).
+ */
+export function effectSourceRefs(ev: LogEventView): string[] {
+  return (ev.effectSources ?? []).filter((s): s is string => typeof s === "string" && s.trim().length > 0);
+}
+
+export interface EffectSourceInfo {
+  /** Display name parsed from the engine provenance label (falls back to the raw label). */
+  readonly name: string;
+  /** Ability/passive level when the label carries it ("Xxx Lv.N"). */
+  readonly level?: number;
+  /** Fortification rank when the label carries it ("(VN)" — e.g. V6). */
+  readonly fortification?: number;
+}
+
+/**
+ * Parse an engine effect-source provenance label (format from state.ts:
+ * `"{Name} Lv.{level}"` with an optional `(V{rank})` suffix) into displayable parts.
+ * Pure deterministic split of the already-available string — anything that does not match
+ * (e.g. "Target passive (DummyConfig)", status names) is returned verbatim. Never invents
+ * metadata; no internal notes.
+ */
+export function parseEffectSource(label: string): EffectSourceInfo {
+  const m = /^(.+?) Lv\.(\d+)(?: \(V(\d+)\))?$/.exec(label.trim());
+  if (!m) return { name: label.trim() };
+  return {
+    name: m[1],
+    level: Number(m[2]),
+    ...(m[3] !== undefined ? { fortification: Number(m[3]) } : {}),
+  };
+}
+
 export interface StatusTooltip {
   readonly name: string;
   readonly category: string;

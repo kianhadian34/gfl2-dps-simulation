@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { buildLogRows, movementRows, resolveStatus, statusRefsFor, statusTooltipLines, totalsRows } from "../../../shared/presenters.js";
+import { buildLogRows, effectSourceRefs, movementRows, resolveStatus, statusRefsFor, statusTooltipLines, totalsRows } from "../../../shared/presenters.js";
+import { EffectSourceRef } from "../../../shared/effect-source-ref.js";
 import { fmt } from "../../../shared/format.js";
 import type { LogEventView, SessionView, StatusInfoView } from "../../../shared/engine-types.js";
 
@@ -40,6 +41,9 @@ function Row(props: {
             <tbody>
               {detailFields(props.ev).map(([label, value]) => {
                 const refRow = refRows.find((r) => r.label === label);
+                // effectSources render as interactive references (same interaction pattern as
+                // the status chips); a blank/unresolvable list falls back to the raw value.
+                const effectRefs = label === "effectSources" ? effectSourceRefs(props.ev) : [];
                 return (
                   <tr key={label}>
                     <td>{label}</td>
@@ -48,6 +52,8 @@ function Row(props: {
                         refRow.refs.map((r, i) => (
                           <StatusChip key={i} statusId={r.statusId} source={r.source} stacks={r.stacks} catalog={props.catalog} />
                         ))
+                      ) : effectRefs.length > 0 ? (
+                        effectRefs.map((source, i) => <EffectSourceRef key={i} label={source} />)
                       ) : (
                         value
                       )}
