@@ -13,18 +13,20 @@ import type { EffectSourceInfoView, EffectSourceRefView } from "./engine-types.j
 
 export function EffectSourceRef(props: {
   label: string;
-  ref?: EffectSourceRefView;
+  sourceRef?: EffectSourceRefView;
   defs?: Record<string, EffectSourceInfoView>;
 }): JSX.Element {
-  const resolved = resolveEffectSource(props.ref, props.defs);
+  const resolved = resolveEffectSource(props.sourceRef, props.defs);
   const parsed = parseEffectSource(props.label);
   const name = resolved?.name ?? parsed.name;
   // Level/V come ONLY from the STRUCTURED ref when one exists (never parse labels as a
   // substitute when structured data is available). Label-parse is used solely as the fallback
   // for events that predate structured refs (no ref at all).
-  const hasRef = props.ref !== undefined;
-  const level = hasRef && props.ref ? ("level" in props.ref ? props.ref.level : undefined) : parsed.level;
-  const v = hasRef && props.ref ? ("v" in props.ref ? props.ref.v : undefined) : parsed.fortification;
+  // NOTE: the prop is deliberately NOT named `ref` — `ref` is React-reserved and React strips
+  // it from function-component props, which silently broke structured resolution at runtime.
+  const hasRef = props.sourceRef !== undefined;
+  const level = hasRef && props.sourceRef ? ("level" in props.sourceRef ? props.sourceRef.level : undefined) : parsed.level;
+  const v = hasRef && props.sourceRef ? ("v" in props.sourceRef ? props.sourceRef.v : undefined) : parsed.fortification;
   return (
     <span className="status-chip effect-source-chip" tabIndex={0} role="button" aria-label={`effect source ${props.label}`}>
       {props.label}

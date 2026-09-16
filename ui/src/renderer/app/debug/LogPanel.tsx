@@ -56,7 +56,7 @@ function Row(props: {
                         ))
                       ) : effectLabels.length > 0 ? (
                         effectLabels.map((source, i) => (
-                          <EffectSourceRef key={i} label={source} ref={effectRefsArr[i]} defs={props.effectDefs} />
+                          <EffectSourceRef key={i} label={source} sourceRef={effectRefsArr[i]} defs={props.effectDefs} />
                         ))
                       ) : (
                         value

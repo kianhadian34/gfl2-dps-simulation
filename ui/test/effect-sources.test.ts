@@ -26,7 +26,7 @@ const DEFS: Record<string, EffectSourceInfoView> = {
 
 test("effectSources: Steady Plan structured ref → real player-facing description + level from the ref", () => {
   const ref: EffectSourceRefView = { kind: "passive", characterId: "qiongjiu", passiveId: "qiongjiu_steady_plan", level: 1, label: "Steady Plan Lv.1" };
-  const html = renderToStaticMarkup(EffectSourceRef({ label: "Steady Plan Lv.1", ref, defs: DEFS }));
+  const html = renderToStaticMarkup(EffectSourceRef({ label: "Steady Plan Lv.1", sourceRef: ref, defs: DEFS }));
   assert.match(html, /<b>Steady Plan<\/b>/);
   assert.match(html, /Grants \+1 Confectance on each damage event/);
   assert.match(html, /Level: 1/);
@@ -44,7 +44,7 @@ test("effectSources: Steady Plan structured ref → real player-facing descripti
 
 test("effectSources: fortification variant shows level + V from the structured ref", () => {
   const ref: EffectSourceRefView = { kind: "passive", characterId: "qiongjiu", passiveId: "qiongjiu_steady_plan", level: 3, v: 6, label: "Steady Plan Lv.3 (V6)" };
-  const html = renderToStaticMarkup(EffectSourceRef({ label: "Steady Plan Lv.3 (V6)", ref, defs: DEFS }));
+  const html = renderToStaticMarkup(EffectSourceRef({ label: "Steady Plan Lv.3 (V6)", sourceRef: ref, defs: DEFS }));
   assert.match(html, /Level: 3/);
   assert.match(html, /Fortification: V6/);
   assert.match(html, /Grants \+1 Confectance on each damage event/);
@@ -52,7 +52,7 @@ test("effectSources: fortification variant shows level + V from the structured r
 
 test("effectSources: status source resolves through the structured statusId to the existing playerDescription", () => {
   const ref: EffectSourceRefView = { kind: "status", statusId: "support_boost_i", label: "Common Rail Lv.1" };
-  const html = renderToStaticMarkup(EffectSourceRef({ label: "Common Rail Lv.1", ref, defs: DEFS }));
+  const html = renderToStaticMarkup(EffectSourceRef({ label: "Common Rail Lv.1", sourceRef: ref, defs: DEFS }));
   assert.match(html, /<b>Support Boost I<\/b>/);
   assert.match(html, /Support Action damage \+15%\. Damage against Exposed targets \+10%\./);
   assert.equal(html.includes("Level:"), false, "no fabricated level for a status ref");
@@ -60,7 +60,7 @@ test("effectSources: status source resolves through the structured statusId to t
 
 test("effectSources: ability source resolves to the ability description", () => {
   const ref: EffectSourceRefView = { kind: "ability", characterId: "qiongjiu", abilityId: "qiongjiu_basic", slot: "basic", level: 1, label: "Fuse Lv.1" };
-  const html = renderToStaticMarkup(EffectSourceRef({ label: "Fuse Lv.1", ref, defs: DEFS }));
+  const html = renderToStaticMarkup(EffectSourceRef({ label: "Fuse Lv.1", sourceRef: ref, defs: DEFS }));
   assert.match(html, /<b>Fuse<\/b>/);
   assert.match(html, /Deal 80% ATK damage/);
   assert.match(html, /Level: 1/);
@@ -69,7 +69,7 @@ test("effectSources: ability source resolves to the ability description", () => 
 test("effectSources: unresolved ref falls back to the label (no fabricated description)", () => {
   // A ref whose definition is NOT in the catalog (e.g. custom/test-only character):
   const ref: EffectSourceRefView = { kind: "passive", characterId: "custom", passiveId: "custom_passive", level: 1, label: "Custom Lv.1" };
-  const html = renderToStaticMarkup(EffectSourceRef({ label: "Custom Lv.1", ref, defs: DEFS }));
+  const html = renderToStaticMarkup(EffectSourceRef({ label: "Custom Lv.1", sourceRef: ref, defs: DEFS }));
   assert.match(html, /<b>Custom<\/b>/, "name from the label parse fallback");
   assert.match(html, /Level: 1/);
   assert.equal(html.includes("Grants +1 Confectance"), false, "no invented description");
@@ -78,7 +78,7 @@ test("effectSources: unresolved ref falls back to the label (no fabricated descr
 
 test("effectSources: target source shows its name only (data actually available)", () => {
   const ref: EffectSourceRefView = { kind: "target", label: "Target passive (DummyConfig)" };
-  const html = renderToStaticMarkup(EffectSourceRef({ label: "Target passive (DummyConfig)", ref, defs: DEFS }));
+  const html = renderToStaticMarkup(EffectSourceRef({ label: "Target passive (DummyConfig)", sourceRef: ref, defs: DEFS }));
   assert.match(html, /<b>Target passive \(DummyConfig\)<\/b>/);
   assert.equal(html.includes("Level:"), false);
   assert.equal(html.includes("Damage"), false, "no fabricated gameplay text");
@@ -90,6 +90,17 @@ test("effectSources: refs without structured data keep the safe label-based fall
   assert.match(html, /Level: 3/);
   assert.match(html, /Fortification: V6/);
   assert.equal(html.includes("VALIDATED"), false);
+});
+
+test("effectSources: structured data must arrive via `sourceRef`, never the React-reserved `ref` prop", () => {
+  // Regression guard: React strips `ref` from function-component props at runtime (and
+  // warns), which silently broke structured resolution. Passing data under the reserved
+  // name must NOT resolve — only the `sourceRef` prop is honored.
+  const sourceRef: EffectSourceRefView = { kind: "passive", characterId: "qiongjiu", passiveId: "qiongjiu_steady_plan", level: 1, label: "Steady Plan Lv.1" };
+  const viaReserved = renderToStaticMarkup(EffectSourceRef({ label: "Steady Plan Lv.1", ref: sourceRef, defs: DEFS } as never));
+  assert.equal(viaReserved.includes("Grants +1 Confectance"), false, "reserved `ref` prop is ignored (mirrors React runtime)");
+  const viaSourceRef = renderToStaticMarkup(EffectSourceRef({ label: "Steady Plan Lv.1", sourceRef, defs: DEFS }));
+  assert.match(viaSourceRef, /Grants \+1 Confectance on each damage event/, "structured ref resolves through `sourceRef`");
 });
 
 test("effectSources: label pairing — each effectSources label has its ref at the same index", () => {
