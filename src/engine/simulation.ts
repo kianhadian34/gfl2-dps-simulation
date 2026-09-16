@@ -251,6 +251,11 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   // includes any passive overflow conversion; effective Crit Rate caps at 100%.
   // configOverrides.critMultiplier is a test-only alternative hypothesis.
   const crit = resolveCritStats(statModifier(actor, state.statusRegistry, "critRate", actor.critRate), actor.critDmg, passiveEffects(actor));
+  // Guide V2 (VALIDATED 2026): the target already carries `guaranteedCritWhenHasStatus` at
+  // attack resolution ⇒ this attack's Crit Rate is +100% (always critical). Enforced through
+  // the EXISTING crit machinery (rate = 1 ≤ the 100% cap ⇒ a normal crit with zero overflow,
+  // bit-identical to the validated always-crit result); no permanent Crit Rate change.
+  const critRate = skill.guaranteedCritWhenHasStatus !== undefined && dummy.statuses.some((s) => s.statusId === skill.guaranteedCritWhenHasStatus) ? 1 : crit.critRate;
   const critMult = state.config.critMultiplier ?? 1 + crit.critDmg;
   const effAtk = statModifier(actor, state.statusRegistry, "atk", actor.panelAtk);
   const effDef = statModifier(dummy, state.statusRegistry, "def", dummy.defStat);
@@ -265,7 +270,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     phaseMult,
     weaknessMult,
     reductionMult,
-    critRate: crit.critRate,
+    critRate,
     critMultiplier: critMult,
     rng: state.rng,
   });

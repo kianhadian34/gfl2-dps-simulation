@@ -88,8 +88,8 @@ export const QIONGJIU: CharacterDef = {
       },
     },
     // ---------------------------------------------------------------- Guide to Victory (authoritative kit sync 2026):
-    // Lv1 = 110% ATK / Burn / Stab 3 (corrected from 0) / CD1 / Overburn 2 turns. Lv2 (V2) adds
-    // +100% crit rate vs Overburn-inflicted targets (deferred — target-has-status condition not supported).
+    // Lv1 = 110% ATK / Burn / Stab 3 (corrected from 0) / CD1 / Overburn 2 turns. Lv2 (V2) =
+    // +100% crit rate vs Overburn-inflicted targets — VALIDATED in-game 2026 (always crits).
     active2: {
       id: "qiongjiu_guide_to_victory",
       name: "Guide to Victory",
@@ -121,7 +121,11 @@ export const QIONGJIU: CharacterDef = {
           cooldown: 1,
           confectanceCost: 0,
           appliesStatuses: [{ statusId: "overburn", durationRounds: 2, target: "target" }],
-          deferredNote: "Lv2 (V2): 'If the target is inflicted with Overburn, increases the critical rate of this attack by 100%.' Target-has-status conditional crit-rate is NOT executable by the current engine (no target-status condition) — recorded, deferred. Crit-cap/stacking semantics not inferred.",
+          // Lv2 (V2) — VALIDATED in-game 2026: "If the target is inflicted with Overburn,
+          // gains +100% Critical Rate for THIS attack" (tooltip + in-game: always critically
+          // hits when the target has Overburn; NOT a permanent Crit Rate increase). Implemented
+          // via the generic `guaranteedCritWhenHasStatus` hook.
+          guaranteedCritWhenHasStatus: "overburn",
         },
       },
     },

@@ -64,6 +64,13 @@ export interface SkillDefVariant {
    * evidence for the category.
    */
   damageCategory?: "targeted" | "aoe";
+  /**
+   * VALIDATED CONDITIONAL CRIT (2026, Guide to Victory V2): if the TARGET already carries
+   * this status at attack resolution, this attack's Critical Rate is +100% (guaranteed crit
+   * for THIS attack only — never a permanent Crit Rate change). Absent = no such condition.
+   * Data-driven and generic; only set when the repo has validated evidence.
+   */
+  guaranteedCritWhenHasStatus?: string;
   element: Element | null;
   /** Ammo/weapon type of the attack (matches `DummyConfig.weaknessTags` — Ammo Weakness dimension, 2026). */
   ammoType?: AmmoType;

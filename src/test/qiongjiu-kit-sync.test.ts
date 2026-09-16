@@ -29,12 +29,14 @@ test("Common Rail Lv1 = 150% ATK / Stability 3 (authoritative), and V1 → Lv2 (
   assert.deepEqual(lv2.onKillStatuses, [{ statusId: "support_boost_i_30", stacks: 1, target: "self" }]);
 });
 
-test("Guide to Victory Lv1 Stability = 3 (corrected from 0), and V2 → Lv2 (deferred +100% crit vs Overburn)", () => {
+test("Guide to Victory Lv1 Stability = 3 (corrected from 0), and V2 → Lv2 (validated +100% crit vs Overburn)", () => {
   const lv1 = QIONGJIU.skills.active2.levels[1];
   assert.equal(lv1.stabDamage, 3);
   assert.equal(lv1.multiplier, 1.1);
   assert.equal(qjState(2).units[0].skillLevels.active2, 2); // V2 → Guide to Victory Lv2
-  assert.match(QIONGJIU.skills.active2.levels[2].deferredNote ?? "", /critical rate/);
+  // V2 conditional crit vs Overburn: VALIDATED in-game 2026 and IMPLEMENTED via the generic hook.
+  assert.equal(QIONGJIU.skills.active2.levels[2].guaranteedCritWhenHasStatus, "overburn");
+  assert.equal(QIONGJIU.skills.active2.levels[1].guaranteedCritWhenHasStatus, undefined);
 });
 
 test("Steady Plan is level-aware (Lv1/Lv2/Lv3) with the V1–V6 Fortification map", () => {
