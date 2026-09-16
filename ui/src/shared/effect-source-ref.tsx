@@ -1,24 +1,38 @@
 /**
  * Interactive EFFECT-SOURCE reference (presentation-only).
  *
- * Mirrors the existing status-chip interaction so effect sources in the Combat Log are
- * hoverable + keyboard focusable in exactly the same way. The tooltip body shows only the
- * information ALREADY in the engine provenance label (name / level / fortification rank,
- * parsed deterministically) plus the factual role of the entry in the event. No gameplay
- * descriptions are invented, and the internal status `note`/documentation is never used.
+ * Mirrors the existing status-chip interaction (hover + keyboard focus). When a structured
+ * `effectSourceRef` is present it is resolved against the effect-source definition catalog
+ * (built in main from the engine registry) and the tooltip shows the REAL player-facing
+ * description (engine `playerDescription`) plus the level / fortification from the ref.
+ * When the ref is absent or cannot be resolved, the tooltip falls back to the display label
+ * (with level/V parsed from it) — never fabricated content, never internal documentation.
  */
-import { parseEffectSource } from "./presenters.js";
+import { parseEffectSource, resolveEffectSource } from "./presenters.js";
+import type { EffectSourceInfoView, EffectSourceRefView } from "./engine-types.js";
 
-export function EffectSourceRef(props: { label: string }): JSX.Element {
-  const info = parseEffectSource(props.label);
+export function EffectSourceRef(props: {
+  label: string;
+  ref?: EffectSourceRefView;
+  defs?: Record<string, EffectSourceInfoView>;
+}): JSX.Element {
+  const resolved = resolveEffectSource(props.ref, props.defs);
+  const parsed = parseEffectSource(props.label);
+  const name = resolved?.name ?? parsed.name;
+  // Level/V come ONLY from the STRUCTURED ref when one exists (never parse labels as a
+  // substitute when structured data is available). Label-parse is used solely as the fallback
+  // for events that predate structured refs (no ref at all).
+  const hasRef = props.ref !== undefined;
+  const level = hasRef && props.ref ? ("level" in props.ref ? props.ref.level : undefined) : parsed.level;
+  const v = hasRef && props.ref ? ("v" in props.ref ? props.ref.v : undefined) : parsed.fortification;
   return (
     <span className="status-chip effect-source-chip" tabIndex={0} role="button" aria-label={`effect source ${props.label}`}>
       {props.label}
       <span className="tooltip" role="tooltip">
-        <b>{info.name}</b>
-        {info.level !== undefined && <span className="tooltip-row">Level: {info.level}</span>}
-        {info.fortification !== undefined && <span className="tooltip-row">Fortification: V{info.fortification}</span>}
-        <span className="tooltip-row">Effect source — contributed damage modifiers on this hit</span>
+        <b>{name}</b>
+        {resolved?.description && <span className="tooltip-row tooltip-desc">{resolved.description}</span>}
+        {level !== undefined && <span className="tooltip-row">Level: {level}</span>}
+        {v !== undefined && <span className="tooltip-row">Fortification: V{v}</span>}
       </span>
     </span>
   );

@@ -29,6 +29,41 @@ export function effectSourceRefs(ev: LogEventView): string[] {
   return (ev.effectSources ?? []).filter((s): s is string => typeof s === "string" && s.trim().length > 0);
 }
 
+type EffectSourceRefView = import("./engine-types.js").EffectSourceRefView;
+type EffectSourceInfoView2 = import("./engine-types.js").EffectSourceInfoView;
+
+/**
+ * Canonical catalog key for a structured effect-source ref (matches the main-process
+ * `buildEffectSourceCatalog`). Returns undefined only for a malformed ref.
+ */
+export function effectSourceRefKey(ref: EffectSourceRefView | undefined): string | undefined {
+  if (!ref) return undefined;
+  switch (ref.kind) {
+    case "status":
+      return `status:${ref.statusId}`;
+    case "passive":
+      return ref.characterId && ref.passiveId ? `passive:${ref.characterId}:${ref.passiveId}` : undefined;
+    case "ability":
+      return ref.abilityId ? `ability:${ref.characterId}:${ref.abilityId}` : undefined;
+    case "target":
+      return "target";
+  }
+}
+
+/**
+ * Resolve a structured ref against the effect-source definition catalog (built in main from
+ * the engine registry). Presentation-only: returns undefined when the ref is absent or the
+ * definition cannot be resolved — the caller falls back to the display label, never fabricates.
+ */
+export function resolveEffectSource(
+  ref: EffectSourceRefView | undefined,
+  catalog: Record<string, EffectSourceInfoView2> | undefined,
+): EffectSourceInfoView2 | undefined {
+  if (!catalog) return undefined;
+  const key = effectSourceRefKey(ref);
+  return key ? catalog[key] : undefined;
+}
+
 export interface EffectSourceInfo {
   /** Display name parsed from the engine provenance label (falls back to the raw label). */
   readonly name: string;

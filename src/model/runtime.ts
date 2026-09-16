@@ -1,4 +1,4 @@
-import type { ActionSlot, SourceKind, StatusOverride } from "./types.js";
+import type { ActionSlot, EffectSourceRef, SourceKind, StatusOverride } from "./types.js";
 
 export interface ResolvedConfig {
   /** null = derive from the attacker's Crit DMG stat (1 + critDmg, confirmed U1/U19); number = test-only alternative. */
@@ -56,6 +56,13 @@ export interface LogEvent {
   appliedSources?: { statusId: string; source: string }[];
   /** Provenance of the damage modifiers that contributed to THIS event's buckets (deduplicated labels, 2026). */
   effectSources?: string[];
+  /**
+   * STRUCTURED provenance for the same contributing sources (2026, additive): one ref per
+   * entry of `effectSources`, index-aligned and deduplicated by label in the SAME order.
+   * Preserves stable ids so the UI can resolve a real source definition instead of parsing
+   * the display label. The display grammar of `effectSources` is unchanged.
+   */
+  effectSourceRefs?: EffectSourceRef[];
   statusesExpired: string[];
   /** Snapshot of permanent target 'upgrade' statuses after the hit (e.g. Ammo Weakness Upgrade stacks, 2026) — absent when none. */
   upgradeStacks?: { statusId: string; stacks: number }[];

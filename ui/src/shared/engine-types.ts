@@ -118,6 +118,8 @@ export interface LogEventView {
   statusesApplied: string[];
   appliedSources?: { statusId: string; source: string }[];
   effectSources?: string[];
+  /** STRUCTURED provenance (2026): one ref per `effectSources` entry, label-aligned; mirrors the engine `EffectSourceRef` union. */
+  effectSourceRefs?: EffectSourceRefView[];
   statusesExpired: string[];
   upgradeStacks?: { statusId: string; stacks: number }[];
   statusTick?: { statusId: string; amount: number };
@@ -177,4 +179,20 @@ export interface SessionView {
   facts: GridCellFactsView | null;
   /** Authoritative status catalog (built in main from the engine registry) for hover tooltips. */
   statuses?: Record<string, StatusInfoView>;
+  /** Effect-source definition catalog (built in main from the engine registry) for the effect-source tooltips. */
+  effectSourceCatalog?: Record<string, EffectSourceInfoView>;
+}
+
+/** Mirrors the engine `EffectSourceRef` discriminated union (see src/model/types.ts). */
+export type EffectSourceRefView =
+  | { kind: "status"; statusId: string; label: string }
+  | { kind: "passive"; characterId: string; passiveId: string; level: number; v?: number; label: string }
+  | { kind: "ability"; characterId: string; abilityId: string; slot: string; level: number; v?: number; label: string }
+  | { kind: "target"; label: string };
+
+/** Resolved player-facing definition behind an effect-source ref. */
+export interface EffectSourceInfoView {
+  name: string;
+  /** Clean player-facing description when the definition provides one (playerDescription). */
+  description?: string;
 }

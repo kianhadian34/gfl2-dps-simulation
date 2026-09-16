@@ -1,5 +1,5 @@
 import type { Element } from "../model/types.js";
-import type { ActionSlot, PassiveEffect, Scenario, SkillDefVariant, SourceKind, StatusApplySpec, StatusEffect } from "../model/types.js";
+import type { ActionSlot, EffectSourceRef, PassiveEffect, Scenario, SkillDefVariant, SourceKind, StatusApplySpec, StatusEffect } from "../model/types.js";
 import type { LogEvent, SimulationResult } from "../model/runtime.js";
 import type { Registry } from "../data/registry.js";
 import { rollHit } from "./damage.js";
@@ -17,7 +17,7 @@ import {
   tickStatuses,
 } from "./statuses.js";
 import { applyStabilityDamage, endOfRoundStability } from "./stability.js";
-import { abilitySourceLabel, createState, DEFAULT_CONFIG, passiveSourceLabel, supportAttackQuota, type SimulationState, type UnitState } from "./state.js";
+import { abilitySourceLabel, createState, DEFAULT_CONFIG, fortificationV, passiveSourceLabel, supportAttackQuota, type SimulationState, type UnitState } from "./state.js";
 
 /**
  * Element/Phase interactions — CORRECTED 2026: GFL2 has NO elemental counter
@@ -186,6 +186,12 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   // contributed to this hit's buckets — a source (ability/passive/key) and its resulting
   // effect are ONE modifier, never double-counted just because both names appear.
   const sources = new Set<string>();
+  const sourceRefs = new Map<string, EffectSourceRef>();
+  const addSource = (label: string, ref: EffectSourceRef): void => {
+    if (sources.has(label)) return;
+    sources.add(label);
+    sourceRefs.set(label, ref);
+  };
   for (const s of actor.statuses) {
     const def = state.statusRegistry.get(s.statusId);
     if (!def) continue;
@@ -194,7 +200,10 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
         (e.kind === "damage_modifier" && e.scope === "dealt" && e.mode === "additive" && !(e.actions === "support" && !ev.supportAttack)) ||
         (e.kind === "stack_tier_modifier" && e.scope === "dealt"),
     );
-    if (contributes) sources.add(s.source ?? def.name);
+    if (contributes) {
+      const label = s.source ?? def.name;
+      addSource(label, { kind: "status", statusId: s.statusId, label });
+    }
   }
   for (const e of passiveEffects(actor)) {
     if (
@@ -204,18 +213,36 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
       e.when !== "target.stabilityAboveZero" &&
       !(e.actions === "support" && !ev.supportAttack)
     ) {
-      sources.add(actor.def ? passiveSourceLabel(actor.def, actor.passiveLevel) : "attacker passive");
+      if (actor.def) {
+        const label = passiveSourceLabel(actor.def, actor.passiveLevel);
+        addSource(label, {
+          kind: "passive",
+          characterId: actor.def.id,
+          passiveId: actor.def.passive.id,
+          level: actor.passiveLevel,
+          ...(fortificationV(actor.def, "passive", actor.passiveLevel) !== undefined
+            ? { v: fortificationV(actor.def, "passive", actor.passiveLevel) }
+            : {}),
+          label,
+        });
+      } else {
+        addSource("attacker passive", { kind: "passive", characterId: "", passiveId: "", level: actor.passiveLevel, label: "attacker passive" });
+      }
     }
   }
   for (const s of dummy.statuses) {
     const def = state.statusRegistry.get(s.statusId);
     if (!def) continue;
     if (def.effects.some((e) => e.kind === "damage_modifier" && e.scope === "taken" && e.mode === "additive")) {
-      sources.add(s.source ?? def.name);
+      const label = s.source ?? def.name;
+      addSource(label, { kind: "status", statusId: s.statusId, label });
     }
   }
-  if (targetMods.additive > 0) sources.add("Target passive (DummyConfig)");
-  if (sources.size > 0) ev.effectSources = [...sources];
+  if (targetMods.additive > 0) addSource("Target passive (DummyConfig)", { kind: "target", label: "Target passive (DummyConfig)" });
+  if (sources.size > 0) {
+    ev.effectSources = [...sources];
+    ev.effectSourceRefs = [...sources].map((label) => sourceRefs.get(label)!);
+  }
   const { mult, red } = multiplicativeTakenMods(dummy, state.statusRegistry);
   // no stability-cover reduction: dummy has no cover (Cover permanently out of scope)
   // U3: NO universal Exposed damage multiplier — the reduction chain contains none.

@@ -25,6 +25,7 @@ export const QIONGJIU: CharacterDef = {
     basic: {
       id: "qiongjiu_basic",
       name: "Fuse",
+      playerDescription: "Deal 80% ATK damage. Medium Ammo.",
       type: "basic",
       levels: {
         1: {
@@ -47,6 +48,7 @@ export const QIONGJIU: CharacterDef = {
     active1: {
       id: "qiongjiu_common_rail",
       name: "Common Rail",
+      playerDescription: "Deal 150% ATK Burn damage. Applies Support Boost I to self.",
       type: "active",
       levels: {
         1: {
@@ -91,6 +93,7 @@ export const QIONGJIU: CharacterDef = {
     active2: {
       id: "qiongjiu_guide_to_victory",
       name: "Guide to Victory",
+      playerDescription: "Deal 110% ATK Burn damage.",
       type: "active",
       levels: {
         1: {
@@ -126,6 +129,7 @@ export const QIONGJIU: CharacterDef = {
     ultimate: {
       id: "qiongjiu_pressing_momentum",
       name: "Pressing the Momentum",
+      playerDescription: "Deal massive ATK damage. Applies 3 Support Boost II stacks; at max Confectance grants an extra Support Boost II stack and +1 Support Action.",
       type: "ultimate",
       levels: {
         1: {
@@ -205,6 +209,7 @@ export const QIONGJIU: CharacterDef = {
     support: {
       id: "qiongjiu_support",
       name: "Steady Plan — Support Shot",
+      playerDescription: "Support Attack: deal 90% ATK damage. Medium Ammo.",
       type: "support",
       levels: {
         1: {
@@ -224,6 +229,7 @@ export const QIONGJIU: CharacterDef = {
   passive: {
     id: "qiongjiu_steady_plan",
     name: "Steady Plan",
+    playerDescription: "Grants +1 Confectance on each damage event. Damage +10% against No-Cover targets. Support Attack (90% ATK) triggers after an allied single-target hit, up to 3 per round.",
     // Baseline = Lv1 (engine fallback when no resolved level list exists).
     effects: [
       // +1 Confectance per damage event (CONFIRMED, research §3.12).

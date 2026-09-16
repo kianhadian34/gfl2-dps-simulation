@@ -307,13 +307,18 @@ export function resolvePassiveEffects(def: CharacterDef, level: number): Passive
   return def.passive.effects;
 }
 
+/** Fortification rank (V) that raised an ability to the given level (reverse lookup); undefined when none. */
+export function fortificationV(def: CharacterDef, ability: AbilitySlot, toLevel: number): number | undefined {
+  return (def.fortificationMap ?? []).find((f) => f.ability === ability && f.toLevel === toLevel)?.v;
+}
+
 /**
  * Human-readable provenance label for a passive-granted effect (2026):
  * "Steady Plan Lv.2 (V3)" — the fortification index comes from the character's
  * fortificationMap reverse lookup (which V raised the passive to this level).
  */
 export function passiveSourceLabel(def: CharacterDef, level: number): string {
-  const v = (def.fortificationMap ?? []).find((f) => f.ability === "passive" && f.toLevel === level)?.v;
+  const v = fortificationV(def, "passive", level);
   return `${def.passive.name} Lv.${level}${v !== undefined ? ` (V${v})` : ""}`;
 }
 
@@ -322,7 +327,7 @@ export function abilitySourceLabel(def: CharacterDef, slot: AbilitySlot, level: 
   if (slot === "passive") return passiveSourceLabel(def, level);
   const ability = def.skills[slot];
   if (!ability) return `${slot} Lv.${level}`;
-  const v = (def.fortificationMap ?? []).find((f) => f.ability === slot && f.toLevel === level)?.v;
+  const v = fortificationV(def, slot, level);
   return `${ability.name} Lv.${level}${v !== undefined ? ` (V${v})` : ""}`;
 }
 

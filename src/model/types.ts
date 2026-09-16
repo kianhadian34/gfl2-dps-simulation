@@ -114,6 +114,11 @@ export interface AbilityDef {
   name: string;
   type: SkillDefVariant["type"];
   levels: Record<number, SkillDefVariant>;
+  /**
+   * PLAYER-FACING tooltip text (2026): a clean, concise gameplay description of the ability.
+   * Same contract as StatusDef.playerDescription — never internal documentation/evidence.
+   */
+  playerDescription?: string;
 }
 
 /**
@@ -195,6 +200,33 @@ export type PassiveEffect =
       requiresElements?: (Element | null)[];
     };
 
+/**
+ * STRUCTURED provenance of one damage-modifier source contributing to a hit (2026, additive).
+ * Produced in `dealDamageHit` alongside the display `effectSources` labels, index-aligned and
+ * deduplicated by label. Carries stable ids so a consumer (UI) can resolve the real source
+ * definition without parsing the display label. `label` is the EXACT existing display label.
+ */
+export type EffectSourceRef =
+  | { kind: "status"; statusId: string; label: string }
+  | {
+      kind: "passive";
+      characterId: string;
+      passiveId: string;
+      level: number;
+      v?: number;
+      label: string;
+    }
+  | {
+      kind: "ability";
+      characterId: string;
+      abilityId: string;
+      slot: AbilitySlot;
+      level: number;
+      v?: number;
+      label: string;
+    }
+  | { kind: "target"; label: string };
+
 export interface PassiveDef {
   id: string;
   name: string;
@@ -205,6 +237,11 @@ export interface PassiveDef {
    * wins; `effects` remains the engine baseline (level 1 or lowest available).
    */
   levels?: Record<number, PassiveEffect[]>;
+  /**
+   * PLAYER-FACING tooltip text (2026): a clean, concise gameplay description of the passive.
+   * Same contract as StatusDef.playerDescription — never internal documentation/evidence.
+   */
+  playerDescription?: string;
   /** Per-level authoritative text that is NOT executable by the engine (recorded faithfully, deferred). */
   deferredNotes?: Record<number, string>;
 }

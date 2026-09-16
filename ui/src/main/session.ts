@@ -12,7 +12,7 @@ import { broadcast } from "./windows.js";
 import { simulateScenario } from "../../../src/simulate.ts";
 import { REGISTRY } from "../../../src/data/registry.ts";
 import { buildGrid, moveCost, tileHeightAt, tileKey, bossFootprintTiles } from "../../../src/engine/grid.ts";
-import type { ScenarioView, SessionView, MovementFactView, GridCellFactsView } from "../shared/engine-types.js";
+import type { ScenarioView, SessionView, MovementFactView, GridCellFactsView, EffectSourceInfoView } from "../shared/engine-types.js";
 
 let current: SessionView | null = null;
 let runCounter = 0;
@@ -75,6 +75,7 @@ export function runSession(scenario: ScenarioView): SessionView {
     movements: [],
     facts: null,
     statuses: buildStatusCatalog(),
+    effectSourceCatalog: buildEffectSourceCatalog(),
   };
   session.movements = computeMovements(session);
   session.facts = computeGridFacts(session);
@@ -100,6 +101,34 @@ function buildStatusCatalog(): Record<string, import("../shared/engine-types.js"
       purgeable: def.purgeable,
       consumeOneOnUse: def.consumeOneOnUse,
     };
+  }
+  return catalog;
+}
+
+/**
+ * EFFECT-SOURCE DEFINITION CATALOG (2026): resolves each structured `EffectSourceRef` to the
+ * real player-facing definition from the engine registry. Keys:
+ *   status:{statusId}     → StatusDef (existing StatusInfoView.playerDescription)
+ *   passive:{char}:{passiveId} → PassiveDef.playerDescription
+ *   ability:{char}:{abilityId} → AbilityDef.playerDescription
+ *   target                → the DummyConfig target-passive entry (name only; no fabricated text)
+ * Engine-origin only — the renderer resolves refs against this catalog and never parses labels
+ * when a structured ref exists.
+ */
+function buildEffectSourceCatalog(): Record<string, EffectSourceInfoView> {
+  const catalog: Record<string, EffectSourceInfoView> = { target: { name: "Target passive (DummyConfig)" } };
+  for (const [id, def] of REGISTRY.getStatusMap()) {
+    const pd = (def as { playerDescription?: string }).playerDescription;
+    catalog[`status:${id}`] = { name: def.name, ...(pd ? { description: pd } : {}) };
+  }
+  for (const charId of REGISTRY.characterIds()) {
+    const c = REGISTRY.getCharacter(charId);
+    if (!c) continue;
+    if (c.passive.playerDescription) catalog[`passive:${charId}:${c.passive.id}`] = { name: c.passive.name, description: c.passive.playerDescription };
+    for (const slot of ["basic", "active1", "active2", "ultimate", "support"] as const) {
+      const ability = c.skills[slot];
+      if (ability && ability.playerDescription) catalog[`ability:${charId}:${ability.id}`] = { name: ability.name, description: ability.playerDescription };
+    }
   }
   return catalog;
 }

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { buildLogRows, effectSourceRefs, movementRows, resolveStatus, statusRefsFor, statusTooltipLines, totalsRows } from "../../../shared/presenters.js";
 import { EffectSourceRef } from "../../../shared/effect-source-ref.js";
 import { fmt } from "../../../shared/format.js";
-import type { LogEventView, SessionView, StatusInfoView } from "../../../shared/engine-types.js";
+import type { LogEventView, SessionView, StatusInfoView, EffectSourceInfoView } from "../../../shared/engine-types.js";
 
 /**
  * COMBAT LOG PANEL — the primary debugging view. Full LogEvent fidelity: every engine
@@ -16,6 +16,7 @@ function Row(props: {
   selected: boolean;
   onSelect: (i: number) => void;
   catalog: Record<string, StatusInfoView>;
+  effectDefs?: Record<string, EffectSourceInfoView>;
 }): JSX.Element {
   const [open, setOpen] = useState(false);
   const cat = props.ev.actionType === "status_tick" ? "tick" : props.ev.supportAttack ? "support" : props.ev.fixedDamage !== undefined || props.ev.statusTick ? "fixed" : "action";
@@ -43,7 +44,8 @@ function Row(props: {
                 const refRow = refRows.find((r) => r.label === label);
                 // effectSources render as interactive references (same interaction pattern as
                 // the status chips); a blank/unresolvable list falls back to the raw value.
-                const effectRefs = label === "effectSources" ? effectSourceRefs(props.ev) : [];
+                const effectLabels = label === "effectSources" ? effectSourceRefs(props.ev) : [];
+                const effectRefsArr = props.ev.effectSourceRefs ?? [];
                 return (
                   <tr key={label}>
                     <td>{label}</td>
@@ -52,8 +54,10 @@ function Row(props: {
                         refRow.refs.map((r, i) => (
                           <StatusChip key={i} statusId={r.statusId} source={r.source} stacks={r.stacks} catalog={props.catalog} />
                         ))
-                      ) : effectRefs.length > 0 ? (
-                        effectRefs.map((source, i) => <EffectSourceRef key={i} label={source} />)
+                      ) : effectLabels.length > 0 ? (
+                        effectLabels.map((source, i) => (
+                          <EffectSourceRef key={i} label={source} ref={effectRefsArr[i]} defs={props.effectDefs} />
+                        ))
                       ) : (
                         value
                       )}
@@ -168,6 +172,7 @@ export function LogPanel(props: { session: SessionView; selected: number | null;
             selected={props.selected === row.index}
             onSelect={props.onSelect}
             catalog={props.session.statuses ?? {}}
+            effectDefs={props.session.effectSourceCatalog}
           />
         ))}
       </div>
