@@ -63,8 +63,9 @@ test("Confectance cost is consumed immediately on activation (before damage/effe
   assert.deepEqual(ev.confectance, { before: 3, after: 0, cost: 3 });
 });
 
-test("FK1 (Concentration) stacks +3 onto the confirmed battle-start of 3", () => {
-  // Confirmed start = 3; FK1 +3 → 6 (clamped at max); ultimate costs 3 → after = 3.
+test("FK1 (Concentration) — VALIDATED: battle start = 6 Confectance (baseline 3 + FK1 +3)", () => {
+  // In-game VALIDATED (2026): Qiongjiu begins battle with 6 Confectance Index with FK1;
+  // the normal start is 3, so FK1 contributes exactly +3 (capped at max 6).
   const withKey = simulateScenario(scenario({ turns: 1, rotation: ["ultimate"], keys: ["qiongjiu_fk1_concentration"] }));
   assert.deepEqual(withKey.log[0].confectance, { before: 6, after: 3, cost: 3 });
   const without = simulateScenario(scenario({ turns: 1, rotation: ["ultimate"], keys: [] }));
