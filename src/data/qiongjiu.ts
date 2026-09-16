@@ -101,6 +101,7 @@ export const QIONGJIU: CharacterDef = {
           name: "Guide to Victory",
           type: "active",
           damageCategory: "aoe", // authoritative in-game class (descriptive only; no engine consumer)
+          targetingCardinalRay: { direction: "down", range: 1, effectiveArea: 8 }, // VALIDATED 2026: Range 1, Effective Area 8, first enemy in the selected cardinal direction
           element: "burn",
           ammoType: "medium_ammo",
           multiplier: 1.1,
@@ -114,6 +115,7 @@ export const QIONGJIU: CharacterDef = {
           name: "Guide to Victory",
           type: "active",
           damageCategory: "aoe", // authoritative in-game class (descriptive only; no engine consumer)
+          targetingCardinalRay: { direction: "down", range: 1, effectiveArea: 8 }, // VALIDATED 2026: Range 1, Effective Area 8, first enemy in the selected cardinal direction
           element: "burn",
           ammoType: "medium_ammo",
           multiplier: 1.1,

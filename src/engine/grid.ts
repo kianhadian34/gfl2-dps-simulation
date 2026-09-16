@@ -195,3 +195,43 @@ export function attackHeightEffect(attackerHeight: TileHeight, targetHeight: Til
   if (attackerHeight === "high" && targetHeight === "ground") return "exposed";
   return "none";
 }
+
+export type CardinalDirection = "up" | "down" | "left" | "right";
+
+const CARDINAL_DELTA: Record<CardinalDirection, { dx: number; dy: number }> = {
+  up: { dx: 0, dy: -1 },
+  down: { dx: 0, dy: 1 },
+  left: { dx: -1, dy: 0 },
+  right: { dx: 1, dy: 0 },
+};
+
+/** The four valid cardinal directions (Guide to Victory targeting, VALIDATED 2026). Diagonals are never valid. */
+export const CARDINAL_DIRECTIONS = ["up", "down", "left", "right"] as const;
+
+export function isCardinalDirection(d: string): d is CardinalDirection {
+  return (CARDINAL_DIRECTIONS as readonly string[]).includes(d);
+}
+
+/**
+ * GUIDE TO VICTORY targeting (VALIDATED 2026, screenshot + tooltip): trace up to
+ * `effectiveArea` tiles from `from` along the cardinal `direction`; the FIRST enemy tile
+ * encountered is the target (stop after the first enemy — never target enemies behind it).
+ * Undefined when no enemy lies within the effective area (out-of-bounds also ends the ray).
+ * Pure; diagonal directions are rejected defensively.
+ */
+export function resolveCardinalRayTarget(
+  state: GridState,
+  from: GridCoord,
+  direction: CardinalDirection,
+  effectiveArea: number,
+): GridCoord | undefined {
+  if (!isCardinalDirection(direction)) throw new Error(`invalid cardinal direction: ${String(direction)}`);
+  const { dx, dy } = CARDINAL_DELTA[direction];
+  for (let d = 1; d <= effectiveArea; d++) {
+    const x = from.x + dx * d;
+    const y = from.y + dy * d;
+    if (!inBounds(x, y, state.size)) return undefined;
+    if (state.enemyTiles.has(tileKey(x, y))) return { x, y };
+  }
+  return undefined;
+}

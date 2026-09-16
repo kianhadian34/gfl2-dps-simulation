@@ -71,6 +71,16 @@ export interface SkillDefVariant {
    * Data-driven and generic; only set when the repo has validated evidence.
    */
   guaranteedCritWhenHasStatus?: string;
+  /** Direction of a cardinal-ray ability (Guide to Victory, VALIDATED screenshot/tooltip 2026). Diagonal directions are NOT valid. */
+  /**
+   * GUIDE TO VICTORY targeting (VALIDATED 2026, screenshot + tooltip): select one cardinal
+   * direction, trace up to `effectiveArea` tiles along it from the caster, and the FIRST
+   * enemy encountered is the target (stop after the first enemy; no diagonal directions).
+   * `range` (1) is the authoritative displayed Range; the ray length is `effectiveArea` (8).
+   * Does NOT change damage/stability/weakness/crit — selection only. Absent = default
+   * single-dummy targeting (no grid interaction).
+   */
+  targetingCardinalRay?: { direction: "up" | "down" | "left" | "right"; range: 1; effectiveArea: 8 };
   element: Element | null;
   /** Ammo/weapon type of the attack (matches `DummyConfig.weaknessTags` — Ammo Weakness dimension, 2026). */
   ammoType?: AmmoType;

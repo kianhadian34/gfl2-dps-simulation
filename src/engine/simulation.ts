@@ -5,7 +5,7 @@ import type { Registry } from "../data/registry.js";
 import { rollHit } from "./damage.js";
 import { cooldownRemaining, setCooldown, tickCooldowns } from "./cooldowns.js";
 import { gainConfectance, spendConfectance } from "./resources.js";
-import { attackHeightEffect, legalDestinations, moveCost, tileKey } from "./grid.js";
+import { attackHeightEffect, legalDestinations, moveCost, resolveCardinalRayTarget, tileKey } from "./grid.js";
 import {
   additiveDealtBonus,
   additiveTakenBonus,
@@ -256,6 +256,19 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   // the EXISTING crit machinery (rate = 1 ≤ the 100% cap ⇒ a normal crit with zero overflow,
   // bit-identical to the validated always-crit result); no permanent Crit Rate change.
   const critRate = skill.guaranteedCritWhenHasStatus !== undefined && dummy.statuses.some((s) => s.statusId === skill.guaranteedCritWhenHasStatus) ? 1 : crit.critRate;
+  // GUIDE TO VICTORY targeting (VALIDATED 2026): with a grid, verify the selected cardinal
+  // ray finds its FIRST enemy within the effective area; the (single) dummy receives the hit
+  // exactly as before. Without a grid the default single-dummy path is unchanged.
+  if (skill.targetingCardinalRay && state.grid) {
+    const placement = state.grid.placements.get(actor.id);
+    if (!placement) throw new Error(`guide targeting for ${actor.id} has no placement`);
+    const t = resolveCardinalRayTarget(state.grid, placement.coord, skill.targetingCardinalRay.direction, skill.targetingCardinalRay.effectiveArea);
+    if (!t) {
+      throw new Error(
+        `guide to victory: no enemy target within ${skill.targetingCardinalRay.effectiveArea} tiles ${skill.targetingCardinalRay.direction} of ${actor.id} (${placement.coord.x},${placement.coord.y})`,
+      );
+    }
+  }
   const critMult = state.config.critMultiplier ?? 1 + crit.critDmg;
   const effAtk = statModifier(actor, state.statusRegistry, "atk", actor.panelAtk);
   const effDef = statModifier(dummy, state.statusRegistry, "def", dummy.defStat);
