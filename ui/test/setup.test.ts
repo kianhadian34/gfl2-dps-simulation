@@ -226,3 +226,55 @@ test("end-to-end: Setup-built Training Dummy drives the real engine AWU progress
   const brackets = basics.map((e: LogEventView) => Number(e.bonusBracket.toFixed(2)));
   assert.deepEqual(brackets, [1.17, 1.21, 1.27, 1.35, 1.35], "tiers +7%/+11%/+17%/+25% in the DMG% bucket");
 });
+
+test("grid: enabled with a no-Mobility unit strips scripted moves but keeps the rest of the grid", () => {
+  // Qiongjiu has no CharacterDef.mobility (engine data) → the setup must NOT attach scripted
+  // moves (the engine would reject them), while placement/tiles/ladders stay available.
+  const sc: ScenarioView = buildScenario({ ...setupWith(), gridEnabled: true });
+  assert.ok(sc.grid, "grid stays enabled");
+  const g = sc.grid!;
+  assert.deepEqual(g.moves!, [], "no scripted moves without declared Mobility");
+  assert.equal(g.units.length, 1, "Qiongjiu placement kept");
+  assert.equal(g.units[0].unitId, "qiongjiu");
+  assert.equal(g.units[0].coord.x, 4);
+  assert.equal(g.blockedTiles!.length, 3, "blocked tiles kept");
+  assert.ok(g.ladders!.length >= 1, "ladders kept");
+});
+
+test("grid: enabled with a declared-Mobility unit keeps its scripted moves", () => {
+  const setup = {
+    ...setupWith(),
+    gridEnabled: true,
+    characters: [{ id: "qiongjiu", name: "Qiongjiu", selected: true, mobility: 5 }],
+  };
+  const sc: ScenarioView = buildScenario(setup);
+  const g = sc.grid!;
+  assert.equal(g.moves!.length, 2, "both scripted moves kept when Mobility is declared");
+  assert.deepEqual(g.moves![0], { unitId: "qiongjiu", round: 1, to: { x: 5, y: 7 } });
+  assert.deepEqual(g.moves![1], { unitId: "qiongjiu", round: 2, to: { x: 5, y: 6 } });
+});
+
+test("grid: disabled → no grid attached", () => {
+  const sc: ScenarioView = buildScenario(setupWith());
+  assert.equal(sc.grid, undefined);
+});
+
+test("end-to-end: grid-enabled no-Mobility Qiongjiu setup runs the real engine without a Mobility-0 error", async () => {
+  const sim = await import(new URL("../../../dist/simulate.js", import.meta.url).href);
+  const reg = await import(new URL("../../../dist/data/registry.js", import.meta.url).href);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const simulateScenarioEngine = (sim as { simulateScenario: (s: unknown, r: unknown) => any }).simulateScenario;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const REGISTRY = (reg as { REGISTRY: unknown }).REGISTRY;
+  const sc = buildScenario({ ...setupWith(), gridEnabled: true });
+  assert.deepEqual(sc.grid?.moves, [], "no moves to trip the engine's Mobility-0 legality gate");
+  let result: { turns: number; log: unknown[] };
+  try {
+    result = simulateScenarioEngine(sc as never, REGISTRY);
+  } catch (e) {
+    assert.fail(`grid-enabled run threw: ${String(e)}`);
+    return;
+  }
+  assert.equal(result.turns, 2);
+  assert.ok(result.log.length >= 1, "simulation produced events");
+});

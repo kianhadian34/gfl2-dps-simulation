@@ -11,7 +11,7 @@ export function useSession(): {
   error: string | null;
   run: (scenario: SessionView["scenario"]) => Promise<SessionView>;
   openScenario: () => Promise<void>;
-  listCharacters: () => Promise<Array<{ id: string; name: string }>>;
+  listCharacters: () => Promise<Array<{ id: string; name: string; mobility?: number }>>;
 } {
   const [session, setSession] = useState<SessionView | null>(null);
   const [error, setError] = useState<string | null>(null);

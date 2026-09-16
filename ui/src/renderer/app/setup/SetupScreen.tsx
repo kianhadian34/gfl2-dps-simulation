@@ -23,7 +23,7 @@ export function SetupScreen(props: {
     if (charsLoaded) return;
     listCharacters()
       .then((list) => {
-        props.onChange({ ...props.setup, characters: list.map((c) => ({ id: c.id, name: c.name, selected: false })) });
+        props.onChange({ ...props.setup, characters: list.map((c) => ({ id: c.id, name: c.name, selected: false, ...(c.mobility !== undefined ? { mobility: c.mobility } : {}) })) });
         setCharsLoaded(true);
       })
       .catch((e: unknown) => setFormError(String(e)));

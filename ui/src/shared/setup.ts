@@ -47,6 +47,8 @@ export interface SetupCharacter {
   id: string;
   name: string;
   selected: boolean;
+  /** Engine Mobility stat (engine-sourced via listCharacters). Absent = the unit cannot move; scripted grid moves are stripped for it. */
+  mobility?: number;
 }
 
 export interface SetupState {
@@ -152,6 +154,11 @@ export function buildScenario(setup: SetupState): ScenarioView {
       phase: null,
       cover: "none",
     },
-    grid: setup.gridEnabled ? sampleScenario.grid : undefined,
+    // GRID (2026): keep placement/tiles/ladders, but ONLY attach scripted moves for units with a
+    // declared Mobility > 0 (data-driven — no character special case). Absent Mobility = the
+    // unit cannot move; the engine would (correctly) reject any scripted move for it.
+    grid: setup.gridEnabled && sampleScenario.grid
+      ? { ...sampleScenario.grid, moves: (sampleScenario.grid.moves ?? []).filter((m) => (setup.characters.find((c) => c.id === m.unitId)?.mobility ?? 0) > 0) }
+      : undefined,
   };
 }

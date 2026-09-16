@@ -140,7 +140,7 @@ export function registerSimHandlers(): void {
   ipcMain.handle("sim:listCharacters", () =>
     REGISTRY.characterIds().map((id) => {
       const def = REGISTRY.getCharacter(id);
-      return { id, name: def?.name ?? id };
+      return { id, name: def?.name ?? id, ...(def && def.mobility !== undefined ? { mobility: def.mobility } : {}) };
     }),
   );
 

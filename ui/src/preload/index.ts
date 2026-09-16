@@ -7,7 +7,7 @@ import type { ScenarioView, SessionView } from "../shared/engine-types.js";
  */
 const api = {
   getSession: (): Promise<SessionView | null> => ipcRenderer.invoke("sim:getSession"),
-  listCharacters: (): Promise<Array<{ id: string; name: string }>> => ipcRenderer.invoke("sim:listCharacters"),
+  listCharacters: (): Promise<Array<{ id: string; name: string; mobility?: number }>> => ipcRenderer.invoke("sim:listCharacters"),
   run: (scenario: ScenarioView): Promise<SessionView> => ipcRenderer.invoke("sim:run", scenario),
   openScenario: (): Promise<SessionView | null> => ipcRenderer.invoke("dialog:openScenario"),
   onSessionUpdate: (cb: (session: SessionView) => void): void => {
