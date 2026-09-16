@@ -91,11 +91,14 @@ function buildStatusCatalog(): Record<string, import("../shared/engine-types.js"
       id,
       name: def.name,
       category: def.category,
-      note: (def as { note?: string }).note,
+      // PLAYER-FACING ONLY: description comes from `playerDescription`; the internal
+      // `note`/evidence field is deliberately NOT shipped to the renderer.
+      description: (def as { playerDescription?: string }).playerDescription,
       durationRounds: def.durationRounds,
       stackable: def.stackable,
       maxStacks: def.maxStacks,
       purgeable: def.purgeable,
+      consumeOneOnUse: def.consumeOneOnUse,
     };
   }
   return catalog;

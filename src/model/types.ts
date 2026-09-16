@@ -339,6 +339,13 @@ export interface StatusDef {
   purgeable: boolean;
   effects: StatusEffect[];
   /**
+   * PLAYER-FACING tooltip text (2026): a clean, concise gameplay description of what the
+   * buff/status does for the player. This is the ONLY field the UI may render as tooltip
+   * prose — `note` is internal documentation/evidence and is never exposed to the UI.
+   * Do NOT copy validation history/sources/dates into this field.
+   */
+  playerDescription?: string;
+  /**
    * NEW (2026) — consumption-of-use status (Support Boost I/II): the status is persistent
    * (no duration) and each qualifying damage event the status contributes to consumes ONE
    * STACK (stacks = activations); removed at 0. Absent = no such consumption (all others).

@@ -7,6 +7,7 @@ import {
   resolveStatus,
   rotationStates,
   statusRefsFor,
+  statusTooltipLines,
   totalsRows,
 } from "../src/shared/presenters.js";
 import type { LogEventView, ScenarioView, SessionView, SimulationResultView } from "../src/shared/engine-types.js";
@@ -116,15 +117,105 @@ test("totalsRows and movementRows present engine numbers verbatim", () => {
   assert.equal(mv[0].cost, "1");
 });
 
-// ------------------------------------------------------------------ status tooltips
+// ------------------------------------------------------------------ status tooltips (player-facing only)
 
-test("tooltips: a known status reference resolves to authoritative display information", () => {
+test("tooltips: Support Boost II shows ONLY clean gameplay effects (no internal documentation)", () => {
+  const catalog = {
+    support_boost_ii: {
+      id: "support_boost_ii",
+      name: "Support Boost II",
+      category: "buff",
+      description: "Support Action damage +30%. Damage against Exposed targets +10%.",
+      durationRounds: null,
+      stackable: true,
+      maxStacks: undefined,
+      purgeable: false,
+      consumeOneOnUse: true,
+    },
+  };
+  const tip = statusTooltipLines(resolveStatus("support_boost_ii", catalog))!;
+  assert.ok(tip, "SB II resolves");
+  assert.equal(tip.name, "Support Boost II");
+  const text = [tip.description, ...tip.lines].join("\n");
+  // Gameplay effects present:
+  assert.match(text, /Support Action damage \+30%/);
+  assert.match(text, /Damage against Exposed targets \+10%/);
+  assert.match(text, /Activates 1 time/);
+  assert.match(text, /Duration: Permanent/);
+  assert.match(text, /Cannot be cleansed/);
+  // NO internal documentation/evidence text:
+  for (const banned of ["VALIDATED", "Source fact", "validation-checklist", "research.md", "in-game", "2026", "test", "§", "note:"]) {
+    assert.equal(text.includes(banned), false, `tooltip must not contain ${banned}`);
+  }
+});
+
+test("tooltips: Support Boost I shows its own gameplay effects", () => {
   const catalog = {
     support_boost_i: {
       id: "support_boost_i",
       name: "Support Boost I",
       category: "buff",
-      note: "One buff instance, two support-scoped effects.",
+      description: "Support Action damage +15%. Damage against Exposed targets +10%.",
+      durationRounds: null,
+      stackable: true,
+      maxStacks: undefined,
+      purgeable: false,
+      consumeOneOnUse: true,
+    },
+  };
+  const tip = statusTooltipLines(resolveStatus("support_boost_i", catalog))!;
+  const text = [tip.description, ...tip.lines].join("\n");
+  assert.match(text, /Support Action damage \+15%/);
+  assert.match(text, /Damage against Exposed targets \+10%/);
+  assert.match(text, /Duration: Permanent/);
+  assert.match(text, /Cannot be cleansed/);
+});
+
+test("tooltips: duration/stack/cleansing rows show structured fields and omit what does not apply", () => {
+  const catalog = {
+    vulnerable_i: { id: "vulnerable_i", name: "Vulnerable I", category: "debuff", description: "Damage taken +10%.", durationRounds: 1, stackable: false, maxStacks: undefined, purgeable: true },
+    overburn: { id: "overburn", name: "Overburn", category: "debuff", description: "Burn damage.", durationRounds: 2, stackable: true, maxStacks: 1, purgeable: false },
+  };
+  const vul = statusTooltipLines(catalog.vulnerable_i)!;
+  assert.match(vul.lines.join("\n"), /Duration: 1 turn\(s\)/);
+  assert.match(vul.lines.join("\n"), /Stacks: not stackable/);
+  assert.match(vul.lines.join("\n"), /Can be cleansed/);
+  assert.equal(vul.lines.some((l) => l.includes("Activates 1 time")), false, "no activation row for non-consumption statuses");
+  const ob = statusTooltipLines(catalog.overburn)!;
+  assert.match(ob.lines.join("\n"), /Stacks: max 1/);
+  assert.match(ob.lines.join("\n"), /Cannot be cleansed/);
+});
+
+test("tooltips: even if a raw status carried an internal note, the builder never renders it", () => {
+  // Mirror of the catalog contract: the renderer catalog carries NO `note`; the builder
+  // only reads description + structured fields, so internal doc text cannot leak through.
+  const infoWithNote = {
+    id: "support_boost_i_30",
+    name: "Support Boost I (V1 kill, +30%)",
+    category: "buff",
+    description: "Support Action damage +30%. Damage against Exposed targets +10%.",
+    note: "VALIDATED 2026 internal documentation ... validation-checklist.md",
+    durationRounds: null,
+    stackable: true,
+    maxStacks: undefined,
+    purgeable: false,
+    consumeOneOnUse: true,
+  } as never;
+  const tip = statusTooltipLines(infoWithNote)!;
+  assert.ok(tip, "resolves even with an extra internal note key present");
+  const text = [tip.description, ...tip.lines].join("\n");
+  assert.equal(text.includes("VALIDATED"), false);
+  assert.equal(text.includes("validation-checklist"), false);
+  assert.match(text, /Support Action damage \+30%/);
+});
+
+test("tooltips: a known status reference resolves to player-facing display information", () => {
+  const catalog = {
+    support_boost_i: {
+      id: "support_boost_i",
+      name: "Support Boost I",
+      category: "buff",
+      description: "Support Action damage +15%. Damage against Exposed targets +10%.",
       durationRounds: null,
       stackable: true,
       maxStacks: undefined,
@@ -136,12 +227,15 @@ test("tooltips: a known status reference resolves to authoritative display infor
   assert.equal(info.name, "Support Boost I");
   assert.equal(info.durationRounds, null);
   assert.equal(info.purgeable, false);
+  assert.equal(info.description, "Support Action damage +15%. Damage against Exposed targets +10%.");
+  assert.equal("note" in info, false, "the catalog carries no internal note field");
 });
 
 test("tooltips: an unknown status reference does not crash and yields no fabricated content", () => {
-  const catalog = { known: { id: "known", name: "K", category: "buff", durationRounds: null, stackable: true, purgeable: false } };
+  const catalog = { known: { id: "known", name: "K", category: "buff", description: "K.", durationRounds: null, stackable: true, purgeable: false } };
   assert.equal(resolveStatus("does_not_exist", catalog), undefined);
   assert.equal(resolveStatus("anything", undefined), undefined);
+  assert.equal(statusTooltipLines(resolveStatus("does_not_exist", catalog)), undefined);
 });
 
 test("tooltips: status-bearing LogEvent fields are surfaced presentation-only", () => {

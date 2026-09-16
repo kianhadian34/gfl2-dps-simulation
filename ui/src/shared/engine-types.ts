@@ -159,11 +159,14 @@ export interface StatusInfoView {
   id: string;
   name: string;
   category: string;
-  note?: string;
+  /** PLAYER-FACING tooltip text only (engine `playerDescription`). The internal `note` field is never shipped. */
+  description?: string;
   durationRounds: number | null;
   stackable: boolean;
   maxStacks?: number;
   purgeable: boolean;
+  /** Consumption-of-use status: each qualifying use consumes ONE stack (stacks = activations). */
+  consumeOneOnUse?: boolean;
 }
 
 export interface SessionView {

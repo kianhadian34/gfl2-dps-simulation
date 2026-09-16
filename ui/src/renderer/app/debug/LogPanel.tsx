@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { buildLogRows, movementRows, resolveStatus, statusRefsFor, totalsRows } from "../../../shared/presenters.js";
+import { buildLogRows, movementRows, resolveStatus, statusRefsFor, statusTooltipLines, totalsRows } from "../../../shared/presenters.js";
 import { fmt } from "../../../shared/format.js";
 import type { LogEventView, SessionView, StatusInfoView } from "../../../shared/engine-types.js";
 
@@ -64,24 +64,23 @@ function Row(props: {
 }
 
 /**
- * Hover tooltip for a status reference. Content comes ONLY from the authoritative catalog
- * (engine registry via main) — unknown ids render as plain text and never fabricate content.
+ * Hover tooltip for a status reference. Content comes ONLY from the PLAYER-FACING catalog
+ * (engine registry via main): `description` = engine `playerDescription`, plus structured
+ * Duration/Stacks/Activation/Cleansing rows. The internal `note`/documentation field is
+ * never shipped to the renderer. Unknown ids render as plain text and never fabricate content.
  */
 function StatusChip(props: { statusId: string; source?: string; stacks?: number; catalog: Record<string, StatusInfoView> }): JSX.Element {
-  const info = resolveStatus(props.statusId, props.catalog);
-  if (!info) return <>{props.statusId}</>;
-  const duration = info.durationRounds === null ? "permanent" : `${info.durationRounds} turn(s)`;
-  const stacking = info.maxStacks !== undefined ? `max ${info.maxStacks}` : "unbounded";
+  const tip = statusTooltipLines(resolveStatus(props.statusId, props.catalog));
+  if (!tip) return <>{props.statusId}</>;
   return (
-    <span className="status-chip" tabIndex={0} aria-label={`status ${info.name}`}>
+    <span className="status-chip" tabIndex={0} aria-label={`status ${tip.name}`}>
       {props.statusId}
       {props.stacks !== undefined ? ` (${props.stacks})` : ""}
       <span className="tooltip">
-        <b>{info.name}</b> <span className="muted">[{info.category}]</span>
-        {info.note && <span className="tooltip-note">{info.note}</span>}
-        <span className="tooltip-row">Duration: {duration}</span>
-        <span className="tooltip-row">Stacks: {info.stackable ? stacking : "not stackable"}</span>
-        <span className="tooltip-row">Cleansing: {info.purgeable ? "can be cleansed" : "cannot be cleansed"}</span>
+        <b>{tip.name}</b> <span className="muted">[{tip.category}]</span>
+        {tip.lines.map((line) => (
+          <span key={line} className="tooltip-row">{line}</span>
+        ))}
         {props.source && <span className="tooltip-row">Source: {props.source}</span>}
       </span>
     </span>

@@ -20,6 +20,39 @@ export function resolveStatus(id: string, catalog: Record<string, StatusInfoView
   return catalog?.[id];
 }
 
+export interface StatusTooltip {
+  readonly name: string;
+  readonly category: string;
+  /** Player-facing description (engine `playerDescription`). Never the internal `note`. */
+  readonly description?: string;
+  /** Ordered display rows — only fields that APPLY are present (no empty rows). */
+  readonly lines: string[];
+}
+
+/**
+ * Build the player-facing hover tooltip content for a status from the catalog ONLY.
+ * - `description` comes exclusively from the engine `playerDescription` field.
+ * - Duration / Stacks / Activation / Cleansing rows are derived from structured fields.
+ * - Unknown ids return undefined (the caller renders plain text, never fabricated content).
+ * - The internal `note`/evidence field is never part of the catalog, so it cannot leak here.
+ */
+export function statusTooltipLines(info: StatusInfoView | undefined): StatusTooltip | undefined {
+  if (!info) return undefined;
+  const lines: string[] = [];
+  if (info.description) lines.push(info.description);
+  lines.push(`Duration: ${info.durationRounds === null ? "Permanent" : `${info.durationRounds} turn(s)`}`);
+  lines.push(
+    info.stackable
+      ? info.maxStacks !== undefined
+        ? `Stacks: max ${info.maxStacks}`
+        : "Stacks: unbounded"
+      : "Stacks: not stackable",
+  );
+  if (info.consumeOneOnUse) lines.push("Activates 1 time — each use consumes one stack");
+  lines.push(info.purgeable ? "Can be cleansed" : "Cannot be cleansed");
+  return { name: info.name, category: info.category, description: info.description, lines };
+}
+
 /** Status-bearing LogEvent fields, resolved for the hover-tooltip UI (presentation-only). */
 export function statusRefsFor(ev: LogEventView): Array<{ label: string; refs: Array<{ statusId: string; source?: string; stacks?: number }> }> {
   const rows: Array<{ label: string; refs: Array<{ statusId: string; source?: string; stacks?: number }> }> = [];
