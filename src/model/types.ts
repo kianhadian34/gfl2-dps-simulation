@@ -55,6 +55,15 @@ export interface SkillDefVariant {
   id: string;
   name: string;
   type: "basic" | "active" | "ultimate" | "support";
+  /**
+   * DAMAGE CATEGORY (2026, DESCRIPTIVE ONLY): "targeted" | "aoe" per the authoritative
+   * in-game skill class (e.g. Guide to Victory = AoE). Target SELECTION (e.g. "first enemy
+   * within 8 tiles in the selected direction") is a separate concept and is NOT modeled.
+   * No engine mechanic reads this field — it must never alter damage/stability/weakness/
+   * crit/confectance/support behavior. Optional; only set when the repo has authoritative
+   * evidence for the category.
+   */
+  damageCategory?: "targeted" | "aoe";
   element: Element | null;
   /** Ammo/weapon type of the attack (matches `DummyConfig.weaknessTags` — Ammo Weakness dimension, 2026). */
   ammoType?: AmmoType;

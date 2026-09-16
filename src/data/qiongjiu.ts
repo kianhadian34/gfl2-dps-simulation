@@ -100,6 +100,7 @@ export const QIONGJIU: CharacterDef = {
           id: "qiongjiu_guide_to_victory",
           name: "Guide to Victory",
           type: "active",
+          damageCategory: "aoe", // authoritative in-game class (descriptive only; no engine consumer)
           element: "burn",
           ammoType: "medium_ammo",
           multiplier: 1.1,
@@ -112,6 +113,7 @@ export const QIONGJIU: CharacterDef = {
           id: "qiongjiu_guide_to_victory",
           name: "Guide to Victory",
           type: "active",
+          damageCategory: "aoe", // authoritative in-game class (descriptive only; no engine consumer)
           element: "burn",
           ammoType: "medium_ammo",
           multiplier: 1.1,
