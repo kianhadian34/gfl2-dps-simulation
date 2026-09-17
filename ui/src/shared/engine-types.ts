@@ -72,6 +72,8 @@ export interface GridConfigView {
   size: number;
   units: UnitPlacementView[];
   boss: BossPlacementView;
+  /** Additional single-tile enemy line targets (Fixed Key 4: Point of Vulnerability). */
+  enemyUnits?: Array<{ unitId: string; coord: GridCoordView; hp: number; defense: number; stability: number; weaknesses?: Element[]; weaknessTags?: string[] }>;
   highTiles?: GridCoordView[];
   ladders?: LadderView[];
   blockedTiles?: { coord: GridCoordView }[];
@@ -121,6 +123,10 @@ export interface LogEventView {
   /** STRUCTURED provenance (2026): one ref per `effectSources` entry, label-aligned; mirrors the engine `EffectSourceRef` union. */
   effectSourceRefs?: EffectSourceRefView[];
   statusesExpired: string[];
+  /** Fixed Key 4: 0-based Guide line position (0 = first/primary). */
+  guideLineIndex?: number;
+  /** Fixed Key 4: Guide line target after the first (70% of its normal damage). */
+  guideLineSecondary?: boolean;
   upgradeStacks?: { statusId: string; stacks: number }[];
   statusTick?: { statusId: string; amount: number };
   fixedDamage?: number;

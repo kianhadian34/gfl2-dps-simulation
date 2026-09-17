@@ -5,7 +5,7 @@ import type { Registry } from "../data/registry.js";
 import { rollHit } from "./damage.js";
 import { cooldownRemaining, setCooldown, tickCooldowns } from "./cooldowns.js";
 import { gainConfectance, spendConfectance } from "./resources.js";
-import { attackHeightEffect, legalDestinations, moveCost, resolveCardinalRayTarget, tileKey } from "./grid.js";
+import { attackHeightEffect, bossFootprintTiles, legalDestinations, moveCost, resolveCardinalRayTarget, resolveCardinalRayTargets, tileKey } from "./grid.js";
 import {
   additiveDealtBonus,
   additiveTakenBonus,
@@ -164,6 +164,82 @@ function conditionalDealtBonus(actor: UnitState, target: UnitState, when: "targe
     sum += e.value;
   }
   return sum;
+}
+
+/**
+ * Fixed Key 4: Point of Vulnerability (VALIDATED in-game 2026) — secondary targets of the Guide
+ * line. Enumerates ALL enemy tiles on the selected cardinal ray (in order); the FIRST is the
+ * already-resolved primary; every subsequent enemy receives a normal Guide hit (per-enemy DEF
+ * and element weakness, same ATK/bracket/crit inputs as the primary) multiplied by 0.70, then
+ * ceiled — `secondary = ceil(normal × 0.70)`. Damage only; secondary targets gain no statuses;
+ * the boss/dummy tile in a non-first position is handled as a pure-damage secondary.
+ * Deterministic: `critRate` 0/1 short-circuit the RNG (no stream consumption).
+ */
+function guideLineSecondaryHits(
+  state: SimulationState,
+  actor: UnitState,
+  skill: SkillDefVariant,
+  ev: LogEvent,
+  effAtk: number,
+  bracket: number,
+  critRate: number,
+  critMult: number,
+): void {
+  const grid = state.grid!;
+  const placement = grid.placements.get(actor.id);
+  if (!placement) throw new Error(`guide targeting for ${actor.id} has no placement`);
+  const targets = resolveCardinalRayTargets(grid, placement.coord, skill.targetingCardinalRay!.direction, skill.targetingCardinalRay!.effectiveArea);
+  for (let i = 1; i < targets.length; i++) {
+    const t = targets[i];
+    const tk = tileKey(t.x, t.y);
+    const unit = grid.enemyUnits.find((e) => tileKey(e.coord.x, e.coord.y) === tk);
+    const defense = unit ? unit.defense : state.dummy.defStat;
+    const weaknesses: Element[] = unit ? (unit.weaknesses ?? ([] as Element[])) : (state.dummy.weaknessElements as Element[]);
+    const weaknessExploited = weaknesses.filter((w) => w === skill.element);
+    const normal = rollHit({
+      atk: effAtk,
+      def: defense,
+      multiplier: skill.multiplier ?? 0,
+      additiveBonus: bracket,
+      phaseMult: 1,
+      weaknessMult: 1 + 0.1 * weaknessExploited.length,
+      reductionMult: 1,
+      critRate,
+      critMultiplier: critMult,
+      rng: state.rng,
+    });
+    const secEv: LogEvent = {
+      ...ev,
+      target: unit ? unit.unitId : state.dummy.name,
+      guideLineIndex: i,
+      guideLineSecondary: true,
+      finalDamage: Math.ceil(normal.finalDamage * 0.7),
+      attackerAtk: effAtk,
+      targetDef: defense,
+      weaknessExploited,
+      phaseMult: 1,
+      bonusBracket: bracket,
+      reductionMult: 1,
+      critical: normal.critical,
+      critMultiplier: critMult,
+      stabilityDamage: undefined,
+      targetStabilityAfter: undefined,
+      exposed: undefined,
+      statusesApplied: [],
+      statusesExpired: [],
+      upgradeStacks: undefined,
+      effectSources: undefined,
+      effectSourceRefs: undefined,
+      appliedSources: undefined,
+      baseDamage: undefined,
+      mitigatedDamage: undefined,
+      killingBlow: undefined,
+      fixedDamage: undefined,
+      statusTick: undefined,
+      confectance: undefined,
+    };
+    state.log.push(secEv);
+  }
 }
 
 /** Damage + stability + Confectance-gain application for a single hit; fills the event's damage fields. */
@@ -329,6 +405,14 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   ev.exposed = broke ? true : dummy.exposed;
   ev.finalDamage = totalDamage;
   if (hit.fixedDamage > 0) ev.fixedDamage = hit.fixedDamage;
+  // Fixed Key 4: Point of Vulnerability (VALIDATED in-game 2026) — Guide line secondaries.
+  // With the key equipped and a grid, the cardinal line CONTINUES through enemies; every
+  // enemy AFTER the first takes `ceil(normalDamage × 0.70)` (its own DEF/weakness normal
+  // damage; the −30% applies ONLY to secondary targets). Primary (the dummy, first in line)
+  // already resolved above at 100%.
+  if (skill.targetingCardinalRay && state.grid && (actor.equippedKeys ?? []).some((kid) => actor.def?.fixedKeys.some((f) => f.id === kid && f.pointOfVulnerabilityLine))) {
+    guideLineSecondaryHits(state, actor, skill, ev, effAtk, 1 + addDealt, critRate, critMult);
+  }
   return totalDamage;
 }
 

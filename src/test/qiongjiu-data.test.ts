@@ -31,7 +31,7 @@ test("FK1 Concentration grants +3 Confectance at battle start", () => {
 });
 
 test("FK4–FK6 record the exact behaviors but explicitly defer unimplemented engine mechanics (FK2/FK3 are implemented)", () => {
-  const implemented = new Set(["qiongjiu_fk1_concentration", "qiongjiu_fk2_efficient_planning", "qiongjiu_fk3_targeted_training"]);
+  const implemented = new Set(["qiongjiu_fk1_concentration", "qiongjiu_fk2_efficient_planning", "qiongjiu_fk3_targeted_training", "qiongjiu_fk4_point_of_vulnerability"]);
   const deferred = QIONGJIU.fixedKeys.filter((k) => !implemented.has(k.id));
   for (const k of deferred) {
     assert.deepEqual(k.battleStartEffects, [], `${k.id} has no battle-start effect`);
@@ -47,6 +47,10 @@ test("FK4–FK6 record the exact behaviors but explicitly defer unimplemented en
   assert.equal(fk3.deferredNote, undefined, "FK3 no longer deferred");
   assert.equal(fk3.alliedAttackDefDown?.statusId, "stat_def_down_ii_pct");
   assert.equal(fk3.alliedAttackDefDown?.durationRounds, 1);
+  // Fixed Key 4: Point of Vulnerability (VALIDATED 2026, Guide line multi-target): implemented.
+  const fk4 = QIONGJIU.fixedKeys.find((k) => k.id === "qiongjiu_fk4_point_of_vulnerability")!;
+  assert.equal(fk4.deferredNote, undefined, "FK4 no longer deferred");
+  assert.equal(fk4.pointOfVulnerabilityLine, true);
 });
 
 test("Expansion Key Ruined Gem is recorded with its deferral", () => {

@@ -388,7 +388,11 @@ export const QIONGJIU: CharacterDef = {
       verified: true,
       battleStartEffects: [],
       description: "Modifies Guide to Victory to deal damage to all enemy targets within 8 tiles in the selected direction; all enemy targets except the first receive 30% less damage.",
-      deferredNote: "Multi-target/AoE targeting is out of MVP scope (single training dummy); recorded, not implemented.",
+      // Fixed Key 4: Point of Vulnerability — VALIDATED in-game 2026. Guide's cardinal line
+      // CONTINUES through enemies: EVERY enemy within the 8-tile direction takes damage;
+      // the FIRST receives 100% of normal Guide damage, every subsequent enemy 70% (the
+      // −30% applies only to secondary targets).
+      pointOfVulnerabilityLine: true,
     },
     {
       id: "qiongjiu_fk5_necessary_adjustments",

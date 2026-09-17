@@ -31,6 +31,8 @@ export interface GridState {
   blocked: Set<string>;
   /** Enemy (boss) footprint tiles — impassable + not occupiable by units. */
   enemyTiles: Set<string>;
+  /** Additional single-tile enemy targets (GridConfig.enemyUnits) — line-attack targets (FK4). */
+  enemyUnits: NonNullable<GridConfig["enemyUnits"]>;
   /** Occupied-by-ally tiles (1×1 units; crossed, never entered at the end). */
   allyTiles: Map<string, string>; // tileKey -> unitId
   placements: Map<string, UnitPlacement>; // unitId -> placement
@@ -93,12 +95,17 @@ export function buildGrid(cfg: GridConfig): GridState {
     heights: new Map(),
     blocked: new Set(),
     enemyTiles: new Set(),
+    enemyUnits: cfg.enemyUnits ?? [],
     allyTiles: new Map(),
     placements: new Map(),
     boss: cfg.boss,
     ladders: new Map(),
     moves: cfg.moves ?? [],
   };
+  for (const e of state.enemyUnits) {
+    if (!inBounds(e.coord.x, e.coord.y)) throw new Error(`enemy unit ${e.unitId} placed outside the grid`);
+    state.enemyTiles.add(tileKey(e.coord.x, e.coord.y));
+  }
   for (const u of cfg.units) {
     if (!inBounds(u.coord.x, u.coord.y)) throw new Error(`unit ${u.unitId} placed outside the grid`);
     state.placements.set(u.unitId, u);
@@ -234,4 +241,27 @@ export function resolveCardinalRayTarget(
     if (state.enemyTiles.has(tileKey(x, y))) return { x, y };
   }
   return undefined;
+}
+
+/**
+ * Fixed Key 4: Point of Vulnerability (VALIDATED in-game 2026) — the line CONTINUES through
+ * enemies: collect EVERY enemy tile within `effectiveArea` tiles along the cardinal `direction`,
+ * in ray order (nearest first). Diagonal directions are rejected defensively.
+ */
+export function resolveCardinalRayTargets(
+  state: GridState,
+  from: GridCoord,
+  direction: CardinalDirection,
+  effectiveArea: number,
+): GridCoord[] {
+  if (!isCardinalDirection(direction)) throw new Error(`invalid cardinal direction: ${String(direction)}`);
+  const { dx, dy } = CARDINAL_DELTA[direction];
+  const out: GridCoord[] = [];
+  for (let d = 1; d <= effectiveArea; d++) {
+    const x = from.x + dx * d;
+    const y = from.y + dy * d;
+    if (!inBounds(x, y, state.size)) break;
+    if (state.enemyTiles.has(tileKey(x, y))) out.push({ x, y });
+  }
+  return out;
 }

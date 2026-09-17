@@ -15,6 +15,8 @@
 /** 15×15 battlefield. */
 export const GRID_SIZE = 15;
 
+import type { Element } from "./types.js";
+
 export interface GridCoord {
   x: number;
   y: number;
@@ -82,6 +84,20 @@ export interface GridConfig {
   size: number; // must be exactly 15
   units: UnitPlacement[];
   boss: BossPlacement;
+  /**
+   * Additional single-tile ENEMY targets on the grid (Fixed Key 4: Point of Vulnerability line
+   * validation; MVP the training dummy is the boss enemy). Each is a 1×1 enemy with its own
+   * DEF/stability/element weaknesses — hit by line attacks only; no statuses, no AWU.
+   */
+  enemyUnits?: Array<{
+    unitId: string;
+    coord: GridCoord;
+    hp: number;
+    defense: number;
+    stability: number;
+    weaknesses?: Element[];
+    weaknessTags?: string[];
+  }>;
   /** Terrain: tiles elevated to High Ground (default Ground). */
   highTiles?: GridCoord[];
   ladders?: LadderSpec[];

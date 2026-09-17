@@ -64,6 +64,10 @@ export interface LogEvent {
    */
   effectSourceRefs?: EffectSourceRef[];
   statusesExpired: string[];
+  /** Fixed Key 4: Point of Vulnerability — 0-based position of this target in the Guide line (0 = first/primary). */
+  guideLineIndex?: number;
+  /** Fixed Key 4: a Guide line target AFTER the first (receives 70% of its normal damage). */
+  guideLineSecondary?: boolean;
   /** Snapshot of permanent target 'upgrade' statuses after the hit (e.g. Ammo Weakness Upgrade stacks, 2026) — absent when none. */
   upgradeStacks?: { statusId: string; stacks: number }[];
   /** Status-sourced fixed damage fired on application or at an ownActionEnd tick (Overburn, 2026) — absent for normal actions. */

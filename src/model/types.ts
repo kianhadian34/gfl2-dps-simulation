@@ -293,6 +293,13 @@ export interface KeyDef {
    * resolves). Reuses the existing generic DEF stat-modifier status; no other effect.
    */
   alliedAttackDefDown?: { statusId: string; durationRounds: number };
+  /**
+   * Fixed Key 4: Point of Vulnerability (VALIDATED in-game 2026) — equipping it modifies the
+   * holder's Guide to Victory: the cardinal line CONTINUES through enemies (all enemies within
+   * the 8-tile direction take damage); the FIRST enemy receives 100% of normal Guide damage,
+   * EVERY subsequent enemy receives exactly 30% less (`secondary = ceil(normal × 0.70)`).
+   */
+  pointOfVulnerabilityLine?: boolean;
   /** In-game tooltip text, recorded verbatim from the panel. */
   description?: string;
   /** Set when the key's behavior is recorded but NOT implemented by the engine (see reason). */
