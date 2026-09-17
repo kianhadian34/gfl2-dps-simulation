@@ -285,6 +285,14 @@ export interface KeyDef {
    * existing status-list order (unspecified by evidence — no priority rule is invented).
    */
   supportActionCleanse?: number;
+  /**
+   * Fixed Key 3: Targeted Training (VALIDATED in-game 2026) — "While in Support Mode, applies
+   * Defense Down II to the target for 1 turn BEFORE the allied unit's attack." Data-driven:
+   * when the key's holder is ready to support (Support Mode) and an ALLIED unit commands a hit
+   * against the support target, this status is applied FIRST (before the allied damage
+   * resolves). Reuses the existing generic DEF stat-modifier status; no other effect.
+   */
+  alliedAttackDefDown?: { statusId: string; durationRounds: number };
   /** In-game tooltip text, recorded verbatim from the panel. */
   description?: string;
   /** Set when the key's behavior is recorded but NOT implemented by the engine (see reason). */

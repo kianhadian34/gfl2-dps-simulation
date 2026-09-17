@@ -30,17 +30,23 @@ test("FK1 Concentration grants +3 Confectance at battle start", () => {
   assert.equal(fk1.verified, true);
 });
 
-test("FK3–FK6 record the exact behaviors but explicitly defer unimplemented engine mechanics (FK2 is implemented)", () => {
-  const deferred = QIONGJIU.fixedKeys.filter((k) => k.id !== "qiongjiu_fk2_efficient_planning" && k.id !== "qiongjiu_fk1_concentration");
+test("FK4–FK6 record the exact behaviors but explicitly defer unimplemented engine mechanics (FK2/FK3 are implemented)", () => {
+  const implemented = new Set(["qiongjiu_fk1_concentration", "qiongjiu_fk2_efficient_planning", "qiongjiu_fk3_targeted_training"]);
+  const deferred = QIONGJIU.fixedKeys.filter((k) => !implemented.has(k.id));
   for (const k of deferred) {
     assert.deepEqual(k.battleStartEffects, [], `${k.id} has no battle-start effect`);
     assert.ok(k.deferredNote && k.deferredNote.length > 0, `${k.id} documents its deferral`);
     assert.equal(k.verified, true);
   }
-  // FK2 — Efficient Planning is IMPLEMENTED (VALIDATED 2026, cleanse-on-support): no deferral.
+  // Fixed Key 2: Efficient Planning (VALIDATED 2026, cleanse-on-support): implemented.
   const fk2 = QIONGJIU.fixedKeys.find((k) => k.id === "qiongjiu_fk2_efficient_planning")!;
   assert.equal(fk2.deferredNote, undefined, "FK2 no longer deferred");
   assert.equal(fk2.supportActionCleanse, 1);
+  // Fixed Key 3: Targeted Training (VALIDATED 2026, pre-allied-attack DEF Down II): implemented.
+  const fk3 = QIONGJIU.fixedKeys.find((k) => k.id === "qiongjiu_fk3_targeted_training")!;
+  assert.equal(fk3.deferredNote, undefined, "FK3 no longer deferred");
+  assert.equal(fk3.alliedAttackDefDown?.statusId, "stat_def_down_ii_pct");
+  assert.equal(fk3.alliedAttackDefDown?.durationRounds, 1);
 });
 
 test("Expansion Key Ruined Gem is recorded with its deferral", () => {

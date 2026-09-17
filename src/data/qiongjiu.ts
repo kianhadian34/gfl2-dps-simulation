@@ -377,7 +377,10 @@ export const QIONGJIU: CharacterDef = {
       verified: true,
       battleStartEffects: [],
       description: "While in Support Mode, applies Defense Down II to the target for 1 turn before the allied unit's attack.",
-      deferredNote: "Support attacks fire AFTER the triggering ally's hit resolves (simulation.ts fireSupportAttacks), so a pre-attack Defense Down II cannot be faithfully ordered; recorded, not implemented.",
+      // Fixed Key 3: Targeted Training — VALIDATED in-game 2026. Sequence: allied attack command
+      // → Defense Down II applied to the target → allied attack resolves (1 turn). Reuses the
+      // existing generic DEF stat-modifier status (stat_def_down_ii_pct, 5000 → 3500 validated).
+      alliedAttackDefDown: { statusId: "stat_def_down_ii_pct", durationRounds: 1 },
     },
     {
       id: "qiongjiu_fk4_point_of_vulnerability",

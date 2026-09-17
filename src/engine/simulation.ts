@@ -441,6 +441,10 @@ function resolveMainAction(state: SimulationState, doll: UnitState, slot: Action
   }
 
   if (skill.multiplier !== undefined || skill.fixedDamage !== undefined) {
+    // Fixed Key 3: Targeted Training (VALIDATED in-game 2026): before an ALLIED unit's main-action
+    // damage resolves, if a Support-Mode-ready teammate holds the key, apply its Defense Down II
+    // (1 turn) to the target FIRST — the allied hit then uses the reduced DEF (generic status).
+    applyFixedKey3PreAttackDefDown(state, doll, ev);
     dealDamageHit(state, doll, skill, ev, { exposedOverride: highGroundExposes(state, doll) });
   }
 
@@ -557,6 +561,33 @@ function fireSupportAttacks(state: SimulationState, triggerActor: UnitState, tur
     if (!skill) continue;
     shooter.supportQuota -= 1;
     resolveSupportHit(state, shooter, skill, turn);
+  }
+}
+
+/**
+ * Fixed Key 3: Targeted Training (VALIDATED in-game 2026) — pre-allied-attack DEF Down.
+ * Runs before an ALLIED unit's main-action damage resolves. For every OTHER doll that holds a
+ * key with `alliedAttackDefDown` AND is Support-Mode-ready (an `onAllySingleTargetHit` support
+ * passive with remaining quota — the MVP representation of "Support Mode"), applies that status
+ * to the support target FIRST (1 turn), so the allied hit computes with the reduced DEF.
+ * No DEF Down II on support hits, on the holder's own attacks, or when the holder is not ready.
+ */
+function applyFixedKey3PreAttackDefDown(state: SimulationState, triggerActor: UnitState, ev: LogEvent): void {
+  for (const u of state.units) {
+    if (u === triggerActor || u.kind !== "doll" || !u.def) continue;
+    const keyDef = u.def.fixedKeys.find((f) => f.alliedAttackDefDown && u.equippedKeys.includes(f.id));
+    if (!keyDef?.alliedAttackDefDown) continue;
+    const ready = u.passives.some((e) => e.kind === "support_attack" && e.trigger === "onAllySingleTargetHit") && u.supportQuota > 0;
+    if (!ready) continue;
+    if (
+      applyStatus(state, state.dummy, {
+        statusId: keyDef.alliedAttackDefDown.statusId,
+        durationRounds: keyDef.alliedAttackDefDown.durationRounds,
+        target: "target",
+      })
+    ) {
+      ev.statusesApplied.push(keyDef.alliedAttackDefDown.statusId);
+    }
   }
 }
 
