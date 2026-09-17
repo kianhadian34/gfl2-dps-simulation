@@ -48,6 +48,8 @@ export interface UnitState {
   critRate: number;
   /** Crit DMG bonus (panel shows 100% + this), e.g. 0.2 → crit multiplier 1.2 (confirmed U1/U19). */
   critDmg: number;
+  /** Out-of-Turn Damage: additive % applied to damage dealt OUTSIDE the unit's own turn (in the MVP, Support Actions). Sits in the same additive bracket as the passive 10% (QJ) — Strategic Negotiation +7% → 1.17 validated. */
+  outOfTurnDmg: number;
   stability: number;
   maxStability: number;
   exposed: boolean;
@@ -242,9 +244,15 @@ function resolveAffinityBonus(
   return { atk: foreign.genericBonus?.atk ?? 0, hp: foreign.genericBonus?.hp ?? 0, critDmg: foreign.genericBonus?.critDmg ?? 0 };
 }
 
-function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], affinity: { keyId?: string; level?: number } | undefined, config: ResolvedConfig, registry: Registry): UnitState {
+function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], affinity: { keyId?: string; level?: number } | undefined, commonKeyId: string | undefined, config: ResolvedConfig, registry: Registry): UnitState {
   const panel = computePanel(def);
   const aff = resolveAffinityBonus(def, affinity?.keyId, affinity?.level, registry);
+  // Common (Universal) Key stat bonuses (Strategic Negotiation, VALIDATED 2026): normal stat
+  // increases — ATK% folds via the proven Final Stat formula; Crit Rate and Crit DMG are
+  // additive; Out-of-Turn Damage is stored as a panel stat consumed only by out-of-turn events.
+  const commonStats = def.commonKey && def.commonKey.id === commonKeyId ? def.commonKey.stats : undefined;
+  const atkPct = (commonStats?.atkPct ?? 0) + aff.atk;
+  const hpPct = aff.hp;
   let confectance = config.confectanceStart;
   for (const k of def.fixedKeys) {
     if (keys.includes(k.id)) {
@@ -275,12 +283,13 @@ function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], aff
     // Affinity Key (Warm as Jade, VALIDATED): own-key levels fold into the panel via the proven
     // Final Stat formula (ceil((base+flat)×(1+pct))); CritDMG is ADDITIVE on the panel value and
     // feeds the existing crit-multiplier chain (no parallel stat system, damage formula untouched).
-    panelAtk: aff.atk > 0 ? finalStat(panel.atk, 0, aff.atk) : panel.atk,
-    hp: aff.hp > 0 ? finalStat(panel.hp, 0, aff.hp) : panel.hp,
-    maxHp: aff.hp > 0 ? finalStat(panel.hp, 0, aff.hp) : panel.hp,
+    panelAtk: atkPct > 0 ? finalStat(panel.atk, 0, atkPct) : panel.atk,
+    hp: hpPct > 0 ? finalStat(panel.hp, 0, hpPct) : panel.hp,
+    maxHp: hpPct > 0 ? finalStat(panel.hp, 0, hpPct) : panel.hp,
     defStat: panel.def,
-    critRate: def.base.critRate,
-    critDmg: def.base.critDmg + aff.critDmg,
+    critRate: def.base.critRate + (commonStats?.critRate ?? 0),
+    critDmg: def.base.critDmg + aff.critDmg + (commonStats?.critDmg ?? 0),
+    outOfTurnDmg: commonStats?.outOfTurnDmg ?? 0,
     stability: def.base.stability,
     maxStability: def.base.stability,
     exposed: false,
@@ -317,6 +326,7 @@ function makeDummy(d: Scenario["dummy"]): UnitState {
     defStat: d.defense,
     critRate: 0,
     critDmg: 0,
+    outOfTurnDmg: 0,
     stability: d.stability,
     maxStability: d.stability,
     exposed: false,
@@ -387,7 +397,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
   const units: UnitState[] = scenario.team.map((m) => {
     const def = registry.getCharacter(m.characterId);
     if (!def) throw new Error(`Unknown character: ${m.characterId}`);
-    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, config, registry);
+    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyId, config, registry);
   });
   const dummy = makeDummy(scenario.dummy);
   return {

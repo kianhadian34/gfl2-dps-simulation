@@ -304,7 +304,13 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   const addDealt =
     additiveDealtBonus(actor, state.statusRegistry, skill.element, { supportAttack: ev.supportAttack, targetExposed }) +
     conditionalDealtBonus(actor, dummy, "target.noCover", ev.supportAttack) +
-    conditionalDealtBonus(actor, dummy, "always", ev.supportAttack);
+    conditionalDealtBonus(actor, dummy, "always", ev.supportAttack) +
+    // OUT-OF-TURN DAMAGE (Common Key: Strategic Negotiation +7%, VALIDATED in-game 2026): a panel
+    // stat added whenever the damage occurs OUTSIDE the attacker's own turn. NOT a support-specific
+    // modifier — in the MVP Support Actions are the only out-of-turn events, so `ev.supportAttack`
+    // is the generic off-turn signal; any future out-of-turn event reuses it. It lands in the SAME
+    // additive bracket as QJ's passive 10% Out-of-Turn Damage (validated 1.10 → 1.17 with the key).
+    (ev.supportAttack ? actor.outOfTurnDmg : 0);
   const targetMods = targetPassiveTakenMods(dummy); // U5 boss/target stability-conditional passives
   const addTaken = additiveTakenBonus(dummy, state.statusRegistry, skill.element) + targetMods.additive;
   // Effect provenance (2026): deduplicated, human-readable sources of the modifiers that

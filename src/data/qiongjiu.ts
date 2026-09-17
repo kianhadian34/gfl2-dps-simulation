@@ -450,4 +450,19 @@ export const QIONGJIU: CharacterDef = {
     // affinity level never upgrades it. Ownership is decided by `affinityKeyId === def.affinityKey.id`.
     genericBonus: { atk: 0.03, hp: 0.03 },
   },
+  commonKey: {
+    id: "qiongjiu_common_strategic_negotiation",
+    name: "Strategic Negotiation",
+    type: "Universal Key: Skill",
+    verified: true,
+    description: "Crit Rate +5.0%, Critical Damage +5.0%, Attack Boost +5.0%; increase damage dealt outside of the unit's own turn by 7%.",
+    // Common Key — Strategic Negotiation (VALIDATED in-game 2026, IMPLEMENTED). The +5% ATK /
+    // Crit Rate / Crit DMG are NORMAL stat increases (ATK folds via the Final Stat formula; the
+    // others are additive). The +7% adds to Qiongjiu's EXISTING Out-of-Turn Damage stat (her
+    // validated 10% passive Out-of-Turn support damage → 17% total) inside the SAME additive
+    // bracket — NOT a support-specific modifier: the engine consumes the outOfTurnDmg panel stat
+    // for ANY event outside the unit's own turn (in the MVP, Support Actions are the only such
+    // events). Own-turn attacks never receive it.
+    stats: { atkPct: 0.05, critRate: 0.05, critDmg: 0.05, outOfTurnDmg: 0.07 },
+  },
 };

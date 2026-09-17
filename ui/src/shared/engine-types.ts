@@ -37,6 +37,7 @@ export interface ScenarioTeamMemberView {
   equippedFixedKeys?: string[];
   affinityKeyId?: string;
   affinityLevel?: number;
+  commonKeyId?: string;
 }
 
 export interface GridCoordView {

@@ -347,6 +347,17 @@ export interface AffinityKeyDef {
   deferredNote?: string;
 }
 
+export interface CommonKeyDef {
+  id: string;
+  name: string;
+  /** The game's type line, e.g. "Universal Key: Skill" — recorded verbatim; no behavior is keyed off this string. */
+  type: string;
+  /** Panel stat bonuses (fractions): ATK% folds via the Final Stat formula; Crit Rate & Crit DMG are additive; Out-of-Turn Damage is a panel stat consumed only by out-of-turn events. */
+  stats: { atkPct: number; critRate: number; critDmg: number; outOfTurnDmg: number };
+  verified: boolean;
+  description?: string;
+}
+
 export interface CharacterDef {
   id: string;
   name: string;
@@ -363,6 +374,8 @@ export interface CharacterDef {
   expansionKey?: KeyDef;
   /** Affinity Key (bond) — recorded data; engine consumption deferred. */
   affinityKey?: AffinityKeyDef;
+  /** Common (Universal) Key — e.g. Qiongjiu's Strategic Negotiation (VALIDATED 2026, implemented). */
+  commonKey?: CommonKeyDef;
   /**
    * GRID (2026): Mobility stat used by the core grid system (movement budget per turn).
    * Optional — absent means the unit cannot move; existing characters are unaffected.
@@ -555,6 +568,8 @@ export interface ScenarioTeamMember {
   affinityKeyId?: string;
   /** The doll's Affinity Level with the equipped key (exact levels only; 5 and 9 are defined, no interpolation). */
   affinityLevel?: number;
+  /** Equipped Common (Universal) Key id (e.g. Qiongjiu's Strategic Negotiation). Absent = no common-key bonuses. */
+  commonKeyId?: string;
 }
 
 export interface Scenario {

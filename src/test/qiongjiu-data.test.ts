@@ -81,3 +81,13 @@ test("Affinity Key Warm as Jade: 9 levels, exactly levels 5 and 9 defined, no in
   assert.equal(af?.deferredNote, undefined, "Warm as Jade no longer deferred (implemented)");
   assert.deepEqual(af?.genericBonus, { atk: 0.03, hp: 0.03 }, "foreign-key generic +3% bonus declared in data");
 });
+
+test("Common Key Strategic Negotiation: Universal Key: Skill with the validated +5%/+5%/+5%/+7% stats", () => {
+  const ck = QIONGJIU.commonKey!;
+  assert.equal(ck.id, "qiongjiu_common_strategic_negotiation");
+  assert.equal(ck.name, "Strategic Negotiation");
+  assert.equal(ck.type, "Universal Key: Skill");
+  assert.equal(ck.verified, true);
+  assert.ok(ck.description && ck.description.length > 0);
+  assert.deepEqual(ck.stats, { atkPct: 0.05, critRate: 0.05, critDmg: 0.05, outOfTurnDmg: 0.07 });
+});
