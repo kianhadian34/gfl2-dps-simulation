@@ -14,6 +14,9 @@
  */
 
 import {
+  type ActiveStatus,
+} from "../model/runtime.js";
+import {
   type BossPlacement,
   type GridConfig,
   type GridCoord,
@@ -33,6 +36,8 @@ export interface GridState {
   enemyTiles: Set<string>;
   /** Additional single-tile enemy targets (GridConfig.enemyUnits) — line-attack targets (FK4). */
   enemyUnits: NonNullable<GridConfig["enemyUnits"]>;
+  /** Runtime per-enemy status store (FK4: secondary Guide targets receive Overburn via the generic system). */
+  enemyStatuses: Map<string, ActiveStatus[]>;
   /** Occupied-by-ally tiles (1×1 units; crossed, never entered at the end). */
   allyTiles: Map<string, string>; // tileKey -> unitId
   placements: Map<string, UnitPlacement>; // unitId -> placement
@@ -96,6 +101,7 @@ export function buildGrid(cfg: GridConfig): GridState {
     blocked: new Set(),
     enemyTiles: new Set(),
     enemyUnits: cfg.enemyUnits ?? [],
+    enemyStatuses: new Map((cfg.enemyUnits ?? []).map((u) => [u.unitId, [] as ActiveStatus[]])),
     allyTiles: new Map(),
     placements: new Map(),
     boss: cfg.boss,

@@ -391,7 +391,8 @@ export const QIONGJIU: CharacterDef = {
       // Fixed Key 4: Point of Vulnerability — VALIDATED in-game 2026. Guide's cardinal line
       // CONTINUES through enemies: EVERY enemy within the 8-tile direction takes damage;
       // the FIRST receives 100% of normal Guide damage, every subsequent enemy 70% (the
-      // −30% applies only to secondary targets).
+      // −30% applies only to secondary targets). EVERY target hit receives Guide's applied
+      // statuses (Overburn) via the generic system — secondary targets are NOT damage-only.
       pointOfVulnerabilityLine: true,
     },
     {

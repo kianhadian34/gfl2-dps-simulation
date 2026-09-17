@@ -171,9 +171,10 @@ function conditionalDealtBonus(actor: UnitState, target: UnitState, when: "targe
  * line. Enumerates ALL enemy tiles on the selected cardinal ray (in order); the FIRST is the
  * already-resolved primary; every subsequent enemy receives a normal Guide hit (per-enemy DEF
  * and element weakness, same ATK/bracket/crit inputs as the primary) multiplied by 0.70, then
- * ceiled — `secondary = ceil(normal × 0.70)`. Damage only; secondary targets gain no statuses;
- * the boss/dummy tile in a non-first position is handled as a pure-damage secondary.
- * Deterministic: `critRate` 0/1 short-circuit the RNG (no stream consumption).
+ * ceiled — `secondary = ceil(normal × 0.70)`. Secondary targets ALSO receive Guide's applied
+ * statuses (Overburn) through the generic status system, and V2's guaranteed crit applies per
+ * target (each secondary carries its own statuses). Deterministic: `critRate` 0/1 short-circuit
+ * the RNG (no stream consumption).
  */
 function guideLineSecondaryHits(
   state: SimulationState,
@@ -196,6 +197,12 @@ function guideLineSecondaryHits(
     const defense = unit ? unit.defense : state.dummy.defStat;
     const weaknesses: Element[] = unit ? (unit.weaknesses ?? ([] as Element[])) : (state.dummy.weaknessElements as Element[]);
     const weaknessExploited = weaknesses.filter((w) => w === skill.element);
+    // Per-secondary status/hit state: line enemies keep their own statuses (FK4 secondary
+    // targets receive Guide's applied statuses — e.g. Overburn — via the GENERIC applyStatus).
+    const enemyStatuses = unit ? (grid.enemyStatuses.get(unit.unitId) ?? []) : state.dummy.statuses;
+    // Guide V2 (VALIDATED): if THIS target already carries `guaranteedCritWhenHasStatus`, it
+    // crits; applied per target, exactly like the primary.
+    const perTargetCrit = skill.guaranteedCritWhenHasStatus !== undefined && enemyStatuses.some((s) => s.statusId === skill.guaranteedCritWhenHasStatus) ? 1 : critRate;
     const normal = rollHit({
       atk: effAtk,
       def: defense,
@@ -204,10 +211,17 @@ function guideLineSecondaryHits(
       phaseMult: 1,
       weaknessMult: 1 + 0.1 * weaknessExploited.length,
       reductionMult: 1,
-      critRate,
+      critRate: perTargetCrit,
       critMultiplier: critMult,
       rng: state.rng,
     });
+    // Statuses: same handling as a normal Guide hit — apply the skill's appliesStatuses to THIS
+    // target through the generic system (no FK4-only status behavior; no second Overburn impl).
+    const appliedStatuses: string[] = [];
+    for (const spec of skill.appliesStatuses ?? []) {
+      const statusTarget = (unit ? { statuses: enemyStatuses } : state.dummy) as unknown as UnitState;
+      if (applyStatus(state, statusTarget, { ...spec, applier: { id: actor.id, atk: actor.panelAtk } })) appliedStatuses.push(spec.statusId);
+    }
     const secEv: LogEvent = {
       ...ev,
       target: unit ? unit.unitId : state.dummy.name,
@@ -220,12 +234,12 @@ function guideLineSecondaryHits(
       phaseMult: 1,
       bonusBracket: bracket,
       reductionMult: 1,
+      statusesApplied: appliedStatuses,
       critical: normal.critical,
       critMultiplier: critMult,
       stabilityDamage: undefined,
       targetStabilityAfter: undefined,
       exposed: undefined,
-      statusesApplied: [],
       statusesExpired: [],
       upgradeStacks: undefined,
       effectSources: undefined,
