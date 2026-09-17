@@ -35,6 +35,8 @@ export interface ScenarioTeamMemberView {
   characterId: string;
   rotation: ActionSlot[];
   equippedFixedKeys?: string[];
+  affinityKeyId?: string;
+  affinityLevel?: number;
 }
 
 export interface GridCoordView {

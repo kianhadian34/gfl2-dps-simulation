@@ -50,6 +50,12 @@ export function customRegistry(extra: Record<string, CharacterDef>): Registry {
     getStatus: (id) => REGISTRY.getStatus(id),
     getStatusMap: () => REGISTRY.getStatusMap(),
     characterIds: () => ["qiongjiu", ...Object.keys(extra)],
+    getAffinityKey: (id) => {
+      const own = QJ.affinityKey?.id === id ? QJ.affinityKey : undefined;
+      if (own) return own;
+      for (const c of Object.values(extra)) if (c.affinityKey?.id === id) return c.affinityKey;
+      return REGISTRY.getAffinityKey(id);
+    },
   };
 }
 

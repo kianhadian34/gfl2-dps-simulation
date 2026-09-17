@@ -337,6 +337,12 @@ export interface AffinityKeyDef {
   totalLevels: number;
   /** Fractional bonuses per Affinity Level (e.g. 0.045 = +4.5%). */
   levels: Record<number, { critDmg: number; atk: number; hp: number }>;
+  /**
+   * Generic bonus ANY doll receives from equipping SOMEONE ELSE's Affinity Key (VALIDATED
+   * 2026): +3% flat — in GFL2 the universal affinity-key bonus is +3% ATK and +3% HP; the
+   * owner's affinity LEVEL never upgrades a foreign key's bonus. Data-driven and overrideable.
+   */
+  genericBonus?: { atk?: number; hp?: number; critDmg?: number };
   verified: boolean;
   deferredNote?: string;
 }
@@ -545,6 +551,10 @@ export interface ScenarioTeamMember {
   characterId: string;
   rotation: ActionSlot[];
   equippedFixedKeys?: string[];
+  /** Equipped Affinity Key (bond) — its OWNER decides which bonus applies (Warm as Jade, VALIDATED 2026). */
+  affinityKeyId?: string;
+  /** The doll's Affinity Level with the equipped key (exact levels only; 5 and 9 are defined, no interpolation). */
+  affinityLevel?: number;
 }
 
 export interface Scenario {

@@ -78,5 +78,6 @@ test("Affinity Key Warm as Jade: 9 levels, exactly levels 5 and 9 defined, no in
   assert.deepEqual(Object.keys(af?.levels ?? {}).map(Number).sort(), [5, 9]);
   assert.deepEqual(af?.levels[5], { critDmg: 0.033, atk: 0.033, hp: 0.033 });
   assert.deepEqual(af?.levels[9], { critDmg: 0.045, atk: 0.045, hp: 0.045 });
-  assert.ok(af?.deferredNote, "affinity key documents deferral of engine consumption");
+  assert.equal(af?.deferredNote, undefined, "Warm as Jade no longer deferred (implemented)");
+  assert.deepEqual(af?.genericBonus, { atk: 0.03, hp: 0.03 }, "foreign-key generic +3% bonus declared in data");
 });

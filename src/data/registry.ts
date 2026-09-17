@@ -1,4 +1,4 @@
-import type { CharacterDef, StatusDef } from "../model/types.js";
+import type { AffinityKeyDef, CharacterDef, StatusDef } from "../model/types.js";
 import { QIONGJIU } from "./qiongjiu.js";
 import { statusMap } from "./statuses.js";
 
@@ -11,6 +11,8 @@ export interface Registry {
   getStatus(id: string): StatusDef | undefined;
   getStatusMap(): Map<string, StatusDef>;
   characterIds(): string[];
+  /** Affinity Key def by id (any doll's) — used to read a FOREIGN key's generic bonus. */
+  getAffinityKey(id: string): AffinityKeyDef | undefined;
 }
 
 const CHARACTERS: CharacterDef[] = [QIONGJIU];
@@ -27,5 +29,11 @@ export const REGISTRY: Registry = {
   },
   characterIds() {
     return CHARACTERS.map((c) => c.id);
+  },
+  getAffinityKey(id) {
+    for (const c of CHARACTERS) {
+      if (c.affinityKey?.id === id) return c.affinityKey;
+    }
+    return undefined;
   },
 };

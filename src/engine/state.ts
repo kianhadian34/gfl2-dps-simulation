@@ -216,8 +216,35 @@ export function applyStatusOverrides(
   return out;
 }
 
-function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], config: ResolvedConfig): UnitState {
+/**
+ * Affinity Key bonus resolution (Warm as Jade, VALIDATED in-game 2026, data-driven):
+ * the OWNER of the equipped key decides which bonus applies — NOT the receiving doll's level.
+ *  - Own key (keyId === def.affinityKey.id): exact `levels[level]` only (Lv5 +3.3%, Lv9 +4.5%).
+ *    Levels without an entry (1–4, 6–8) grant NOTHING — no interpolation, no assumed values.
+ *  - Foreign key: ONLY the key's `genericBonus` (+3% ATK/HP) applies; the holder's affinity
+ *    level is IGNORED (a QJ at Lv9 with someone else's key still gets only +3%).
+ * Returns fractional bonuses; callers fold them into the panel via the proven Final Stat formula.
+ */
+function resolveAffinityBonus(
+  def: CharacterDef,
+  keyId: string | undefined,
+  level: number | undefined,
+  registry: Registry,
+): { atk: number; hp: number; critDmg: number } {
+  if (!keyId) return { atk: 0, hp: 0, critDmg: 0 };
+  if (def.affinityKey?.id === keyId) {
+    const lv = def.affinityKey.levels[level ?? 0];
+    if (!lv) return { atk: 0, hp: 0, critDmg: 0 }; // undefined level: no interpolation
+    return { atk: lv.atk, hp: lv.hp, critDmg: lv.critDmg };
+  }
+  const foreign = registry.getAffinityKey(keyId);
+  if (!foreign) throw new Error(`Unknown affinity key: ${keyId}`);
+  return { atk: foreign.genericBonus?.atk ?? 0, hp: foreign.genericBonus?.hp ?? 0, critDmg: foreign.genericBonus?.critDmg ?? 0 };
+}
+
+function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], affinity: { keyId?: string; level?: number } | undefined, config: ResolvedConfig, registry: Registry): UnitState {
   const panel = computePanel(def);
+  const aff = resolveAffinityBonus(def, affinity?.keyId, affinity?.level, registry);
   let confectance = config.confectanceStart;
   for (const k of def.fixedKeys) {
     if (keys.includes(k.id)) {
@@ -245,12 +272,15 @@ function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], con
     weaknessTags: [],
     cover: "none",
     phase: def.phase,
-    panelAtk: panel.atk,
-    hp: panel.hp,
-    maxHp: panel.hp,
+    // Affinity Key (Warm as Jade, VALIDATED): own-key levels fold into the panel via the proven
+    // Final Stat formula (ceil((base+flat)×(1+pct))); CritDMG is ADDITIVE on the panel value and
+    // feeds the existing crit-multiplier chain (no parallel stat system, damage formula untouched).
+    panelAtk: aff.atk > 0 ? finalStat(panel.atk, 0, aff.atk) : panel.atk,
+    hp: aff.hp > 0 ? finalStat(panel.hp, 0, aff.hp) : panel.hp,
+    maxHp: aff.hp > 0 ? finalStat(panel.hp, 0, aff.hp) : panel.hp,
     defStat: panel.def,
     critRate: def.base.critRate,
-    critDmg: def.base.critDmg,
+    critDmg: def.base.critDmg + aff.critDmg,
     stability: def.base.stability,
     maxStability: def.base.stability,
     exposed: false,
@@ -357,7 +387,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
   const units: UnitState[] = scenario.team.map((m) => {
     const def = registry.getCharacter(m.characterId);
     if (!def) throw new Error(`Unknown character: ${m.characterId}`);
-    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], config);
+    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, config, registry);
   });
   const dummy = makeDummy(scenario.dummy);
   return {
