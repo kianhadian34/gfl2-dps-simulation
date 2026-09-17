@@ -29,10 +29,10 @@ import type { CharacterDef } from "../model/types.js";
 
 const SN = "qiongjiu_common_strategic_negotiation";
 
-function qj(overrides: { passive?: boolean; critRate?: number; critDmg?: number } = {}): CharacterDef {
+function qj(overrides: { passive?: boolean; critRate?: number; critDmg?: number; atk?: number } = {}): CharacterDef {
   const qj = structuredClone(QIONGJIU);
   qj.id = "qjsn";
-  qj.base = { ...qj.base, atk: 2000, critRate: overrides.critRate ?? 0.2, critDmg: overrides.critDmg ?? 0 };
+  qj.base = { ...qj.base, atk: overrides.atk ?? 2000, critRate: overrides.critRate ?? 0.2, critDmg: overrides.critDmg ?? 0 };
   qj.weapon = { ...qj.weapon, atkLvl1: 0, atkLvl60: 0, subStats: [] };
   if (overrides.passive === false) qj.passive = { ...qj.passive, effects: [], levels: undefined };
   return qj;
@@ -144,4 +144,29 @@ test("Strategic Negotiation data + state pins: +5% ATK/CR/CDMG and outOfTurnDmg 
   assert.equal(u.critRate, 0.25, "20% + 5%");
   assert.equal(u.critDmg, 0.05, "0 + 5%");
   assert.equal(u.outOfTurnDmg, 0.07, "added to Qiongjiu's existing 10% → 17% total on out-of-turn events");
+});
+
+test("DIRECT in-game match: SN + V6 + DU2 — Support bracket 1.57 reproduces the validated 865 (ATK 2082 · 90% · DEF 5000 · 0.20+0.20+0.17)", () => {
+  // Panel ATK 2082 = ceil(1982 × 1.05) with SN. V6 gives No-Cover +0.20 and the passive
+  // Out-of-Turn +0.10; the V5 trigger applies Damage Up II +0.20 to QJ before the triggering
+  // ally's attack. Bucket: 0.20 (No-Cover) + 0.20 (Damage Up II) + 0.17 (0.10 passive + 0.07 SN
+  // Out-of-Turn) = 0.57 → 1.57 — the exact in-game composition (550.8686 × 1.57 = 864.8637 → 865).
+  const ally = makeAlly("sn_ally", 1000);
+  const r = simulateScenario(
+    {
+      version: 1, seed: 1, turns: 1,
+      team: [
+        { characterId: "sn_ally", rotation: ["basic"], equippedFixedKeys: [] },
+        { characterId: "qjsn", rotation: ["basic"], equippedFixedKeys: [], commonKeyId: SN },
+      ] as never,
+      dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], phase: null, cover: "none" },
+      configOverrides: { fortificationLevel: 6 },
+    },
+    customRegistry({ sn_ally: ally, qjsn: qj({ atk: 1982, critRate: 0 }) }),
+  );
+  const sup = r.log.find((e) => e.supportAttack === true)!;
+  assert.ok(sup, "Support Action fired against the no-cover dummy");
+  assert.equal(sup.attackerAtk, 2082, "panel ATK 2082 = ceil(1982 × 1.05) — SN +5% ATK as in-game");
+  assert.equal(sup.bonusBracket, 1.57, "1 + 0.20 No-Cover + 0.20 Damage Up II + 0.17 Out-of-Turn (10% passive + 7% SN) — additive in the SAME DMG% bucket");
+  assert.equal(sup.finalDamage, 865, "ceil(550.8686 × 1.57) — exact in-game match");
 });
