@@ -2,6 +2,27 @@ import type { Element, StatusApplySpec } from "../model/types.js";
 import type { ActiveStatus } from "../model/runtime.js";
 import type { EffectiveStatusDef, SimulationState, UnitState } from "./state.js";
 
+/**
+ * GENERIC CLEANSE (2026, FK2 Efficient Planning): remove up to `max` statuses from `target`
+ * whose definitions are `purgeable` (dispellable), in the target's existing status-list order.
+ * Statuses with `purgeable: false` (e.g. Overburn, Support Boost) are never removed; statuses
+ * without a registry entry are left untouched. Returns the removed status ids. Selection
+ * priority when several buffs qualify is deliberately UNSPECIFIED (not evidence-constrained —
+ * no priority rule is invented beyond the existing list order).
+ */
+export function cleanseDispellable(target: UnitState, statusRegistry: Map<string, EffectiveStatusDef>, max: number): string[] {
+  const removed: string[] = [];
+  if (max <= 0) return removed;
+  for (let i = target.statuses.length - 1; i >= 0 && removed.length < max; i--) {
+    const s = target.statuses[i];
+    const def = statusRegistry.get(s.statusId);
+    if (!def || !def.purgeable) continue;
+    target.statuses.splice(i, 1);
+    removed.push(s.statusId);
+  }
+  return removed;
+}
+
 /** Status expiry bookkeeping. Tick timing is CONFIRMED (U7, in-game 2026-09-03: normal timed buffs tick at the recipient's action end); the tick point stays config-overridable per scenario for alternative testing. Returns true when a NEW active status was created. */
 export function applyStatus(state: SimulationState, target: UnitState, spec: StatusApplySpec): boolean {
   const def = state.statusRegistry.get(spec.statusId);

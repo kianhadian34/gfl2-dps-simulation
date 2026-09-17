@@ -10,6 +10,7 @@ import {
   additiveDealtBonus,
   additiveTakenBonus,
   applyStatus,
+  cleanseDispellable,
   consumeOneOnUseStacks,
   fixedDmgMods,
   multiplicativeTakenMods,
@@ -586,6 +587,18 @@ function resolveSupportHit(state: SimulationState, shooter: UnitState, skill: Sk
     }
   }
   if (skill.multiplier !== undefined || skill.fixedDamage !== undefined) {
+    // Fixed Key 2 — Efficient Planning (VALIDATED in-game 2026): cleanse `supportActionCleanse`
+    // dispellable buff(s) from the support target IMMEDIATELY BEFORE the Support Action damage,
+    // via the generic cleanse (StatusDef.purgeable). Nothing happens when none qualify; priority
+    // across several qualifying buffs is the existing status-list order (unspecified by evidence).
+    const cleanse = (shooter.equippedKeys ?? []).reduce((maxCount, kid) => {
+      const fk = shooter.def?.fixedKeys.find((f) => f.id === kid);
+      return fk?.supportActionCleanse ? Math.max(maxCount, fk.supportActionCleanse) : maxCount;
+    }, 0);
+    if (cleanse > 0) {
+      const removed = cleanseDispellable(dummy, state.statusRegistry, cleanse);
+      if (removed.length > 0) (ev.statusesExpired ??= []).push(...removed);
+    }
     dealDamageHit(state, shooter, skill, ev, { exposedOverride: highGroundExposes(state, shooter) });
   }
   // "After Support Action" passive statuses (Steady Plan Lv2/Lv3: Overburn 2r, SOURCE 2026):

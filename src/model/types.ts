@@ -278,6 +278,13 @@ export interface KeyDef {
   verified: boolean;
   /** Battle-start Confectance grants (FK1 Concentration). Keys without one use []. */
   battleStartEffects: { resource: "confectance"; amount: number }[];
+  /**
+   * Fixed Key / key behavior (VALIDATED 2026, FK2 Efficient Planning): number of dispellable
+   * target BUFFS cleansed immediately BEFORE each of the holder's Support Actions (1 = FK2).
+   * 0/absent = no support-cleansing. Selection priority when several buffs qualify is the
+   * existing status-list order (unspecified by evidence — no priority rule is invented).
+   */
+  supportActionCleanse?: number;
   /** In-game tooltip text, recorded verbatim from the panel. */
   description?: string;
   /** Set when the key's behavior is recorded but NOT implemented by the engine (see reason). */

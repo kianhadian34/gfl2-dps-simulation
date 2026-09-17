@@ -65,6 +65,8 @@ export interface UnitState {
   skillLevels: Partial<Record<AbilitySlot, number>>;
   /** Resolved PASSIVE level (Fortification-raised passive, e.g. Steady Plan Lv.3 at V6). */
   passiveLevel: number;
+  /** IDs of the Fixed Keys this unit has equipped (engine-wide; drives key-specific behavior like FK2's support cleanse). */
+  equippedKeys: string[];
   /** Resolved SkillDefVariant per slot — the ONLY skill source consumers read. Computed once at construction. */
   skills: Partial<Record<AbilitySlot, SkillDefVariant>>;
 }
@@ -238,6 +240,7 @@ function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], con
     passiveLevel,
     skills,
     passives: passiveEffectsList,
+    equippedKeys: keys.filter((k) => def.fixedKeys.some((f) => f.id === k)),
     weaknessElements: [],
     weaknessTags: [],
     cover: "none",
@@ -273,6 +276,7 @@ function makeDummy(d: Scenario["dummy"]): UnitState {
     passiveLevel: 1,
     skills: {},
     passives: (d.passives ?? []).flatMap((p) => p.effects),
+    equippedKeys: [],
     weaknessElements: d.weaknesses,
     weaknessTags: d.weaknessTags ?? [],
     cover: "none",

@@ -367,7 +367,9 @@ export const QIONGJIU: CharacterDef = {
       verified: true,
       battleStartEffects: [],
       description: "Before a Support Action, cleanses 1 buff from the target.",
-      deferredNote: "No buff-purge mechanic exists in the MVP engine (enemy buffs are not modeled); behavior recorded, not implemented.",
+      // VALIDATED in-game 2026: before Qiongjiu's Support Action, remove 1 dispellable target
+      // buff (do nothing when none); happens immediately before the Support Action damage.
+      supportActionCleanse: 1,
     },
     {
       id: "qiongjiu_fk3_targeted_training",
