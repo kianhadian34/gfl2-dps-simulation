@@ -50,6 +50,8 @@ export interface UnitState {
   critDmg: number;
   /** Out-of-Turn Damage: additive % applied to damage dealt OUTSIDE the unit's own turn (in the MVP, Support Actions). Sits in the same additive bracket as the passive 10% (QJ) — Strategic Negotiation +7% → 1.17 validated. */
   outOfTurnDmg: number;
+  /** Equipped Expansion Key id (Ruined Gem): drives the Support Action element override and the target-status dealt bonus. */
+  expansionKeyId?: string;
   stability: number;
   maxStability: number;
   exposed: boolean;
@@ -244,7 +246,7 @@ function resolveAffinityBonus(
   return { atk: foreign.genericBonus?.atk ?? 0, hp: foreign.genericBonus?.hp ?? 0, critDmg: foreign.genericBonus?.critDmg ?? 0 };
 }
 
-function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], affinity: { keyId?: string; level?: number } | undefined, commonKeyId: string | undefined, config: ResolvedConfig, registry: Registry): UnitState {
+function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], affinity: { keyId?: string; level?: number } | undefined, commonKeyId: string | undefined, expansionKeyId: string | undefined, config: ResolvedConfig, registry: Registry): UnitState {
   const panel = computePanel(def);
   const aff = resolveAffinityBonus(def, affinity?.keyId, affinity?.level, registry);
   // Common (Universal) Key stat bonuses (Strategic Negotiation, VALIDATED 2026): normal stat
@@ -290,6 +292,7 @@ function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], aff
     critRate: def.base.critRate + (commonStats?.critRate ?? 0),
     critDmg: def.base.critDmg + aff.critDmg + (commonStats?.critDmg ?? 0),
     outOfTurnDmg: commonStats?.outOfTurnDmg ?? 0,
+    expansionKeyId,
     stability: def.base.stability,
     maxStability: def.base.stability,
     exposed: false,
@@ -397,7 +400,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
   const units: UnitState[] = scenario.team.map((m) => {
     const def = registry.getCharacter(m.characterId);
     if (!def) throw new Error(`Unknown character: ${m.characterId}`);
-    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyId, config, registry);
+    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyId, m.expansionKeyId, config, registry);
   });
   const dummy = makeDummy(scenario.dummy);
   return {

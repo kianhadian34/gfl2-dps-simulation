@@ -433,7 +433,15 @@ export const QIONGJIU: CharacterDef = {
     verified: true,
     battleStartEffects: [],
     description: "Support Action damage type becomes Burn damage. Damage dealt to targets with Burn debuffs is increased by 15%.",
-    deferredNote: "Requires (a) mutating the support skill's element to Burn on key equip and (b) a 'target has Burn debuff' condition for the +15%; neither is representable today — the condition is deferred per the QJ content plan. Recorded, not implemented.",
+    // Ruined Gem — VALIDATED in-game 2026, IMPLEMENTED. Two data-driven mechanics, both scoped to
+    // the SUPPORT ACTION only (baseline `qiongjiu_support.element` null stays untouched; Guide's
+    // active Burn element unrelated): (1) `supportElementOverride` — while equipped the Support
+    // Action's EFFECTIVE element resolves as Burn, so the hit can exploit Burn phase-weakness
+    // (validated ×1.10); (2) `supportTargetStatusDealtBonus` — +0.15 ADDITIVE in the existing
+    // dealt-DMG bucket, applied only when the support target has Overburn (the Burn debuff).
+    // Direct match: ATK 2000 · 90% · DEF 5000 · bucket 0.20+0.20+0.10+0.15 = 1.65 · Burn ×1.10 → 934.
+    supportElementOverride: "burn",
+    supportTargetStatusDealtBonus: { statusId: "overburn", value: 0.15 },
   },
   affinityKey: {
     id: "qiongjiu_affinity_warm_as_jade",

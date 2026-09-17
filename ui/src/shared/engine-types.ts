@@ -38,6 +38,7 @@ export interface ScenarioTeamMemberView {
   affinityKeyId?: string;
   affinityLevel?: number;
   commonKeyId?: string;
+  expansionKeyId?: string;
 }
 
 export interface GridCoordView {

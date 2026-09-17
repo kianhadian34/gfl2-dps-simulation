@@ -318,6 +318,20 @@ export interface KeyDef {
    * no enemy displacement applier; this gate is where one would be checked (boundary).
    */
   displacementImmunityWhenStatuses?: string[];
+  /**
+   * Expansion Key — Ruined Gem (VALIDATED in-game 2026): while equipped, the holder's SUPPORT
+   * ACTION resolves with this EFFECTIVE element instead of the base skill's element. The base
+   * support-skill element (qiongjiu_support.element null = Physical/phase-less) is left unchanged;
+   * the override applies only on the support resolution path, never to other abilities.
+   */
+  supportElementOverride?: Element;
+  /**
+   * Expansion Key — Ruined Gem (VALIDATED in-game 2026): on SUPPORT ACTIONS only, when the
+   * target currently has `statusId` (Overburn = the Burn debuff), add `value` to the existing
+   * additive dealt-DMG bucket (same bucket as No-Cover/Damage Up II/Out-of-Turn; no separate
+   * multiplier). Never applies to own-turn attacks; no duration/stacking/activation beyond this.
+   */
+  supportTargetStatusDealtBonus?: { statusId: string; value: number };
   /** In-game tooltip text, recorded verbatim from the panel. */
   description?: string;
   /** Set when the key's behavior is recorded but NOT implemented by the engine (see reason). */
@@ -570,6 +584,8 @@ export interface ScenarioTeamMember {
   affinityLevel?: number;
   /** Equipped Common (Universal) Key id (e.g. Qiongjiu's Strategic Negotiation). Absent = no common-key bonuses. */
   commonKeyId?: string;
+  /** Equipped Expansion Key id (e.g. Qiongjiu's Ruined Gem). Absent = no expansion-key behavior. */
+  expansionKeyId?: string;
 }
 
 export interface Scenario {

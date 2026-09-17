@@ -301,6 +301,15 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     }
   }
   const phaseMult = phaseMultiplier(skill.element, dummy.phase);
+  // Ruined Gem (VALIDATED in-game 2026): on SUPPORT ACTIONS only, when the target currently has
+  // the key-declared status (Overburn = the Burn debuff), add the key's value to the SAME
+  // additive bucket (0.20+0.20+0.10+0.15 = 1.65 → 934 validated). No separate multiplier; never
+  // applies to own-turn attacks; no duration/stacking/activation inferred.
+  const expKey = actor.def?.expansionKey;
+  const expBonusTerm =
+    ev.supportAttack && expKey && actor.expansionKeyId === expKey.id && expKey.supportTargetStatusDealtBonus && dummy.statuses.some((s) => s.statusId === expKey.supportTargetStatusDealtBonus!.statusId)
+      ? expKey.supportTargetStatusDealtBonus.value
+      : 0;
   const addDealt =
     additiveDealtBonus(actor, state.statusRegistry, skill.element, { supportAttack: ev.supportAttack, targetExposed }) +
     conditionalDealtBonus(actor, dummy, "target.noCover", ev.supportAttack) +
@@ -310,7 +319,8 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     // modifier — in the MVP Support Actions are the only out-of-turn events, so `ev.supportAttack`
     // is the generic off-turn signal; any future out-of-turn event reuses it. It lands in the SAME
     // additive bracket as QJ's passive 10% Out-of-Turn Damage (validated 1.10 → 1.17 with the key).
-    (ev.supportAttack ? actor.outOfTurnDmg : 0);
+    (ev.supportAttack ? actor.outOfTurnDmg : 0) +
+    expBonusTerm;
   const targetMods = targetPassiveTakenMods(dummy); // U5 boss/target stability-conditional passives
   const addTaken = additiveTakenBonus(dummy, state.statusRegistry, skill.element) + targetMods.additive;
   // Effect provenance (2026): deduplicated, human-readable sources of the modifiers that
@@ -768,7 +778,15 @@ function resolveSupportHit(state: SimulationState, shooter: UnitState, skill: Sk
       const removed = cleanseDispellable(dummy, state.statusRegistry, cleanse);
       if (removed.length > 0) (ev.statusesExpired ??= []).push(...removed);
     }
-    dealDamageHit(state, shooter, skill, ev, { exposedOverride: highGroundExposes(state, shooter) });
+    // Ruined Gem (VALIDATED in-game 2026): an equipped expansion key's `supportElementOverride`
+    // resolves this SUPPORT hit with an EFFECTIVE element (Burn) — a local copy of the skill; the
+    // base support-skill element (qiongjiu_support null) is never mutated, and no other ability is
+    // affected (Guide's active Burn element is its own, unrelated).
+    const expansionSkill =
+      shooter.def?.expansionKey && shooter.expansionKeyId === shooter.def.expansionKey.id && shooter.def.expansionKey.supportElementOverride
+        ? { ...skill, element: shooter.def.expansionKey.supportElementOverride }
+        : skill;
+    dealDamageHit(state, shooter, expansionSkill, ev, { exposedOverride: highGroundExposes(state, shooter) });
   }
   // "After Support Action" passive statuses (Steady Plan Lv2/Lv3: Overburn 2r, SOURCE 2026):
   // applied to the support target whenever a Support Action is performed — no extra gate

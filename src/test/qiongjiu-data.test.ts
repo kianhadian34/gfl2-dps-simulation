@@ -62,12 +62,20 @@ test("FK4–FK6 record the exact behaviors but explicitly defer unimplemented en
   assert.deepEqual(fk6.displacementImmunityWhenStatuses, ["support_boost_i", "support_boost_i_30", "support_boost_ii"]);
 });
 
-test("Expansion Key Ruined Gem is recorded with its deferral", () => {
+test("Expansion Key Ruined Gem is recorded (VALIDATED 2026 facts) and now IMPLEMENTED (no deferral)", () => {
+  // Validated in-game evidence (2026), recorded in docs and implemented: (1) Support Action
+  // damage type changes from Physical/phase-less to Burn (`supportElementOverride`); (2) +15%
+  // damage applies when the target has Overburn (`supportTargetStatusDealtBonus`); (3) additive
+  // in the same DMG% bucket — direct match 934 (bucket 0.20+0.20+0.10+0.15 = 1.65 · Burn ×1.10).
   assert.equal(QIONGJIU.expansionKey?.id, "qiongjiu_exp_ruined_gem");
   assert.equal(QIONGJIU.expansionKey?.name, "Ruined Gem");
+  assert.equal(QIONGJIU.expansionKey?.verified, true);
+  assert.deepEqual(QIONGJIU.expansionKey?.battleStartEffects, []);
   assert.match(QIONGJIU.expansionKey?.description ?? "", /Burn/);
   assert.match(QIONGJIU.expansionKey?.description ?? "", /15%/);
-  assert.ok(QIONGJIU.expansionKey?.deferredNote, "expansion key documents deferral (Burn damage type mutation + target-has-Burn-debuff condition)");
+  assert.equal(QIONGJIU.expansionKey?.supportElementOverride, "burn", "Support Action effective element becomes Burn while equipped (base support skill untouched)");
+  assert.deepEqual(QIONGJIU.expansionKey?.supportTargetStatusDealtBonus, { statusId: "overburn", value: 0.15 }, "+15% vs Burn-debuff target, additive in the DMG% bucket");
+  assert.equal(QIONGJIU.expansionKey?.deferredNote, undefined, "Ruined Gem no longer deferred (implemented)");
 });
 
 test("Affinity Key Warm as Jade: 9 levels, exactly levels 5 and 9 defined, no interpolation", () => {
