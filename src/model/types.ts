@@ -300,6 +300,14 @@ export interface KeyDef {
    * EVERY subsequent enemy receives exactly 30% less (`secondary = ceil(normal × 0.70)`).
    */
   pointOfVulnerabilityLine?: boolean;
+  /**
+   * Fixed Key 5: Necessary Adjustments (VALIDATED in-game 2026) — "When a phase weakness is
+   * exploited using Common Rail, gains Blazing Assault II for 2 turns." Data-driven self-statuses
+   * applied BEFORE the triggering skill's damage resolves (the hit already uses the +15% ATK —
+   * validated 2000 → 2300 → 1435). Only PHASE weaknesses trigger the gain; ammo-only exploits
+   * never do; `ability` restricts the trigger to the named skill (Common Rail = active1).
+   */
+  phaseWeaknessExploitStatuses?: { ability: AbilitySlot; statuses: StatusApplySpec[] };
   /** In-game tooltip text, recorded verbatim from the panel. */
   description?: string;
   /** Set when the key's behavior is recorded but NOT implemented by the engine (see reason). */

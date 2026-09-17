@@ -401,7 +401,15 @@ export const QIONGJIU: CharacterDef = {
       verified: true,
       battleStartEffects: [],
       description: "When a phase weakness is exploited using Common Rail, gains Blazing Assault II for 2 turns.",
-      deferredNote: "Requires a blazing_assault_ii status definition (magnitude UNKNOWN) and a skill-scoped (Common Rail only) weakness-exploit gain trigger; recorded, not implemented.",
+      // Fixed Key 5: Necessary Adjustments — VALIDATED in-game 2026. "When a phase weakness is
+      // exploited using Common Rail, gains Blazing Assault II for 2 turns." Phase-weakness
+      // exploit ONLY (ammo-only never triggers); Common Rail only (active1). The status is
+      // applied BEFORE the triggering hit's damage — validated 2000 ATK → 2300 (BA II +15%)
+      // → Common Rail 150% → DEF 5000, No-Cover +20%, Burn ×1.10 → ceil = 1435.
+      phaseWeaknessExploitStatuses: {
+        ability: "active1",
+        statuses: [{ statusId: "blazing_assault_ii", durationRounds: 2 }],
+      },
     },
     {
       id: "qiongjiu_fk6_steadiness",

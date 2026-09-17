@@ -266,6 +266,23 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   // benefits from its own 2 stacks (validated T1 = 616 / 105). Phase attacks are
   // gated out by the trigger data (requiresElements) — they neither gain nor benefit.
   grantStackOnWeaknessExploit(state, dummy, skill, ammoExploited);
+  // FK5 (VALIDATED in-game 2026): "When a phase weakness is exploited using Common Rail, gains
+  // Blazing Assault II for 2 turns." A PHASE-weakness exploit (weaknesses matching the skill's
+  // element — ammo-only exploits never qualify) by the keyed skill (Common Rail = active1)
+  // applies the key's self-statuses BEFORE any damage computation, so the triggering hit
+  // already uses the +15% ATK (validated 2000 → 2300 → 1435). Data-driven via the key def.
+  const phaseExploited = weaknesses.some((w) => w === skill.element);
+  if (phaseExploited) {
+    const hook = (actor.equippedKeys ?? [])
+      .map((kid) => actor.def?.fixedKeys.find((k) => k.id === kid))
+      .find((k) => k?.phaseWeaknessExploitStatuses && actor.def?.skills[k.phaseWeaknessExploitStatuses.ability as keyof NonNullable<typeof actor.def.skills>]?.id === skill.id)
+      ?.phaseWeaknessExploitStatuses;
+    for (const spec of hook?.statuses ?? []) {
+      if (applyStatus(state, actor, { ...spec, applier: { id: actor.id, atk: actor.panelAtk }, source: "qiongjiu-fk5-necessary-adjustments" })) {
+        ev.statusesApplied.push(spec.statusId);
+      }
+    }
+  }
   const phaseMult = phaseMultiplier(skill.element, dummy.phase);
   const addDealt =
     additiveDealtBonus(actor, state.statusRegistry, skill.element, { supportAttack: ev.supportAttack, targetExposed }) +
