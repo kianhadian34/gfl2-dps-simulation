@@ -133,11 +133,15 @@ export const QIONGJIU: CharacterDef = {
     },
     // ---------------------------------------------------------------- Pressing the Momentum (authoritative kit sync 2026):
     // Lv1 = cost 3, +3 Support Boost II, at-max Confectance +1 stack & +1 Support Action max (executed).
-    // Lv2 (V4) Vulnerable (No-Cover-gated) and Lv3 (V5) Damage Up II (pre-ally-hit timing) are deferred.
+    // Lv2 (V4) Vulnerable I (pre-Support, 1 turn) and Lv3 (V5) Damage Up II (pre-ally-attack, self+ally,
+    // 1 turn) — IMPLEMENTED & VALIDATED in-game 2026.
+    // BUFF/DEBUFF-ONLY ULTIMATE (authoritative in-game screenshot classification: "Ultimate / Buff /
+    // Debuff"): NO damage component and NO damage multiplier — the current buff-only implementation is
+    // correct by design; do not add a multiplier.
     ultimate: {
       id: "qiongjiu_pressing_momentum",
       name: "Pressing the Momentum",
-      playerDescription: "Deal massive ATK damage. Applies 3 Support Boost II stacks; at max Confectance grants an extra Support Boost II stack and +1 Support Action.",
+      playerDescription: "Buff/Debuff Ultimate. Applies 3 Support Boost II stacks; at max Confectance grants an extra Support Boost II stack and +1 Support Action.",
       type: "ultimate",
       levels: {
         1: {
