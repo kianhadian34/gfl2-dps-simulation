@@ -308,6 +308,16 @@ export interface KeyDef {
    * never do; `ability` restricts the trigger to the named skill (Common Rail = active1).
    */
   phaseWeaknessExploitStatuses?: { ability: AbilitySlot; statuses: StatusApplySpec[] };
+  /**
+   * Fixed Key 6: Steadiness (VALIDATED in-game 2026) — "While under the effect of Support Boost,
+   * gain immunity to displacement effects applied by enemy units." Data-driven CONDITION: when
+   * the holder has the key equipped AND any status whose id is listed here is active (Support
+   * Boost I, the +30% Support Boost I variant, and Support Boost II all satisfy it), the holder
+   * is immune to enemy-applied displacement. Read-only — the gate never consumes, alters,
+   * extends, or refreshes Support Boost (no effect on SB I/II damage or activation). The MVP has
+   * no enemy displacement applier; this gate is where one would be checked (boundary).
+   */
+  displacementImmunityWhenStatuses?: string[];
   /** In-game tooltip text, recorded verbatim from the panel. */
   description?: string;
   /** Set when the key's behavior is recorded but NOT implemented by the engine (see reason). */

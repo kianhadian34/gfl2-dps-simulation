@@ -417,7 +417,14 @@ export const QIONGJIU: CharacterDef = {
       verified: true,
       battleStartEffects: [],
       description: "While under Support Boost, gains immunity to displacement effects applied by enemy units.",
-      deferredNote: "No displacement mechanics exist in the MVP (Cover/movement out of scope) — nothing to immunize against; recorded, no engine behavior required.",
+      // Fixed Key 6: Steadiness — condition VALIDATED in-game 2026. "Under the effect of Support
+      // Boost" = any active Support Boost buff (Support Boost I, the +30% Support Boost I variant,
+      // and Support Boost II all satisfy the condition). While one is active the holder is immune
+      // to displacement effects applied by enemy units; without it the immunity is off. The gate
+      // is READ-ONLY — it never consumes/alters/extends Support Boost. The MVP has no enemy
+      // displacement applier; `displacementImmunityWhenStatuses` is the condition any such
+      // application would check (boundary, no speculative displacement infrastructure added).
+      displacementImmunityWhenStatuses: ["support_boost_i", "support_boost_i_30", "support_boost_ii"],
     },
   ],
   expansionKey: {

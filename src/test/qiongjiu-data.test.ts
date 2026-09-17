@@ -31,7 +31,7 @@ test("FK1 Concentration grants +3 Confectance at battle start", () => {
 });
 
 test("FK4–FK6 record the exact behaviors but explicitly defer unimplemented engine mechanics (FK2/FK3/FK4/FK5 are implemented)", () => {
-  const implemented = new Set(["qiongjiu_fk1_concentration", "qiongjiu_fk2_efficient_planning", "qiongjiu_fk3_targeted_training", "qiongjiu_fk4_point_of_vulnerability", "qiongjiu_fk5_necessary_adjustments"]);
+  const implemented = new Set(["qiongjiu_fk1_concentration", "qiongjiu_fk2_efficient_planning", "qiongjiu_fk3_targeted_training", "qiongjiu_fk4_point_of_vulnerability", "qiongjiu_fk5_necessary_adjustments", "qiongjiu_fk6_steadiness"]);
   const deferred = QIONGJIU.fixedKeys.filter((k) => !implemented.has(k.id));
   for (const k of deferred) {
     assert.deepEqual(k.battleStartEffects, [], `${k.id} has no battle-start effect`);
@@ -56,6 +56,10 @@ test("FK4–FK6 record the exact behaviors but explicitly defer unimplemented en
   assert.equal(fk5.deferredNote, undefined, "FK5 no longer deferred");
   assert.equal(fk5.phaseWeaknessExploitStatuses?.ability, "active1");
   assert.equal(fk5.phaseWeaknessExploitStatuses?.statuses[0].statusId, "blazing_assault_ii");
+  // Fixed Key 6: Steadiness (VALIDATED 2026, Support-Boost-gated displacement immunity): implemented.
+  const fk6 = QIONGJIU.fixedKeys.find((k) => k.id === "qiongjiu_fk6_steadiness")!;
+  assert.equal(fk6.deferredNote, undefined, "FK6 no longer deferred");
+  assert.deepEqual(fk6.displacementImmunityWhenStatuses, ["support_boost_i", "support_boost_i_30", "support_boost_ii"]);
 });
 
 test("Expansion Key Ruined Gem is recorded with its deferral", () => {

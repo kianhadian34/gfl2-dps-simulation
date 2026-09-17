@@ -256,6 +256,23 @@ function guideLineSecondaryHits(
   }
 }
 
+/**
+ * FK6 Steadiness (VALIDATED in-game 2026): when the holder has the key equipped AND any of the
+ * key's configured statuses is currently active (Support Boost I, the +30% Support Boost I
+ * variant, or Support Boost II all satisfy "under the effect of Support Boost"), the holder is
+ * IMMUNE to displacement effects applied by enemy units. The gate is purely read-only: it never
+ * consumes, alters, extends, or refreshes Support Boost and has no effect on SB I/II damage or
+ * activation. The MVP has no enemy displacement applier — this is the condition any such
+ * application would be checked against (boundary, no speculative displacement infrastructure).
+ */
+export function displacementImmunityActive(unit: UnitState): boolean {
+  const gate = (unit.equippedKeys ?? [])
+    .map((kid) => unit.def?.fixedKeys.find((k) => k.id === kid))
+    .find((k) => (k?.displacementImmunityWhenStatuses?.length ?? 0) > 0);
+  if (!gate) return false;
+  return gate.displacementImmunityWhenStatuses!.some((id) => unit.statuses.some((s) => s.statusId === id));
+}
+
 /** Damage + stability + Confectance-gain application for a single hit; fills the event's damage fields. */
 function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDefVariant, ev: LogEvent, opts?: { exposedOverride?: boolean }): number {
   const dummy = state.dummy;
