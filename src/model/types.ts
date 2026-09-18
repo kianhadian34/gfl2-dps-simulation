@@ -20,6 +20,20 @@ export type AbilitySlot = ActionSlot | "support" | "passive";
 /** Damage-source category used for results aggregation (docs/schemas.md §10). */
 export type SourceKind = "basic" | "active" | "ultimate" | "passive";
 
+/**
+ * Per-calibration WEAPON EFFECT data (Golden Melody, SOURCE FACTS 2026): calibration changes
+ * ONLY the weapon Effect — never the max-level base stats. Values drive the engine GENERICALLY
+ * (no per-calibration branches). C1 Damage Dealt (+10%) and C1 Charging (+10%/stack) are
+ * combat-VALIDATED (975 / 1434); other calibrations are documented source facts consumed by the
+ * same generic path (no separate combat validation required, per the evidence).
+ */
+export interface WeaponCalibrationDef {
+  /** Damage Dealt +% (all attacks) — additive in the existing DMG% bucket. */
+  damageDealt?: number;
+  /** Charging-style per-gain weapon-effect counter: +Support Action damage per stack (additive, support-scoped); one stack consumed per Support Action; cap = maxStacks. */
+  charging?: { perStackValue: number; maxStacks: number };
+}
+
 export interface WeaponDef {
   id: string;
   name: string;
@@ -28,6 +42,14 @@ export interface WeaponDef {
   atkLvl1: number;
   atkLvl60: number;
   level: number;
+  /**
+   * Equipped calibration level (1–6). ABSENT = NO weapon Effect (the established pre-weapon
+   * validations were all observed without the calibration Effect active — preserved as the
+   * default). Setting a level activates ONLY that calibration's Effect values generically.
+   */
+  calibrationLevel?: number;
+  /** Per-calibration Effect data (1–6). Absent = the weapon has no Effect/calibration mechanic. */
+  calibrations?: Record<number, WeaponCalibrationDef>;
   subStats: { stat: "pctAtk" | "pctHp" | "pctDef"; value: number }[];
 }
 
@@ -257,6 +279,13 @@ export type EffectSourceRef =
       slot: AbilitySlot;
       level: number;
       v?: number;
+      label: string;
+    }
+  | {
+      kind: "weapon";
+      weaponId: string;
+      /** Equipped calibration level of the weapon (1–6) whose Effect contributed. */
+      calibration: number;
       label: string;
     }
   | { kind: "target"; label: string };

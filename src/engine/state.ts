@@ -1,4 +1,4 @@
-import type { AbilityDef, AbilitySlot, ActionSlot, AmmoType, CharacterDef, CommonKeyStat, ConfigOverrides, Element, PassiveEffect, Scenario, SkillDefVariant, SourceKind, StatusDef, StatusOverride } from "../model/types.js";
+import type { AbilityDef, AbilitySlot, ActionSlot, AmmoType, CharacterDef, CommonKeyStat, ConfigOverrides, Element, PassiveEffect, Scenario, SkillDefVariant, SourceKind, StatusDef, StatusOverride, WeaponCalibrationDef } from "../model/types.js";
 import { buildGrid, type GridState } from "./grid.js";
 import { finalStat } from "./stats.js";
 import type { ActiveStatus, LogEvent, ResolvedConfig } from "../model/runtime.js";
@@ -58,6 +58,8 @@ export interface UnitState {
   outOfTurnDmg: number;
   /** Equipped Expansion Key id (Ruined Gem): drives the Support Action element override and the target-status dealt bonus. */
   expansionKeyId?: string;
+  /** Weapon-effect charge counter (Golden Melody Charging, VALIDATED 2026): +1 per buff GAINED (capped by the calibration's maxStacks); 1 consumed per Support Action; persists when unused; inherently un-cleansable (weapon state, not a status). 0 = none. */
+  weaponCharges: number;
   stability: number;
   maxStability: number;
   exposed: boolean;
@@ -111,6 +113,19 @@ export function weaponAtk(def: CharacterDef): number {
   if (w.level >= 60) return w.atkLvl60;
   const t = (w.level - 1) / (60 - 1);
   return Math.round(w.atkLvl1 + (w.atkLvl60 - w.atkLvl1) * t);
+}
+
+/**
+ * Resolved WEAPON EFFECT for the EQUIPPED calibration (Golden Melody, VALIDATED 2026).
+ * Calibration changes ONLY the Effect — never the max-level base stats. `calibrationLevel`
+ * ABSENT ⇒ NO weapon Effect (all established pre-weapon validations were observed without the
+ * calibration Effect — that default is preserved). Generic: any character with a weapon that
+ * declares `calibrations` gets the behavior; no character-specific logic.
+ */
+export function weaponCalibration(def: CharacterDef | null): WeaponCalibrationDef | undefined {
+  const w = def?.weapon;
+  if (!w || w.calibrationLevel === undefined || !w.calibrations) return undefined;
+  return w.calibrations[w.calibrationLevel];
 }
 
 /** Panel formula: Final Stat = ceil((Initial + Flat) × (1 + Stat%)) — formula Mathematically Proven; integer DISPLAY Validated; exact hidden rounding method Not Tested (stats.ts). */
@@ -308,6 +323,7 @@ function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], aff
     critDmg: def.base.critDmg + aff.critDmg + (commonStats.critDmg ?? 0),
     outOfTurnDmg: commonStats.outOfTurnDmg ?? 0,
     expansionKeyId,
+    weaponCharges: 0,
     stability: def.base.stability,
     maxStability: def.base.stability,
     exposed: false,
@@ -345,6 +361,7 @@ function makeDummy(d: Scenario["dummy"]): UnitState {
     critRate: 0,
     critDmg: 0,
     outOfTurnDmg: 0,
+    weaponCharges: 0,
     stability: d.stability,
     maxStability: d.stability,
     exposed: false,

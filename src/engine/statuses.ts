@@ -1,6 +1,7 @@
 import type { Element, StatusApplySpec } from "../model/types.js";
 import type { ActiveStatus } from "../model/runtime.js";
 import type { EffectiveStatusDef, SimulationState, UnitState } from "./state.js";
+import { weaponCalibration } from "./state.js";
 
 /**
  * GENERIC CLEANSE (2026, FK2 Efficient Planning): remove up to `max` statuses from `target`
@@ -51,6 +52,15 @@ export function applyStatus(state: SimulationState, target: UnitState, spec: Sta
   } else {
     const active = { statusId: spec.statusId, stacks: cap(stacks), durationLeft: dur, applier: spec.applier, source: spec.source };
     target.statuses.push(active);
+    // WEAPON EFFECT — Charging (Golden Melody, VALIDATED in-game 2026): when the unit GAINS A
+    // BUFF (a NEW buff application — refreshes of an already-held buff do not re-trigger), a
+    // weapon whose resolved calibration declares `charging` grants +1 charge, capped by the
+    // calibration's maxStacks. Data-driven and generic (only the HOLDER's own weapon matters;
+    // allies/dummy without one are unaffected); NOT an invented event system.
+    if (target.def && def.category === "buff") {
+      const wcal = weaponCalibration(target.def);
+      if (wcal?.charging) target.weaponCharges = Math.min(wcal.charging.maxStacks, (target.weaponCharges ?? 0) + 1);
+    }
     return true;
   }
 }
