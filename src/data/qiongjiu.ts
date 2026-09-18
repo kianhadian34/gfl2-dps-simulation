@@ -11,30 +11,9 @@ export const QIONGJIU: CharacterDef = {
   phase: "burn",
   // Level-60 base stats (research §3.8, CONFIRMED, 2024 data).
   base: { atk: 1224, hp: 2494, def: 695, stability: 9, critRate: 0.2, critDmg: 0.2 },
-  weapon: {
-    id: "jinshizou",
-    name: "Jinshizou (金石奏)",
-    rarity: "elite",
-    atkLvl1: 53,
-    atkLvl60: 369,
-    level: 60,
-    subStats: [{ stat: "pctAtk", value: 0.15 }],
-    // Golden Melody — per-calibration WEAPON EFFECT (SOURCE FACTS 2026): calibration changes
-    // ONLY the Effect, never the max-level base stats. `calibrationLevel` is intentionally
-    // ABSENT in the default data — every established pre-weapon validation was observed WITHOUT
-    // the calibration Effect active, so no Effect by default (set `calibrationLevel` to activate
-    // one). C1 Damage Dealt (+10%, → 975) and C1 Charging (+10% SA/stack, max 2, → 1434) are
-    // VALIDATED in combat; C2–C6 values are the documented calibration table, consumed by the
-    // same generic path (no separate branches / no separate combat validation required).
-    calibrations: {
-      1: { damageDealt: 0.1, charging: { perStackValue: 0.1, maxStacks: 2 } },
-      2: { damageDealt: 0.1, charging: { perStackValue: 0.15, maxStacks: 2 } },
-      3: { damageDealt: 0.15, charging: { perStackValue: 0.15, maxStacks: 3 } },
-      4: { damageDealt: 0.2, charging: { perStackValue: 0.15, maxStacks: 3 } },
-      5: { damageDealt: 0.2, charging: { perStackValue: 0.2, maxStacks: 4 } },
-      6: { damageDealt: 0.2, charging: { perStackValue: 0.2, maxStacks: 4 } },
-    },
-  },
+  // NOTE (2026): the unit's weapon is NO LONGER permanent character data — Golden Melody
+  // (金石奏 / jinshizou) is a REUSABLE weapon definition in src/data/weapons.ts, equipped via
+  // `ScenarioTeamMember.weaponId: "jinshizou"` (see helpers.scenario() default).
   skills: {
     // ---------------------------------------------------------------- Basic (Lv1 only — never levels from Fortification)
     basic: {

@@ -19,7 +19,7 @@ const scenarioFor = (rotation: string[]): Parameters<typeof simulateScenario>[0]
   version: 1,
   seed: 7,
   turns: 1,
-  team: [{ characterId: "qiongjiu", rotation: rotation as never, equippedFixedKeys: [] }],
+  team: [{ characterId: "qiongjiu", rotation: rotation as never, equippedFixedKeys: [], weaponId: "jinshizou" }],
   dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 6, weaknesses: [], phase: null, cover: "none" },
 });
 
@@ -50,8 +50,8 @@ test("finalStat: multiple % modifiers sum into one Stat% term", () => {
   assert.equal(finalStat(300, 100, 0.1 + 0.05), 460);
 });
 
-test("computePanel: ATK/DEF/HP are integer final stats (Qiongjiu)", () => {
-  const p = computePanel(QIONGJIU);
+test("computePanel: ATK/DEF/HP are integer final stats (Qiongjiu, equipped Golden Melody)", () => {
+  const p = computePanel(QIONGJIU, REGISTRY.getWeapon("jinshizou")!);
   assert.equal(Number.isInteger(p.atk), true);
   assert.equal(Number.isInteger(p.hp), true);
   assert.equal(Number.isInteger(p.def), true);

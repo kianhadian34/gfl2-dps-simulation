@@ -2,11 +2,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
 import { computePanel, weaponAtk } from "../engine/state.js";
+import { REGISTRY } from "../data/registry.js";
 import { QJ } from "./helpers.js";
 
 test("panel stats: FINAL STAT = ceil((base + flat) × (1 + Stat%)) — 2026 authoritative rounding", () => {
-  assert.equal(weaponAtk(QJ), 369); // 金石奏 60
-  const panel = computePanel(QJ);
+  const weapon = REGISTRY.getWeapon("jinshizou")!; // Golden Melody, equipped via weaponId
+  assert.ok(weapon, "Golden Melody resolves from the weapon registry");
+  assert.equal(weaponAtk(weapon), 369); // 金石奏 60
+  const panel = computePanel(QJ, weapon);
   // ceil((1224 + 369) × 1.15) = ceil(1831.95) = 1832 — the integer final stat used downstream.
   assert.equal(panel.atk, 1832, `panel.atk=${panel.atk}`);
   assert.equal(panel.def, 695);
@@ -18,7 +21,7 @@ test("integration: 7-round fixed rotation (MVP cap), all aggregations consistent
     version: 1,
     seed: 20260903,
     turns: 7,
-    team: [{ characterId: "qiongjiu", rotation: ["ultimate", "active1", "active2", "basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"] }],
+    team: [{ characterId: "qiongjiu", rotation: ["ultimate", "active1", "active2", "basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"], weaponId: "jinshizou" }],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
   });
 
@@ -73,7 +76,7 @@ test("integration: 7-round fixed rotation (MVP cap), all aggregations consistent
     version: 1,
     seed: 20260903,
     turns: 7,
-    team: [{ characterId: "qiongjiu", rotation: ["ultimate", "active1", "active2", "basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"] }],
+    team: [{ characterId: "qiongjiu", rotation: ["ultimate", "active1", "active2", "basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"], weaponId: "jinshizou" }],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
   });
   assert.equal(JSON.stringify(r.log), JSON.stringify(r2.log));

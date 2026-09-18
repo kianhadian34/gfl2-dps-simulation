@@ -73,7 +73,6 @@ test("targeting: grid-enabled Guide Lv1 damage is UNCHANGED when the same target
   const def = structuredClone(QIONGJIU);
   def.id = "gj";
   def.base = { ...def.base, atk: 1962, critRate: 0 };
-  def.weapon = { ...def.weapon, atkLvl1: 0, atkLvl60: 0, subStats: [] };
   const r = simulateScenario(
     {
       version: 1,

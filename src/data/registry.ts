@@ -1,7 +1,8 @@
-import type { AffinityKeyDef, CharacterDef, CommonKeyDef, StatusDef } from "../model/types.js";
+import type { AffinityKeyDef, CharacterDef, CommonKeyDef, StatusDef, WeaponDef } from "../model/types.js";
 import { COMMON_KEYS } from "./common-keys.js";
 import { QIONGJIU } from "./qiongjiu.js";
 import { statusMap } from "./statuses.js";
+import { WEAPONS } from "./weapons.js";
 
 /**
  * Game-data registry. Adding a future character = add a data file + one entry
@@ -16,6 +17,8 @@ export interface Registry {
   getAffinityKey(id: string): AffinityKeyDef | undefined;
   /** Common Key def by id (REUSABLE definition — any doll may equip any key; 2026). */
   getCommonKey(id: string): CommonKeyDef | undefined;
+  /** Weapon def by id (REUSABLE definition — equipped via `ScenarioTeamMember.weaponId`, 1 slot; 2026). */
+  getWeapon(id: string): WeaponDef | undefined;
 }
 
 const CHARACTERS: CharacterDef[] = [QIONGJIU];
@@ -41,5 +44,8 @@ export const REGISTRY: Registry = {
   },
   getCommonKey(id) {
     return COMMON_KEYS.find((k) => k.id === id);
+  },
+  getWeapon(id) {
+    return WEAPONS.find((w) => w.id === id);
   },
 };

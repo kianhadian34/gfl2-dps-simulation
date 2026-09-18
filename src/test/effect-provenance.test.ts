@@ -60,7 +60,6 @@ test("provenance: support-scoped custom doll's support hit reports the passive s
     name: "pv",
     phase: null,
     base: { atk: 1000, hp: 1000, def: 100, stability: 6, critRate: 0, critDmg: 0.2 },
-    weapon: { id: "pv_w", name: "w", rarity: "standard", atkLvl1: 0, atkLvl60: 0, level: 60, subStats: [] },
     skills: abilities({
       basic: { id: "pv_basic", name: "Hit", type: "basic", element: null, multiplier: 1.0, stabDamage: 0, cooldown: 0, confectanceCost: 0, appliesStatuses: [{ statusId: "support_boost_i", durationRounds: 2, target: "self" }] },
       active1: { id: "pv_a1", name: "-", type: "active", element: null, multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 },
@@ -101,7 +100,6 @@ test("provenance: applying doll status source is used for the bonus's label (dam
     name: "pv2",
     phase: null,
     base: { atk: 1000, hp: 1000, def: 100, stability: 6, critRate: 0, critDmg: 0.2 },
-    weapon: { id: "pv2_w", name: "w", rarity: "standard", atkLvl1: 0, atkLvl60: 0, level: 60, subStats: [] },
     skills: abilities({
       basic: { id: "pv2_basic", name: "Hit", type: "basic", element: null, multiplier: 1.0, stabDamage: 0, cooldown: 0, confectanceCost: 0, appliesStatuses: [spec] },
       active1: { id: "pv2_a1", name: "-", type: "active", element: null, multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 },

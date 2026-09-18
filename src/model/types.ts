@@ -473,7 +473,9 @@ export interface CharacterDef {
   /** Doll's own phase element (null = phase-less, e.g. physical-ammo dolls). */
   phase: Element | null;
   base: { atk: number; hp: number; def: number; stability: number; critRate: number; critDmg: number };
-  weapon: WeaponDef;
+  // NOTE (2026): characters no longer carry a permanent equipped weapon — weapons are REUSABLE
+  // definitions equipped per scenario via `ScenarioTeamMember.weaponId` (1 Weapon Slot) and
+  // resolved through `Registry.getWeapon` (src/data/weapons.ts). Property removed from CharacterDef.
   skills: { basic: AbilityDef; active1: AbilityDef; active2: AbilityDef; ultimate: AbilityDef; support?: AbilityDef };
   passive: PassiveDef;
   fixedKeys: KeyDef[];
@@ -682,6 +684,13 @@ export interface ScenarioTeamMember {
    * SOURCE FACT). Fewer than 3 (0–2) is valid; the engine enforces the 3-key maximum.
    */
   commonKeyIds?: string[];
+  /**
+   * Equipped weapon id (1 Weapon Slot per character, 2026) — resolved via `Registry.getWeapon`
+   * (reusable definitions in src/data/weapons.ts). ABSENT = NO weapon (no weapon ATK/sub-stats,
+   * no weapon Effect — nothing is inherited from the character). Unknown ids are rejected with a
+   * clear error.
+   */
+  weaponId?: string;
   /** Equipped Expansion Key id (e.g. Qiongjiu's Ruined Gem). Absent = no expansion-key behavior. */
   expansionKeyId?: string;
 }

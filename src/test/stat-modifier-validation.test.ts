@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
 import { createState } from "../engine/state.js";
 import { applyStatus, statModifier } from "../engine/statuses.js";
+import { resolveCritStats } from "../engine/simulation.js";
 import { REGISTRY } from "../data/registry.js";
 import { abilities, customRegistry, scenario } from "./helpers.js";
 import type { CharacterDef, StatusApplySpec } from "../model/types.js";
@@ -18,7 +19,6 @@ function makeStatChar(id: string, atk: number, selfSpecs: StatusApplySpec[], tar
     name: id,
     phase: null,
     base: { atk, hp: 1000, def: 100, stability: 6, critRate: 0, critDmg: 0.2 },
-    weapon: { id: `${id}_w`, name: "w", rarity: "standard", atkLvl1: 0, atkLvl60: 0, level: 60, subStats: [] },
     skills: abilities({
       basic: { id: `${id}_basic`, name: "Hit", type: "basic", element: null, multiplier: 1.0, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
       active1: { id: `${id}_apply`, name: "Apply", type: "active", element: null, multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0, appliesStatuses: [...selfSpecs, ...targetSpecs] },
@@ -46,6 +46,24 @@ test("statModifier helper: flat DEF adds; HP% rounds up; CritRate stays continuo
   assert.equal(statModifier(doll, state.statusRegistry, "def", 5000), 5100);
   assert.equal(statModifier(doll, state.statusRegistry, "hp", 1000), 1100); // ceil(1000 × 1.10)
   assert.ok(Math.abs(statModifier(doll, state.statusRegistry, "critRate", 0.2) - 0.3) < 1e-9, "critRate stays continuous");
+});
+
+test("Golden Melody Trait outcome 'Critical Rate Boost I': +10% Crit Rate (encoded via the existing stat_modifier system)", () => {
+  // Documented Trait outcome (research.md §3.9): "Critical Rate Boost I — Critical Rate +10%, 1 turn."
+  // This test encodes ONLY that mechanic through the existing generic stat_modifier path at its
+  // EXACT value (flat +0.10 CritRate — the engine's `stat_crit_rate_flat_test` matches 1:1). It
+  // does NOT test Trait selection, the random pool, probabilities, uniformity, or duplicates
+  // (all UNKNOWN — nothing invented). Trait itself is not implemented; the buff is applied
+  // directly. NOTE: the documented "1 turn" duration is the generic U7 own-action-end rule
+  // (already validated and covered by status-timing tests); the fixture status is permanent by
+  // definition, so duration expiry is not re-encoded here.
+  const state = createState(scenario({ turns: 1 }), REGISTRY, new Set());
+  const doll = state.units[0]; // QJ mirror: base critRate 0.2
+  applyStatus(state, doll, { statusId: "stat_crit_rate_flat_test", durationRounds: 1 });
+  const buffed = statModifier(doll, state.statusRegistry, "critRate", doll.critRate);
+  assert.ok(Math.abs(buffed - (doll.critRate + 0.1)) < 1e-9, `+10% Crit Rate effective (got ${buffed})`);
+  const crit = resolveCritStats(buffed, doll.critDmg, doll.passives);
+  assert.ok(Math.abs(crit.critRate - 0.3) < 1e-9, "the +10% feeds the existing crit machinery (0.2 + 0.1 = 0.3)");
 });
 
 test("integration: self-applied permanent ATK% changes the attacker's effective ATK on the next action (2223)", () => {

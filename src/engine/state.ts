@@ -1,4 +1,4 @@
-import type { AbilityDef, AbilitySlot, ActionSlot, AmmoType, CharacterDef, CommonKeyStat, ConfigOverrides, Element, PassiveEffect, Scenario, SkillDefVariant, SourceKind, StatusDef, StatusOverride, WeaponCalibrationDef } from "../model/types.js";
+import type { AbilityDef, AbilitySlot, ActionSlot, AmmoType, CharacterDef, CommonKeyStat, ConfigOverrides, Element, PassiveEffect, Scenario, SkillDefVariant, SourceKind, StatusDef, StatusOverride, WeaponCalibrationDef, WeaponDef } from "../model/types.js";
 import { buildGrid, type GridState } from "./grid.js";
 import { finalStat } from "./stats.js";
 import type { ActiveStatus, LogEvent, ResolvedConfig } from "../model/runtime.js";
@@ -60,6 +60,8 @@ export interface UnitState {
   expansionKeyId?: string;
   /** Weapon-effect charge counter (Golden Melody Charging, VALIDATED 2026): +1 per buff GAINED (capped by the calibration's maxStacks); 1 consumed per Support Action; persists when unused; inherently un-cleansable (weapon state, not a status). 0 = none. */
   weaponCharges: number;
+  /** The scenario-EQUIPPED weapon (resolved from `ScenarioTeamMember.weaponId` via the registry; null = no weapon equipped). Never inherited from the character. */
+  weapon: WeaponDef | null;
   stability: number;
   maxStability: number;
   exposed: boolean;
@@ -106,9 +108,10 @@ export interface SimulationState {
   accum: Accumulators;
 }
 
-/** Weapon ATK at the weapon's configured level (linear interpolation; exact curve UNVERIFIED, research §3.9). */
-export function weaponAtk(def: CharacterDef): number {
-  const w = def.weapon;
+/** Weapon ATK at the weapon's configured level (linear interpolation; exact curve UNVERIFIED, research §3.9). Null (no equipped weapon) ⇒ 0. */
+export function weaponAtk(weapon: WeaponDef | null): number {
+  if (!weapon) return 0;
+  const w = weapon;
   if (w.level <= 1) return w.atkLvl1;
   if (w.level >= 60) return w.atkLvl60;
   const t = (w.level - 1) / (60 - 1);
@@ -119,21 +122,20 @@ export function weaponAtk(def: CharacterDef): number {
  * Resolved WEAPON EFFECT for the EQUIPPED calibration (Golden Melody, VALIDATED 2026).
  * Calibration changes ONLY the Effect — never the max-level base stats. `calibrationLevel`
  * ABSENT ⇒ NO weapon Effect (all established pre-weapon validations were observed without the
- * calibration Effect — that default is preserved). Generic: any character with a weapon that
- * declares `calibrations` gets the behavior; no character-specific logic.
+ * calibration Effect — that default is preserved). Generic: any equipped weapon that declares
+ * `calibrations` gets the behavior; no character-specific logic.
  */
-export function weaponCalibration(def: CharacterDef | null): WeaponCalibrationDef | undefined {
-  const w = def?.weapon;
-  if (!w || w.calibrationLevel === undefined || !w.calibrations) return undefined;
-  return w.calibrations[w.calibrationLevel];
+export function weaponCalibration(weapon: WeaponDef | null): WeaponCalibrationDef | undefined {
+  if (!weapon || weapon.calibrationLevel === undefined || !weapon.calibrations) return undefined;
+  return weapon.calibrations[weapon.calibrationLevel];
 }
 
-/** Panel formula: Final Stat = ceil((Initial + Flat) × (1 + Stat%)) — formula Mathematically Proven; integer DISPLAY Validated; exact hidden rounding method Not Tested (stats.ts). */
-export function computePanel(def: CharacterDef): { atk: number; hp: number; def: number } {
-  const weaponAtkBonus = weaponAtk(def);
-  const pctAtk = def.weapon.subStats.filter((s) => s.stat === "pctAtk").reduce((a, s) => a + s.value, 0);
-  const pctHp = def.weapon.subStats.filter((s) => s.stat === "pctHp").reduce((a, s) => a + s.value, 0);
-  const pctDef = def.weapon.subStats.filter((s) => s.stat === "pctDef").reduce((a, s) => a + s.value, 0);
+/** Panel formula: Final Stat = ceil((Initial + Flat) × (1 + Stat%)) — formula Mathematically Proven; integer DISPLAY Validated; exact hidden rounding method Not Tested (stats.ts). `weapon` is the scenario-EQUIPPED weapon (null = none). */
+export function computePanel(def: CharacterDef, weapon: WeaponDef | null): { atk: number; hp: number; def: number } {
+  const weaponAtkBonus = weaponAtk(weapon);
+  const pctAtk = (weapon?.subStats ?? []).filter((s) => s.stat === "pctAtk").reduce((a, s) => a + s.value, 0);
+  const pctHp = (weapon?.subStats ?? []).filter((s) => s.stat === "pctHp").reduce((a, s) => a + s.value, 0);
+  const pctDef = (weapon?.subStats ?? []).filter((s) => s.stat === "pctDef").reduce((a, s) => a + s.value, 0);
   // Game-authoritative FINAL STAT rounding: the integer results feed every downstream consumer
   // (damage ATK/DEF, applier-ATK fixed damage, HP pools).
   return {
@@ -267,8 +269,8 @@ function resolveAffinityBonus(
   return { atk: foreign.genericBonus?.atk ?? 0, hp: foreign.genericBonus?.hp ?? 0, critDmg: foreign.genericBonus?.critDmg ?? 0 };
 }
 
-function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], affinity: { keyId?: string; level?: number } | undefined, commonKeyIds: string[], expansionKeyId: string | undefined, config: ResolvedConfig, registry: Registry): UnitState {
-  const panel = computePanel(def);
+function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], affinity: { keyId?: string; level?: number } | undefined, commonKeyIds: string[], expansionKeyId: string | undefined, weapon: WeaponDef | null, config: ResolvedConfig, registry: Registry): UnitState {
+  const panel = computePanel(def, weapon);
   const aff = resolveAffinityBonus(def, affinity?.keyId, affinity?.level, registry);
   // Common Keys (generic architecture, 2026): REUSABLE definitions resolved via the registry
   // (max 3 — "3 Common Key Slots"; fewer allowed). Stats from every selected key SUM and fold
@@ -324,6 +326,7 @@ function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], aff
     outOfTurnDmg: commonStats.outOfTurnDmg ?? 0,
     expansionKeyId,
     weaponCharges: 0,
+    weapon,
     stability: def.base.stability,
     maxStability: def.base.stability,
     exposed: false,
@@ -362,6 +365,7 @@ function makeDummy(d: Scenario["dummy"]): UnitState {
     critDmg: 0,
     outOfTurnDmg: 0,
     weaponCharges: 0,
+    weapon: null,
     stability: d.stability,
     maxStability: d.stability,
     exposed: false,
@@ -437,7 +441,15 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
   const units: UnitState[] = scenario.team.map((m) => {
     const def = registry.getCharacter(m.characterId);
     if (!def) throw new Error(`Unknown character: ${m.characterId}`);
-    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyIds ?? [], m.expansionKeyId, config, registry);
+    // WEAPON (2026): equipped via `ScenarioTeamMember.weaponId` (1 Weapon Slot) and resolved
+    // through the registry — a character NEVER inherits a weapon from its definition.
+    let weapon: WeaponDef | null = null;
+    if (m.weaponId !== undefined) {
+      const w = registry.getWeapon(m.weaponId);
+      if (!w) throw new Error(`Unknown weapon: ${m.weaponId}`);
+      weapon = w;
+    }
+    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, config, registry);
   });
   const dummy = makeDummy(scenario.dummy);
   return {

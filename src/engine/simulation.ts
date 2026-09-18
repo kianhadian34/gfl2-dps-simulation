@@ -316,7 +316,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   // at C1 → 1434 validated). Generic + data-driven (no character-specific logic); no separate
   // formula or bucket. Calibration effect is only active when `calibrationLevel` is set (the
   // established pre-weapon validations were all observed without it).
-  const wcal = weaponCalibration(actor.def);
+  const wcal = weaponCalibration(actor.weapon);
   const weaponDealtTerm =
     (wcal?.damageDealt ?? 0) + (ev.supportAttack && wcal?.charging ? (actor.weaponCharges ?? 0) * wcal.charging.perStackValue : 0);
   const addDealt =
@@ -343,9 +343,9 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     sources.add(label);
     sourceRefs.set(label, ref);
   };
-  if (weaponDealtTerm !== 0 && actor.def?.weapon && wcal) {
-    const wlabel = `${actor.def.weapon.name} C${actor.def.weapon.calibrationLevel ?? 1}`;
-    addSource(wlabel, { kind: "weapon", weaponId: actor.def.weapon.id, calibration: actor.def.weapon.calibrationLevel ?? 1, label: wlabel });
+  if (weaponDealtTerm !== 0 && actor.weapon && wcal) {
+    const wlabel = `${actor.weapon.name} C${actor.weapon.calibrationLevel ?? 1}`;
+    addSource(wlabel, { kind: "weapon", weaponId: actor.weapon.id, calibration: actor.weapon.calibrationLevel ?? 1, label: wlabel });
   }
   for (const s of actor.statuses) {
     const def = state.statusRegistry.get(s.statusId);
@@ -804,8 +804,8 @@ function resolveSupportHit(state: SimulationState, shooter: UnitState, skill: Sk
     // WEAPON EFFECT — Charging (Golden Melody, VALIDATED 2026): one Support Action consumes
     // exactly ONE Charging stack (persists when unused; inherently un-cleansable weapon state).
     // The hit above already used the pre-hit charge count for the per-stack SA bonus.
-    if (shooter.def) {
-      const wcal = weaponCalibration(shooter.def);
+    if (shooter.weapon) {
+      const wcal = weaponCalibration(shooter.weapon);
       if (wcal?.charging && (shooter.weaponCharges ?? 0) > 0) shooter.weaponCharges -= 1;
     }
   }

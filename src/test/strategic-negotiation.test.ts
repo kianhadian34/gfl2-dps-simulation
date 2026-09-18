@@ -34,7 +34,6 @@ function qj(overrides: { passive?: boolean; critRate?: number; critDmg?: number;
   const qj = structuredClone(QIONGJIU);
   qj.id = "qjsn";
   qj.base = { ...qj.base, atk: overrides.atk ?? 2000, critRate: overrides.critRate ?? 0.2, critDmg: overrides.critDmg ?? 0 };
-  qj.weapon = { ...qj.weapon, atkLvl1: 0, atkLvl60: 0, subStats: [] };
   if (overrides.passive === false) qj.passive = { ...qj.passive, effects: [], levels: undefined };
   return qj;
 }

@@ -20,7 +20,6 @@ function guideDef(panelAtk: number): CharacterDef {
   const c = structuredClone(QIONGJIU);
   c.id = "gj";
   c.base = { ...c.base, atk: panelAtk, critRate: 0 };
-  c.weapon = { ...c.weapon, atkLvl1: 0, atkLvl60: 0, subStats: [] }; // panel ATK == base ATK
   return c;
 }
 
@@ -92,7 +91,7 @@ test("Guide to Victory V2: only the Lv2 variant carries the conditional, Lv1 is 
 
 /** Ally whose basic applies Overburn (3 turns) to the dummy so a Guide V2 attack hits an Overburned target. */
 function overburnAlly(): CharacterDef {
-  const base = { id: "ally", name: "ally", phase: null, base: { atk: 900, hp: 1000, def: 300, stability: 6, critRate: 0, critDmg: 0.2 }, weapon: { id: "aw", name: "w", rarity: "standard" as const, atkLvl1: 0, atkLvl60: 0, level: 60, subStats: [] } };
+  const base = { id: "ally", name: "ally", phase: null, base: { atk: 900, hp: 1000, def: 300, stability: 6, critRate: 0, critDmg: 0.2 } };
   const basic = { id: "ally_basic", name: "Ally Hit", type: "basic", element: null, multiplier: 1.0, stabDamage: 1, cooldown: 0, confectanceCost: 0, appliesStatuses: [{ statusId: "overburn", durationRounds: 3, target: "target" }] } as const;
   const noop = { ...basic, id: "ally_noop", multiplier: 0, appliesStatuses: undefined };
   return {
@@ -117,3 +116,4 @@ function v2Run(def: CharacterDef, turns: number, gjRotation: string[]): Paramete
     configOverrides: { fortificationLevel: 2 }, // V2 → Guide to Victory Lv.2
   };
 }
+

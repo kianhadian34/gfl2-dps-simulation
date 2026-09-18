@@ -1,4 +1,4 @@
-import type { AbilityDef, CharacterDef, CommonKeyDef, ConfigOverrides, DummyConfig, Scenario, SkillDefVariant } from "../model/types.js";
+import type { AbilityDef, CharacterDef, CommonKeyDef, ConfigOverrides, DummyConfig, Scenario, SkillDefVariant, WeaponDef } from "../model/types.js";
 import { QIONGJIU } from "../data/qiongjiu.js";
 import type { Registry } from "../data/registry.js";
 import { REGISTRY } from "../data/registry.js";
@@ -36,6 +36,10 @@ export function scenario(overrides: {
         characterId: "qiongjiu",
         rotation: overrides.rotation ?? ["basic"],
         equippedFixedKeys: overrides.keys ?? ["qiongjiu_fk1_concentration"],
+        // Qiongjiu's established default loadout: Golden Melody (jinshizou) equipped — preserves
+        // the pre-weapon-registry default panel (ceil((1224+369)×1.15) = 1832) and all legacy
+        // scenario()-based validations. Mirrors that need a bare panel omit the weapon entirely.
+        weaponId: "jinshizou",
       },
     ],
     dummy: dummy(overrides.dummy),
@@ -43,8 +47,8 @@ export function scenario(overrides: {
   };
 }
 
-/** Registry extended with a synthetic test ally (basic-only doll) and optional fixture Common Keys. */
-export function customRegistry(extra: Record<string, CharacterDef>, extraCommonKeys: Record<string, CommonKeyDef> = {}): Registry {
+/** Registry extended with a synthetic test ally (basic-only doll), optional fixture Common Keys, and optional fixture Weapons. */
+export function customRegistry(extra: Record<string, CharacterDef>, extraCommonKeys: Record<string, CommonKeyDef> = {}, extraWeapons: Record<string, WeaponDef> = {}): Registry {
   return {
     getCharacter: (id) => (id === "qiongjiu" ? QJ : extra[id]),
     getStatus: (id) => REGISTRY.getStatus(id),
@@ -59,6 +63,9 @@ export function customRegistry(extra: Record<string, CharacterDef>, extraCommonK
     // Common Keys are REUSABLE registry definitions (2026): fixture keys provided by tests
     // take precedence, everything else falls through to the base registry table.
     getCommonKey: (id) => extraCommonKeys[id] ?? REGISTRY.getCommonKey(id),
+    // Weapons are REUSABLE registry definitions (2026): fixture weapons provided by tests take
+    // precedence, everything else falls through to the base registry table.
+    getWeapon: (id) => extraWeapons[id] ?? REGISTRY.getWeapon(id),
   };
 }
 
@@ -87,7 +94,6 @@ export function makeAlly(id: string, atk: number): CharacterDef {
     name: id,
     phase: null,
     base: { atk, hp: 1000, def: 300, stability: 6, critRate: 0, critDmg: 0.2 },
-    weapon: { id: `${id}_w`, name: "w", rarity: "standard", atkLvl1: 0, atkLvl60: 0, level: 60, subStats: [] },
     skills: abilities({
       basic: { id: `${id}_basic`, name: "Hit", type: "basic", element: null, multiplier: 1.0, stabDamage: 1, cooldown: 0, confectanceCost: 0 },
       active1: { id: `${id}_a1`, name: "-", type: "active", element: null, multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 },

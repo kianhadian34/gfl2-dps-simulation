@@ -82,7 +82,6 @@ function makeChar(id: string, opts: CharOpts): CharacterDef {
     name: id,
     phase: null,
     base: { atk: opts.atk, hp: 1000, def: 100, stability: 6, critRate: opts.critRate ?? 0, critDmg: opts.critDmg ?? 0.2 },
-    weapon: { id: `${id}_w`, name: "w", rarity: "standard", atkLvl1: 0, atkLvl60: 0, level: 60, subStats: [] },
     skills: skillsFor(opts),
     passive: {
       id: `${id}_passive`,

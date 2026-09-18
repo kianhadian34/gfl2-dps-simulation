@@ -35,7 +35,6 @@ function mirror2022(): CharacterDef {
   const qj = structuredClone(QIONGJIU);
   qj.id = "qjf";
   qj.base = { ...qj.base, atk: 2022, critRate: 0 };
-  qj.weapon = { ...qj.weapon, atkLvl1: 0, atkLvl60: 0, subStats: [] }; // panel ATK == 2022
   return qj;
 }
 

@@ -31,7 +31,6 @@ function qj(overrides: { atk?: number; critRate?: number; critDmg?: number } = {
   const qj = structuredClone(QIONGJIU);
   qj.id = "qjaw";
   qj.base = { ...qj.base, atk: overrides.atk ?? 2000, critRate: overrides.critRate ?? 0, critDmg: overrides.critDmg ?? 0 };
-  qj.weapon = { ...qj.weapon, atkLvl1: 0, atkLvl60: 0, subStats: [] };
   qj.passive = { ...qj.passive, effects: [], levels: undefined }; // no bracket modifiers
   return qj;
 }
@@ -109,7 +108,6 @@ test("Warm as Jade data: own levels, generic +3%, no deferral; HP folds in via t
   const hpQj = structuredClone(QIONGJIU);
   hpQj.id = "qjhp";
   hpQj.base = { ...hpQj.base, atk: 1000, hp: 1000, critRate: 0, critDmg: 0 };
-  hpQj.weapon = { ...hpQj.weapon, atkLvl1: 0, atkLvl60: 0, subStats: [] };
   const st = createState(
     {
       version: 1, seed: 7, turns: 1,

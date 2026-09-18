@@ -26,7 +26,6 @@ function makeBurnMirror(id: string, critRate = 0): CharacterDef {
     name: id,
     phase: "burn",
     base: { atk: ATK, hp: 1000, def: 100, stability: 6, critRate, critDmg: 0.235 },
-    weapon: { id: `${id}_w`, name: "w", rarity: "standard", atkLvl1: 0, atkLvl60: 0, level: 60, subStats: [] },
     skills: abilities({
       basic: { id: `${id}_burn`, name: "Burn", type: "basic", element: "burn", multiplier: MULT, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
       active1: { id: `${id}_a1`, name: "-", type: "active", element: "burn", multiplier: 0, stabDamage: 0, cooldown: 1, confectanceCost: 0 },

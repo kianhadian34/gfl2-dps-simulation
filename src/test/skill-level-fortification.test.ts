@@ -16,7 +16,6 @@ const BASE = {
   name: "lc",
   phase: null,
   base: { atk: 1000, hp: 1000, def: 100, stability: 6, critRate: 0, critDmg: 0.2 },
-  weapon: { id: "lc_w", name: "w", rarity: "standard" as const, atkLvl1: 0, atkLvl60: 0, level: 60, subStats: [] },
   passive: { id: "lc_passive", name: "-", effects: [] as never[] },
   fixedKeys: [] as never[],
 };

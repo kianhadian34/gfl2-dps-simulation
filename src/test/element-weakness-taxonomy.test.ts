@@ -30,7 +30,6 @@ function makeElem(id: string, element: Element): CharacterDef {
     name: id,
     phase: element,
     base: { atk: 1000, hp: 1000, def: 300, stability: 6, critRate: 0, critDmg: 0.2 },
-    weapon: { id: `${id}_w`, name: "w", rarity: "standard", atkLvl1: 0, atkLvl60: 0, level: 60, subStats: [] },
     skills: abilities({
       basic: elemSkill(`${id}_basic`, "Hit", element, 1.0, 1),
       active1: elemSkill(`${id}_a1`, "-", element, 0, 0),

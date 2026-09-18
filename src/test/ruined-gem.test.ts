@@ -29,7 +29,6 @@ function qj(): CharacterDef {
   const qj = structuredClone(QIONGJIU);
   qj.id = "qjrg";
   qj.base = { ...qj.base, atk: 2000, critRate: 0, critDmg: 0 };
-  qj.weapon = { ...qj.weapon, atkLvl1: 0, atkLvl60: 0, subStats: [] };
   return qj;
 }
 
