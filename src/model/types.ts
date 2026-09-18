@@ -81,6 +81,14 @@ export interface SkillDefVariant {
    * single-dummy targeting (no grid interaction).
    */
   targetingCardinalRay?: { direction: "up" | "down" | "left" | "right"; range: 1; effectiveArea: 8 };
+  /**
+   * DECLARATIVE RANGE (tiles, Manhattan distance) — NEW 2026, DATA-ONLY for the MVP:
+   * the value is recorded per ability/level, but the MVP has NO engine range/positioning
+   * consumer (no out-of-range check exists; targets are assumed in range). Qiongjiu's
+   * Support Action declares `range: 8` — an explicit MVP MODELING DECISION/ASSUMPTION,
+   * NOT an in-game-validated number. Do not add range-resolution logic in the MVP.
+   */
+  range?: number;
   element: Element | null;
   /** Ammo/weapon type of the attack (matches `DummyConfig.weaknessTags` — Ammo Weakness dimension, 2026). */
   ammoType?: AmmoType;

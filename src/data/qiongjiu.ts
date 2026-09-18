@@ -234,6 +234,11 @@ export const QIONGJIU: CharacterDef = {
           stabDamage: 2,
           cooldown: 0,
           confectanceCost: 0,
+          // MVP MODELING DECISION (2026, NOT in-game validated): Support Action range = 8 tiles
+          // (Manhattan distance). Declarative data only — the MVP engine has NO range/positioning
+          // check (in-range assumed), so this value is recorded data-driven but consumed by nothing.
+          // Do not add range-resolution logic in the MVP.
+          range: 8,
         },
       },
     },

@@ -328,7 +328,7 @@ Only these replacement/blocking/consumption interactions are validated for SB II
 
 **Source** — IOPWiki GFL2_Combat / Qiongjiu; gfl2.help; Gamerant (Tololo extra action).
 
-**Confidence** — Categories and Qiongjiu-specific rules CONFIRMED; per-doll quotas/conditions PROBABLE; exact trigger-verification sequencing UNKNOWN.
+**Confidence** — Categories and Qiongjiu-specific rules CONFIRMED; per-doll quotas/conditions PROBABLE; exact trigger-verification sequencing UNKNOWN. **Support Action range — MVP modeling decision (2026), NOT in-game validated: modeled as 8 tiles (`range: 8` declared on the support skill data); the MVP engine has no range/positioning check (in-range assumed).**
 
 **Implementation interpretation** — event-bus: `onAllySingleTargetHit`, `onDebuffApplied`, `onUnitAttacked`, etc.; passives subscribe with per-round quota counters (reset each round); support attacks emit 0-cost attack events that are themselves **not** trigger sources (guard against chaining).
 

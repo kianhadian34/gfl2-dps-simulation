@@ -62,6 +62,13 @@ test("FK4–FK6 record the exact behaviors but explicitly defer unimplemented en
   assert.deepEqual(fk6.displacementImmunityWhenStatuses, ["support_boost_i", "support_boost_i_30", "support_boost_ii"]);
 });
 
+test("Support Action range = 8 tiles — explicit MVP modeling decision, NOT an in-game-validated value", () => {
+  const sup = QIONGJIU.skills.support!.levels[1];
+  assert.equal(sup.range, 8, "Support Action range is 8 tiles (Manhattan) — MVP decision, not validated");
+  // The MVP engine has NO range check: the value is declarative data only (in-range assumed),
+  // so this pin documents the modeling choice without implying any engine behavior change.
+});
+
 test("Expansion Key Ruined Gem is recorded (VALIDATED 2026 facts) and now IMPLEMENTED (no deferral)", () => {
   // Validated in-game evidence (2026), recorded in docs and implemented: (1) Support Action
   // damage type changes from Physical/phase-less to Burn (`supportElementOverride`); (2) +15%
