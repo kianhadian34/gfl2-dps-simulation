@@ -30,8 +30,8 @@ export type SourceKind = "basic" | "active" | "ultimate" | "passive";
 export interface WeaponCalibrationDef {
   /** Damage Dealt +% (all attacks) — additive in the existing DMG% bucket. */
   damageDealt?: number;
-  /** Charging-style per-gain weapon-effect counter: +Support Action damage per stack (additive, support-scoped); one stack consumed per Support Action; cap = maxStacks. */
-  charging?: { perStackValue: number; maxStacks: number };
+  /** Charging-style per-gain weapon-effect counter: +Support Action damage per stack (additive, support-scoped); each qualifying buff GAIN grants `stacksPerGain` stacks (the calibration "Activations" count — C1–C4: 1, C5–C6: 2); total clamped to `maxStacks`; one stack consumed per Support Action. */
+  charging?: { perStackValue: number; maxStacks: number; stacksPerGain?: number };
 }
 
 export interface WeaponDef {

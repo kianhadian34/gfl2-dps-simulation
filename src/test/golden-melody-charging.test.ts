@@ -1,10 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
+import { createState } from "../engine/state.js";
+import { applyStatus } from "../engine/statuses.js";
 import { QIONGJIU } from "../data/qiongjiu.js";
 import { REGISTRY } from "../data/registry.js";
 import { customRegistry, makeAlly } from "./helpers.js";
 import type { CharacterDef, Scenario, WeaponDef } from "../model/types.js";
+import type { UnitState } from "../engine/state.js";
 
 /**
  * GOLDEN MELODY C1 — CHARGING +10% Support Action damage (VALIDATED in-game 2026, controlled 1434).
@@ -127,4 +130,88 @@ test("Golden Melody C1 Damage Dealt +10% (VALIDATED 975): own-turn Basic bucket 
     `bucket 1 + 0.20 No-Cover + 0.10 Golden Melody Damage Dealt = 1.30 (got ${ev.bonusBracket})`,
   );
   assert.equal(ev.finalDamage, 975, "ceil(2146.4 × 2683/7683 × 1.30) = ceil(974.41) = 975 — the observed in-game number");
+});
+
+/** State helper: Qiongjiu mirror with Golden Melody equipped at the given calibration level. */
+function charger(calibrationLevel: number) {
+  const st = createState(
+    {
+      version: 1,
+      seed: 1,
+      turns: 1,
+      team: [{ characterId: "qjgm", rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel }],
+      dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], phase: null, cover: "none" },
+    },
+    customRegistry({ qjgm: qjgm() }, {}, { jinshizou: GOLDEN_MELODY }),
+    new Set(),
+  );
+  return { st, u: st.units[0] };
+}
+
+const gainBuff = (st: ReturnType<typeof createState>, u: UnitState, statusId: string) => applyStatus(st, u, { statusId });
+
+test("Activation count (C1): each DISTINCT buff gain grants 1 Charging stack; two gains accumulate to the C1 cap (2)", () => {
+  const { st, u } = charger(1);
+  gainBuff(st, u, "damage_up_ii");
+  assert.equal(u.weaponCharges, 1, "C1: first gain → +1");
+  // Re-applying the SAME buff is a refresh (U8), not a new gain — only a DISTINCT buff gain stacks.
+  gainBuff(st, u, "damage_up_ii");
+  assert.equal(u.weaponCharges, 1, "same-buff refresh does NOT grant another stack");
+  gainBuff(st, u, "support_boost_ii");
+  assert.equal(u.weaponCharges, 2, "C1: second distinct gain → 2 (accumulates to maxStacks)");
+});
+
+test("Activation count (C5/C6): each buff gain grants 2 Charging stacks", () => {
+  const c5 = charger(5);
+  gainBuff(c5.st, c5.u, "damage_up_ii");
+  assert.equal(c5.u.weaponCharges, 2, "C5: one gain → +2");
+  const c6 = charger(6);
+  gainBuff(c6.st, c6.u, "damage_up_ii");
+  assert.equal(c6.u.weaponCharges, 2, "C6: one gain → +2");
+});
+
+test("Activation count (C6): gains clamp at the calibration maxStacks (4)", () => {
+  const { st, u } = charger(6);
+  gainBuff(st, u, "damage_up_ii");
+  gainBuff(st, u, "support_boost_ii");
+  assert.equal(u.weaponCharges, 4, "2 distinct gains × 2 stacks = 4");
+  gainBuff(st, u, "stat_crit_rate_flat_test");
+  assert.equal(u.weaponCharges, 4, "clamped at maxStacks 4 — no over-stacking");
+});
+
+test("Activation count: multiple buff gains accumulate per configuration; each Support Action still consumes exactly 1 stack (1434 / 1434 / 1434)", () => {
+  // r1: QJ ult → ally basic → V5 applies DU2 (a NEW buff gain → +1 stack) → Support#1 uses 1.
+  // QJ's DU2 expires at her OWN r2 action end (validated V5 timing) → r2 ally basic re-gains
+  // DU2 (fresh gain → +1) → Support#2 uses 1. r3 behaves like r2 → 1434 again.
+  // The 1.70 bucket (with exactly ONE charging stack) each round is the proof: had a stack
+  // NOT been consumed, r2 would carry the r1 stack + r2 gain → 2 stacks → bucket 1.90 → 1602.
+  const r = simulateScenario(
+    {
+      version: 1,
+      seed: 7,
+      turns: 3,
+      team: [
+        { characterId: "qjgm", rotation: ["ultimate", "basic", "basic"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel: 1 },
+        { characterId: "gm_ally", rotation: ["basic", "basic", "basic"], equippedFixedKeys: [] },
+      ] as never,
+      dummy: {
+        id: "training_dummy",
+        name: "Training Dummy",
+        hp: 999999999,
+        defense: 5000,
+        stability: 65,
+        weaknesses: [],
+        phase: null,
+        cover: "none",
+      },
+      configOverrides: { fortificationLevel: 6 },
+    },
+    customRegistry({ qjgm: qjgm(), gm_ally: makeAlly("gm_ally", 1000) }, {}, { jinshizou: GOLDEN_MELODY }),
+  );
+  const sup = r.log.filter((e) => e.supportAttack === true);
+  assert.equal(sup.length, 3, "one Support Action per round");
+  for (const s of sup) {
+    assert.ok(Math.abs(s.bonusBracket - 1.7) < 1e-9, `bucket 1.70 with exactly one charging stack (got ${s.bonusBracket})`);
+    assert.equal(s.finalDamage, 1434, "each round re-arms +1 then consumes exactly 1");
+  }
 });

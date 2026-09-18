@@ -54,12 +54,15 @@ export function applyStatus(state: SimulationState, target: UnitState, spec: Sta
     target.statuses.push(active);
     // WEAPON EFFECT — Charging (Golden Melody, VALIDATED in-game 2026): when the unit GAINS A
     // BUFF (a NEW buff application — refreshes of an already-held buff do not re-trigger), a
-    // weapon whose resolved calibration declares `charging` grants +1 charge, capped by the
-    // calibration's maxStacks. Data-driven and generic (only the HOLDER's own weapon matters;
-    // allies/dummy without one are unaffected); NOT an invented event system.
+    // weapon whose resolved calibration declares `charging` grants `stacksPerGain` charges
+    // (Activations: C1–C4 = 1, C5–C6 = 2), capped by the calibration's maxStacks. Data-driven
+    // and generic (only the HOLDER's own weapon matters; allies/dummy without one are
+    // unaffected); NOT an invented event system.
     if (target.def && def.category === "buff") {
       const wcal = weaponCalibration(target.weapon, target.weaponCalibrationLevel);
-      if (wcal?.charging) target.weaponCharges = Math.min(wcal.charging.maxStacks, (target.weaponCharges ?? 0) + 1);
+      if (wcal?.charging) {
+        target.weaponCharges = Math.min(wcal.charging.maxStacks, (target.weaponCharges ?? 0) + (wcal.charging.stacksPerGain ?? 1));
+      }
     }
     return true;
   }

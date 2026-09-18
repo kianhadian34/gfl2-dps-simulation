@@ -25,12 +25,15 @@ export const WEAPONS: WeaponDef[] = [
     // documented calibration table, consumed by the same generic path (no separate branches /
     // no separate combat validation required).
     calibrations: {
-      1: { damageDealt: 0.1, charging: { perStackValue: 0.1, maxStacks: 2 } },
-      2: { damageDealt: 0.1, charging: { perStackValue: 0.15, maxStacks: 2 } },
-      3: { damageDealt: 0.15, charging: { perStackValue: 0.15, maxStacks: 3 } },
-      4: { damageDealt: 0.2, charging: { perStackValue: 0.15, maxStacks: 3 } },
-      5: { damageDealt: 0.2, charging: { perStackValue: 0.2, maxStacks: 4 } },
-      6: { damageDealt: 0.2, charging: { perStackValue: 0.2, maxStacks: 4 } },
+      // Golden Melody Charging — established mechanic (2026): each qualifying buff GAIN grants
+      // `stacksPerGain` (Activations: C1–C4 = 1, C5–C6 = 2) Charging stacks, clamped to
+      // `maxStacks`; per-stack Support Action damage = the calibration's perStackValue.
+      1: { damageDealt: 0.1, charging: { perStackValue: 0.1, maxStacks: 2, stacksPerGain: 1 } },
+      2: { damageDealt: 0.1, charging: { perStackValue: 0.15, maxStacks: 2, stacksPerGain: 1 } },
+      3: { damageDealt: 0.15, charging: { perStackValue: 0.15, maxStacks: 3, stacksPerGain: 1 } },
+      4: { damageDealt: 0.2, charging: { perStackValue: 0.15, maxStacks: 3, stacksPerGain: 1 } },
+      5: { damageDealt: 0.2, charging: { perStackValue: 0.2, maxStacks: 4, stacksPerGain: 2 } },
+      6: { damageDealt: 0.2, charging: { perStackValue: 0.2, maxStacks: 4, stacksPerGain: 2 } },
     },
   },
 ];

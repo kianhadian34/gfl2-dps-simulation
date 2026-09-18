@@ -72,7 +72,7 @@ test("calibration C1 resolves correctly (equipped-weapon configuration), no cali
   assert.equal(c1.weaponCalibrationLevel, 1, "member's calibrationLevel is the effective level");
   assert.deepEqual(weaponCalibration(c1.weapon, c1.weaponCalibrationLevel), {
     damageDealt: 0.1,
-    charging: { perStackValue: 0.1, maxStacks: 2 },
+    charging: { perStackValue: 0.1, maxStacks: 2, stacksPerGain: 1 },
   });
   const none = createState(
     {
@@ -98,7 +98,7 @@ test("calibration C6 resolves correctly (Damage Dealt +20%, Charging +20%/stack,
   assert.equal(c6.weaponCalibrationLevel, 6);
   assert.deepEqual(weaponCalibration(c6.weapon, c6.weaponCalibrationLevel), {
     damageDealt: 0.2,
-    charging: { perStackValue: 0.2, maxStacks: 4 },
+    charging: { perStackValue: 0.2, maxStacks: 4, stacksPerGain: 2 },
   });
 });
 
