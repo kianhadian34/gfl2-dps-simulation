@@ -319,6 +319,15 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   const wcal = weaponCalibration(actor.weapon, actor.weaponCalibrationLevel);
   const weaponDealtTerm =
     (wcal?.damageDealt ?? 0) + (ev.supportAttack && wcal?.charging ? (actor.weaponCharges ?? 0) * wcal.charging.perStackValue : 0);
+  // WEAPON IMPRINT (Golden Melody, 2026): OWNER-ONLY — applies only when the damage DEALER is the
+  // weapon's recorded owner (`ownerCharacterId`) — additive in the SAME DMG% bucket: +`bonus` vs
+  // targets whose Race/Type includes `imprint.targetType`, plus `noCoverBonus` when the target is
+  // not protected by Cover. Data-driven; no character-id logic in the engine.
+  const imprintBonus =
+    actor.weapon?.imprint && actor.def && actor.weaponImprintActive === true && actor.weapon.ownerCharacterId === actor.def.id
+      ? (dummy.raceTypes.includes(actor.weapon.imprint.targetType) ? actor.weapon.imprint.bonus : 0) +
+        (dummy.cover === "none" ? actor.weapon.imprint.noCoverBonus : 0)
+      : 0;
   const addDealt =
     additiveDealtBonus(actor, state.statusRegistry, skill.element, { supportAttack: ev.supportAttack, targetExposed }) +
     conditionalDealtBonus(actor, dummy, "target.noCover", ev.supportAttack) +
@@ -330,7 +339,8 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     // additive bracket as QJ's passive 10% Out-of-Turn Damage (validated 1.10 → 1.17 with the key).
     (ev.supportAttack ? actor.outOfTurnDmg : 0) +
     expBonusTerm +
-    weaponDealtTerm;
+    weaponDealtTerm +
+    imprintBonus;
   const targetMods = targetPassiveTakenMods(dummy); // U5 boss/target stability-conditional passives
   const addTaken = additiveTakenBonus(dummy, state.statusRegistry, skill.element) + targetMods.additive;
   // Effect provenance (2026): deduplicated, human-readable sources of the modifiers that
@@ -343,8 +353,8 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     sources.add(label);
     sourceRefs.set(label, ref);
   };
-  if (weaponDealtTerm !== 0 && actor.weapon && wcal) {
-    const wlabel = `${actor.weapon.name} C${actor.weaponCalibrationLevel ?? 1}`;
+  if ((weaponDealtTerm !== 0 || imprintBonus !== 0) && actor.weapon) {
+    const wlabel = actor.weaponCalibrationLevel !== undefined ? `${actor.weapon.name} C${actor.weaponCalibrationLevel}` : actor.weapon.name;
     addSource(wlabel, { kind: "weapon", weaponId: actor.weapon.id, calibration: actor.weaponCalibrationLevel ?? 1, label: wlabel });
   }
   for (const s of actor.statuses) {

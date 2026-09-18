@@ -50,6 +50,18 @@ export interface WeaponDef {
   calibrationLevel?: number;
   /** Per-calibration Effect data (1–6). Absent = the weapon has no Effect/calibration mechanic. */
   calibrations?: Record<number, WeaponCalibrationDef>;
+  /**
+   * The Doll that OWNS this weapon (data-only, 2026) — used by owner-gated weapon mechanics
+   * (the Imprint). Generic: the engine compares the damage dealer's character id against this
+   * value; it never hardcodes a character. Absent = no owner gating.
+   */
+  ownerCharacterId?: string;
+  /**
+   * Imprint (weapon concept, 2026): an OWNER-ONLY damage bonus that is ADDITIVE in the existing
+   * DMG% bucket — `bonus` against targets whose Race/Type includes `targetType`, plus
+   * `noCoverBonus` when the target is not protected by Cover (both conditions can stack).
+   */
+  imprint?: { targetType: string; bonus: number; noCoverBonus: number };
   subStats: { stat: "pctAtk" | "pctHp" | "pctDef"; value: number }[];
 }
 
@@ -623,6 +635,12 @@ export interface DummyConfig {
   weaknesses: Element[];
   /** Dummy-exposed ammo/weapon-type weakness tags (Ammo Weakness Upgrade, 2026) — matched against the attack's ammo type. */
   weaknessTags?: AmmoType[];
+  /**
+   * Target Race/Type classification (2026) — a GENERIC target property (e.g. ["elid"]), not a
+   * damage/element/weakness/ammo attribute and not an `isElid` flag. Used by owner-gated weapon
+   * Imprints (`WeaponDef.imprint.targetType`). Absent = no race/type classification.
+   */
+  raceTypes?: string[];
   phase: Element | null;
   /** MVP: always "none" (handoff §4); also drives conditional no-cover bonuses. */
   cover: "none";
@@ -700,6 +718,14 @@ export interface ScenarioTeamMember {
    * calibration without a `weaponId` are rejected with a clear error.
    */
   calibrationLevel?: number;
+  /**
+   * OPT-IN weapon Imprint activation (2026): the owner-gated Golden Melody Imprint is
+   * combat-UNTESTED (documented; its in-game damage interaction was never validated), and the
+   * repo's established in-game-validated numbers were all observed WITHOUT it. Mirroring the
+   * `calibrationLevel` default-off principle, the Imprint only contributes when this flag is
+   * explicitly set. ABSENT = no Imprint contribution even for the owner.
+   */
+  weaponImprintActive?: boolean;
   /** Equipped Expansion Key id (e.g. Qiongjiu's Ruined Gem). Absent = no expansion-key behavior. */
   expansionKeyId?: string;
 }

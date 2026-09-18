@@ -35,5 +35,11 @@ export const WEAPONS: WeaponDef[] = [
       5: { damageDealt: 0.2, charging: { perStackValue: 0.2, maxStacks: 4, stacksPerGain: 2 } },
       6: { damageDealt: 0.2, charging: { perStackValue: 0.2, maxStacks: 4, stacksPerGain: 2 } },
     },
+    // Golden Melody Imprint (SOURCE FACT 2026, owner-gated): +2.5% Damage Dealt vs ELID targets;
+    // +2.5% more when the target is not protected by Cover — additive in the existing DMG% bucket.
+    // `ownerCharacterId` is DATA (the engine never hardcodes a character): the Imprint applies
+    // only when the damage dealer IS this owner.
+    ownerCharacterId: "qiongjiu",
+    imprint: { targetType: "elid", bonus: 0.025, noCoverBonus: 0.025 },
   },
 ];
