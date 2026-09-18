@@ -10,8 +10,8 @@ import type { CharacterDef } from "../model/types.js";
 /**
  * AFFINITY KEY — Warm as Jade (VALIDATED in-game 2026):
  * OWN key: Lv5 → +3.3% ATK/HP/CritDMG; Lv9 → +4.5%; NO interpolation (Lv1–4, 6–8 = nothing).
- * FOREIGN key: only the generic +3% bonus applies (+3% ATK & HP); the holder's affinity LEVEL
- * never upgrades it (a Lv9 QJ with someone else's key still gets only +3%).
+ * FOREIGN key: only the generic +3% stat bonus applies (+3% ATK & HP) — **VALIDATED 2026**; the
+ * holder's affinity LEVEL never upgrades it (a Lv9 QJ with someone else's key still gets only +3%).
  * Ownership test uses id "qjaw" for a Qiongjiu clone and "gj" for another doll owning its own
  * (foreign) affinity key — the helper registry pins id "qiongjiu" to the real doll.
  *
@@ -102,7 +102,7 @@ test("Warm as Jade data: own levels, generic +3%, no deferral; HP folds in via t
   assert.deepEqual(aff.levels[5], { critDmg: 0.033, atk: 0.033, hp: 0.033 });
   assert.deepEqual(aff.levels[9], { critDmg: 0.045, atk: 0.045, hp: 0.045 });
   assert.equal(aff.deferredNote, undefined, "Warm as Jade no longer deferred");
-  assert.deepEqual(aff.genericBonus, { atk: 0.03, hp: 0.03 }, "foreign generic +3% (GFL2 universal affinity-key scope, data-driven)");
+  assert.deepEqual(aff.genericBonus, { atk: 0.03, hp: 0.03 }, "foreign-key generic +3% stat bonus (+3% ATK/HP) — VALIDATED 2026");
   assert.equal(Object.keys(aff.levels).length, 2, "only Lv5 and Lv9 are defined — nothing in between");
   // HP panel folding uses the same Final Stat formula as ATK (HP has no combat consumer in the MVP,
   // so it is asserted at the state level): ceil(1000 × 1.033) = 1033 for the own-key Lv5 holder.

@@ -87,7 +87,7 @@ test("Affinity Key Warm as Jade: 9 levels, exactly levels 5 and 9 defined, no in
   assert.deepEqual(af?.levels[5], { critDmg: 0.033, atk: 0.033, hp: 0.033 });
   assert.deepEqual(af?.levels[9], { critDmg: 0.045, atk: 0.045, hp: 0.045 });
   assert.equal(af?.deferredNote, undefined, "Warm as Jade no longer deferred (implemented)");
-  assert.deepEqual(af?.genericBonus, { atk: 0.03, hp: 0.03 }, "foreign-key generic +3% bonus declared in data");
+  assert.deepEqual(af?.genericBonus, { atk: 0.03, hp: 0.03 }, "foreign-key generic +3% stat bonus (ATK/HP) — VALIDATED 2026");
 });
 
 test("Common Key Strategic Negotiation: Universal Key: Skill with the validated +5%/+5%/+5%/+7% stats", () => {

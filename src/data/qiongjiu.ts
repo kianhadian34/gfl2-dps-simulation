@@ -458,7 +458,7 @@ export const QIONGJIU: CharacterDef = {
     },
     // Warm as Jade — VALIDATED in-game 2026, IMPLEMENTED. OWN key: Lv5 → +3.3% ATK/HP/CritDMG,
     // Lv9 → +4.5% (exact levels only; 6–8 never interpolated). FOREIGN key: only the generic
-    // +3% bonus applies (GFL2's universal affinity-key values: +3% ATK and +3% HP) and Qiongjiu's
+    // +3% stat bonus applies (+3% ATK and +3% HP — VALIDATED 2026) and Qiongjiu's
     // affinity level never upgrades it. Ownership is decided by `affinityKeyId === def.affinityKey.id`.
     genericBonus: { atk: 0.03, hp: 0.03 },
   },
