@@ -248,15 +248,80 @@ Level-60 base magnitudes (CONFIRMED, 2024 BWIKI data): Qiongjiu `ATK 119→1224,
 
 ### 3.9 Weapons and calibration (校准/调校)
 
-**Mechanic** — Weapon ATK adds (as a "small" stat) to the character panel; skill-effect calibration is separate.
+**Evidence basis (2026)** — authoritative: the **Golden Melody (金石奏)** screenshot and the evidence established in this conversation. Golden Melody is an **elite** weapon, the **signature weapon of Qiongjiu (琼玖)**, max-level **ATK 369**, **Attack Boost +15%**, **Calibration 6 levels**. **Weapon level/proficiency curves are OUT OF SCOPE — the simulator models MAX-LEVEL weapons only** (per-level intermediate values are neither modeled nor claimed).
 
-**Source** — BWIKI `/gf2/武器`, Qiongjiu page (signature 金石奏).
+**Structure (established conceptual model, 2026)** — a weapon is built from FOUR SEPARATE concepts:
 
-**Confidence** — CONFIRMED: weapon value at proficiency N = `ceil(lvl1_value × coefficient / 1000)`, level-60 coefficient 18.4; calibration has 6 stages and improves the weapon's *skill effect*, not its white stats. Examples: 金石奏 53 → 369 ATK @60 (+15% ATK% sub-stat); standard blues ~200–260 ATK @60, elites ~350–450 (range PROBABLE).
+```
+Weapon
+├── Max-level Stats        (ATK, Attack Boost sub-stat — feeding the panel only)
+├── Effect                 (Calibration 1–6 — calibration changes ONLY the Effect)
+├── Trait                  (separate from the Effect)
+└── Imprint                (Owner-only — active ONLY when the owning Doll equips the weapon)
+```
 
-**Implementation interpretation** — `weapon.atk` (small stat) + `weapon.subStats` (e.g. ATK% 15%) + `weapon.skillLevel` from calibration; feed into panel formula.
+- **Calibration modifies the Effect only** — it NEVER changes the weapon's max-level base stats.
+- **Imprint owner-gating applies to the Imprint only**, not automatically to the entire weapon.
+- **Weapon mechanics are NOT assumed identical to Key mechanics** — no generic Weapon schema, registry, `weaponId`, calibration system, trait system, or imprint system is implemented or designed yet.
 
-**Unknowns** — exact per-rarity ranges; per-stage calibration values (read in-game).
+**Source** — Golden Melody screenshot (user-provided, 2026) + this conversation; historical: BWIKI `/gf2/武器`, Qiongjiu page (signature 金石奏).
+
+**Golden Melody — Max-level Stats (source fact):** ATK **369** (max level); Attack Boost **+15%** (ATK% sub-stat). (Historical endpoints 53 → 369 retained in validation-checklist row 15; per-level curve NOT modeled.)
+
+**Golden Melody — Effect by Calibration (SOURCE FACTS, tooltip screenshot 2026; C1's Damage Dealt additionally VALIDATED in-game — see below):**
+
+| Calibration | Damage Dealt | Support Action Damage | Activations | Max stacks |
+|---|---|---|---|---|
+| C1 | +10% | +10% | 1 | 2 |
+| C2 | +10% | +15% | 1 | 2 |
+| C3 | +15% | +15% | 1 | 3 |
+| C4 | +20% | +15% | 1 | 3 |
+| C5 | +20% | +20% | 2 | 4 |
+| C6 | +20% | +20% | 2 | 4 |
+
+The Effect changes at the calibration boundary; the max-level base stats never change with calibration.
+
+**Golden Melody — Charging (weapon EFFECT buff; VALIDATED in-game 2026, directly observed at C1):** ending Qiongjiu's action grants the stackable buff **Charging**, +10% Support Action damage per stack, **maximum 2 stacks at C1**. If Qiongjiu performs no Support Action, the stack remains; **one Support Action consumes 1 Charging stack**; **cannot be cleansed**; stacks accumulate across actions up to the calibration maximum. Charging is a **weapon Effect buff — NOT the Support Boost status**: it behaves like the Support Boost family in stacking/consumption behavior, but it is a separate weapon mechanic unless future evidence proves otherwise. Only C1 behavior was directly observed; other calibrations' Charging values are not combat-observed.
+
+**Golden Melody C1 — Damage Dealt +10% (VALIDATED in-game 2026, controlled test 975):** QJ ATK 2683 · Basic Fuse 80% · target DEF 5000 · No Cover · no weakness bonus · no other buffs/debuffs · non-crit · No-Cover +20% + Golden Melody Damage Dealt +10% → additive bucket 1.30.
+- base = 2683 × 0.80 = 2146.4
+- defense coefficient = 2683 / (2683 + 5000) = 0.34921
+- post-DEF = 2146.4 × 0.34921 ≈ 749.55
+- 749.55 × 1.30 = 974.41 → ceil = **975** ✓ (draft hand-calculation intermediates may round slightly differently; the observed final **975** reproduces exactly through the engine pipeline)
+Conclusion: C1's +10% Damage Dealt **enters the existing additive DMG% bucket**. Do NOT generalize — this validates the displayed **Damage Dealt** effect only, not every Golden Melody effect.
+
+**Golden Melody — Trait (SOURCE FACT — trigger condition; 13 OUTCOMES DIRECTLY OBSERVED in-game 2026):** if the weapon user has full HP at the end of the action, she gains a **random** buff, classified by the game as a buff, lasting **1 turn**. The **13 observed outcomes** (each 1 turn unless noted; displayed effects recorded verbatim, NOT generalized to an engine mechanic):
+
+1. **Domain Penetration I** — AoE damage ignores 20% of target DEF.
+2. **Critical Rate Boost I** — Critical Rate +10%.
+3. **Continuous Healing I** — restores 10% of max HP at the end of the action.
+4. **Defense Up I** — Defense +20%.
+5. **Piercing I** — targeted damage ignores 20% of target DEF.
+6. **Area Defense I** — AoE damage taken −10%.
+7. **Targeted Attack Defense I** — targeted damage taken −10%.
+8. **Stability Offensive I** — stability damage dealt +1.
+9. **Targeted Attack Boost I** — targeted damage dealt +10% (cannot be cleansed).
+10. **Coverage Boost I** — AoE damage dealt +10% (cannot be cleansed).
+11. **Phase Boost I** — phase damage dealt +10%.
+12. **Attack Up I** — Attack +10%.
+13. **Movement Up I** — Mobility +1 tile.
+
+These are **13 OBSERVED outcomes — NOT necessarily the complete random pool**. The complete pool, the random-selection probabilities, and whether all outcomes share identical internal timing/implementation remain **UNKNOWN** — do not invent additional outcomes; do not assume all Trait buffs use the same engine mechanic; record their displayed effects accurately; do not implement the pool yet.
+
+**Golden Melody — Imprint, Qiongjiu (source fact; owner-gated):** "Increase damage dealt to ELIDs by 2.5%. If the target is not protected by Cover, increase it by an additional 2.5%." The Imprint is **ACTIVE ONLY when the weapon is used by the actual owning Doll — for Golden Melody, Qiongjiu**. If another Doll equips Golden Melody, the Imprint does not apply. No additional Imprint mechanics are generalized beyond this established owner-gating rule.
+
+**Evidence status (2026):**
+- **VALIDATED:** Golden Melody max-level ATK **369** and Attack Boost **+15%** (direct screenshot/source evidence); **calibration changes the Effect only**; **Charging exists with its observed C1 stack/consumption behavior**; **C1 Damage Dealt +10% enters the additive DMG% bucket** (controlled **975**); **Imprint is owner-gated**; the **13 Trait outcomes directly observed**.
+- **SOURCE / SCREENSHOT (Level-1 source facts):** Golden Melody structure and the displayed C1–C6 Effect values; the Trait trigger condition; the Imprint text and values.
+- **NOT TESTED / UNKNOWN:** the complete Trait random pool; exact random-selection probabilities; whether all 13 Trait outcomes share identical internal timing/implementation; Golden Melody Support Action Damage values in combat; full calibration behavior beyond the directly observed Charging/C1; Imprint combat interaction; Imprint Cover interaction (the MVP has no Cover); whether other weapons share the Effect/Trait/Imprint structure; any weapon rank/refinement mechanics not directly evidenced.
+- **OUT OF SCOPE:** intermediate weapon level/proficiency ATK curves; any weapon-level interpolation.
+- **Architecture status:** NOT implemented — no Weapon registry, no `weaponId`, no calibration architecture, no Trait execution, no Imprint execution. This pass is documentation only.
+
+(Historical: the older "`ceil(lvl1_value × coefficient / 1000)`" per-level formula claim (BWIKI, coefficient 18.4) is **relegated history**, not a modeled mechanic — curves are OUT OF SCOPE. Per-rarity ATK ranges ~200–260 blue / ~350–450 elite: **PROBABLE** historical note, no new evidence.)
+
+**Implementation interpretation** — **NOT IMPLEMENTED.** The engine's `WeaponDef` (types.ts) carries only max-level stat anchors (`atkLvl1`/`atkLvl60`/`level`/`subStats`) folded into the panel via `weaponAtk`/`computePanel` (state.ts); none of the Effect / Calibration / Trait / Imprint data is represented. Schema design is deferred until further evidence (do not build a generic Weapon schema now).
+
+**Unknowns** — the complete Trait random pool and selection probabilities; whether all 13 Trait outcomes share identical internal timing/implementation; whether Effect "Activations / Max stacks" map to an existing stack system (e.g. the Support Boost family) or a new mechanic (**NOT assumed identical to Keys** — Charging is a separate weapon buff in any case); Golden Melody Support Action Damage calibration values in combat; full calibration behavior beyond the observed C1/Charging; Imprint combat magnitudes and the Cover interaction (the MVP has no Cover); whether other elite weapons share the Effect/Trait/Imprint structure; any weapon rank/refinement mechanics not directly evidenced.
 
 ### 3.10 Buffs / debuffs / status effects
 

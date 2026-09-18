@@ -51,6 +51,8 @@ Conventions:
 
 Level value: `ceil(atkBase1 × coefficient/1000)` (research §3.9). Calibration raises the weapon skill level, not the white stats.
 
+> **2026 update (research.md §3.9):** proposal-era schema below is historical wording, NOT implemented architecture. The established weapon model is `Max-level Stats / Effect (Calibration 1–6) / Trait / Imprint (owner-only)`; **calibration changes ONLY the Weapon Effect** (never the max-level base stats); per-level proficiency curves are **OUT OF SCOPE** (the simulator models MAX-LEVEL weapons only). The `atkBase1` / `lvlCoefficient60` / `skill.calibrationStages` fields are proposal remnants — do not treat them as implemented.
+
 ## 3. Skill
 
 ```json
