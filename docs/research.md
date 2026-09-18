@@ -281,7 +281,16 @@ Weapon
 
 The Effect changes at the calibration boundary; the max-level base stats never change with calibration.
 
-**Golden Melody — Charging (weapon EFFECT buff; VALIDATED in-game 2026, directly observed at C1):** ending Qiongjiu's action grants the stackable buff **Charging**, +10% Support Action damage per stack, **maximum 2 stacks at C1**. If Qiongjiu performs no Support Action, the stack remains; **one Support Action consumes 1 Charging stack**; **cannot be cleansed**; stacks accumulate across actions up to the calibration maximum. Charging is a **weapon Effect buff — NOT the Support Boost status**: it behaves like the Support Boost family in stacking/consumption behavior, but it is a separate weapon mechanic unless future evidence proves otherwise. Only C1 behavior was directly observed; other calibrations' Charging values are not combat-observed.
+**Golden Melody — Charging (weapon EFFECT buff; VALIDATED in-game 2026):** Charging stacks are granted **when Qiongjiu GAINS A BUFF** — the trigger is NOT "end of Qiongjiu's action" (the earlier simplified wording "gains 1 stack at the end of Qiongjiu's action" is superseded; end-of-action matters ONLY because Golden Melody's Trait can grant a random buff at that point). Two distinct events:
+- **A) Qiongjiu gains a buff** → **Charging +1** (immediate, subject to the current calibration's maximum stack limit).
+- **B) Qiongjiu ends her action at full HP** → **Golden Melody Trait grants a random 1-turn buff** → that newly gained buff **also causes Charging +1**.
+
+Confirmed trigger examples (direct in-game observations):
+- Qiongjiu casts the **Ultimate** on her own turn → the Ultimate grants **Support Boost II** (a buff gain) → **immediately +1 Charging**.
+- Qiongjiu finishes that Ultimate action **at full HP** → the **Trait** grants a random 1-turn buff (another buff gain) → **+1 Charging**. After that Ultimate turn she can therefore hold **+2 Charging stacks total** (1 from gaining SB II + 1 from gaining the Trait buff), capped at the calibration maximum.
+- In the previously observed ally Support Action flow, Qiongjiu gains **Damage Up II** from her Ultimate passive during the action → that buff acquisition also grants **+1 Charging** before Qiongjiu attacks.
+
+Preserved **validated** stack/consumption facts (C1): **+10% Support Action damage per stack**; **maximum 2 stacks at C1**; **Charging persists when unused**; **one Support Action consumes 1 Charging stack**; **cannot be cleansed**; stacks accumulate across actions up to the calibration maximum. Charging is a **weapon Effect buff — NOT the Support Boost status**: it behaves like the Support Boost family in stacking/consumption behavior but is a separate weapon mechanic unless future evidence proves otherwise. Only C1 behavior was directly observed; other calibrations' Charging values are not combat-observed. The **"buff gained → Charging stack" trigger is VALIDATED** by the observations above, but **not exhaustively tested for every possible buff** — do not claim universal coverage; no internal event-system implementation is invented.
 
 **Golden Melody C1 — Damage Dealt +10% (VALIDATED in-game 2026, controlled test 975):** QJ ATK 2683 · Basic Fuse 80% · target DEF 5000 · No Cover · no weakness bonus · no other buffs/debuffs · non-crit · No-Cover +20% + Golden Melody Damage Dealt +10% → additive bucket 1.30.
 - base = 2683 × 0.80 = 2146.4
