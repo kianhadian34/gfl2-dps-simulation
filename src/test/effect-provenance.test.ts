@@ -4,7 +4,7 @@ import { simulateScenario } from "../simulate.js";
 import { createState, passiveSourceLabel, abilitySourceLabel } from "../engine/state.js";
 import { REGISTRY } from "../data/registry.js";
 import { QIONGJIU } from "../data/qiongjiu.js";
-import { scenario, customRegistry, makeAlly, abilities } from "./helpers.js";
+import { abilities, customRegistry, makeAlly, scenario } from "./helpers.js";
 import type { CharacterDef, PassiveEffect, Scenario, StatusApplySpec } from "../model/types.js";
 
 // Effect provenance (2026): every active effect carries a human-readable source
@@ -13,7 +13,7 @@ import type { CharacterDef, PassiveEffect, Scenario, StatusApplySpec } from "../
 // (e.g. V3's "+10% Support Action damage" ≡ "Out-of-Turn Damage +10%").
 
 test("provenance: Support Boost I applied by Common Rail carries source 'Common Rail Lv.1'", () => {
-  const r = simulateScenario(scenario({ turns: 1, rotation: ["active1"], keys: [] }));
+  const r = simulateScenario(scenario({ turns: 1, rotation: ["active1"], keys: [] }), customRegistry({}));
   const ev = r.log.find((e) => e.action === "qiongjiu_common_rail")!;
   assert.ok(ev.statusesApplied.includes("support_boost_i"));
   assert.ok(ev.appliedSources?.some((s) => s.statusId === "support_boost_i" && s.source === "Common Rail Lv.1"), JSON.stringify(ev.appliedSources));
@@ -46,10 +46,10 @@ test("provenance/dedup: each resolved Steady Plan level carries exactly ONE supp
 });
 
 test("provenance: effectSources list the contributing passive sources (deduplicated) on a hit", () => {
-  const state = createState(scenario({ turns: 1, rotation: ["active1"], config: { fortificationLevel: 6 } }), REGISTRY, new Set());
+  const state = createState(scenario({ turns: 1, rotation: ["active1"], config: { fortificationLevel: 6 } }), customRegistry({}), new Set());
   assert.equal(state.units[0].passiveLevel, 3);
   // V6 Common Rail hit: the No-Cover modifiers come from Steady Plan Lv.3 (V6).
-  const r = simulateScenario(scenario({ turns: 1, rotation: ["active1"], keys: [], config: { fortificationLevel: 6 } }));
+  const r = simulateScenario(scenario({ turns: 1, rotation: ["active1"], keys: [], config: { fortificationLevel: 6 } }), customRegistry({}));
   const ev = r.log.find((e) => e.action === "qiongjiu_common_rail")!;
   assert.ok(ev.effectSources?.includes("Steady Plan Lv.3 (V6)"), JSON.stringify(ev.effectSources));
 });
@@ -118,3 +118,5 @@ test("provenance: applying doll status source is used for the bonus's label (dam
   const ev2 = r.log.find((e) => e.action === "pv2_basic" && e.round === 2)!;
   assert.ok(ev2.effectSources?.includes("Pressing the Momentum Lv.3 (V5)"), JSON.stringify(ev2.effectSources));
 });
+
+

@@ -36,10 +36,11 @@ export function scenario(overrides: {
         characterId: "qiongjiu",
         rotation: overrides.rotation ?? ["basic"],
         equippedFixedKeys: overrides.keys ?? ["qiongjiu_fk1_concentration"],
-        // Qiongjiu's established default loadout: Golden Melody (jinshizou) equipped — preserves
-        // the pre-weapon-registry default panel (ceil((1224+369)×1.15) = 1832) and all legacy
-        // scenario()-based validations. Mirrors that need a bare panel omit the weapon entirely.
-        weaponId: "jinshizou",
+        // Qiongjiu's established default loadout: a NON-signature fixture weapon with the SAME max-level
+        // stats as Golden Melody (panel ceil((1224+369)×1.15) = 1832 preserved) but NO
+        // ownerCharacterId/Imprint — so default scenarios do NOT activate the Imprint (activation
+        // is derived automatically from signature ownership: weapon.ownerCharacterId === dealer id).
+        weaponId: "weapon_qj_panel_test",
       },
     ],
     dummy: dummy(overrides.dummy),
@@ -64,10 +65,30 @@ export function customRegistry(extra: Record<string, CharacterDef>, extraCommonK
     // take precedence, everything else falls through to the base registry table.
     getCommonKey: (id) => extraCommonKeys[id] ?? REGISTRY.getCommonKey(id),
     // Weapons are REUSABLE registry definitions (2026): fixture weapons provided by tests take
-    // precedence, everything else falls through to the base registry table.
-    getWeapon: (id) => extraWeapons[id] ?? REGISTRY.getWeapon(id),
+    // precedence, then the central TEST fixture weapons (non-game, panel-only), then the base
+    // registry table (real game weapons only — see src/data/weapons.ts).
+    getWeapon: (id) => extraWeapons[id] ?? TEST_WEAPONS[id] ?? REGISTRY.getWeapon(id),
   };
 }
+
+/**
+ * TEST-ONLY weapon fixtures (2026) — NOT game weapons and NOT part of production data
+ * (`src/data/weapons.ts` contains real game weapons only). `weapon_qj_panel_test` mirrors
+ * Golden Melody's max-level stats (ATK 53 → 369, +15% ATK%) with NO ownerCharacterId / Imprint /
+ * calibrations, so fixtures can represent Qiongjiu's established panel WITHOUT activating the
+ * Imprint (activation is derived automatically from signature ownership).
+ */
+export const TEST_WEAPONS: Record<string, WeaponDef> = {
+  weapon_qj_panel_test: {
+    id: "weapon_qj_panel_test",
+    name: "Qiongjiu Panel Rifle (test)",
+    rarity: "elite",
+    atkLvl1: 53,
+    atkLvl60: 369,
+    level: 60,
+    subStats: [{ stat: "pctAtk", value: 0.15 }],
+  },
+};
 
 /** Wrap a flat per-slot skill object into the level-based AbilityDef shape (all at level 1, test default). */
 export function abilities(skills: {

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
-import { abilities, scenario, customRegistry } from "./helpers.js";
+import { abilities, customRegistry, scenario } from "./helpers.js";
 import type { CharacterDef } from "../model/types.js";
 
 /** Synthetic attacker with TWO independent onDamageDealt Confectance gains (+1 and +2). */
@@ -50,13 +50,13 @@ test("multiple independent resource gains from one action are all applied and su
 
 test("Confectance gains +1 per damage event and clamps at the configured cap", () => {
   // Start 3 (confirmed); hits clamp at cap 6: r1 3→4, r2 4→5, r3+ 6→6.
-  const r = simulateScenario(scenario({ turns: 7, rotation: ["basic"], keys: [] }));
+  const r = simulateScenario(scenario({ turns: 7, rotation: ["basic"], keys: [] }), customRegistry({}));
   const last = r.log[r.log.length - 1];
   assert.deepEqual(last.confectance, { before: 6, after: 6, cost: 0 });
 });
 
 test("Confectance cost is consumed immediately on activation (before damage/effects resolve)", () => {
-  const r = simulateScenario(scenario({ turns: 1, rotation: ["ultimate"], keys: [], config: { confectanceStart: 3 } }));
+  const r = simulateScenario(scenario({ turns: 1, rotation: ["ultimate"], keys: [], config: { confectanceStart: 3 } }), customRegistry({}));
   const ev = r.log[0];
   assert.equal(ev.action, "qiongjiu_pressing_momentum");
   assert.deepEqual(ev.confectance, { before: 3, after: 0, cost: 3 });
@@ -65,17 +65,19 @@ test("Confectance cost is consumed immediately on activation (before damage/effe
 test("FK1 (Concentration) — VALIDATED: battle start = 6 Confectance (baseline 3 + FK1 +3)", () => {
   // In-game VALIDATED (2026): Qiongjiu begins battle with 6 Confectance Index with FK1;
   // the normal start is 3, so FK1 contributes exactly +3 (capped at max 6).
-  const withKey = simulateScenario(scenario({ turns: 1, rotation: ["ultimate"], keys: ["qiongjiu_fk1_concentration"] }));
+  const withKey = simulateScenario(scenario({ turns: 1, rotation: ["ultimate"], keys: ["qiongjiu_fk1_concentration"] }), customRegistry({}));
   assert.deepEqual(withKey.log[0].confectance, { before: 6, after: 3, cost: 3 });
-  const without = simulateScenario(scenario({ turns: 1, rotation: ["ultimate"], keys: [] }));
+  const without = simulateScenario(scenario({ turns: 1, rotation: ["ultimate"], keys: [] }), customRegistry({}));
   assert.deepEqual(without.log[0].confectance, { before: 3, after: 0, cost: 3 });
 });
 
 test("ultimate at max Confectance grants its extra stack and support quota (data hook)", () => {
-  const r = simulateScenario(scenario({ turns: 1, rotation: ["ultimate"], keys: [], config: { confectanceStart: 6 } }));
+  const r = simulateScenario(scenario({ turns: 1, rotation: ["ultimate"], keys: [], config: { confectanceStart: 6 } }), customRegistry({}));
   const ev = r.log[0];
   assert.deepEqual(ev.confectance, { before: 6, after: 3, cost: 3 }); // at cap → extra effects applied, cost still 3
   // 3 base + 1 extra Support Boost II stack: two applications (stacks 3 + 1).
   const boosts = ev.statusesApplied.filter((s) => s === "support_boost_ii");
   assert.equal(boosts.length, 2);
 });
+
+

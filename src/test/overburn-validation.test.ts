@@ -74,3 +74,4 @@ test("Overburn fixed damage scales with the APPLIER's ATK (1974 → 198; 1000 �
   assert.equal(high[0].attackerAtk, 1974);
   assert.deepEqual(low.map((e) => e.statusTick?.amount), [100, 100, 100]); // ceil(1000 × 0.10) = 100
 });
+

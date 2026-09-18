@@ -176,7 +176,7 @@ test("Fortification resolution validation: V0/V2 → Lv1, V3 → Lv2 (Lv2 behavi
 });
 
 test("Qiongjiu: Common Rail resolves to Lv1 (authoritative 150%/Stability 3) at V0; Basic stays Lv1", () => {
-  const state = createState(scenario({ turns: 1, rotation: ["basic"] }), REGISTRY, new Set());
+  const state = createState(scenario({ turns: 1, rotation: ["basic"] }), customRegistry({}), new Set());
   const levels = state.units[0].skillLevels;
   assert.equal(levels.basic, 1);
   assert.equal(levels.active1, 1); // V0 → Common Rail Lv1 (authoritative kit sync 2026)
@@ -184,3 +184,5 @@ test("Qiongjiu: Common Rail resolves to Lv1 (authoritative 150%/Stability 3) at 
   assert.equal(skill?.multiplier, 1.5); // Common Rail Lv1 = 150% ATK (screenshots)
   assert.equal(skill?.stabDamage, 3);
 });
+
+

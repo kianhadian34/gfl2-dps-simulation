@@ -324,7 +324,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   // targets whose Race/Type includes `imprint.targetType`, plus `noCoverBonus` when the target is
   // not protected by Cover. Data-driven; no character-id logic in the engine.
   const imprintBonus =
-    actor.weapon?.imprint && actor.def && actor.weaponImprintActive === true && actor.weapon.ownerCharacterId === actor.def.id
+    actor.weapon?.imprint && actor.def && actor.weapon.ownerCharacterId === actor.def.id
       ? (dummy.raceTypes.includes(actor.weapon.imprint.targetType) ? actor.weapon.imprint.bonus : 0) +
         (dummy.cover === "none" ? actor.weapon.imprint.noCoverBonus : 0)
       : 0;
@@ -1048,4 +1048,5 @@ export function simulate(scenario: Scenario, registry: Registry): SimulationResu
   }
   return buildResults(state, scenario);
 }
+
 

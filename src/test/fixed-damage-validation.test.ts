@@ -80,3 +80,4 @@ test("deterministic: identical fixed-damage runs produce identical logs", () => 
   assert.equal(JSON.stringify(a.log), JSON.stringify(b.log));
   assert.deepEqual(a.log.map((e) => e.finalDamage), [196, 196]);
 });
+

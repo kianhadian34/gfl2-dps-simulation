@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
-import { abilities, makeAlly, customRegistry } from "./helpers.js";
+import { abilities, customRegistry, makeAlly } from "./helpers.js";
 import type { CharacterDef, Scenario, StatusApplySpec } from "../model/types.js";
 
 /**
@@ -98,3 +98,4 @@ test("E: determinism — same scenario + same seed produces identical logs (no n
   assert.deepEqual(a.totals, b.totals);
   assert.deepEqual(a.warnings, b.warnings);
 });
+

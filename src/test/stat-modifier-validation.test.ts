@@ -31,14 +31,14 @@ function makeStatChar(id: string, atk: number, selfSpecs: StatusApplySpec[], tar
 }
 
 test("statModifier helper: ATK% is rounded up — 1933 × 1.15 = 2222.95 → 2223 (validated)", () => {
-  const state = createState(scenario({ turns: 1 }), REGISTRY, new Set());
+  const state = createState(scenario({ turns: 1 }), customRegistry({}), new Set());
   const doll = state.units[0];
   applyStatus(state, doll, { statusId: "stat_atk_up_ii_pct", durationRounds: 2 });
   assert.equal(statModifier(doll, state.statusRegistry, "atk", 1933), 2223);
 });
 
 test("statModifier helper: flat DEF adds; HP% rounds up; CritRate stays continuous", () => {
-  const state = createState(scenario({ turns: 1 }), REGISTRY, new Set());
+  const state = createState(scenario({ turns: 1 }), customRegistry({}), new Set());
   const doll = state.units[0];
   applyStatus(state, doll, { statusId: "stat_def_flat_test", durationRounds: 2 });
   applyStatus(state, doll, { statusId: "stat_hp_pct_test", durationRounds: 2 });
@@ -57,7 +57,7 @@ test("Golden Melody Trait outcome 'Critical Rate Boost I': +10% Crit Rate (encod
   // directly. NOTE: the documented "1 turn" duration is the generic U7 own-action-end rule
   // (already validated and covered by status-timing tests); the fixture status is permanent by
   // definition, so duration expiry is not re-encoded here.
-  const state = createState(scenario({ turns: 1 }), REGISTRY, new Set());
+  const state = createState(scenario({ turns: 1 }), customRegistry({}), new Set());
   const doll = state.units[0]; // QJ mirror: base critRate 0.2
   applyStatus(state, doll, { statusId: "stat_crit_rate_flat_test", durationRounds: 1 });
   const buffed = statModifier(doll, state.statusRegistry, "critRate", doll.critRate);
@@ -104,7 +104,7 @@ test("integration: target flat DEF modifier changes the defender's effective DEF
 });
 
 test("DEF Down II: percentage DEF reduction applies directly to effective DEF — 5000 × (1 − 0.30) = 3500 (validated)", () => {
-  const state = createState(scenario({ turns: 1 }), REGISTRY, new Set());
+  const state = createState(scenario({ turns: 1 }), customRegistry({}), new Set());
   const doll = state.units[0];
   applyStatus(state, doll, { statusId: "stat_def_down_ii_pct", durationRounds: 2 });
   assert.equal(statModifier(doll, state.statusRegistry, "def", 5000), 3500); // ceil(5000 × 0.70)
@@ -127,3 +127,5 @@ test("integration: DEF Down II on the target → effective target DEF 3500, dama
   const expected = Math.ceil(hit.baseDamage! * (hit.attackerAtk! / (hit.attackerAtk! + hit.targetDef!)));
   assert.equal(hit.finalDamage, expected);
 });
+
+

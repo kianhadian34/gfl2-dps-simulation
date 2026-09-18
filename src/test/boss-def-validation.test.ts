@@ -75,3 +75,4 @@ test("U14: boss DEF is per-target data — a different DEF flows through without
   // Same engine, same attacker — only the target data changed (future boss rotation).
   assert.equal(rLow.log[0].targetDef > 0, true);
 });
+

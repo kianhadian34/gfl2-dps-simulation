@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
 import { computePanel, weaponAtk } from "../engine/state.js";
 import { REGISTRY } from "../data/registry.js";
-import { QJ } from "./helpers.js";
+import { customRegistry, QJ } from "./helpers.js";
 
 test("panel stats: FINAL STAT = ceil((base + flat) × (1 + Stat%)) — 2026 authoritative rounding", () => {
   const weapon = REGISTRY.getWeapon("jinshizou")!; // Golden Melody, equipped via weaponId
@@ -21,9 +21,9 @@ test("integration: 7-round fixed rotation (MVP cap), all aggregations consistent
     version: 1,
     seed: 20260903,
     turns: 7,
-    team: [{ characterId: "qiongjiu", rotation: ["ultimate", "active1", "active2", "basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"], weaponId: "jinshizou" }],
+    team: [{ characterId: "qiongjiu", rotation: ["ultimate", "active1", "active2", "basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"], weaponId: "weapon_qj_panel_test" }],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
-  });
+  }, customRegistry({}));
 
   // One main action per round (solo team, no supports); status_tick events
   // (Overburn, 2026) are extra log entries, not actions.
@@ -76,9 +76,9 @@ test("integration: 7-round fixed rotation (MVP cap), all aggregations consistent
     version: 1,
     seed: 20260903,
     turns: 7,
-    team: [{ characterId: "qiongjiu", rotation: ["ultimate", "active1", "active2", "basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"], weaponId: "jinshizou" }],
+    team: [{ characterId: "qiongjiu", rotation: ["ultimate", "active1", "active2", "basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"], weaponId: "weapon_qj_panel_test" }],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
-  });
+  }, customRegistry({}));
   assert.equal(JSON.stringify(r.log), JSON.stringify(r2.log));
 
   // Accuracy-first: the run must WARN about every unverified value it leans on.
@@ -96,7 +96,7 @@ test("validation: unknown character and non-empty rotations are rejected", () =>
       turns: 1,
       team: [{ characterId: "nobody", rotation: ["basic"] }],
       dummy: { id: "d", name: "d", hp: 1, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
-    }),
+    }, customRegistry({})),
   );
   assert.throws(() =>
     simulateScenario({
@@ -105,6 +105,8 @@ test("validation: unknown character and non-empty rotations are rejected", () =>
       turns: 1,
       team: [{ characterId: "qiongjiu", rotation: [] }],
       dummy: { id: "d", name: "d", hp: 1, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
-    }),
+    }, customRegistry({})),
   );
 });
+
+

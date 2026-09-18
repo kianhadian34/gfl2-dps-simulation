@@ -718,14 +718,6 @@ export interface ScenarioTeamMember {
    * calibration without a `weaponId` are rejected with a clear error.
    */
   calibrationLevel?: number;
-  /**
-   * OPT-IN weapon Imprint activation (2026): the owner-gated Golden Melody Imprint is
-   * combat-UNTESTED (documented; its in-game damage interaction was never validated), and the
-   * repo's established in-game-validated numbers were all observed WITHOUT it. Mirroring the
-   * `calibrationLevel` default-off principle, the Imprint only contributes when this flag is
-   * explicitly set. ABSENT = no Imprint contribution even for the owner.
-   */
-  weaponImprintActive?: boolean;
   /** Equipped Expansion Key id (e.g. Qiongjiu's Ruined Gem). Absent = no expansion-key behavior. */
   expansionKeyId?: string;
 }

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createState } from "../engine/state.js";
 import { applyStatus, tickStatuses } from "../engine/statuses.js";
 import { REGISTRY } from "../data/registry.js";
-import { scenario } from "./helpers.js";
+import { customRegistry, scenario } from "./helpers.js";
 
 /**
  * U7 CONFIRMED in-game (2026-09-03, Attack Up II): a normal timed buff's
@@ -13,7 +13,7 @@ import { scenario } from "./helpers.js";
  * of the casting unit's own action; no same-action skip).
  */
 test("U7: timed buff duration ticks at the recipient's action end, not at turn/round end", () => {
-  const state = createState(scenario({ turns: 1, seed: 7 }), REGISTRY, new Set());
+  const state = createState(scenario({ turns: 1, seed: 7 }), customRegistry({}), new Set());
   const doll = state.units[0];
   // overburn: non-stackable, duration 2 — a plain timed buff for timing checks.
   applyStatus(state, doll, { statusId: "overburn", durationRounds: 2 });
@@ -42,7 +42,7 @@ test("U7: timed buff duration ticks at the recipient's action end, not at turn/r
  * disproved the old `appliedThisAction` same-action skip, which was removed.
  */
 test("U7 (2026): self-applied buff ticks at the end of the same action (Positive Charge 3 → 2)", () => {
-  const state = createState(scenario({ turns: 1, seed: 7 }), REGISTRY, new Set());
+  const state = createState(scenario({ turns: 1, seed: 7 }), customRegistry({}), new Set());
   const doll = state.units[0];
   // No reset/absent appliedThisAction: the status is applied during the cast action itself.
   applyStatus(state, doll, { statusId: "overburn", durationRounds: 3 });
@@ -67,7 +67,7 @@ test("U7 (2026): self-applied buff ticks at the end of the same action (Positive
  * their own stacking are unaffected by it.
  */
 test("U8: same-tier reapplication refreshes duration and keeps a single stack", () => {
-  const state = createState(scenario({ turns: 1, seed: 7 }), REGISTRY, new Set());
+  const state = createState(scenario({ turns: 1, seed: 7 }), customRegistry({}), new Set());
   const doll = state.units[0];
   applyStatus(state, doll, { statusId: "overburn", durationRounds: 2 });
   assert.equal(doll.statuses.length, 1);
@@ -84,3 +84,4 @@ test("U8: same-tier reapplication refreshes duration and keeps a single stack", 
   assert.equal(doll.statuses[0].stacks, 1, "stack count stays 1");
   assert.equal(doll.statuses[0].durationLeft, 2, "duration refreshed to full");
 });
+

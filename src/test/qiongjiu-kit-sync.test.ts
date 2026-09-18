@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import { createState } from "../engine/state.js";
 import { REGISTRY } from "../data/registry.js";
 import { QIONGJIU } from "../data/qiongjiu.js";
-import { scenario } from "./helpers.js";
+import { customRegistry, scenario } from "./helpers.js";
 
 function qjState(fLevel: number) {
-  return createState(scenario({ turns: 1, rotation: ["basic"], config: { fortificationLevel: fLevel } }), REGISTRY, new Set());
+  return createState(scenario({ turns: 1, rotation: ["basic"], config: { fortificationLevel: fLevel } }), customRegistry({}), new Set());
 }
 
 test("QJ Basic Attack is Level 1 at Fortification 0 and at V6 (never upgraded)", () => {
@@ -103,3 +103,4 @@ test("Vulnerable I = +10% damage taken, defense debuff; Damage Up II = +20% dama
   assert.equal(dmgUp?.category, "buff");
   assert.deepEqual(dmgUp?.effects, [{ kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.2 }]);
 });
+

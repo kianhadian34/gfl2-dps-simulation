@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
 import { QIONGJIU } from "../data/qiongjiu.js";
 import { REGISTRY, type Registry } from "../data/registry.js";
-import { customRegistry, makeAlly } from "./helpers.js";
+import { customRegistry, makeAlly, TEST_WEAPONS } from "./helpers.js";
 import type { CharacterDef, Scenario } from "../model/types.js";
 
 /**
@@ -20,15 +20,19 @@ import type { CharacterDef, Scenario } from "../model/types.js";
  * scenarios (ELID+Cover → +2.5% and non-ELID+Cover → +0%) are NOT representable in a run —
  * they are documented mechanics with no testable path in the MVP.
  *
- * Harness: the real Qiongjiu def id ("qiongjiu") is the owner, with critRate zeroed via a
- * registry wrapper (deterministic non-crit). Golden Melody is equipped with NO calibrationLevel,
- * so no Damage Dealt / Charging terms pollute the imprint math (bracket = No-Cover 0.20 at V6).
+ * Harness: the real Qiongjiu def id ("qiongjiu") is the OWNER, with critRate zeroed via a
+ * registry wrapper (deterministic non-crit). The Imprint activates AUTOMATICALLY (no toggle):
+ * a weapon equipped by the dealer whose `ownerCharacterId` equals the dealer's character id is
+ * the dealer's signature weapon. Golden Melody is equipped with NO calibrationLevel, so no
+ * Damage Dealt / Charging terms pollute the imprint math (bracket = No-Cover 0.20 at V6).
  */
 
 // Qiongjiu REAL def (owner id "qiongjiu") with critRate 0 for deterministic non-crit oracles.
 const qjNonCrit: Registry = {
   ...REGISTRY,
   getCharacter: (id) => (id === "qiongjiu" ? { ...QIONGJIU, base: { ...QIONGJIU.base, critRate: 0 } } : REGISTRY.getCharacter(id)),
+  // TEST-ONLY weapon fixtures (non-game, panel-only) resolve here — production data is clean.
+  getWeapon: (id) => TEST_WEAPONS[id] ?? REGISTRY.getWeapon(id),
 };
 
 /** Non-owner attacker (a Qiongjiu CLONE with a different id) that still equips Golden Melody. */
@@ -41,7 +45,7 @@ function qjClone(): CharacterDef {
 
 function ownerRun(opts: { elid: boolean; ally?: boolean }): ReturnType<typeof simulateScenario> {
   const team: Scenario["team"] = [
-    { characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou", weaponImprintActive: true },
+    { characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou" },
   ];
   if (opts.ally) team.push({ characterId: "im_ally", rotation: ["basic"], equippedFixedKeys: [] });
   const sc: Scenario = {
@@ -106,6 +110,42 @@ test("Imprint: NON-owner damage gets +0% even while another unit owns/equips Gol
   assert.equal(ev.finalDamage, 472, "ceil(393.00 × 1.20) = 472");
 });
 
+test("Imprint: Qiongjiu + NON-signature weapon → INACTIVE even vs an ELID target (bracket 1.20 → 472)", () => {
+  const r = simulateScenario(
+    {
+      version: 1,
+      seed: 7,
+      turns: 1,
+      // The test-fixture rifle shares Golden Melody's max-level stats but has NO
+      // ownerCharacterId — it is not Qiongjiu's signature weapon, so the Imprint is INACTIVE.
+      team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], weaponId: "weapon_qj_panel_test" }],
+      dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], raceTypes: ["elid"], phase: null, cover: "none" },
+      configOverrides: { fortificationLevel: 6 },
+    },
+    qjNonCrit,
+  );
+  const ev = r.log.find((e) => e.action === "qiongjiu_basic")!;
+  assert.ok(Math.abs(ev.bonusBracket - 1.2) < 1e-9, `non-signature weapon: No-Cover only (got ${ev.bonusBracket})`);
+  assert.equal(ev.finalDamage, 472, "ceil(393.00 × 1.20) = 472");
+});
+
+test("Imprint: NO weapon equipped → INACTIVE (bracket 1.20, base panel only)", () => {
+  const r = simulateScenario(
+    {
+      version: 1,
+      seed: 7,
+      turns: 1,
+      team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [] }],
+      dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], raceTypes: ["elid"], phase: null, cover: "none" },
+      configOverrides: { fortificationLevel: 6 },
+    },
+    qjNonCrit,
+  );
+  const ev = r.log.find((e) => e.action === "qiongjiu_basic")!;
+  assert.equal(ev.attackerAtk, 1224, "no weapon → base panel only");
+  assert.ok(Math.abs(ev.bonusBracket - 1.2) < 1e-9, `no weapon: No-Cover only, no Imprint (got ${ev.bonusBracket})`);
+});
+
 test("Imprint: Support Action (the MVP out-of-turn damage path) also receives it — additive with DU2/No-Cover/Out-of-Turn (bracket 1.55 → 686)", () => {
   // V6 support bracket: 0.20 No-Cover + 0.10 Out-of-Turn + 0.20 Damage Up II (the resolved V5
   // `beforeSupportTrigger` applies DU2 on every support at V6 — the established behavior the
@@ -116,3 +156,4 @@ test("Imprint: Support Action (the MVP out-of-turn damage path) also receives it
   assert.ok(Math.abs(ev.bonusBracket - 1.55) < 1e-9, `0.20 No-Cover + 0.10 OoT + 0.20 DU2 + 0.05 Imprint = 1.55 (got ${ev.bonusBracket})`);
   assert.equal(ev.finalDamage, 686, "ceil(442.13 × 1.55) = 686");
 });
+

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
-import { scenario } from "./helpers.js";
+import { customRegistry, scenario } from "./helpers.js";
 import { STABILITY_RECOVERY_DELAY } from "../engine/stability.js";
 
 // Confirmed in-game (2026-09-03, research §3.7 / U6):
@@ -23,6 +23,7 @@ test("break during Turn 2 → stability restored on Turn 4 (confirmed in-game)",
   // r4 restored + basic 4→2 (unexposed), r5 ultimate (unexposed, no hit → `?? false`).
   const r = simulateScenario(
     scenario({ turns: 5, seed: 7, rotation: ["basic", "basic", "active2", "basic", "ultimate"], dummy: { stability: 4 } }),
+    customRegistry({})
   );
   // Main actions only — status_tick events (Overburn 2026) carry no exposed flag;
   // `?? false`: the ultimate is a non-damaging action (no hit → no exposed flag).
@@ -37,6 +38,7 @@ test("break during Turn 1 → stability restored on Turn 3 (confirmed in-game)",
   // floored at 0, exposed flag true), r3 ultimate (0 stab, cd 0 — no re-break).
   const r = simulateScenario(
     scenario({ turns: 3, seed: 7, rotation: ["basic", "active2", "ultimate"], dummy: { stability: 2 } }),
+    customRegistry({})
   );
   // Main actions only — status_tick events (Overburn 2026) carry no exposed flag;
   // `?? false`: the ultimate is a non-damaging action (no hit → no exposed flag).
@@ -49,16 +51,18 @@ test("break during Turn 1 → stability restored on Turn 3 (confirmed in-game)",
 test("no earlier restoration: the 2-turn delay is exact (confirmed rule)", () => {
   // Turn 2 must still show the window — recovery ticks only after 2 full rounds.
   const run = () => scenario({ turns: 2, seed: 7, rotation: ["basic", "active2"], dummy: { stability: 2 } });
-  const r = simulateScenario(run());
+  const r = simulateScenario(run(), customRegistry({}));
   // Main actions only — status_tick events (Overburn 2026) carry no exposed flag.
   assert.deepEqual(
     r.log.filter((e) => e.actionType !== "status_tick").map((e) => e.exposed ?? false),
     [true, true],
   );
-  const again = simulateScenario(run());
+  const again = simulateScenario(run(), customRegistry({}));
   assert.equal(JSON.stringify(r.log), JSON.stringify(again.log));
 });
 
 test("recovery delay constant is exactly 2 turns", () => {
   assert.equal(STABILITY_RECOVERY_DELAY, 2);
 });
+
+

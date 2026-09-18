@@ -80,3 +80,4 @@ test("C — Steady Plan V6/Lv3: No-Cover +20% TOTAL, Support Action +10% and Ove
   const supIdx = r.log.findIndex((e) => e.supportAttack);
   assert.equal(firstOb, supIdx);
 });
+

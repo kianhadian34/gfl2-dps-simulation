@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { rollHit } from "../engine/damage.js";
 import { Rng } from "../engine/rng.js";
 import { simulateScenario } from "../simulate.js";
-import { scenario } from "./helpers.js";
+import { customRegistry, scenario } from "./helpers.js";
 
 // In-game validation 2026-09-03 — Burn weakness (docs/research.md §3.5):
 // Qiongjiu Lv.60 V6, Retired OTs-14 R1 Lv.2, no keys, ATK 1958, CDMG 120%,
@@ -130,8 +130,8 @@ test("engine-level U20: 1 weakness ×1.10, 2 weaknesses ×1.20 (count-driven, ad
   //   ATK 1831.95 — the +1 is caused directly by the validated final-stat rounding)
   //   2 weaknesses → ×1.20 → ceil(3022.8 × 1.2) = 3628   (ratio 1.2/1.1, additive)
   // Same seed ⇒ identical crit outcome in both runs, so the ratio is exact.
-  const r1 = simulateScenario(scenario({ turns: 1, rotation: ["active1"], dummy: { weaknesses: ["burn"] } }));
-  const r2 = simulateScenario(scenario({ turns: 1, rotation: ["active1"], dummy: { weaknesses: ["burn", "burn"] } }));
+  const r1 = simulateScenario(scenario({ turns: 1, rotation: ["active1"], dummy: { weaknesses: ["burn"] } }), customRegistry({}));
+  const r2 = simulateScenario(scenario({ turns: 1, rotation: ["active1"], dummy: { weaknesses: ["burn", "burn"] } }), customRegistry({}));
   assert.equal(r1.log[0].finalDamage, 3326);
   assert.equal(r2.log[0].finalDamage, 3628);
   assert.deepEqual(r1.log[0].weaknessExploited, ["burn"]);
@@ -139,3 +139,4 @@ test("engine-level U20: 1 weakness ×1.10, 2 weaknesses ×1.20 (count-driven, ad
   assert.equal(r1.log[0].stabilityDamage, 5); // 3 base + 2 × 1 exploited weakness
   assert.equal(r2.log[0].stabilityDamage, 7); // 3 base + 2 × 2 exploited weaknesses
 });
+

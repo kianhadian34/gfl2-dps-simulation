@@ -94,3 +94,4 @@ test("U15a partial-match sequence: 1207 / 1491 / 1207 (validated observation pat
     assert.equal(ev.finalDamage, samples[i], `sample ${i + 1}`);
   }
 });
+

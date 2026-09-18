@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
-import { scenario } from "./helpers.js";
+import { customRegistry, scenario } from "./helpers.js";
 
 // U15 — weakness stability damage (validated in-game, 2026).
 // Total Stability Damage = Attack Base Stability Damage + (2 × # weaknesses exploited)
@@ -17,7 +17,7 @@ import { scenario } from "./helpers.js";
 //   4. Common Rail, 2 (Burn + Ammo) → 7  (65 → 58)
 
 test("stab: Basic, 0 exploited weaknesses → total 2 (65→63, validated)", () => {
-  const r = simulateScenario(scenario({ turns: 1, seed: 5, rotation: ["basic"], dummy: { stability: 65 } }));
+  const r = simulateScenario(scenario({ turns: 1, seed: 5, rotation: ["basic"], dummy: { stability: 65 } }), customRegistry({}));
   const ev = r.log[0];
   assert.equal(ev.stabilityDamage, 2);
   assert.equal(ev.targetStabilityAfter, 63);
@@ -26,6 +26,7 @@ test("stab: Basic, 0 exploited weaknesses → total 2 (65→63, validated)", () 
 test("stab: Basic, 1 Ammo weakness exploited → total 4 (65→61, validated)", () => {
   const r = simulateScenario(
     scenario({ turns: 1, seed: 5, rotation: ["basic"], dummy: { stability: 65, weaknessTags: ["medium_ammo"] } }),
+    customRegistry({})
   );
   const ev = r.log[0];
   assert.equal(ev.stabilityDamage, 4); // 2 base + 2 × 1 (ammo tag)
@@ -35,6 +36,7 @@ test("stab: Basic, 1 Ammo weakness exploited → total 4 (65→61, validated)", 
 test("stab: Common Rail (Burn), 1 Burn weakness exploited → total 5 (65→60, validated)", () => {
   const r = simulateScenario(
     scenario({ turns: 1, seed: 5, rotation: ["active1"], dummy: { stability: 65, weaknesses: ["burn"] } }),
+    customRegistry({})
   );
   const ev = r.log[0];
   assert.equal(ev.stabilityDamage, 5); // 3 base + 2 × 1 (burn element)
@@ -49,6 +51,7 @@ test("stab: Common Rail (Burn), 2 exploited (Burn + Ammo) → total 7 (65→58, 
       rotation: ["active1"],
       dummy: { stability: 65, weaknesses: ["burn"], weaknessTags: ["medium_ammo"] },
     }),
+    customRegistry({})
   );
   const ev = r.log[0];
   assert.equal(ev.stabilityDamage, 7); // 3 base + 2 × 2 (burn element + ammo tag)
@@ -70,6 +73,7 @@ test("stab: AWU does NOT affect the stability calculation (stacks present → st
         passives: [{ id: "awu", name: "AWU trigger", effects: [{ kind: "grant_stacks_on_weakness_exploit", weaknessTag: "medium_ammo", statusId: "ammo_weakness_upgrade", firstGain: 2, gainPerEvent: 1, maxStacks: 5, requiresElements: [null] }] }],
       },
     }),
+    customRegistry({})
   );
   // Last event is the Common Rail (Burn): AWU at 5 stacks, but stab is purely
   // base + 2 × exploited (burn element + ammo tag = 2) → 3 + 4 = 7.
@@ -81,3 +85,5 @@ test("stab: AWU does NOT affect the stability calculation (stacks present → st
   assert.equal(last.stabilityDamage, 7, "AWU stacks do not enter the stability calculation");
   assert.equal(last.targetStabilityAfter, 45 - 7);
 });
+
+

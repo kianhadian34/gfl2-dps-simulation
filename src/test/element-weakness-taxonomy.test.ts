@@ -111,3 +111,4 @@ test("electric matches Electric → ×1.10, stab+2", () => {
   assert.equal(hit.finalDamage, 1100);
   assert.equal(hit.stabilityDamage, 3);
 });
+

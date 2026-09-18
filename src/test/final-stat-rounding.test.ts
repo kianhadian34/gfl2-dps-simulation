@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { customRegistry } from "./helpers.js";
 import assert from "node:assert/strict";
 import { finalStat } from "../engine/stats.js";
 import { computePanel } from "../engine/state.js";
@@ -19,7 +20,7 @@ const scenarioFor = (rotation: string[]): Parameters<typeof simulateScenario>[0]
   version: 1,
   seed: 7,
   turns: 1,
-  team: [{ characterId: "qiongjiu", rotation: rotation as never, equippedFixedKeys: [], weaponId: "jinshizou" }],
+  team: [{ characterId: "qiongjiu", rotation: rotation as never, equippedFixedKeys: [], weaponId: "weapon_qj_panel_test" }],
   dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 6, weaknesses: [], phase: null, cover: "none" },
 });
 
@@ -65,14 +66,17 @@ test("downstream: damage consumes the ROUNDED attacker ATK (Qiongjiu Basic, DEF 
   // base = 1832 × 0.8 × 0.2681499 = 393.00; bracket = 1.10 (No-Cover).
   // seed 7 ⇒ this hit crits (CDMG 1.20 applies to the unrounded value before the final ceil):
   //   ceil(393.00 × 1.10 × 1.20) = ceil(518.76) = 519.
-  const r = simulateScenario(scenarioFor(["basic"]), REGISTRY);
+  const r = simulateScenario(scenarioFor(["basic"]), customRegistry({}));
   const ev = r.log.find((e) => e.action === "qiongjiu_basic")!;
   assert.equal(ev.attackerAtk, 1832, "integer final ATK reaches the damage pipeline");
   assert.equal(ev.finalDamage, 519);
 });
 
 test("downstream: target DEF is consumed as the integer final stat", () => {
-  const r = simulateScenario(scenarioFor(["basic"]), REGISTRY);
+  const r = simulateScenario(scenarioFor(["basic"]), customRegistry({}));
   const ev = r.log.find((e) => e.action === "qiongjiu_basic")!;
   assert.equal(ev.targetDef, 5000, "integer target DEF consumed by damage");
 });
+
+
+

@@ -116,3 +116,4 @@ test("configOverrides.critMultiplier remains a test-only alternative hypothesis"
   }
   assert.ok(r.warnings.some((w) => w.includes("alternative hypothesis") && w.includes("1 + Crit DMG")));
 });
+

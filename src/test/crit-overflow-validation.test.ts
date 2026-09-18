@@ -118,3 +118,4 @@ test("resolveCritStats unit behavior: no overflow below 100%, cap at threshold, 
   const none = resolveCritStats(1.5, 0.2, []);
   assert.ok(Math.abs(none.critRate - 1.0) < 1e-9 && Math.abs(none.critDmg - 0.2) < 1e-9, "no passive → no conversion");
 });
+

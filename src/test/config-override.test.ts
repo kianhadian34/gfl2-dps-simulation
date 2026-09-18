@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
-import { scenario, customRegistry, makeAlly } from "./helpers.js";
+import { customRegistry, makeAlly, scenario } from "./helpers.js";
 import type { ConfigOverrides, Scenario } from "../model/types.js";
 
 // Every UNVERIFIED value that affects Qiongjiu's simulation must be changeable
@@ -15,8 +15,8 @@ test("critMultiplier override (alternative hypothesis) changes crit damage", () 
   // Confirmed rule is 1 + Crit DMG; the override stays as a test-only alternative.
   const high: Over = { turns: 1, seed: 1, rotation: ["basic"], config: { critMultiplier: 2.0 } };
   const alt: Over = { turns: 1, seed: 1, rotation: ["basic"], config: { critMultiplier: 1.5 } };
-  const ev2 = simulateScenario(scenario(high)).log[0];
-  const ev15 = simulateScenario(scenario(alt)).log[0];
+  const ev2 = simulateScenario(scenario(high), customRegistry({})).log[0];
+  const ev15 = simulateScenario(scenario(alt), customRegistry({})).log[0];
   assert.equal(ev2.critical, ev15.critical); // same seed → same crit outcome
   if (ev2.critical) {
     assert.ok(ev2.finalDamage > ev15.finalDamage, "crit damage must scale with critMultiplier");
@@ -28,8 +28,8 @@ test("critMultiplier override (alternative hypothesis) changes crit damage", () 
 test("exposedDurationRounds override changes the broken-window flag timing (U4 testing knob)", () => {
   // stability 4: r1 no break, r2 breaks. Default flag persists through r3
   // (fixed 2-turn rule); an override shortens the flag (recovery still ends it).
-  const dflt = simulateScenario(scenario({ turns: 4, seed: 2, dummy: { stability: 4 } }));
-  const short = simulateScenario(scenario({ turns: 4, seed: 2, dummy: { stability: 4 }, config: { exposedDurationRounds: 1 } }));
+  const dflt = simulateScenario(scenario({ turns: 4, seed: 2, dummy: { stability: 4 } }), customRegistry({}));
+  const short = simulateScenario(scenario({ turns: 4, seed: 2, dummy: { stability: 4 }, config: { exposedDurationRounds: 1 } }), customRegistry({}));
   assert.deepEqual(dflt.log.map((e) => e.exposed), [false, true, true, false]);
   assert.deepEqual(short.log.map((e) => e.exposed), [false, true, false, false]);
 });
@@ -37,10 +37,10 @@ test("exposedDurationRounds override changes the broken-window flag timing (U4 t
 test("confectanceMax + confectanceStart overrides change ultimate timing (U9)", () => {
   // Cap 2 clamps battle start 3 → 2 → ultimate (cost 3) never affordable → all basic.
   const tiny: Over = { turns: 4, rotation: ["ultimate", "basic"], keys: [], config: { confectanceMax: 2, confectanceStart: 3 } };
-  const tinyR = simulateScenario(scenario(tiny));
+  const tinyR = simulateScenario(scenario(tiny), customRegistry({}));
   assert.ok(tinyR.log.every((e) => e.action === "qiongjiu_basic"));
   const big: Over = { turns: 4, rotation: ["ultimate", "basic"], keys: [], config: { confectanceMax: 10, confectanceStart: 3 } };
-  const bigR = simulateScenario(scenario(big));
+  const bigR = simulateScenario(scenario(big), customRegistry({}));
   assert.equal(bigR.log[0].action, "qiongjiu_pressing_momentum");
 });
 
@@ -127,12 +127,12 @@ test("statusOverrides.tickAt alternative (roundEnd) is honored (U7 knob — defa
 test("cooldownModel: confirmed default waits N full turns; the alternative stays selectable (U11)", () => {
   const base: Over = { turns: 3, rotation: ["active1"], keys: [] };
   // Confirmed default ("nextOwnTurnEnd"): CD-1 → cast T1, unavailable T2 (basic fallback), available T3.
-  const dflt = simulateScenario(scenario(base));
-  const explicit = simulateScenario(scenario({ ...base, config: { cooldownModel: "nextOwnTurnEnd" } }));
+  const dflt = simulateScenario(scenario(base), customRegistry({}));
+  const explicit = simulateScenario(scenario({ ...base, config: { cooldownModel: "nextOwnTurnEnd" } }), customRegistry({}));
   assert.deepEqual(dflt.log.map((e) => e.action), ["qiongjiu_common_rail", "qiongjiu_basic", "qiongjiu_common_rail"]);
   assert.equal(JSON.stringify(dflt.log), JSON.stringify(explicit.log));
   // Alternative hypothesis retains the old behavior when explicitly requested.
-  const alt = simulateScenario(scenario({ ...base, config: { cooldownModel: "endOfOwnTurn" } }));
+  const alt = simulateScenario(scenario({ ...base, config: { cooldownModel: "endOfOwnTurn" } }), customRegistry({}));
   assert.deepEqual(alt.log.map((e) => e.action), ["qiongjiu_common_rail", "qiongjiu_common_rail", "qiongjiu_common_rail"]);
   // The alternative is flagged as non-confirmed in warnings.
   assert.ok(alt.warnings.some((w) => w.includes("non-confirmed alternative")));
@@ -141,6 +141,9 @@ test("cooldownModel: confirmed default waits N full turns; the alternative stays
 test("overridden statuses are flagged as config-overridden in warnings", () => {
   const r = simulateScenario(
     scenario({ turns: 1, rotation: ["active1"], keys: [], config: { statusOverrides: { support_boost_i: { perStackValue: 0.07 } } } }),
+    customRegistry({})
   );
   assert.ok(r.warnings.some((w) => w.includes("support_boost_i") && w.includes("config-overridden")));
 });
+
+

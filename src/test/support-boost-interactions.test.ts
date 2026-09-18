@@ -193,3 +193,4 @@ test("Max-Confectance Ultimate (VALIDATED 2026): 4 SB II stacks AND 4 Support Ac
   );
   assert.equal(c.log.some((e) => (e.statusesExpired ?? []).includes("support_boost_ii")), false, "no SB II on the control turn");
 });
+

@@ -110,7 +110,7 @@ function run(char: CharacterDef, dummy: object, turns = 6) {
 // ---------------------------------------------------------------------------
 
 function takenBonus(stacks: number, element: Element | null): number {
-  const st = createState(scenario({ turns: 1 }), REGISTRY, new Set());
+  const st = createState(scenario({ turns: 1 }), customRegistry({}), new Set());
   applyStatus(st, st.dummy, { statusId: AWU, stacks });
   return additiveTakenBonus(st.dummy, st.statusRegistry, element);
 }
@@ -122,7 +122,7 @@ test("AWU tier values: 2→0.07, 3→0.11, 4→0.17, 5→0.25; below 2 and above
   assert.equal(takenBonus(5, null), 0.25);
   assert.equal(takenBonus(1, null), 0, "below the lowest tier contributes 0");
   // Stacks above maxStacks (manually raised) stay at the top tier.
-  const st = createState(scenario({ turns: 1 }), REGISTRY, new Set());
+  const st = createState(scenario({ turns: 1 }), customRegistry({}), new Set());
   applyStatus(st, st.dummy, { statusId: AWU, stacks: 5 });
   st.dummy.statuses[0].stacks = 7;
   assert.equal(additiveTakenBonus(st.dummy, st.statusRegistry, null), 0.25);
@@ -139,7 +139,7 @@ test("AWU persistence: stacks do NOT expire from elapsed turns (validated in-gam
   // with no further attacks — no expiration. Modeled as permanent (durationRounds: null);
   // the engine never ticks a permanent status. NOTE: this validates 6 skipped turns,
   // not a mathematical proof of infinite persistence; no reset condition is invented.
-  const st = createState(scenario({ turns: 1 }), REGISTRY, new Set());
+  const st = createState(scenario({ turns: 1 }), customRegistry({}), new Set());
   applyStatus(st, st.dummy, { statusId: AWU, stacks: 5 });
   for (let i = 0; i < 6; i++) {
     tickStatuses(st, st.dummy, "roundEnd");
@@ -264,3 +264,5 @@ test("trigger values are data-driven: firstGain 3 / gainPerEvent 2 caps at 5", (
     ],
   );
 });
+
+

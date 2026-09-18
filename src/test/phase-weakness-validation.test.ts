@@ -108,3 +108,4 @@ test("U15b: AWU stays out of Phase damage — no stack advancement and no AWU te
   assert.ok(Math.abs(ev.bonusBracket - 1.2) < 1e-9, "no AWU term in the bracket for a Phase hit");
   assert.ok(ev.upgradeStacks === undefined, "Phase Ammo exploit does NOT advance AWU");
 });
+

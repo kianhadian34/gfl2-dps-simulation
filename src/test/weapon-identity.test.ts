@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
 import { createState, weaponAtk, weaponCalibration } from "../engine/state.js";
 import { REGISTRY } from "../data/registry.js";
-import { scenario } from "./helpers.js";
+import { customRegistry, scenario } from "./helpers.js";
 import type { Scenario } from "../model/types.js";
 
 /**
@@ -43,7 +43,7 @@ test("Unknown weaponId throws a clear error", () => {
     ...scenario({ turns: 1 }),
     team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], weaponId: "definitely_not_a_weapon" }],
   };
-  assert.throws(() => simulateScenario(sc, REGISTRY), /Unknown weapon: definitely_not_a_weapon/);
+  assert.throws(() => simulateScenario(sc, customRegistry({})), /Unknown weapon: definitely_not_a_weapon/);
 });
 
 test("A character WITHOUT weaponId equips NO weapon — nothing is inherited from the character", () => {
@@ -132,3 +132,4 @@ test("invalid calibration levels are rejected (out of C1–C6, non-integer, or w
   assert.throws(() => run(1.5, "jinshizou"), /Invalid weapon calibrationLevel/);
   assert.throws(() => run(1), /calibrationLevel requires a weaponId/);
 });
+

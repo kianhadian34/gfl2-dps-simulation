@@ -4,7 +4,7 @@ import { createState } from "../engine/state.js";
 import { applyStatus, cleanseDispellable } from "../engine/statuses.js";
 import { simulateScenario } from "../simulate.js";
 import { REGISTRY } from "../data/registry.js";
-import { scenario, customRegistry, makeAlly, abilities } from "./helpers.js";
+import { abilities, customRegistry, makeAlly, scenario } from "./helpers.js";
 import type { CharacterDef, SkillDefVariant } from "../model/types.js";
 
 /**
@@ -100,7 +100,7 @@ test("Fixed Key 2: with no dispellable buff on the target, the Support Action pr
 });
 
 test("cleanseDispellable: removes only purgeable statuses, exactly N at a time, unspecified order", () => {
-  const st = createState(scenario({ turns: 1 }), REGISTRY, new Set());
+  const st = createState(scenario({ turns: 1 }), customRegistry({}), new Set());
   applyStatus(st, st.dummy, { statusId: "damage_up_ii", durationRounds: 3 }); // purgeable buff
   applyStatus(st, st.dummy, { statusId: "fixed_dmg_buff", durationRounds: 3 }); // purgeable buff
   applyStatus(st, st.dummy, { statusId: "overburn", durationRounds: 2 }); // purgeable (dispellable debuff)
@@ -115,3 +115,4 @@ test("cleanseDispellable: removes only purgeable statuses, exactly N at a time, 
   assert.equal(rest.length, 2, "exactly the remaining two dispellable statuses are removed");
   assert.ok(st.dummy.statuses.every((s) => s.statusId === "support_boost_i"), "only the non-dispellable status remains");
 });
+

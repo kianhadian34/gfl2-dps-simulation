@@ -117,3 +117,4 @@ function v2Run(def: CharacterDef, turns: number, gjRotation: string[]): Paramete
   };
 }
 
+

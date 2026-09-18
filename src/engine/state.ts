@@ -66,8 +66,6 @@ export interface UnitState {
   weapon: WeaponDef | null;
   /** EFFECTIVE weapon calibration level (C1–C6 = 1–6): the member's `calibrationLevel`, else the weapon def's own `calibrationLevel`; undefined = no calibration Effect. */
   weaponCalibrationLevel?: number;
-  /** OPT-IN weapon Imprint activation (2026) — see `ScenarioTeamMember.weaponImprintActive`; absent = no Imprint contribution. */
-  weaponImprintActive?: boolean;
   stability: number;
   maxStability: number;
   exposed: boolean;
@@ -277,7 +275,7 @@ function resolveAffinityBonus(
   return { atk: foreign.genericBonus?.atk ?? 0, hp: foreign.genericBonus?.hp ?? 0, critDmg: foreign.genericBonus?.critDmg ?? 0 };
 }
 
-function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], affinity: { keyId?: string; level?: number } | undefined, commonKeyIds: string[], expansionKeyId: string | undefined, weapon: WeaponDef | null, weaponCalibrationLevel: number | undefined, weaponImprintActive: boolean | undefined, config: ResolvedConfig, registry: Registry): UnitState {
+function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], affinity: { keyId?: string; level?: number } | undefined, commonKeyIds: string[], expansionKeyId: string | undefined, weapon: WeaponDef | null, weaponCalibrationLevel: number | undefined, config: ResolvedConfig, registry: Registry): UnitState {
   const panel = computePanel(def, weapon);
   const aff = resolveAffinityBonus(def, affinity?.keyId, affinity?.level, registry);
   // Common Keys (generic architecture, 2026): REUSABLE definitions resolved via the registry
@@ -337,7 +335,6 @@ function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], aff
     weaponCharges: 0,
     weapon,
     weaponCalibrationLevel,
-    weaponImprintActive,
     stability: def.base.stability,
     maxStability: def.base.stability,
     exposed: false,
@@ -474,7 +471,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
       }
     }
     const weaponCalibrationLevel = m.calibrationLevel ?? weapon?.calibrationLevel;
-    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, weaponCalibrationLevel, m.weaponImprintActive, config, registry);
+    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, weaponCalibrationLevel, config, registry);
   });
   const dummy = makeDummy(scenario.dummy);
   return {

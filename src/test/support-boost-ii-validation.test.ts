@@ -184,3 +184,4 @@ test("SB II data pin: +30%/+10% one buff instance, persistent, one stack consume
   assert.equal(def.scaleWithStacks, false, "stack count never multiplies the magnitude");
   assert.equal(def.verified, true);
 });
+

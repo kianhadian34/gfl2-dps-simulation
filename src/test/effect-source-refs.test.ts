@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
-import { scenario, customRegistry, makeAlly, abilities } from "./helpers.js";
+import { abilities, customRegistry, makeAlly, scenario } from "./helpers.js";
 import type { CharacterDef, EffectSourceRef, SkillDefVariant, StatusApplySpec } from "../model/types.js";
 
 /**
@@ -27,7 +27,7 @@ function statusDoll(id: string, spec: StatusApplySpec): CharacterDef {
 }
 
 test("structured refs: QJ Basic (Steady Plan Lv.1 no-cover dealt) → passive ref with stable ids", () => {
-  const r = simulateScenario(scenario({ turns: 1, rotation: ["basic"], keys: [] }));
+  const r = simulateScenario(scenario({ turns: 1, rotation: ["basic"], keys: [] }), customRegistry({}));
   const { labels, refs } = labelsAndRefs(r);
   const passive = refs.find((x) => x.kind === "passive") as
     | { kind: "passive"; characterId: string; passiveId: string; level: number; v?: number; label: string }
@@ -42,7 +42,7 @@ test("structured refs: QJ Basic (Steady Plan Lv.1 no-cover dealt) → passive re
 });
 
 test("structured refs: Steady Plan Lv.3 (V6) carries level + fortification rank", () => {
-  const r = simulateScenario(scenario({ turns: 1, rotation: ["basic"], keys: [], config: { fortificationLevel: 6 } }));
+  const r = simulateScenario(scenario({ turns: 1, rotation: ["basic"], keys: [], config: { fortificationLevel: 6 } }), customRegistry({}));
   const passive = labelsAndRefs(r).refs.find((x) => x.kind === "passive") as
     | { kind: "passive"; characterId: string; passiveId: string; level: number; v?: number; label: string }
     | undefined;
@@ -142,3 +142,4 @@ test("structured refs: hits with no contributing sources omit refs (and labels)"
   assert.equal(ev.effectSources, undefined, "no contributing sources → labels absent");
   assert.equal(ev.effectSourceRefs, undefined, "no contributing sources → refs absent");
 });
+

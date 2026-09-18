@@ -338,3 +338,4 @@ test("height integration: High Ground -> Ground target = Exposed through the rea
   assert.ok(Math.abs(supGround.bonusBracket - 1.4) < 1e-9, `ground support bracket ${supGround.bonusBracket}`);
   assert.ok(Math.abs(supHigh.bonusBracket - 1.5) < 1e-9, `high-ground support bracket ${supHigh.bonusBracket} (Exposed from height)`);
 });
+

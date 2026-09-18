@@ -2,30 +2,30 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
 import { MAX_TURNS } from "../engine/state.js";
-import { scenario } from "./helpers.js";
+import { customRegistry, scenario } from "./helpers.js";
 
 test("1-turn simulation works", () => {
-  const r = simulateScenario(scenario({ turns: 1, rotation: ["basic"] }));
+  const r = simulateScenario(scenario({ turns: 1, rotation: ["basic"] }), customRegistry({}));
   assert.equal(r.totals.actions, 1);
   assert.equal(r.log.length, 1);
   assert.equal(r.totals.damagePerRound, r.totals.damage);
 });
 
 test("7-turn simulation works (MVP cap)", () => {
-  const r = simulateScenario(scenario({ turns: 7, rotation: ["basic"] }));
+  const r = simulateScenario(scenario({ turns: 7, rotation: ["basic"] }), customRegistry({}));
   assert.equal(r.totals.actions, 7);
   assert.equal(r.log.length, 7);
 });
 
 test("durations 8 and above are rejected with a clear error, never clamped", () => {
   for (const t of [8, 9, 100]) {
-    assert.throws(() => simulateScenario(scenario({ turns: t })), /between 1 and 7/, `turns=${t} must be rejected`);
+    assert.throws(() => simulateScenario(scenario({ turns: t }), customRegistry({})), /between 1 and 7/, `turns=${t} must be rejected`);
   }
 });
 
 test("durations 0, negative, and non-integers are rejected", () => {
   for (const t of [0, -3, 2.5]) {
-    assert.throws(() => simulateScenario(scenario({ turns: t })), /between 1 and 7/);
+    assert.throws(() => simulateScenario(scenario({ turns: t }), customRegistry({})), /between 1 and 7/);
   }
 });
 
@@ -35,8 +35,8 @@ test("MAX_TURNS is exactly 7 and is a single source of truth", () => {
 
 test("fixed-rotation behavior across all 7 turns is deterministic", () => {
   const run = () => scenario({ turns: 7, seed: 99, rotation: ["active1", "basic"], keys: [] });
-  const a = simulateScenario(run());
-  const b = simulateScenario(run());
+  const a = simulateScenario(run(), customRegistry({}));
+  const b = simulateScenario(run(), customRegistry({}));
   assert.equal(JSON.stringify(a.log), JSON.stringify(b.log));
   assert.equal(a.log.length, 7);
   assert.deepEqual(
@@ -56,6 +56,7 @@ test("fixed-rotation behavior across all 7 turns is deterministic", () => {
 test("manual 4-turn rotation: Skill1 → Skill2 → Basic → Ultimate (validation walkthrough)", () => {
   const r = simulateScenario(
     scenario({ turns: 4, rotation: ["active1", "active2", "basic", "ultimate"], keys: ["qiongjiu_fk1_concentration"] }),
+    customRegistry({})
   );
   // Main actions only — status_tick events (Overburn 2026) are not rotation actions.
   assert.deepEqual(
@@ -68,3 +69,6 @@ test("manual 4-turn rotation: Skill1 → Skill2 → Basic → Ultimate (validati
     ],
   );
 });
+
+
+

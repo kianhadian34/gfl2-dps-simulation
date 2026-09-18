@@ -114,3 +114,4 @@ test("Fixed Damage bypasses the boss stability passive (U21: fixed is post-chain
     assert.equal(e.fixedDamage, 196);
   }
 });
+

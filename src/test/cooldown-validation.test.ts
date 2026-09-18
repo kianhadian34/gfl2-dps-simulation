@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
-import { scenario } from "./helpers.js";
+import { customRegistry, scenario } from "./helpers.js";
 
 // Confirmed in-game (2026-09-03, research §3.11 / U11):
 //   Common Rail has Cooldown 1. Manual cast Turn 1 → unavailable Turn 2 →
@@ -15,7 +15,7 @@ import { scenario } from "./helpers.js";
 const CD1_RUN = () => scenario({ turns: 3, seed: 11, rotation: ["active1"], keys: [] });
 
 test("CD 1 cast Turn 1 → unavailable Turn 2 → available Turn 3 (confirmed in-game)", () => {
-  const r = simulateScenario(CD1_RUN());
+  const r = simulateScenario(CD1_RUN(), customRegistry({}));
   assert.deepEqual(
     r.log.map((e) => e.action),
     ["qiongjiu_common_rail", "qiongjiu_basic", "qiongjiu_common_rail"],
@@ -27,19 +27,21 @@ test("CD 1 cast Turn 1 → unavailable Turn 2 → available Turn 3 (confirmed in
 });
 
 test("explicit nextOwnTurnEnd override is identical to the confirmed default", () => {
-  const dflt = simulateScenario(CD1_RUN());
-  const explicit = simulateScenario(scenario({ turns: 3, seed: 11, rotation: ["active1"], keys: [], config: { cooldownModel: "nextOwnTurnEnd" } }));
+  const dflt = simulateScenario(CD1_RUN(), customRegistry({}));
+  const explicit = simulateScenario(scenario({ turns: 3, seed: 11, rotation: ["active1"], keys: [], config: { cooldownModel: "nextOwnTurnEnd" } }), customRegistry({}));
   assert.equal(JSON.stringify(dflt.log), JSON.stringify(explicit.log));
 });
 
 test("endOfOwnTurn alternative hypothesis is still selectable (testing only)", () => {
-  const alt = simulateScenario(scenario({ turns: 3, seed: 11, rotation: ["active1"], keys: [], config: { cooldownModel: "endOfOwnTurn" } }));
+  const alt = simulateScenario(scenario({ turns: 3, seed: 11, rotation: ["active1"], keys: [], config: { cooldownModel: "endOfOwnTurn" } }), customRegistry({}));
   assert.deepEqual(alt.log.map((e) => e.action), ["qiongjiu_common_rail", "qiongjiu_common_rail", "qiongjiu_common_rail"]);
 });
 
 test("deterministic: identical inputs reproduce the confirmed Turn 1→Turn 3 sequence exactly", () => {
-  const a = simulateScenario(CD1_RUN());
-  const b = simulateScenario(CD1_RUN());
+  const a = simulateScenario(CD1_RUN(), customRegistry({}));
+  const b = simulateScenario(CD1_RUN(), customRegistry({}));
   assert.equal(JSON.stringify(a.log), JSON.stringify(b.log));
   assert.deepEqual(a.log.map((e) => e.action), ["qiongjiu_common_rail", "qiongjiu_basic", "qiongjiu_common_rail"]);
 });
+
+

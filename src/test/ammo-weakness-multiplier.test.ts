@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { customRegistry } from "./helpers.js";
 import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
 import { REGISTRY } from "../data/registry.js";
@@ -33,7 +34,7 @@ function scenarioWith(ammoTags: string[]): Scenario {
 }
 
 function basicEvent(tags: string[]) {
-  const r = simulateScenario(scenarioWith(tags), REGISTRY);
+  const r = simulateScenario(scenarioWith(tags), customRegistry({}));
   return r.log.find((e) => e.action === "qiongjiu_basic")!;
 }
 
@@ -64,3 +65,4 @@ test("ammo weakness: two ammo tags matching (medium + shotgun impossible for QJ 
   assert.equal(multi.finalDamage, single.finalDamage, "non-matching ammo tags must not add weaknesses");
   assert.deepEqual(multi.weaknessExploited, ["medium_ammo"]);
 });
+

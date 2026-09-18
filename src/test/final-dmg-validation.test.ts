@@ -122,3 +122,4 @@ test("skill-sourced absolute fixed damage also receives the Final DMG chain (100
   assert.equal(basic.fixedDamage, 40);
   assert.equal(basic.critical, false);
 });
+
