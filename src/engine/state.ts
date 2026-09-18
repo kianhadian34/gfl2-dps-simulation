@@ -62,6 +62,8 @@ export interface UnitState {
   weaponCharges: number;
   /** The scenario-EQUIPPED weapon (resolved from `ScenarioTeamMember.weaponId` via the registry; null = no weapon equipped). Never inherited from the character. */
   weapon: WeaponDef | null;
+  /** EFFECTIVE weapon calibration level (C1–C6 = 1–6): the member's `calibrationLevel`, else the weapon def's own `calibrationLevel`; undefined = no calibration Effect. */
+  weaponCalibrationLevel?: number;
   stability: number;
   maxStability: number;
   exposed: boolean;
@@ -125,9 +127,11 @@ export function weaponAtk(weapon: WeaponDef | null): number {
  * calibration Effect — that default is preserved). Generic: any equipped weapon that declares
  * `calibrations` gets the behavior; no character-specific logic.
  */
-export function weaponCalibration(weapon: WeaponDef | null): WeaponCalibrationDef | undefined {
-  if (!weapon || weapon.calibrationLevel === undefined || !weapon.calibrations) return undefined;
-  return weapon.calibrations[weapon.calibrationLevel];
+export function weaponCalibration(weapon: WeaponDef | null, selectedLevel?: number): WeaponCalibrationDef | undefined {
+  if (!weapon || !weapon.calibrations) return undefined;
+  const level = selectedLevel ?? weapon.calibrationLevel;
+  if (level === undefined) return undefined;
+  return weapon.calibrations[level];
 }
 
 /** Panel formula: Final Stat = ceil((Initial + Flat) × (1 + Stat%)) — formula Mathematically Proven; integer DISPLAY Validated; exact hidden rounding method Not Tested (stats.ts). `weapon` is the scenario-EQUIPPED weapon (null = none). */
@@ -269,7 +273,7 @@ function resolveAffinityBonus(
   return { atk: foreign.genericBonus?.atk ?? 0, hp: foreign.genericBonus?.hp ?? 0, critDmg: foreign.genericBonus?.critDmg ?? 0 };
 }
 
-function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], affinity: { keyId?: string; level?: number } | undefined, commonKeyIds: string[], expansionKeyId: string | undefined, weapon: WeaponDef | null, config: ResolvedConfig, registry: Registry): UnitState {
+function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], affinity: { keyId?: string; level?: number } | undefined, commonKeyIds: string[], expansionKeyId: string | undefined, weapon: WeaponDef | null, weaponCalibrationLevel: number | undefined, config: ResolvedConfig, registry: Registry): UnitState {
   const panel = computePanel(def, weapon);
   const aff = resolveAffinityBonus(def, affinity?.keyId, affinity?.level, registry);
   // Common Keys (generic architecture, 2026): REUSABLE definitions resolved via the registry
@@ -327,6 +331,7 @@ function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], aff
     expansionKeyId,
     weaponCharges: 0,
     weapon,
+    weaponCalibrationLevel,
     stability: def.base.stability,
     maxStability: def.base.stability,
     exposed: false,
@@ -442,14 +447,27 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
     const def = registry.getCharacter(m.characterId);
     if (!def) throw new Error(`Unknown character: ${m.characterId}`);
     // WEAPON (2026): equipped via `ScenarioTeamMember.weaponId` (1 Weapon Slot) and resolved
-    // through the registry — a character NEVER inherits a weapon from its definition.
+    // through the registry — a character NEVER inherits a weapon from its definition. The
+    // calibration level is part of the EQUIPPED weapon configuration: member `calibrationLevel`
+    // (C1–C6 = 1–6, required to be an integer in range and to have a weaponId) else the weapon
+    // def's own `calibrationLevel`.
     let weapon: WeaponDef | null = null;
     if (m.weaponId !== undefined) {
       const w = registry.getWeapon(m.weaponId);
       if (!w) throw new Error(`Unknown weapon: ${m.weaponId}`);
       weapon = w;
     }
-    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, config, registry);
+    if (m.calibrationLevel !== undefined) {
+      const lv = m.calibrationLevel;
+      if (!Number.isInteger(lv) || lv < 1 || lv > 6) {
+        throw new Error(`Invalid weapon calibrationLevel: ${lv} (valid: C1–C6 = 1–6)`);
+      }
+      if (!weapon) {
+        throw new Error(`Team member ${m.characterId}: a weapon calibrationLevel requires a weaponId`);
+      }
+    }
+    const weaponCalibrationLevel = m.calibrationLevel ?? weapon?.calibrationLevel;
+    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, weaponCalibrationLevel, config, registry);
   });
   const dummy = makeDummy(scenario.dummy);
   return {

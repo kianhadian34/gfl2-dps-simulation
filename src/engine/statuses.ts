@@ -58,7 +58,7 @@ export function applyStatus(state: SimulationState, target: UnitState, spec: Sta
     // calibration's maxStacks. Data-driven and generic (only the HOLDER's own weapon matters;
     // allies/dummy without one are unaffected); NOT an invented event system.
     if (target.def && def.category === "buff") {
-      const wcal = weaponCalibration(target.weapon);
+      const wcal = weaponCalibration(target.weapon, target.weaponCalibrationLevel);
       if (wcal?.charging) target.weaponCharges = Math.min(wcal.charging.maxStacks, (target.weaponCharges ?? 0) + 1);
     }
     return true;
@@ -277,3 +277,4 @@ export function multiplicativeTakenMods(
   }
   return { mult, red };
 }
+

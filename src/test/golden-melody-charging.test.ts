@@ -45,17 +45,16 @@ function qjgm(): CharacterDef {
 }
 
 /**
- * Golden Melody C1 fixture for this test file: ZERO stat contribution (so the mirror's panel
- * ATK stays 2683) but the calibration EFFECT ACTIVE (`calibrationLevel: 1` — Damage Dealt +10%,
- * Charging +10%/stack, max 2). Test-only — the REGISTERED weapon keeps `calibrationLevel` ABSENT
- * (no Effect by default, preserving every pre-weapon validation).
+ * Golden Melody fixture for this test file: ZERO stat contribution (so the mirror's panel
+ * ATK stays 2683) but the REGISTERED calibration data intact (C1–C6). No baked-in
+ * `calibrationLevel` — calibration is supplied by the member's `calibrationLevel: 1`
+ * (equipped-weapon configuration) and resolved against the weapon's data.
  */
-const GOLDEN_MELODY_C1: WeaponDef = {
+const GOLDEN_MELODY: WeaponDef = {
   ...REGISTRY.getWeapon("jinshizou")!,
   atkLvl1: 0,
   atkLvl60: 0,
   subStats: [],
-  calibrationLevel: 1,
 };
 
 function scenario(): Scenario {
@@ -64,7 +63,7 @@ function scenario(): Scenario {
     seed: 7,
     turns: 1,
     team: [
-      { characterId: "qjgm", rotation: ["ultimate"], equippedFixedKeys: [], weaponId: "jinshizou" },
+      { characterId: "qjgm", rotation: ["ultimate"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel: 1 },
       { characterId: "gm_ally", rotation: ["basic"], equippedFixedKeys: [] },
     ] as never,
     dummy: {
@@ -82,7 +81,7 @@ function scenario(): Scenario {
 }
 
 test("Golden Melody C1 Charging (VALIDATED 1434): Support bucket 1.70 = 0.10 GM-DD + 0.10 OoT + 0.20 No-Cover + 0.20 DU2 + 0.10 Charging", () => {
-  const r = simulateScenario(scenario(), customRegistry({ qjgm: qjgm(), gm_ally: makeAlly("gm_ally", 1000) }, {}, { jinshizou: GOLDEN_MELODY_C1 }));
+  const r = simulateScenario(scenario(), customRegistry({ qjgm: qjgm(), gm_ally: makeAlly("gm_ally", 1000) }, {}, { jinshizou: GOLDEN_MELODY }));
   const ev = r.log.find((e) => e.supportAttack === true)!;
   assert.ok(ev, "Qiongjiu's Support Action fired");
   assert.equal(ev.attackerAtk, 2683, "panel ATK 2683 (plain mirror, no keys/weapon)");
@@ -104,7 +103,7 @@ test("Golden Melody C1 Damage Dealt +10% (VALIDATED 975): own-turn Basic bucket 
       version: 1,
       seed: 7,
       turns: 1,
-      team: [{ characterId: "qjgm", rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou" }],
+      team: [{ characterId: "qjgm", rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel: 1 }],
       dummy: {
         id: "training_dummy",
         name: "Training Dummy",
@@ -117,7 +116,7 @@ test("Golden Melody C1 Damage Dealt +10% (VALIDATED 975): own-turn Basic bucket 
       },
       configOverrides: { fortificationLevel: 6 }, // V6: No-Cover +20% total
     },
-    customRegistry({ qjgm: qjgm() }, {}, { jinshizou: GOLDEN_MELODY_C1 }),
+    customRegistry({ qjgm: qjgm() }, {}, { jinshizou: GOLDEN_MELODY }),
   );
   const ev = r.log.find((e) => e.action === "qiongjiu_basic")!;
   assert.equal(ev.attackerAtk, 2683, "panel ATK 2683 (plain mirror stats, Golden Melody C1 effect active)");

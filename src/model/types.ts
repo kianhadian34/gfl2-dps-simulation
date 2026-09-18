@@ -691,6 +691,15 @@ export interface ScenarioTeamMember {
    * clear error.
    */
   weaponId?: string;
+  /**
+   * Calibration level of the EQUIPPED weapon (C1–C6 = 1–6, 2026) — part of the equipped weapon
+   * configuration, NOT the character. Resolved against the weapon's `calibrations` data
+   * (calibration changes ONLY the Effect; max-level base stats are untouched). ABSENT = fall
+   * back to the weapon definition's own `calibrationLevel` (also absent = no Effect — the
+   * established pre-calibration behavior). Invalid values (non-integer, <1, >6) and a
+   * calibration without a `weaponId` are rejected with a clear error.
+   */
+  calibrationLevel?: number;
   /** Equipped Expansion Key id (e.g. Qiongjiu's Ruined Gem). Absent = no expansion-key behavior. */
   expansionKeyId?: string;
 }
