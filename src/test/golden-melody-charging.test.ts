@@ -80,3 +80,38 @@ test("Golden Melody C1 Charging (VALIDATED 1434): Support bucket 1.70 = 0.10 GM-
   );
   assert.equal(ev.finalDamage, 1434, "ceil(2414.7 × 2683/7683 × 1.70) = ceil(1433.51) = 1434 — the observed in-game number");
 });
+
+test("Golden Melody C1 Damage Dealt +10% (VALIDATED 975): own-turn Basic bucket 1.30 = 0.10 GM-DD + 0.20 No-Cover", () => {
+  // No ally, no statuses, no Support Action — QJ's own-turn Basic only; V6 supplies No-Cover
+  // +20%; the Golden Melody calibration's Damage Dealt +10% is the only other additive term
+  // (Charging is support-scoped and there are no buff gains → weaponCharges stays 0).
+  const r = simulateScenario(
+    {
+      version: 1,
+      seed: 7,
+      turns: 1,
+      team: [{ characterId: "qjgm", rotation: ["basic"], equippedFixedKeys: [] }],
+      dummy: {
+        id: "training_dummy",
+        name: "Training Dummy",
+        hp: 999999999,
+        defense: 5000,
+        stability: 65,
+        weaknesses: [], // no weakness exploited
+        phase: null,
+        cover: "none", // No Cover
+      },
+      configOverrides: { fortificationLevel: 6 }, // V6: No-Cover +20% total
+    },
+    customRegistry({ qjgm: qjgm() }),
+  );
+  const ev = r.log.find((e) => e.action === "qiongjiu_basic")!;
+  assert.equal(ev.attackerAtk, 2683, "panel ATK 2683 (plain mirror stats, Golden Melody C1 effect active)");
+  assert.equal(ev.critical, false, "controlled non-crit run");
+  assert.equal((ev.weaknessExploited ?? []).length, 0, "no weakness exploited");
+  assert.ok(
+    Math.abs(ev.bonusBracket - 1.3) < 1e-9,
+    `bucket 1 + 0.20 No-Cover + 0.10 Golden Melody Damage Dealt = 1.30 (got ${ev.bonusBracket})`,
+  );
+  assert.equal(ev.finalDamage, 975, "ceil(2146.4 × 2683/7683 × 1.30) = ceil(974.41) = 975 — the observed in-game number");
+});
