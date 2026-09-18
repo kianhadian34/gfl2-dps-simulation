@@ -1,4 +1,4 @@
-import type { AbilityDef, CharacterDef, ConfigOverrides, DummyConfig, Scenario, SkillDefVariant } from "../model/types.js";
+import type { AbilityDef, CharacterDef, CommonKeyDef, ConfigOverrides, DummyConfig, Scenario, SkillDefVariant } from "../model/types.js";
 import { QIONGJIU } from "../data/qiongjiu.js";
 import type { Registry } from "../data/registry.js";
 import { REGISTRY } from "../data/registry.js";
@@ -43,8 +43,8 @@ export function scenario(overrides: {
   };
 }
 
-/** Registry extended with a synthetic test ally (basic-only doll). */
-export function customRegistry(extra: Record<string, CharacterDef>): Registry {
+/** Registry extended with a synthetic test ally (basic-only doll) and optional fixture Common Keys. */
+export function customRegistry(extra: Record<string, CharacterDef>, extraCommonKeys: Record<string, CommonKeyDef> = {}): Registry {
   return {
     getCharacter: (id) => (id === "qiongjiu" ? QJ : extra[id]),
     getStatus: (id) => REGISTRY.getStatus(id),
@@ -56,6 +56,9 @@ export function customRegistry(extra: Record<string, CharacterDef>): Registry {
       for (const c of Object.values(extra)) if (c.affinityKey?.id === id) return c.affinityKey;
       return REGISTRY.getAffinityKey(id);
     },
+    // Common Keys are REUSABLE registry definitions (2026): fixture keys provided by tests
+    // take precedence, everything else falls through to the base registry table.
+    getCommonKey: (id) => extraCommonKeys[id] ?? REGISTRY.getCommonKey(id),
   };
 }
 

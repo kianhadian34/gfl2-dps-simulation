@@ -369,13 +369,71 @@ export interface AffinityKeyDef {
   deferredNote?: string;
 }
 
+/**
+ * Common Key STAT BLOCK — kept EXPLICITLY SEPARATE from the optional secondary effect.
+ * Each field is folded through the EXISTING generic stat infrastructure (game structure —
+ * SOURCE FACT: Gold/Epic Keys grant 3 kinds of stats, Rare Keys grant 2; a key declares
+ * exactly the stat fields it grants). Only the stat kinds evidenced by Strategic Negotiation
+ * are represented here — extend this block (never with character-specific logic) when new
+ * Common Key evidence arrives.
+ */
+export interface CommonKeyStats {
+  atkPct?: number;
+  critRate?: number;
+  critDmg?: number;
+  outOfTurnDmg?: number;
+}
+
+/** Stat kinds a Common Key may grant — derived from the canonical `CommonKeyStats` block. */
+export type CommonKeyStat = keyof CommonKeyStats;
+
+/**
+ * Common Key edition taxonomy (AUTHORITATIVE game structure — SOURCE FACTS, 2026):
+ * Gold Key (3 stats + secondary effect; 5★ Character Edition) · Epic Key — 4★ Character
+ * Edition (3 stats + secondary effect) · Epic Key — Generic Edition (3 stats, no secondary) ·
+ * Rare Key (2 stats, no secondary). Absent = unknown (never invented for a real key).
+ */
+export type CommonKeyEdition = "gold" | "epic4" | "epicGeneric" | "rare";
+
+/**
+ * OPTIONAL Common Key secondary effect — recorded DATA ONLY (2026): references the existing
+ * generic primitives (status application via `StatusApplySpec` or a `PassiveEffect` shape),
+ * but has NO engine consumer and NO trigger timing is invented. It must never be treated as
+ * executable semantics today (same contract as the project's `deferredNote`).
+ */
+export interface CommonKeySecondaryEffect {
+  /** Which existing primitive the secondary effect is built on (status application or passive effect). */
+  type: "status" | "passive";
+  /** Statuses the effect would apply — trigger timing NOT defined (recorded only, not executed). */
+  statuses?: StatusApplySpec[];
+  /** Passive-effect shape the secondary would use — timing NOT defined (recorded only, not executed). */
+  passive?: PassiveEffect;
+  /** Verbatim/summary of the secondary effect. */
+  description?: string;
+}
+
+/**
+ * A Common Key is a REUSABLE definition (game-wide system) — never embedded solely inside a
+ * character. Definitions live in the Common Key registry (`src/data/common-keys.ts` /
+ * `Registry.getCommonKey`) and may be character-specific (Character Edition) or generic.
+ */
 export interface CommonKeyDef {
   id: string;
   name: string;
-  /** The game's type line, e.g. "Universal Key: Skill" — recorded verbatim; no behavior is keyed off this string. */
-  type: string;
-  /** Panel stat bonuses (fractions): ATK% folds via the Final Stat formula; Crit Rate & Crit DMG are additive; Out-of-Turn Damage is a panel stat consumed only by out-of-turn events. */
-  stats: { atkPct: number; critRate: number; critDmg: number; outOfTurnDmg: number };
+  /** Structural edition taxonomy (Gold / Epic 4★ / Epic Generic / Rare). Absent = unknown (never invented). */
+  edition?: CommonKeyEdition;
+  /** Descriptive in-game type line (e.g. "Universal Key: Skill") — display metadata only, separate from the edition taxonomy; no behavior. */
+  type?: string;
+  /** Character association for Character Edition keys (data-only, e.g. the owning doll id); absent = generic key usable by any doll. Never consumed by combat logic. */
+  characterScope?: string;
+  /**
+   * STAT BLOCK — independent of `secondaryEffect` (the two are never merged). A key grants
+   * exactly the stat fields present (Gold/Epic: 3; Rare: 2). Folds via the existing generic
+   * stat path.
+   */
+  stats: CommonKeyStats;
+  /** Optional secondary effect — independent of `stats`; recorded data only (see CommonKeySecondaryEffect). No invented trigger timing or behavior. */
+  secondaryEffect?: CommonKeySecondaryEffect;
   verified: boolean;
   description?: string;
 }
@@ -396,8 +454,8 @@ export interface CharacterDef {
   expansionKey?: KeyDef;
   /** Affinity Key (bond) — recorded data; engine consumption deferred. */
   affinityKey?: AffinityKeyDef;
-  /** Common (Universal) Key — e.g. Qiongjiu's Strategic Negotiation (VALIDATED 2026, implemented). */
-  commonKey?: CommonKeyDef;
+  // Common Keys are REUSABLE definitions — they live in the Common Key registry
+  // (src/data/common-keys.ts / Registry.getCommonKey), NOT embedded in CharacterDef (2026).
   /**
    * GRID (2026): Mobility stat used by the core grid system (movement budget per turn).
    * Optional — absent means the unit cannot move; existing characters are unaffected.
@@ -590,8 +648,11 @@ export interface ScenarioTeamMember {
   affinityKeyId?: string;
   /** The doll's Affinity Level with the equipped key (exact levels only; 5 and 9 are defined, no interpolation). */
   affinityLevel?: number;
-  /** Equipped Common (Universal) Key id (e.g. Qiongjiu's Strategic Negotiation). Absent = no common-key bonuses. */
-  commonKeyId?: string;
+  /**
+   * Equipped Common Key ids — up to 3 (3 Common Key Slots per character, game structure
+   * SOURCE FACT). Fewer than 3 (0–2) is valid; the engine enforces the 3-key maximum.
+   */
+  commonKeyIds?: string[];
   /** Equipped Expansion Key id (e.g. Qiongjiu's Ruined Gem). Absent = no expansion-key behavior. */
   expansionKeyId?: string;
 }

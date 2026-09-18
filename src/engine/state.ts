@@ -1,4 +1,4 @@
-import type { AbilityDef, AbilitySlot, ActionSlot, AmmoType, CharacterDef, ConfigOverrides, Element, PassiveEffect, Scenario, SkillDefVariant, SourceKind, StatusDef, StatusOverride } from "../model/types.js";
+import type { AbilityDef, AbilitySlot, ActionSlot, AmmoType, CharacterDef, CommonKeyStat, ConfigOverrides, Element, PassiveEffect, Scenario, SkillDefVariant, SourceKind, StatusDef, StatusOverride } from "../model/types.js";
 import { buildGrid, type GridState } from "./grid.js";
 import { finalStat } from "./stats.js";
 import type { ActiveStatus, LogEvent, ResolvedConfig } from "../model/runtime.js";
@@ -11,6 +11,12 @@ import type { Registry } from "../data/registry.js";
  * constant change; the engine itself is duration-agnostic.
  */
 export const MAX_TURNS = 7;
+
+/**
+ * Common Key Slots per character (game structure — SOURCE FACT, 2026): every character has
+ * 3 Common Key Slots. Enforced as a maximum; selecting FEWER (0–2) is always valid.
+ */
+export const MAX_COMMON_KEYS = 3;
 
 /** Effective status definition: registry entry after config.statusOverrides are applied. */
 export type EffectiveStatusDef = StatusDef & { effectiveDurationRounds?: number };
@@ -246,14 +252,23 @@ function resolveAffinityBonus(
   return { atk: foreign.genericBonus?.atk ?? 0, hp: foreign.genericBonus?.hp ?? 0, critDmg: foreign.genericBonus?.critDmg ?? 0 };
 }
 
-function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], affinity: { keyId?: string; level?: number } | undefined, commonKeyId: string | undefined, expansionKeyId: string | undefined, config: ResolvedConfig, registry: Registry): UnitState {
+function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], affinity: { keyId?: string; level?: number } | undefined, commonKeyIds: string[], expansionKeyId: string | undefined, config: ResolvedConfig, registry: Registry): UnitState {
   const panel = computePanel(def);
   const aff = resolveAffinityBonus(def, affinity?.keyId, affinity?.level, registry);
-  // Common (Universal) Key stat bonuses (Strategic Negotiation, VALIDATED 2026): normal stat
-  // increases — ATK% folds via the proven Final Stat formula; Crit Rate and Crit DMG are
-  // additive; Out-of-Turn Damage is stored as a panel stat consumed only by out-of-turn events.
-  const commonStats = def.commonKey && def.commonKey.id === commonKeyId ? def.commonKey.stats : undefined;
-  const atkPct = (commonStats?.atkPct ?? 0) + aff.atk;
+  // Common Keys (generic architecture, 2026): REUSABLE definitions resolved via the registry
+  // (max 3 — "3 Common Key Slots"; fewer allowed). Stats from every selected key SUM and fold
+  // through the EXISTING generic stat path — ATK% via the proven Final Stat formula; Crit Rate
+  // and Crit DMG additive; Out-of-Turn Damage stored as a panel stat consumed only by
+  // out-of-turn events. No character-id logic: any doll may equip any common key.
+  const commonStats: Partial<Record<CommonKeyStat, number>> = {};
+  for (const keyId of commonKeyIds) {
+    const commonDef = registry.getCommonKey(keyId);
+    if (!commonDef) throw new Error(`Unknown common key: ${keyId}`);
+    for (const [stat, value] of Object.entries(commonDef.stats)) {
+      commonStats[stat as CommonKeyStat] = (commonStats[stat as CommonKeyStat] ?? 0) + (value ?? 0);
+    }
+  }
+  const atkPct = (commonStats.atkPct ?? 0) + aff.atk;
   const hpPct = aff.hp;
   let confectance = config.confectanceStart;
   for (const k of def.fixedKeys) {
@@ -289,9 +304,9 @@ function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], aff
     hp: hpPct > 0 ? finalStat(panel.hp, 0, hpPct) : panel.hp,
     maxHp: hpPct > 0 ? finalStat(panel.hp, 0, hpPct) : panel.hp,
     defStat: panel.def,
-    critRate: def.base.critRate + (commonStats?.critRate ?? 0),
-    critDmg: def.base.critDmg + aff.critDmg + (commonStats?.critDmg ?? 0),
-    outOfTurnDmg: commonStats?.outOfTurnDmg ?? 0,
+    critRate: def.base.critRate + (commonStats.critRate ?? 0),
+    critDmg: def.base.critDmg + aff.critDmg + (commonStats.critDmg ?? 0),
+    outOfTurnDmg: commonStats.outOfTurnDmg ?? 0,
     expansionKeyId,
     stability: def.base.stability,
     maxStability: def.base.stability,
@@ -395,12 +410,17 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
   }
   for (const m of scenario.team) {
     if (m.rotation.length === 0) throw new Error(`Rotation for ${m.characterId} must not be empty`);
+    if ((m.commonKeyIds?.length ?? 0) > MAX_COMMON_KEYS) {
+      throw new Error(
+        `Team member ${m.characterId}: at most ${MAX_COMMON_KEYS} Common Keys may be equipped (3 Common Key Slots); got ${m.commonKeyIds?.length}`,
+      );
+    }
   }
   const config = resolveConfig(scenario.configOverrides);
   const units: UnitState[] = scenario.team.map((m) => {
     const def = registry.getCharacter(m.characterId);
     if (!def) throw new Error(`Unknown character: ${m.characterId}`);
-    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyId, m.expansionKeyId, config, registry);
+    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyIds ?? [], m.expansionKeyId, config, registry);
   });
   const dummy = makeDummy(scenario.dummy);
   return {

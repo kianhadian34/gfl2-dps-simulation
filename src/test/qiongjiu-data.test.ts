@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { QIONGJIU } from "../data/qiongjiu.js";
+import { REGISTRY } from "../data/registry.js";
 
 const FIXED_IDS = [
   "qiongjiu_fk1_concentration",
@@ -98,11 +99,13 @@ test("Affinity Key Warm as Jade: 9 levels, exactly levels 5 and 9 defined, no in
 });
 
 test("Common Key Strategic Negotiation: Universal Key: Skill with the validated +5%/+5%/+5%/+7% stats", () => {
-  const ck = QIONGJIU.commonKey!;
+  const ck = REGISTRY.getCommonKey("qiongjiu_common_strategic_negotiation")!;
   assert.equal(ck.id, "qiongjiu_common_strategic_negotiation");
   assert.equal(ck.name, "Strategic Negotiation");
   assert.equal(ck.type, "Universal Key: Skill");
   assert.equal(ck.verified, true);
   assert.ok(ck.description && ck.description.length > 0);
+  assert.equal(ck.edition, undefined, "SN edition unknown — not invented");
   assert.deepEqual(ck.stats, { atkPct: 0.05, critRate: 0.05, critDmg: 0.05, outOfTurnDmg: 0.07 });
+  assert.equal("commonKey" in QIONGJIU, false, "Common Keys are REUSABLE registry definitions — not embedded in CharacterDef (2026)");
 });
