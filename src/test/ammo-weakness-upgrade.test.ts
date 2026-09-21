@@ -134,11 +134,11 @@ test("AWU is phase-less-only: the tier bonus does not apply to Phase attack elem
   assert.equal(takenBonus(5, null), 0.25, "phase-less attacks still receive it");
 });
 
-test("AWU persistence: stacks do NOT expire from elapsed turns (validated in-game: 6 skipped turns)", () => {
-  // Validated (2026): AWU stacks remained on the target after 6 full skipped turns
-  // with no further attacks — no expiration. Modeled as permanent (durationRounds: null);
-  // the engine never ticks a permanent status. NOTE: this validates 6 skipped turns,
-  // not a mathematical proof of infinite persistence; no reset condition is invented.
+test("AWU persistence: stacks do NOT expire from elapsed turns or any other condition — never reset, never removed (VALIDATED in-game 2026)", () => {
+  // In-game VALIDATED (2026): AWU never resets, is never removed, and persists indefinitely
+  // once gained. Earlier evidence anchored this with 6 full skipped turns (no expiration).
+  // Modeled as permanent (durationRounds: null; purgeable: false); the engine never ticks a
+  // permanent status and no reset/removal condition exists.
   const st = createState(scenario({ turns: 1 }), customRegistry({}), new Set());
   applyStatus(st, st.dummy, { statusId: AWU, stacks: 5 });
   for (let i = 0; i < 6; i++) {

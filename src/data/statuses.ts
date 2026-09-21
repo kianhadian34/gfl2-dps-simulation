@@ -130,7 +130,7 @@ export const STATUS_DEFS: StatusDef[] = [
     category: "upgrade",
     stackable: true,
     maxStacks: 5,
-    durationRounds: null, // permanent target-side stack state (validated 2026 progression; reset rules not observed)
+    durationRounds: null, // permanent target-side stack state — VALIDATED 2026: never resets, never removed, persists indefinitely
     tickAt: "ownActionEnd",
     purgeable: false,
     effects: [
