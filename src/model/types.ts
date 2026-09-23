@@ -526,6 +526,8 @@ export type StatusEffect =
       whenTarget?: "exposed";
       /** NEW (2026) — optional damage-category gate for a DEALT bonus: "targeted" = only non-AoE hits (`targeted` = not `damageCategory === "aoe"`; Targeted Attack Boost I, +10%); "aoe" = only AoE hits. Absent = all (existing behavior). */
       whenCategory?: "aoe" | "targeted";
+      /** NEW (2026) — optional phase gate for a DEALT bonus, using the EXISTING taxonomy (Phase attack = has an element, `element !== null`; phase-less = `element === null`): "phase" = only elemental hits (Phase Boost I, +10%); "phase_less" = only phase-less hits. Absent = all (existing behavior). No new element/category is invented. */
+      whenPhase?: "phase" | "phase_less";
     }
   | { kind: "damage_reduction"; value: number; whenIncomingCategory?: "aoe" | "targeted" }
   | {

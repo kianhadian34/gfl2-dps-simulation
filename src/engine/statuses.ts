@@ -153,6 +153,12 @@ export function additiveDealtBonus(
           const matches = e.whenCategory === "aoe" ? ctx.isAoE : !ctx.isAoE;
           if (!matches) continue;
         }
+        if (e.whenPhase !== undefined) {
+          // EXISTING taxonomy (no new element/category): a Phase attack has an element
+          // (element !== null); phase-less = element === null. Phase Boost I: "phase".
+          const matches = e.whenPhase === "phase" ? element !== null : element === null;
+          if (!matches) continue;
+        }
         // scaleWithStacks === false → the bonus applies ONCE per status (Support Boost I:
         // stacks are remaining activations, NOT a magnitude multiplier — VALIDATED 2026).
         sum += def.scaleWithStacks === false ? e.value : e.value * s.stacks;

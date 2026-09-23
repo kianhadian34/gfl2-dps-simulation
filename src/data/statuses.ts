@@ -269,11 +269,11 @@ export const STATUS_DEFS: StatusDef[] = [
   // Attack Up I; heal: 1 — Continuous Healing I, 10% max-HP at action end;
   // damage_reduction: 2 — Area Defense I, −10% taken from AoE; Targeted Attack
   // Defense I, −10% taken from targeted; stability_damage_bonus: 1 — Stability
-  // Offensive I, +1 Stability damage dealt; damage_modifier dealt (category-gated):
-  // 2 — Targeted Attack Boost I, +10% Targeted damage dealt; Coverage Boost I,
-  // +10% AoE damage dealt); the other 2 outcomes are RECORDED-ONLY (`deferredNote`)
-  // because the engine has no phase-gated dealt / mobility mechanic — documented,
-  // never invented (research §3.9). No hardcoded
+  // Offensive I, +1 Stability damage dealt; damage_modifier dealt (gated): 3 —
+  // Targeted Attack Boost I, +10% Targeted dealt; Coverage Boost I, +10% AoE dealt;
+  // Phase Boost I, +10% Phase dealt); the other 1 outcome (Movement Up I) is
+  // RECORDED-ONLY (`deferredNote`) because the engine has no mobility mechanic —
+  // documented, never invented (research §3.9). No hardcoded
   // character conditionals: the pool lives on the weapon's `trait` data, uniformly.
   // ---------------------------------------------------------------------------
   {
@@ -414,11 +414,10 @@ export const STATUS_DEFS: StatusDef[] = [
     durationRounds: 1,
     tickAt: "ownActionEnd",
     purgeable: true,
-    effects: [],
+    effects: [{ kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.1, whenPhase: "phase" }],
     playerDescription: "Phase damage dealt +10%.",
     verified: true,
-    note: "Golden Melody Trait outcome #11 (validated in-game 2026).",
-    deferredNote: "RECORDED-ONLY: the engine has no phase-gated dealt mechanic.",
+    note: "Golden Melody Trait outcome #11 (validated in-game 2026); +10% Phase damage dealt — additive DMG% bucket, gated to PHASE attacks (element !== null — the existing taxonomy) via the generic damage_modifier whenPhase gate.",
   },
   {
     id: "trait_attack_up_i",
