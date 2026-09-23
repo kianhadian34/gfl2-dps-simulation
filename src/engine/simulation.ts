@@ -12,6 +12,7 @@ import {
   applyStatus,
   cleanseDispellable,
   consumeOneOnUseStacks,
+  defIgnore,
   fixedDmgMods,
   multiplicativeTakenMods,
   statModifier,
@@ -437,9 +438,16 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   const critMult = state.config.critMultiplier ?? 1 + crit.critDmg;
   const effAtk = statModifier(actor, state.statusRegistry, "atk", actor.panelAtk);
   const effDef = statModifier(dummy, state.statusRegistry, "def", dummy.defStat);
+  // Domain Penetration I (VALIDATED in-game tooltip 2026): the DEF-ignore sums from the
+  // ATTACKER's statuses apply ONLY to AoE hits (`damageCategory === "aoe"`), inside the
+  // existing defense term of the normal chain — never fixed damage/stability/weakness/
+  // crit/reductions. No other conditions are invented.
+  const isAoE = skill.damageCategory === "aoe";
+  const defIgnoreFrac = isAoE ? defIgnore(actor, state.statusRegistry, true) : 0;
+  const hitDef = defIgnoreFrac > 0 ? effDef * (1 - defIgnoreFrac) : effDef;
   const hit = rollHit({
     atk: effAtk,
-    def: effDef,
+    def: hitDef,
     multiplier: skill.multiplier ?? 0,
     // Final DMG modifier chain applied to the UNROUNDED absolute fixed value;
     // rollHit then ceils (validated 2026). Ordinary factors are never applied.
@@ -481,7 +489,8 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   ev.baseDamage = hit.baseDamage;
   ev.mitigatedDamage = hit.mitigatedDamage;
   ev.attackerAtk = effAtk;
-  ev.targetDef = effDef;
+  ev.targetDef = hitDef;
+  if (defIgnoreFrac > 0) ev.defIgnore = defIgnoreFrac;
   ev.critical = hit.critical;
   ev.critMultiplier = critMult;
   ev.weaknessExploited = weaknesses;

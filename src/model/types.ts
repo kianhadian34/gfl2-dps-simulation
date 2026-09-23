@@ -97,12 +97,12 @@ export interface SkillDefVariant {
   name: string;
   type: "basic" | "active" | "ultimate" | "support";
   /**
-   * DAMAGE CATEGORY (2026, DESCRIPTIVE ONLY): "targeted" | "aoe" per the authoritative
-   * in-game skill class (e.g. Guide to Victory = AoE). Target SELECTION (e.g. "first enemy
-   * within 8 tiles in the selected direction") is a separate concept and is NOT modeled.
-   * No engine mechanic reads this field — it must never alter damage/stability/weakness/
-   * crit/confectance/support behavior. Optional; only set when the repo has authoritative
-   * evidence for the category.
+   * DAMAGE CATEGORY (2026): "targeted" | "aoe" per the authoritative in-game skill class
+   * (e.g. Guide to Victory = AoE). Target SELECTION (e.g. "first enemy within 8 tiles in
+   * the selected direction") is a separate concept and is NOT modeled. Descriptive except
+   * for VALIDATED DEF-ignore statuses (2026): Domain Penetration I ignores part of the
+   * target's DEF only on `damageCategory === "aoe"` hits — the ONLY engine consumer.
+   * Absent = not AoE. Only set when the repo has authoritative evidence for the category.
    */
   damageCategory?: "targeted" | "aoe";
   /**
@@ -526,6 +526,18 @@ export type StatusEffect =
       whenTarget?: "exposed";
     }
   | { kind: "damage_reduction"; value: number }
+  | {
+      /**
+       * Defense ignore (Domain Penetration I, VALIDATED in-game tooltip 2026): the HOLDER's
+       * damage mitigates against the target's DEF × (1 − value) — 20% for the Trait buff —
+       * but ONLY on attacks whose `damageCategory === "aoe"` matches `aoe`. Applied inside
+       * the existing defense term of the normal chain ONLY (never fixed damage / stability /
+       * weakness / crit / reductions). No other conditions are invented.
+       */
+      kind: "def_ignore";
+      value: number;
+      aoe: boolean;
+    }
   | {
       /**
        * Status-sourced fixed damage (Overburn, validated 2026): absolute damage =

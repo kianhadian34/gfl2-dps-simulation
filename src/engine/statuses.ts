@@ -180,6 +180,25 @@ export function additiveTakenBonus(unit: UnitState, statusRegistry: Map<string, 
 }
 
 /**
+ * Σ defense-ignore fractions from the unit's own statuses (Domain Penetration I,
+ * VALIDATED in-game tooltip 2026): summed `def_ignore.value` for effects whose
+ * `aoe` flag matches the CURRENT attack's category (`isAoE` = `damageCategory === "aoe"`).
+ * The caller applies `DEF × (1 − Σ)` inside the existing defense term of the normal
+ * chain — never fixed damage / stability / weakness / crit / reductions. Attacker-side.
+ */
+export function defIgnore(unit: UnitState, statusRegistry: Map<string, EffectiveStatusDef>, isAoE: boolean): number {
+  let sum = 0;
+  for (const s of unit.statuses) {
+    const def = statusRegistry.get(s.statusId);
+    if (!def) continue;
+    for (const e of def.effects) {
+      if (e.kind === "def_ignore" && e.aoe === isAoE) sum += e.value;
+    }
+  }
+  return sum;
+}
+
+/**
  * Non-linear per-stack tier lookup (Ammo Weakness Upgrade, validated 2026):
  * exact tier for the stack count; stacks above the highest tier stay at the top
  * tier; stacks below the lowest tier contribute 0. Data-driven — no hardcoded

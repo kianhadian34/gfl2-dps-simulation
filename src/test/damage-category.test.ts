@@ -6,12 +6,13 @@ import { QIONGJIU } from "../data/qiongjiu.js";
 import type { CharacterDef } from "../model/types.js";
 
 /**
- * DAMAGE CATEGORY (2026, DESCRIPTIVE ONLY): `SkillDefVariant.damageCategory` is "targeted" |
- * "aoe" per the authoritative in-game skill class. It describes the DAMAGE CATEGORY — NOT
- * target selection ("first enemy within 8 tiles in the selected direction" is a separate,
- * unmodeled concept). No engine mechanic reads the field: it must never alter damage,
- * stability, weakness, crit, confectance, or support behavior. Optional; set only with
- * authoritative evidence.
+ * DAMAGE CATEGORY (2026): `SkillDefVariant.damageCategory` is "targeted" | "aoe" per the
+ * authoritative in-game skill class. It describes the DAMAGE CATEGORY — NOT target selection
+ * ("first enemy within 8 tiles in the selected direction" is a separate, unmodeled concept).
+ * Descriptive EXCEPT for the VALIDATED DEF-ignore consumer (2026): Domain Penetration I
+ * applies its 20% DEF ignore only on `damageCategory === "aoe"` hits (see
+ * trait-domain-penetration.test.ts); no other engine mechanic reads the field. Optional; set
+ * only with authoritative evidence.
  */
 
 test("damageCategory: Guide to Victory Lv1 and Lv2 are classified 'aoe'", () => {

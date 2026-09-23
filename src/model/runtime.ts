@@ -34,9 +34,11 @@ export interface LogEvent {
   supportAttack: boolean;
   baseDamage?: number;
   mitigatedDamage?: number;
-  /** Damage-pipeline inputs recorded so every action reproduces against an in-game test (validation mode). */
+  /** Damage-pipeline inputs recorded so every action reproduces against an in-game test (validation mode). Note: `targetDef` is the EFFECTIVE DEF used by THIS hit — Domain Penetration I's DEF ignore (2026) makes it lower than the target's raw DEF. */
   attackerAtk?: number;
   targetDef?: number;
+  /** DEF-ignore fraction applied to this hit's defense term (Domain Penetration I, AoE only; present only when > 0). */
+  defIgnore?: number;
   critical?: boolean;
   critMultiplier?: number;
   weaknessExploited: string[];
