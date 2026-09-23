@@ -264,9 +264,10 @@ export const STATUS_DEFS: StatusDef[] = [
   // granted at the end of the holder's action at full HP, uniform 1/13 selection,
   // lasts 1 turn (weapon `trait` data + engine hook in simulation.ts).
   // Effects are implemented ONLY where the engine has a generic executable mechanic
-  // (def_ignore: 1 — Domain Penetration I, 20% DEF ignore on AoE; stat_modifier: 3 —
-  // Crit Rate Boost I / Defense Up I / Attack Up I; heal: 1 — Continuous Healing I,
-  // 10% max-HP at action end); the other 8 outcomes are
+  // (def_ignore: 2 — Domain Penetration I, 20% DEF ignore on AoE; Piercing I, 20% DEF
+  // ignore on TARGETED damage; stat_modifier: 3 — Crit Rate Boost I / Defense Up I /
+  // Attack Up I; heal: 1 — Continuous Healing I, 10% max-HP at action end); the other
+  // 7 outcomes are
   // RECORDED-ONLY (`deferredNote`) because the engine has no stability-modifier /
   // phase-gated dealt / mobility mechanic — documented, never invented
   // (research §3.9). No hardcoded
@@ -332,11 +333,10 @@ export const STATUS_DEFS: StatusDef[] = [
     durationRounds: 1,
     tickAt: "ownActionEnd",
     purgeable: true,
-    effects: [],
+    effects: [{ kind: "def_ignore", value: 0.2, aoe: false }],
     playerDescription: "Targeted damage ignores 20% of the target's Defense.",
     verified: true,
-    note: "Golden Melody Trait outcome #5 (validated in-game 2026).",
-    deferredNote: "RECORDED-ONLY: the engine has no DEF-ignore mechanic (no targeted-category premium) — the boosted % is 20%, nothing else is invented.",
+    note: "Golden Melody Trait outcome #5 (validated in-game 2026); 20% DEF ignore on TARGETED damage — executable via the generic def_ignore effect (attacker-side, defense term only).",
   },
   {
     id: "trait_area_defense_i",

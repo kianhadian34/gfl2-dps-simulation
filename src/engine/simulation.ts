@@ -439,12 +439,13 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   const critMult = state.config.critMultiplier ?? 1 + crit.critDmg;
   const effAtk = statModifier(actor, state.statusRegistry, "atk", actor.panelAtk);
   const effDef = statModifier(dummy, state.statusRegistry, "def", dummy.defStat);
-  // Domain Penetration I (VALIDATED in-game tooltip 2026): the DEF-ignore sums from the
-  // ATTACKER's statuses apply ONLY to AoE hits (`damageCategory === "aoe"`), inside the
-  // existing defense term of the normal chain — never fixed damage/stability/weakness/
-  // crit/reductions. No other conditions are invented.
+  // DEF-ignore (VALIDATED in-game tooltips 2026): Domain Penetration I (aoe: true — AoE hits)
+  // and Piercing I (aoe: false — TARGETED hits). Summed from the ATTACKER's statuses, applied
+  // ONLY when the effect's `aoe` flag matches THIS hit's category (`damageCategory === "aoe"`),
+  // inside the existing defense term of the normal chain — never fixed damage/stability/
+  // weakness/crit/reductions. No other conditions are invented.
   const isAoE = skill.damageCategory === "aoe";
-  const defIgnoreFrac = isAoE ? defIgnore(actor, state.statusRegistry, true) : 0;
+  const defIgnoreFrac = defIgnore(actor, state.statusRegistry, isAoE);
   const hitDef = defIgnoreFrac > 0 ? effDef * (1 - defIgnoreFrac) : effDef;
   const hit = rollHit({
     atk: effAtk,
