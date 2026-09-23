@@ -553,6 +553,17 @@ export type StatusEffect =
     }
   | {
       /**
+       * Stability damage bonus (Stability Offensive I, VALIDATED in-game tooltip 2026):
+       * adds a FLAT value to the HOLDER's attack TOTAL stability damage dealt (e.g. an
+       * attack dealing 2 Stability becomes 3 with +1). Multiplies by stacks like the other
+       * per-status bonuses. Affects Stability damage ONLY — never HP damage / DMG% / DEF /
+       * weakness / crit / phase / reductions. No other mechanics are invented.
+       */
+      kind: "stability_damage_bonus";
+      value: number;
+    }
+  | {
+      /**
        * Status-sourced fixed damage (Overburn, validated 2026): absolute damage =
        * ceil(percentOfAtk × the EFFECT APPLIER's ATK captured at application time).
        * `applies`: "onApply" fires immediately when the status is newly applied;

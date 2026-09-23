@@ -199,6 +199,24 @@ export function defIgnore(unit: UnitState, statusRegistry: Map<string, Effective
 }
 
 /**
+ * Σ flat stability-damage bonuses from the unit's own statuses (Stability Offensive I,
+ * VALIDATED in-game tooltip 2026): added to the attack's TOTAL Stability damage dealt
+ * (attacker-side). Stability-only — never HP/DMG%/DEF/weakness/crit. `value × stacks`,
+ * consistent with the other per-status bonuses.
+ */
+export function stabilityDamageBonus(unit: UnitState, statusRegistry: Map<string, EffectiveStatusDef>): number {
+  let sum = 0;
+  for (const s of unit.statuses) {
+    const def = statusRegistry.get(s.statusId);
+    if (!def) continue;
+    for (const e of def.effects) {
+      if (e.kind === "stability_damage_bonus") sum += e.value * s.stacks;
+    }
+  }
+  return sum;
+}
+
+/**
  * Non-linear per-stack tier lookup (Ammo Weakness Upgrade, validated 2026):
  * exact tier for the stack count; stacks above the highest tier stay at the top
  * tier; stacks below the lowest tier contribute 0. Data-driven — no hardcoded

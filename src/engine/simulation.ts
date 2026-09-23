@@ -15,6 +15,7 @@ import {
   defIgnore,
   fixedDmgMods,
   multiplicativeTakenMods,
+  stabilityDamageBonus,
   statModifier,
   tickStatuses,
 } from "./statuses.js";
@@ -475,7 +476,9 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   // Validated 2026: Total Stability Damage = attack base stability damage
   //   + 2 × (# weaknesses exploited) — element AND ammo-tag matches both count
   //   (generic across phase-less/Phase; independent of the damage multiplier; AWU untouched).
-  const stabAmount = (skill.stabDamage ?? 0) + 2 * weaknesses.length;
+  // Stability Offensive I (VALIDATED in-game tooltip 2026): adds its flat value (+1) to the
+  // attack's TOTAL stability damage dealt (attacker-side; never HP/DMG%/DEF/weakness/crit).
+  const stabAmount = (skill.stabDamage ?? 0) + 2 * weaknesses.length + stabilityDamageBonus(actor, state.statusRegistry);
   const { broke } = applyStabilityDamage(state, dummy, stabAmount);
   // Consumption-of-use statuses (Support Boost I/II, VALIDATED 2026): a status that
   // contributed to THIS Support Action consumes exactly ONE stack and is removed at 0.
