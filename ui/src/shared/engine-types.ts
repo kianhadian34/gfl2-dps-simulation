@@ -34,16 +34,65 @@ export interface DummyConfigView {
 export interface ScenarioTeamMemberView {
   characterId: string;
   rotation: ActionSlot[];
+  /** Fixed Keys — ids only; resolved + validated by the engine (existing representation preserved). */
   equippedFixedKeys?: string[];
+  /** Equipped Affinity Key (bond) — its OWNER decides which bonus applies (engine `affinityKeyId`). */
   affinityKeyId?: string;
+  /** The doll's Affinity Level with the equipped key (exact levels only; engine-defined). */
   affinityLevel?: number;
-  commonKeyId?: string;
+  /** Equipped Common Key ids — up to `maxCommonKeys` (3); fewer valid; engine-enforced. */
+  commonKeyIds?: string[];
+  /** Equipped weapon id (1 Weapon Slot) — resolved via the engine weapon registry (never duplicated here). */
+  weaponId?: string;
+  /** Calibration level of the EQUIPPED weapon (C1–C6 = 1–6); engine-validated. */
+  calibrationLevel?: number;
+  /** Equipped Expansion Key id (e.g. Qiongjiu's Ruined Gem). */
   expansionKeyId?: string;
 }
 
 export interface GridCoordView {
   x: number;
   y: number;
+}
+
+/** Engine-sourced weapon listing (built in main from src/data/weapons.ts — never duplicated here). */
+export interface WeaponView {
+  id: string;
+  name: string;
+  rarity: string;
+  /** Max-level weapon ATK (lvl60). */
+  atkLvl60: number;
+  /** Signature owner (owner-gated mechanics, e.g. the Imprint) — engine data. */
+  ownerCharacterId?: string;
+  /** Valid calibration levels (C1–C6 = 1–6) as engine-sourced numbers, ascending. */
+  calibrations: number[];
+}
+
+/** Engine-sourced Common Key listing (src/data/common-keys.ts — never duplicated here). */
+export interface CommonKeyView {
+  id: string;
+  name: string;
+  /** Character association (data-only; absent = generic key). */
+  characterScope?: string;
+}
+
+export interface CommonKeyListResult {
+  items: CommonKeyView[];
+  /** Engine-enforced 3-ClKey-Slot maximum (src/model/types.ts MAX_COMMON_KEYS). */
+  maxCommonKeys: number;
+}
+
+/** Engine-sourced per-character key/member metadata (extends the legacy listCharacters shape). */
+export interface CharacterMetaView {
+  id: string;
+  name: string;
+  mobility?: number;
+  /** Character's Fixed Keys (id + name) — selections are validated by the engine. */
+  fixedKeys?: Array<{ id: string; name: string }>;
+  /** Character's Expansion Key (e.g. Ruined Gem), when defined. */
+  expansionKey?: { id: string; name: string };
+  /** Character's Affinity Key (bond), when defined. */
+  affinityKey?: { id: string; name: string };
 }
 
 export type TileHeight = "ground" | "high";

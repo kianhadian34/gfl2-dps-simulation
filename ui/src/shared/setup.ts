@@ -49,6 +49,29 @@ export interface SetupCharacter {
   selected: boolean;
   /** Engine Mobility stat (engine-sourced via listCharacters). Absent = the unit cannot move; scripted grid moves are stripped for it. */
   mobility?: number;
+  /**
+   * Member-level equipment/loadout carried VERBATIM into the engine contract (plumbing for
+   * future controls; 2026). IDs are NOT validated here — the ENGINE (simulateScenario /
+   * createState) rejects unknown ids and enforces all limits (e.g. max 3 Common Keys,
+   * calibration C1–C6, calibration-without-weapon). Absent = no equipment (unchanged
+   * pre-weapon behavior).
+   */
+  equipment?: SetupEquipment;
+}
+
+/** Loadout fields mirrored 1:1 from the engine `ScenarioTeamMember` contract (src/model/types.ts:739). */
+export interface SetupEquipment {
+  weaponId?: string;
+  /** Calibration level of the EQUIPPED weapon (C1–C6 = 1–6). */
+  calibrationLevel?: number;
+  /** Common Key ids — up to 3 (engine-enforced); fewer valid. */
+  commonKeyIds?: string[];
+  /** Fixed Keys — ids only; the engine's existing representation and validation. */
+  equippedFixedKeys?: string[];
+  expansionKeyId?: string;
+  affinityKeyId?: string;
+  /** Affinity Level with the equipped key (exact levels only; engine-defined). */
+  affinityLevel?: number;
 }
 
 export interface SetupState {
@@ -99,7 +122,21 @@ export function buildScenario(setup: SetupState): ScenarioView {
       if (!rotation || rotation.length === 0) {
         throw new SetupError(`Character ${c.name} is selected but has an empty rotation.`);
       }
-      return { characterId: c.id, rotation, equippedFixedKeys: [] };
+      // Loadout fields are carried through VERBATIM (no id validation/filtering here — the
+      // engine is the only validator). Absent equipment reproduces the EXACT legacy member
+      // shape (`equippedFixedKeys: []`, no weapon/key fields).
+      const equ = c.equipment ?? {};
+      return {
+        characterId: c.id,
+        rotation,
+        equippedFixedKeys: equ.equippedFixedKeys ?? [],
+        ...(equ.affinityKeyId !== undefined ? { affinityKeyId: equ.affinityKeyId } : {}),
+        ...(equ.affinityLevel !== undefined ? { affinityLevel: equ.affinityLevel } : {}),
+        ...(equ.commonKeyIds !== undefined ? { commonKeyIds: equ.commonKeyIds } : {}),
+        ...(equ.weaponId !== undefined ? { weaponId: equ.weaponId } : {}),
+        ...(equ.calibrationLevel !== undefined ? { calibrationLevel: equ.calibrationLevel } : {}),
+        ...(equ.expansionKeyId !== undefined ? { expansionKeyId: equ.expansionKeyId } : {}),
+      };
     });
   if (team.length === 0) throw new SetupError("Select at least one character.");
   if (!Number.isInteger(setup.turns) || setup.turns < 1 || setup.turns > 7) {

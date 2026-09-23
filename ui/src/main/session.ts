@@ -11,6 +11,10 @@ import { broadcast } from "./windows.js";
  */
 import { simulateScenario } from "../../../src/simulate.ts";
 import { REGISTRY } from "../../../src/data/registry.ts";
+import { WEAPONS } from "../../../src/data/weapons.ts";
+import { COMMON_KEYS } from "../../../src/data/common-keys.ts";
+import { MAX_COMMON_KEYS } from "../../../src/engine/state.ts";
+import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView } from "../shared/lists.js";
 import { buildGrid, moveCost, tileHeightAt, tileKey, bossFootprintTiles } from "../../../src/engine/grid.ts";
 import type { ScenarioView, SessionView, MovementFactView, GridCellFactsView, EffectSourceInfoView } from "../shared/engine-types.js";
 
@@ -140,9 +144,26 @@ export function registerSimHandlers(): void {
   ipcMain.handle("sim:listCharacters", () =>
     REGISTRY.characterIds().map((id) => {
       const def = REGISTRY.getCharacter(id);
-      return { id, name: def?.name ?? id, ...(def && def.mobility !== undefined ? { mobility: def.mobility } : {}) };
+      return buildCharacterMetaView({
+        id,
+        name: def?.name ?? id,
+        ...(def && def.mobility !== undefined ? { mobility: def.mobility } : {}),
+        ...(def
+          ? {
+              fixedKeys: def.fixedKeys.map((k) => ({ id: k.id, name: k.name })),
+              ...(def.expansionKey ? { expansionKey: { id: def.expansionKey.id, name: def.expansionKey.name } } : {}),
+              ...(def.affinityKey ? { affinityKey: { id: def.affinityKey.id, name: def.affinityKey.name } } : {}),
+            }
+          : {}),
+      });
     }),
   );
+
+  /** Weapons available from the engine data (src/data/weapons.ts) — engine-sourced, never duplicated. */
+  ipcMain.handle("sim:listWeapons", () => buildWeaponViews(WEAPONS));
+
+  /** Common Keys available from the engine data (+ the engine-enforced 3-slot maximum). */
+  ipcMain.handle("sim:listCommonKeys", () => buildCommonKeyViews(COMMON_KEYS, MAX_COMMON_KEYS));
 
   ipcMain.handle("sim:run", (_event, scenario: unknown) => {
     if (typeof scenario !== "object" || scenario === null) throw new Error("sim:run expects a scenario object");

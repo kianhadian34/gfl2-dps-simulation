@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { SessionView } from "./engine-types.js";
+import type { SessionView, WeaponView, CommonKeyListResult } from "./engine-types.js";
 
 /**
  * Shared session state for the single application window. The main process owns the
@@ -12,6 +12,10 @@ export function useSession(): {
   run: (scenario: SessionView["scenario"]) => Promise<SessionView>;
   openScenario: () => Promise<void>;
   listCharacters: () => Promise<Array<{ id: string; name: string; mobility?: number }>>;
+  /** Engine-sourced weapon list (plumbing for future weapon/calibration controls). */
+  listWeapons: () => Promise<WeaponView[]>;
+  /** Engine-sourced Common Key list + 3-slot maximum (plumbing for future key controls). */
+  listCommonKeys: () => Promise<CommonKeyListResult>;
 } {
   const [session, setSession] = useState<SessionView | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,5 +56,9 @@ export function useSession(): {
 
   const listCharacters = (): Promise<Array<{ id: string; name: string }>> => window.sim.listCharacters();
 
-  return { session, error, run, openScenario, listCharacters };
+  const listWeapons = (): Promise<WeaponView[]> => window.sim.listWeapons();
+
+  const listCommonKeys = (): Promise<CommonKeyListResult> => window.sim.listCommonKeys();
+
+  return { session, error, run, openScenario, listCharacters, listWeapons, listCommonKeys };
 }
