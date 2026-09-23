@@ -410,7 +410,10 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     ev.effectSources = [...sources];
     ev.effectSourceRefs = [...sources].map((label) => sourceRefs.get(label)!);
   }
-  const { mult, red } = multiplicativeTakenMods(dummy, state.statusRegistry);
+  const isAoE = skill.damageCategory === "aoe";
+  // Area Defense I (VALIDATED in-game tooltip 2026): target-side `damage_reduction`
+  // effects gated `whenIncomingCategory: "aoe"` apply ONLY to this hit's category.
+  const { mult, red } = multiplicativeTakenMods(dummy, state.statusRegistry, isAoE);
   // no stability-cover reduction: dummy has no cover (Cover permanently out of scope)
   // U3: NO universal Exposed damage multiplier — the reduction chain contains none.
   const reductionMult = mult * red * targetMods.multiplicative;
@@ -444,7 +447,6 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   // ONLY when the effect's `aoe` flag matches THIS hit's category (`damageCategory === "aoe"`),
   // inside the existing defense term of the normal chain — never fixed damage/stability/
   // weakness/crit/reductions. No other conditions are invented.
-  const isAoE = skill.damageCategory === "aoe";
   const defIgnoreFrac = defIgnore(actor, state.statusRegistry, isAoE);
   const hitDef = defIgnoreFrac > 0 ? effDef * (1 - defIgnoreFrac) : effDef;
   const hit = rollHit({

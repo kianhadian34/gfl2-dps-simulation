@@ -266,8 +266,9 @@ export const STATUS_DEFS: StatusDef[] = [
   // Effects are implemented ONLY where the engine has a generic executable mechanic
   // (def_ignore: 2 — Domain Penetration I, 20% DEF ignore on AoE; Piercing I, 20% DEF
   // ignore on TARGETED damage; stat_modifier: 3 — Crit Rate Boost I / Defense Up I /
-  // Attack Up I; heal: 1 — Continuous Healing I, 10% max-HP at action end); the other
-  // 7 outcomes are
+  // Attack Up I; heal: 1 — Continuous Healing I, 10% max-HP at action end;
+  // damage_reduction: 1 — Area Defense I, −10% damage taken from AoE); the other
+  // 6 outcomes are
   // RECORDED-ONLY (`deferredNote`) because the engine has no stability-modifier /
   // phase-gated dealt / mobility mechanic — documented, never invented
   // (research §3.9). No hardcoded
@@ -346,11 +347,10 @@ export const STATUS_DEFS: StatusDef[] = [
     durationRounds: 1,
     tickAt: "ownActionEnd",
     purgeable: true,
-    effects: [],
+    effects: [{ kind: "damage_reduction", value: 0.1, whenIncomingCategory: "aoe" }],
     playerDescription: "Area damage taken −10%.",
     verified: true,
-    note: "Golden Melody Trait outcome #6 (validated in-game 2026).",
-    deferredNote: "RECORDED-ONLY: the engine has no AoE-damage-taken category mechanic.",
+    note: "Golden Melody Trait outcome #6 (validated in-game 2026); −10% damage taken from AoE attacks ONLY — executable via the generic damage_reduction effect gated to incoming AoE.",
   },
   {
     id: "trait_targeted_attack_defense_i",

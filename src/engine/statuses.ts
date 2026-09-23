@@ -284,6 +284,7 @@ export function fixedDmgMods(
 export function multiplicativeTakenMods(
   unit: UnitState,
   statusRegistry: Map<string, EffectiveStatusDef>,
+  incomingIsAoE = false,
 ): { mult: number; red: number } {
   let mult = 1;
   let red = 1;
@@ -294,7 +295,13 @@ export function multiplicativeTakenMods(
       if (e.kind === "damage_modifier" && e.scope === "taken" && e.mode === "multiplicative") {
         mult *= Math.pow(e.value, s.stacks);
       }
-      if (e.kind === "damage_reduction") red *= Math.pow(1 - e.value, s.stacks);
+      // Area Defense I (VALIDATED in-game tooltip 2026): `whenIncomingCategory: "aoe"`
+      // reduces damage ONLY from AoE attacks (`damageCategory === "aoe"`); targeted hits
+      // are unaffected. Absent = applies to all incoming damage (existing behavior).
+      if (e.kind === "damage_reduction") {
+        if (e.whenIncomingCategory === "aoe" && !incomingIsAoE) continue;
+        red *= Math.pow(1 - e.value, s.stacks);
+      }
     }
   }
   return { mult, red };
