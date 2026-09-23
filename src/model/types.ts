@@ -525,7 +525,7 @@ export type StatusEffect =
       /** NEW (2026) — optional target condition for a dealt bonus: "exposed" = only while the target is Exposed/Broken (Support Boost I's +10%). */
       whenTarget?: "exposed";
     }
-  | { kind: "damage_reduction"; value: number; whenIncomingCategory?: "aoe" }
+  | { kind: "damage_reduction"; value: number; whenIncomingCategory?: "aoe" | "targeted" }
   | {
       /**
        * Defense ignore (Domain Penetration I, VALIDATED in-game tooltip 2026): the HOLDER's

@@ -295,11 +295,16 @@ export function multiplicativeTakenMods(
       if (e.kind === "damage_modifier" && e.scope === "taken" && e.mode === "multiplicative") {
         mult *= Math.pow(e.value, s.stacks);
       }
-      // Area Defense I (VALIDATED in-game tooltip 2026): `whenIncomingCategory: "aoe"`
-      // reduces damage ONLY from AoE attacks (`damageCategory === "aoe"`); targeted hits
-      // are unaffected. Absent = applies to all incoming damage (existing behavior).
+      // Area Defense I / Targeted Attack Defense I (VALIDATED in-game tooltips 2026):
+      // `whenIncomingCategory: "aoe"` reduces only AoE hits, `"targeted"` only TARGETED
+      // hits (`targeted` = not AoE — category-absent basics are targeted damage, matching
+      // the `def_ignore` aoe: false semantics). Absent = applies to all incoming
+      // (existing behavior).
       if (e.kind === "damage_reduction") {
-        if (e.whenIncomingCategory === "aoe" && !incomingIsAoE) continue;
+        if (e.whenIncomingCategory !== undefined) {
+          const matches = e.whenIncomingCategory === "aoe" ? incomingIsAoE : !incomingIsAoE;
+          if (!matches) continue;
+        }
         red *= Math.pow(1 - e.value, s.stacks);
       }
     }
