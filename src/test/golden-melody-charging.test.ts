@@ -58,6 +58,11 @@ const GOLDEN_MELODY: WeaponDef = {
   atkLvl1: 0,
   atkLvl60: 0,
   subStats: [],
+  // The 975/1434 oracle runs were validated WITHOUT a Trait contribution (the controlled
+  // in-game runs' Trait buffs did not enter those numbers); the Trait pool is nulled out
+  // here ONLY so this fixture reproduces the exact oracles. Trait behavior is covered
+  // separately in golden-melody-trait.test.ts.
+  trait: undefined,
 };
 
 function scenario(): Scenario {

@@ -41,5 +41,27 @@ export const WEAPONS: WeaponDef[] = [
     // only when the damage dealer IS this owner.
     ownerCharacterId: "qiongjiu",
     imprint: { targetType: "elid", bonus: 0.025, noCoverBonus: 0.025 },
+    // Golden Melody Trait (VALIDATED in-game 2026): at the end of the holder's action, at FULL
+    // HP, exactly ONE of the 13 buffs below is granted — uniform 1/13 (deterministic seeded RNG,
+    // no weights/priorities invented), lasting 1 turn. The pool below is DATA; the engine hook
+    // (simulation.ts applyWeaponTrait) is generic.
+    trait: {
+      statusIds: [
+        "trait_domain_penetration_i",
+        "trait_crit_rate_boost_i",
+        "trait_continuous_healing_i",
+        "trait_defense_up_i",
+        "trait_piercing_i",
+        "trait_area_defense_i",
+        "trait_targeted_attack_defense_i",
+        "trait_stability_offensive_i",
+        "trait_targeted_attack_boost_i",
+        "trait_coverage_boost_i",
+        "trait_phase_boost_i",
+        "trait_attack_up_i",
+        "trait_movement_up_i",
+      ],
+      durationRounds: 1,
+    },
   },
 ];

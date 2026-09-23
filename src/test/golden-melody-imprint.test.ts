@@ -32,7 +32,10 @@ const qjNonCrit: Registry = {
   ...REGISTRY,
   getCharacter: (id) => (id === "qiongjiu" ? { ...QIONGJIU, base: { ...QIONGJIU.base, critRate: 0 } } : REGISTRY.getCharacter(id)),
   // TEST-ONLY weapon fixtures (non-game, panel-only) resolve here — production data is clean.
-  getWeapon: (id) => TEST_WEAPONS[id] ?? REGISTRY.getWeapon(id),
+  // Golden Melody is served WITHOUT its Trait pool: the imprint oracles were validated with
+  // no Trait contribution (controlled runs); Trait behavior is covered in
+  // golden-melody-trait.test.ts.
+  getWeapon: (id) => (id === "jinshizou" ? { ...REGISTRY.getWeapon(id)!, trait: undefined } : TEST_WEAPONS[id] ?? REGISTRY.getWeapon(id)),
 };
 
 /** Non-owner attacker (a Qiongjiu CLONE with a different id) that still equips Golden Melody. */

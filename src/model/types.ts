@@ -62,6 +62,13 @@ export interface WeaponDef {
    * `noCoverBonus` when the target is not protected by Cover (both conditions can stack).
    */
   imprint?: { targetType: string; bonus: number; noCoverBonus: number };
+  /**
+   * Trait (weapon concept, VALIDATED in-game 2026): at the END of the holder's own action,
+   * if the holder is at FULL HP, exactly ONE random buff is granted from `statusIds`
+   * (uniform 1/N selection via the deterministic seeded RNG — no weights/priorities) for
+   * `durationRounds` turns. Data-driven; the engine hook is generic, never character-specific.
+   */
+  trait?: { statusIds: string[]; durationRounds: number };
   subStats: { stat: "pctAtk" | "pctHp" | "pctDef"; value: number }[];
 }
 

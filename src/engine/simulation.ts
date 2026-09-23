@@ -920,6 +920,26 @@ function endOfOwnTurn(state: SimulationState, unit: UnitState): void {
   tickStatuses(state, unit, "ownActionEnd", (st, u, def, active) => {
     if (active.applier) applyStatusFixedDamage(st, u, def.id, "onTick", st.round);
   });
+  // Weapon Trait (VALIDATED in-game 2026): at the END of the holder's own action, if the
+  // holder is at FULL HP, exactly ONE random buff from the weapon's uniform pool is granted.
+  applyWeaponTrait(state, unit);
+}
+
+/**
+ * Weapon Trait (generic, data-driven; VALIDATED in-game 2026): at the end of the holder's own
+ * action, a holder at FULL HP is granted EXACTLY ONE buff from `weapon.trait.statusIds`,
+ * selected uniformly (1/N) with the deterministic seeded RNG — identical seeds => identical
+ * picks; no weights/priorities are invented. The buff lasts `trait.durationRounds` turns
+ * (refresh-on-regrant per the standard same-status refresh rule). No character-specific
+ * conditionals: any weapon with `trait` data behaves this way.
+ */
+export function applyWeaponTrait(state: SimulationState, unit: UnitState): string | null {
+  const trait = unit.weapon?.trait;
+  if (!trait || unit.hp < unit.maxHp || trait.statusIds.length === 0) return null;
+  const pick = trait.statusIds[state.rng.nextInt(trait.statusIds.length)];
+  const label = `${unit.weapon!.name} — Trait`;
+  applyStatus(state, unit, { statusId: pick, durationRounds: trait.durationRounds, source: label });
+  return pick;
 }
 
 function endOfRound(state: SimulationState): void {

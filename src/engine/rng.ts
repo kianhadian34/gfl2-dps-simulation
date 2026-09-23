@@ -24,4 +24,14 @@ export class Rng {
     if (p <= 0) return false;
     return this.next() < p;
   }
+
+  /**
+   * Uniform integer in [0, n). Deterministic: identical seeds => identical values.
+   * Used for the uniform 1/N selection rule (weapon Trait, VALIDATED in-game 2026 —
+   * equal probability across the N outcomes, no weights/priorities invented).
+   */
+  nextInt(n: number): number {
+    if (n <= 0) return 0;
+    return Math.floor(this.next() * n);
+  }
 }
