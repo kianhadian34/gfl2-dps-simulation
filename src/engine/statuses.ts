@@ -132,12 +132,14 @@ export function tickStatuses(
 
 /** Σ additive damage-dealt bonuses from the unit's own statuses (tier effects gated on the hit element).
  *  `ctx.supportAttack` distinguishes a Support Action so `actions: "support"` modifiers apply only there;
- *  `ctx.targetExposed` gates `whenTarget: "exposed"` bonuses (Support Boost I's +10% vs Exposed, 2026). */
+ *  `ctx.targetExposed` gates `whenTarget: "exposed"` bonuses (Support Boost I's +10% vs Exposed, 2026);
+ *  `ctx.isAoE` gates `whenCategory` bonuses (Targeted Attack Boost I's +10% — targeted-only, 2026;
+ *  `"aoe"` = only AoE hits). Absent `isAoE` =  false (gated-"targeted" applies, non-gated applies always). */
 export function additiveDealtBonus(
   unit: UnitState,
   statusRegistry: Map<string, EffectiveStatusDef>,
   element: Element | null,
-  ctx: { supportAttack: boolean; targetExposed: boolean },
+  ctx: { supportAttack: boolean; targetExposed: boolean; isAoE?: boolean },
 ): number {
   let sum = 0;
   for (const s of unit.statuses) {
@@ -147,6 +149,10 @@ export function additiveDealtBonus(
       if (e.kind === "damage_modifier" && e.scope === "dealt" && e.mode === "additive") {
         if (e.actions === "support" && !ctx.supportAttack) continue;
         if (e.whenTarget === "exposed" && !ctx.targetExposed) continue;
+        if (e.whenCategory !== undefined) {
+          const matches = e.whenCategory === "aoe" ? ctx.isAoE : !ctx.isAoE;
+          if (!matches) continue;
+        }
         // scaleWithStacks === false → the bonus applies ONCE per status (Support Boost I:
         // stacks are remaining activations, NOT a magnitude multiplier — VALIDATED 2026).
         sum += def.scaleWithStacks === false ? e.value : e.value * s.stacks;

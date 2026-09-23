@@ -269,8 +269,9 @@ export const STATUS_DEFS: StatusDef[] = [
   // Attack Up I; heal: 1 — Continuous Healing I, 10% max-HP at action end;
   // damage_reduction: 2 — Area Defense I, −10% taken from AoE; Targeted Attack
   // Defense I, −10% taken from targeted; stability_damage_bonus: 1 — Stability
-  // Offensive I, +1 Stability damage dealt); the other 4 outcomes are
-  // RECORDED-ONLY (`deferredNote`) because the engine has no phase-gated dealt /
+  // Offensive I, +1 Stability damage dealt; damage_modifier dealt (category-gated):
+  // 1 — Targeted Attack Boost I, +10% Targeted damage dealt); the other 3 outcomes
+  // are RECORDED-ONLY (`deferredNote`) because the engine has no phase-gated dealt /
   // mobility mechanic — documented, never invented
   // (research §3.9). No hardcoded
   // character conditionals: the pool lives on the weapon's `trait` data, uniformly.
@@ -387,11 +388,10 @@ export const STATUS_DEFS: StatusDef[] = [
     durationRounds: 1,
     tickAt: "ownActionEnd",
     purgeable: false,
-    effects: [],
+    effects: [{ kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.1, whenCategory: "targeted" }],
     playerDescription: "Targeted damage dealt +10%.",
     verified: true,
-    note: "Golden Melody Trait outcome #9 (validated in-game 2026); cannot be cleansed.",
-    deferredNote: "RECORDED-ONLY: the engine has no targeted-dealt category mechanic.",
+    note: "Golden Melody Trait outcome #9 (validated in-game 2026); cannot be cleansed. +10% Targeted damage dealt — additive in the existing DMG% bucket, gated to targeted-only hits via the generic damage_modifier whenCategory gate.",
   },
   {
     id: "trait_coverage_boost_i",

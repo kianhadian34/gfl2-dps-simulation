@@ -279,6 +279,11 @@ export function displacementImmunityActive(unit: UnitState): boolean {
 /** Damage + stability + Confectance-gain application for a single hit; fills the event's damage fields. */
 function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDefVariant, ev: LogEvent, opts?: { exposedOverride?: boolean }): number {
   const dummy = state.dummy;
+  // Attack category (VALIDATED 2026): TRUE when this hit is AoE (`damageCategory === "aoe"`).
+  // Single source consumed by the category-gated damage features: dealt bonuses (Targeted
+  // Attack Boost I — targeted-only), taken reductions (Area Defense I / Targeted Attack
+  // Defense I), and DEF-ignore (Domain Penetration I / Piercing I).
+  const isAoE = skill.damageCategory === "aoe";
   // GRID (2026): High Ground → Ground ADDS Exposed; otherwise the normal exposed state governs.
   const targetExposed = opts?.exposedOverride === true ? true : dummy.exposed;
   const { weaknesses, mult: weaknessMult, ammoExploited } = exploitedWeaknesses(dummy, skill);
@@ -332,7 +337,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
         (dummy.cover === "none" ? actor.weapon.imprint.noCoverBonus : 0)
       : 0;
   const addDealt =
-    additiveDealtBonus(actor, state.statusRegistry, skill.element, { supportAttack: ev.supportAttack, targetExposed }) +
+    additiveDealtBonus(actor, state.statusRegistry, skill.element, { supportAttack: ev.supportAttack, targetExposed, isAoE }) +
     conditionalDealtBonus(actor, dummy, "target.noCover", ev.supportAttack) +
     conditionalDealtBonus(actor, dummy, "always", ev.supportAttack) +
     // OUT-OF-TURN DAMAGE (Common Key: Strategic Negotiation +7%, VALIDATED in-game 2026): a panel
@@ -411,7 +416,6 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     ev.effectSources = [...sources];
     ev.effectSourceRefs = [...sources].map((label) => sourceRefs.get(label)!);
   }
-  const isAoE = skill.damageCategory === "aoe";
   // Area Defense I (VALIDATED in-game tooltip 2026): target-side `damage_reduction`
   // effects gated `whenIncomingCategory: "aoe"` apply ONLY to this hit's category.
   const { mult, red } = multiplicativeTakenMods(dummy, state.statusRegistry, isAoE);

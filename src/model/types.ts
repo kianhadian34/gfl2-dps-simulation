@@ -524,6 +524,8 @@ export type StatusEffect =
       actions?: "all" | "support";
       /** NEW (2026) — optional target condition for a dealt bonus: "exposed" = only while the target is Exposed/Broken (Support Boost I's +10%). */
       whenTarget?: "exposed";
+      /** NEW (2026) — optional damage-category gate for a DEALT bonus: "targeted" = only non-AoE hits (`targeted` = not `damageCategory === "aoe"`; Targeted Attack Boost I, +10%); "aoe" = only AoE hits. Absent = all (existing behavior). */
+      whenCategory?: "aoe" | "targeted";
     }
   | { kind: "damage_reduction"; value: number; whenIncomingCategory?: "aoe" | "targeted" }
   | {
