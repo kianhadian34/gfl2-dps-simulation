@@ -265,9 +265,10 @@ export const STATUS_DEFS: StatusDef[] = [
   // lasts 1 turn (weapon `trait` data + engine hook in simulation.ts).
   // Effects are implemented ONLY where the engine has a generic executable mechanic
   // (def_ignore: 1 — Domain Penetration I, 20% DEF ignore on AoE; stat_modifier: 3 —
-  // Crit Rate Boost I / Defense Up I / Attack Up I); the other 9 outcomes are
+  // Crit Rate Boost I / Defense Up I / Attack Up I; heal: 1 — Continuous Healing I,
+  // 10% max-HP at action end); the other 8 outcomes are
   // RECORDED-ONLY (`deferredNote`) because the engine has no stability-modifier /
-  // phase-gated dealt / heal / mobility mechanic — documented, never invented
+  // phase-gated dealt / mobility mechanic — documented, never invented
   // (research §3.9). No hardcoded
   // character conditionals: the pool lives on the weapon's `trait` data, uniformly.
   // ---------------------------------------------------------------------------
@@ -305,11 +306,10 @@ export const STATUS_DEFS: StatusDef[] = [
     durationRounds: 1,
     tickAt: "ownActionEnd",
     purgeable: true,
-    effects: [],
+    effects: [{ kind: "heal", percentOfMaxHp: 0.1 }],
     playerDescription: "Restores 10% of max HP at the end of each action.",
     verified: true,
-    note: "Golden Melody Trait outcome #3 (validated in-game 2026).",
-    deferredNote: "RECORDED-ONLY: the engine has no healing mechanic.",
+    note: "Golden Melody Trait outcome #3 (validated in-game 2026); +10% max-HP restore at the holder's action end — executable via the generic heal effect (capped at max HP, 1-turn Trait duration preserved).",
   },
   {
     id: "trait_defense_up_i",

@@ -540,6 +540,19 @@ export type StatusEffect =
     }
   | {
       /**
+       * HP restoration (Continuous Healing I, VALIDATED in-game tooltip 2026): at the
+       * HOLDER's own action end — the standard `ownActionEnd` onTick phase, same timing
+       * as status-sourced fixed damage — restores `percentOfMaxHp` of the holder's MAXIMUM
+       * HP, capped so HP never exceeds max HP. `Math.ceil` rounding for non-integer amounts
+       * is an unvalidated MVP model choice (consistent with the damage ceil convention; the
+       * tooltip specifies no rounding). No other mechanics are invented (no overheal, no
+       * heal on grant, no target healing, no Continuous Healing II behavior).
+       */
+      kind: "heal";
+      percentOfMaxHp: number;
+    }
+  | {
+      /**
        * Status-sourced fixed damage (Overburn, validated 2026): absolute damage =
        * ceil(percentOfAtk × the EFFECT APPLIER's ATK captured at application time).
        * `applies`: "onApply" fires immediately when the status is newly applied;

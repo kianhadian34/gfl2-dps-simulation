@@ -19,7 +19,8 @@ import {
   tickStatuses,
 } from "./statuses.js";
 import { applyStabilityDamage, endOfRoundStability } from "./stability.js";
-import { abilitySourceLabel, createState, DEFAULT_CONFIG, fortificationV, passiveSourceLabel, supportAttackQuota, weaponCalibration, type SimulationState, type UnitState } from "./state.js";
+import { abilitySourceLabel, createState, DEFAULT_CONFIG, fortificationV, passiveSourceLabel, supportAttackQuota, weaponCalibration, type EffectiveStatusDef, type SimulationState, type UnitState } from "./state.js";
+import type { ActiveStatus } from "../model/runtime.js";
 
 /**
  * Element/Phase interactions — CORRECTED 2026: GFL2 has NO elemental counter
@@ -585,6 +586,25 @@ function applyStatusFixedDamage(state: SimulationState, holder: UnitState, statu
   });
 }
 
+/**
+ * Status-sourced effects that fire at the HOLDER's own action end, right BEFORE the
+ * duration decrement (the `onTick` phase of the `ownActionEnd` tick — same timing for
+ * status-sourced fixed damage, Overburn 2026, and the Continuous Healing I heal, 2026).
+ * This is the SINGLE implementation wired into the simulation's end-of-turn tick;
+ * unit tests pass it explicitly to `tickStatuses` so they exercise the real engine path.
+ */
+export function applyEndOfActionStatusEffects(state: SimulationState, unit: UnitState, def: EffectiveStatusDef, active: ActiveStatus): void {
+  if (active.applier) applyStatusFixedDamage(state, unit, def.id, "onTick", state.round);
+  // Continuous Healing I (VALIDATED in-game tooltip 2026): restores percentOfMaxHp of the
+  // HOLDER's MAXIMUM HP (capped at max HP), at its own action end. No invented mechanics.
+  for (const e of def.effects) {
+    if (e.kind === "heal") {
+      const amount = Math.ceil(unit.maxHp * e.percentOfMaxHp);
+      unit.hp = Math.min(unit.maxHp, unit.hp + amount);
+    }
+  }
+}
+
 /** Add damage to aggregates WITHOUT consuming an action (status-sourced damage, 2026). */
 function accumulateDamage(state: SimulationState, unitId: string, damage: number): void {
   state.accum.damage += damage;
@@ -926,9 +946,7 @@ function endOfOwnTurn(state: SimulationState, unit: UnitState): void {
   tickCooldowns(unit); // U11 model assumption
   // U7 CONFIRMED 2026-09-03: normal timed buffs tick at the recipient's action end.
   // onTick fires status-sourced fixed damage (Overburn, 2026) before each decrement.
-  tickStatuses(state, unit, "ownActionEnd", (st, u, def, active) => {
-    if (active.applier) applyStatusFixedDamage(st, u, def.id, "onTick", st.round);
-  });
+  tickStatuses(state, unit, "ownActionEnd", (st, u, def, active) => applyEndOfActionStatusEffects(st, u, def, active));
   // Weapon Trait (VALIDATED in-game 2026): at the END of the holder's own action, if the
   // holder is at FULL HP, exactly ONE random buff from the weapon's uniform pool is granted.
   applyWeaponTrait(state, unit);
