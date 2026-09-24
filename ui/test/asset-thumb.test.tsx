@@ -1,11 +1,11 @@
-import { test } from "node:test";
+﻿import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AssetThumb } from "../src/renderer/app/setup/AssetThumb.js";
-import { weaponAsset, skillAsset, resolveAsset, SUPPLIED_ASSET_FILES } from "../src/shared/assets.js";
+import { weaponAsset, fixedKeyAsset, skillAsset, resolveAsset, SUPPLIED_ASSET_FILES } from "../src/shared/assets.js";
 
 /**
  * REGRESSION (2026): "Cannot read properties of undefined (reading 'status')" at UI startup.
@@ -22,7 +22,7 @@ import { weaponAsset, skillAsset, resolveAsset, SUPPLIED_ASSET_FILES } from "../
 const srcFile = (rel: string): string => join(dirname(fileURLToPath(import.meta.url)), rel);
 
 test("regression: the component must NOT use the reserved React prop 'ref'", () => {
-  // React strips `ref` from function-component props → the resolver result would be undefined
+  // React strips `ref` from function-component props â†’ the resolver result would be undefined
   // and assetRenderSpec would read `.status` on it. The component must take `asset` instead.
   const src = readFileSync(srcFile("../../src/renderer/app/setup/AssetThumb.tsx"), "utf8");
   assert.ok(src.includes("{ asset: AssetRefResult"), "props carry the asset via the non-reserved name");
@@ -52,4 +52,14 @@ test("unknown entity renders the explicit missing state (no <img>, no crash)", (
   const html = renderToStaticMarkup(<AssetThumb asset={resolveAsset("weapon", "definitely_not_a_weapon")} alt="Mystery" size={22} />);
   assert.ok(html.includes("asset-missing"), "explicit missing state rendered");
   assert.ok(!html.includes("<img"), "never a broken <img>");
+});
+test("weapon artwork uses object-fit: contain (no crop, full image, natural aspect ratio)", () => {
+  const html = renderToStaticMarkup(<AssetThumb asset={weaponAsset("jinshizou")} alt="Golden Melody" size={96} fit="contain" />);
+  assert.ok(html.includes("object-fit:contain"), "weapon thumbs render with contain");
+  assert.ok(html.includes(SUPPLIED_ASSET_FILES["weapon:jinshizou"]!), "complete supplied weapon image used");
+});
+
+test("default artwork behavior stays object-fit: cover (square art: Fixed Keys, portrait, key icons)", () => {
+  const html = renderToStaticMarkup(<AssetThumb asset={fixedKeyAsset("qiongjiu_fk1_concentration")} alt="Concentration" size={110} />);
+  assert.ok(html.includes("object-fit:cover"), "no fit prop => cover (previous behavior preserved)");
 });

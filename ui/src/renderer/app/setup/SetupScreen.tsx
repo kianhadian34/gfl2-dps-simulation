@@ -28,6 +28,21 @@ import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansi
 import { AssetThumb } from "./AssetThumb.js";
 
 /**
+ * Golden Melody detail copy — authoritative in-game REFERENCE strings (2026). The numerals
+ * match the engine WeaponDef data 1:1 (src/data/weapons.ts calibrations: dealt 10/10/15/20/20/20,
+ * support 10/15/15/15/20/20, gains 1/1/1/1/2/2, stacks 2/2/3/3/4/4; trait full-HP 1 turn;
+ * imprint ELID 2.5% / no-Cover 2.5%). These are reference-provided player-facing texts, NOT
+ * engine fields — no mechanics are invented (presentation only).
+ */
+const WEAPON_DETAIL_COPY = {
+  effect:
+    "Increase damage dealt by 10%/10%/15%/20%/20%/20%. When gaining buffs, increase damage dealt by the next Support Action by 10%/15%/15%/15%/20%/20% for 1/1/1/1/2/2 time(s), stacking up to 2/2/3/3/4/4 times.",
+  trait: "If the user has full HP at the end of the action, she gains a random buff, lasting for 1 turn.",
+  imprint:
+    "Increase damage dealt to ELIDs by 2.5%. If the target is not protected by Cover, increase it by an additional 2.5%.",
+};
+
+/**
  * SIMULATION SETUP — choose the target (dummy), pick characters from the engine registry,
  * configure the fixed rotation and MVP settings, then Start Simulation.
  */
@@ -46,6 +61,8 @@ export function SetupScreen(props: {
   const [weapons, setWeapons] = useState<WeaponView[]>([]);
   const [commonKeys, setCommonKeys] = useState<CommonKeyListResult | null>(null);
   const [meta, setMeta] = useState<Record<string, CharacterMetaView>>({});
+  // Which doll's weapon picker is currently open (renderer-local presentation state only).
+  const [weaponPickerFor, setWeaponPickerFor] = useState<string | null>(null);
 
   useEffect(() => {
     if (charsLoaded) return;
@@ -235,6 +252,8 @@ export function SetupScreen(props: {
                 const m = meta[c.id];
                 const weapon = equ.weaponId !== undefined ? weapons.find((w) => w.id === equ.weaponId) : undefined;
                 const calibrations = weapon?.calibrations ?? [];
+                const ownerName = weapon?.ownerCharacterId !== undefined ? meta[weapon.ownerCharacterId]?.name : undefined;
+                const atkBoostPct = Math.round((weapon?.subStats.find((s) => s.stat === "pctAtk")?.value ?? 0) * 100);
                 return (
                   <div key={c.id} className="rot-builder">
                     <div className="mname">
@@ -286,29 +305,88 @@ export function SetupScreen(props: {
                         )}
                       </fieldset>
 
-                      <label>
-                        Weapon <span className="muted">(exactly 1; empty = engine-valid no-weapon legacy)</span>
-                        <select
-                          value={equ.weaponId ?? ""}
-                          onChange={(e) => {
-                            const id = e.target.value === "" ? undefined : e.target.value;
-                            const w = id !== undefined ? weapons.find((x) => x.id === id) : undefined;
-                            props.onChange(setWeapon(props.setup, c.id, id, w?.calibrations ?? []));
-                          }}
-                        >
-                          <option value="">— no weapon —</option>
-                          {weapons.map((w) => (
-                            // Player-facing name ONLY (never the internal id): e.g. "Golden Melody".
-                            <option key={w.id} value={w.id}>
-                              {w.name}
-                            </option>
-                          ))}
-                        </select>
-                        {equ.weaponId !== undefined ? <AssetThumb asset={weaponAsset(equ.weaponId)} alt={weapon?.name ?? "weapon"} size={22} /> : null}
-                      </label>
-                      <p className="muted">Weapon ids are internal only — never shown to the player (display name: {weapon?.name ?? "—"}).</p>
+                      <div className="weapon-slot-section">
+                        <div className="weapon-slot-wrap">
+                          {equ.weaponId === undefined ? (
+                            <button type="button" className="weapon-slot is-empty" onClick={() => setWeaponPickerFor(c.id)} aria-label="Select weapon">
+                              <span className="weapon-slot-plus">+</span>
+                              <span className="weapon-slot-label">Weapon</span>
+                            </button>
+                          ) : (
+                            <div className="weapon-detail">
+                              <button
+                                type="button"
+                                className="weapon-detail-open"
+                                onClick={() => setWeaponPickerFor(c.id)}
+                                aria-label="Change weapon (opens picker)"
+                              >
+                                <div className="weapon-detail-art">
+                                  <AssetThumb asset={weaponAsset(equ.weaponId)} alt={weapon?.name ?? "weapon"} width={300} height={180} fit="contain" />
+                                </div>
+                                <div className="weapon-detail-main">
+                                  <div className="weapon-detail-title">
+                                    <span className="weapon-detail-name">{weapon?.name ?? "—"}</span>
+                                    <span className="weapon-detail-rarity">{weapon?.rarity === "elite" ? "ELITE" : weapon?.rarity ?? ""}</span>
+                                  </div>
+                                  {ownerName ? <span className="weapon-detail-sig">Signature weapon of {ownerName}</span> : null}
+                                  <span className="weapon-detail-stat">Attack&nbsp;&nbsp;{weapon?.atkLvl60 ?? "—"}</span>
+                                  <span className="weapon-detail-stat">Attack Boost&nbsp;&nbsp;{atkBoostPct}%</span>
+                                </div>
+                              </button>
+                              <div className="weapon-detail-cols">
+                                <div className="weapon-detail-col">
+                                  <h4>Effect</h4>
+                                  <p>{WEAPON_DETAIL_COPY.effect}</p>
+                                </div>
+                                <div className="weapon-detail-col">
+                                  <h4>Trait</h4>
+                                  <p>{WEAPON_DETAIL_COPY.trait}</p>
+                                </div>
+                                <div className="weapon-detail-col">
+                                  <h4>Imprint{ownerName ? ` - ${ownerName}` : ""}</h4>
+                                  <p>{WEAPON_DETAIL_COPY.imprint}</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        {weaponPickerFor === c.id && (
+                          <div className="weapon-picker" role="dialog" aria-label="Choose weapon">
+                            <div className="weapon-picker-list">
+                              <button
+                                type="button"
+                                className="weapon-picker-card is-remove"
+                                onClick={() => {
+                                  props.onChange(setWeapon(props.setup, c.id, undefined, []));
+                                  setWeaponPickerFor(null);
+                                }}
+                              >
+                                <span className="weapon-slot-plus">+</span>
+                                <span className="weapon-picker-name">— no weapon —</span>
+                              </button>
+                              {weapons.map((w) => (
+                                <button
+                                  key={w.id}
+                                  type="button"
+                                  className={`weapon-picker-card${equ.weaponId === w.id ? " is-selected" : ""}`}
+                                  onClick={() => {
+                                    props.onChange(setWeapon(props.setup, c.id, w.id, w.calibrations ?? []));
+                                    setWeaponPickerFor(null);
+                                  }}
+                                >
+                                  <AssetThumb asset={weaponAsset(w.id)} alt={w.name} width={200} height={120} fit="contain" />
+                                  <span className="weapon-picker-name">{w.name}</span>
+                                </button>
+                              ))}
+                            </div>
+                            <button type="button" className="weapon-picker-close" onClick={() => setWeaponPickerFor(null)}>
+                              Close
+                            </button>
+                          </div>
+                        )}
+                      </div>
 
-                      {calibrations.length > 0 ? (
+                      {equ.weaponId !== undefined && calibrations.length > 0 ? (
                         <label>
                           Calibration <span className="muted">(C{calibrations.join("/C")})</span>
                           <select
@@ -327,9 +405,7 @@ export function SetupScreen(props: {
                             ))}
                           </select>
                         </label>
-                      ) : (
-                        <span className="muted">no calibration option for this weapon</span>
-                      )}
+                      ) : null}
 
                       <fieldset>
                         <legend>

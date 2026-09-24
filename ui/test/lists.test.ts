@@ -13,11 +13,11 @@ import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView } from ".
 
 test("unit: buildWeaponViews maps engine weapon shapes into ascending calibration numbers", () => {
   const views = buildWeaponViews([
-    { id: "w1", name: "Weapon One", rarity: "elite", atkLvl60: 369, ownerCharacterId: "qiongjiu", calibrations: { 2: { value: 0.1 }, 1: { value: 0 }, 6: { value: 0.2 } } },
-    { id: "w2", name: "Weapon Two", rarity: "rare", atkLvl60: 120 }, // no calibrations / no owner
+    { id: "w1", name: "Weapon One", rarity: "elite", atkLvl60: 369, subStats: [{ stat: "pctAtk", value: 0.15 }], ownerCharacterId: "qiongjiu", calibrations: { 2: { value: 0.1 }, 1: { value: 0 }, 6: { value: 0.2 } } },
+    { id: "w2", name: "Weapon Two", rarity: "rare", atkLvl60: 120 }, // no calibrations / no owner / no substats
   ]);
-  assert.deepEqual(views[0], { id: "w1", name: "Weapon One", rarity: "elite", atkLvl60: 369, ownerCharacterId: "qiongjiu", calibrations: [1, 2, 6] });
-  assert.deepEqual(views[1], { id: "w2", name: "Weapon Two", rarity: "rare", atkLvl60: 120, calibrations: [] }, "absent owner/calibrations stay absent");
+  assert.deepEqual(views[0], { id: "w1", name: "Weapon One", rarity: "elite", atkLvl60: 369, subStats: [{ stat: "pctAtk", value: 0.15 }], ownerCharacterId: "qiongjiu", calibrations: [1, 2, 6] });
+  assert.deepEqual(views[1], { id: "w2", name: "Weapon Two", rarity: "rare", atkLvl60: 120, subStats: [], calibrations: [] }, "absent owner/calibrations/substats stay empty");
 });
 
 test("unit: buildCommonKeyViews carries items + the engine 3-slot maximum", () => {

@@ -72,6 +72,8 @@ export interface WeaponView {
   rarity: string;
   /** Max-level weapon ATK (lvl60). */
   atkLvl60: number;
+  /** Weapon sub-stats (e.g. Attack Boost +15% = pctAtk 0.15) — authoritative WeaponDef data. */
+  subStats: Array<{ stat: "pctAtk" | "pctHp" | "pctDef"; value: number }>;
   /** Signature owner (owner-gated mechanics, e.g. the Imprint) — engine data. */
   ownerCharacterId?: string;
   /** Valid calibration levels (C1–C6 = 1–6) as engine-sourced numbers, ascending. */

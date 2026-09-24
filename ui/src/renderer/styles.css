@@ -181,6 +181,91 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .fixed-key-card:focus-within .tooltip { display: block; }
 .fixed-key-card .tooltip .tooltip-row { display: block; color: var(--muted); }
 
+/* --- weapon slot + visual picker (2026) --- */
+.weapon-slot-section { margin: 8px 0 4px; }
+.weapon-slot-wrap { display: inline-flex; }
+.weapon-slot {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 260px; min-height: 168px; padding: 14px 12px 12px; gap: 6px;
+  background: var(--bg-3); border: 1px solid var(--border); border-radius: 4px;
+  cursor: pointer; text-align: center; color: var(--text);
+}
+.weapon-info {
+  position: absolute; top: 6px; right: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border: 1px solid var(--border); border-radius: 50%;
+  color: var(--muted); font-size: 12px; line-height: 1; cursor: help;
+}
+.weapon-info:hover, .weapon-info:focus-visible { color: var(--text); border-color: var(--accent); outline: none; }
+.weapon-info:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.weapon-info .tooltip {
+  display: none; position: absolute; z-index: 40; right: 0; top: calc(100% + 4px);
+  min-width: 200px; max-width: 280px; padding: 6px 8px;
+  background: var(--bg-3); border: 1px solid var(--border); border-radius: 3px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  font-family: var(--mono); font-size: 11px; text-align: left; white-space: normal;
+}
+.weapon-info:hover .tooltip, .weapon-info:focus .tooltip, .weapon-info:focus-within .tooltip { display: block; }
+.weapon-info .tooltip b { display: block; margin-bottom: 3px; }
+.weapon-info .tooltip .tooltip-row { display: block; color: var(--muted); }
+
+/* --- weapon DETAIL panel (selected state, matches the in-game reference 2026) --- */
+.weapon-detail {
+  display: flex; flex-direction: column; gap: 10px;
+  border: 1px solid var(--accent); border-radius: 4px; padding: 12px;
+  background: var(--bg); box-shadow: 0 0 0 1px var(--accent) inset;
+}
+.weapon-detail-open {
+  display: flex; gap: 18px; align-items: flex-start; text-align: left;
+  background: transparent; border: none; color: var(--text); cursor: pointer; padding: 0;
+}
+.weapon-detail-open:hover .weapon-detail-art { border-color: var(--accent); }
+.weapon-detail-art {
+  border: 1px solid var(--border); border-radius: 4px; padding: 6px;
+  background: var(--bg-3); min-width: 300px;
+}
+.weapon-detail-main { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+.weapon-detail-title { display: flex; align-items: baseline; gap: 10px; }
+.weapon-detail-name { font-size: 20px; font-weight: 700; color: var(--text); }
+.weapon-detail-rarity {
+  font-size: 11px; font-weight: 600; letter-spacing: 1px;
+  color: #d8a93a; border: 1px solid #d8a93a; border-radius: 2px; padding: 1px 5px;
+}
+.weapon-detail-sig { color: var(--muted); font-size: 12px; }
+.weapon-detail-stat { color: var(--text); font-family: var(--mono); font-size: 13px; }
+.weapon-detail-cols {
+  display: flex; gap: 0; border-top: 1px solid var(--border); padding-top: 10px;
+}
+.weapon-detail-col {
+  flex: 1; padding: 0 12px; min-width: 0;
+  border-left: 1px solid var(--border);
+}
+.weapon-detail-col:first-child { padding-left: 0; border-left: none; }
+.weapon-detail-col h4 { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.5px; color: var(--accent); }
+.weapon-detail-col p { margin: 0; font-size: 12px; line-height: 1.45; color: var(--text); }
+.weapon-slot:hover { border-color: var(--accent); }
+.weapon-slot.is-empty { color: var(--muted); }
+.weapon-slot.is-empty:hover { color: var(--text); }
+.weapon-slot-plus { font-size: 34px; line-height: 1; }
+.weapon-slot-label { font-size: 12px; }
+.weapon-picker {
+  margin-top: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg-2);
+}
+.weapon-picker-list { display: flex; flex-wrap: wrap; gap: 12px; }
+.weapon-picker-card {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 220px; min-height: 160px; padding: 8px; gap: 6px;
+  background: var(--bg-3); border: 1px solid var(--border); border-radius: 4px;
+  cursor: pointer; color: var(--text); text-align: center;
+}
+.weapon-picker-card:hover { border-color: var(--accent); }
+.weapon-picker-card.is-selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.weapon-picker-card.is-remove { color: var(--muted); min-height: 96px; }
+.weapon-picker-name { font-weight: 600; }
+.weapon-picker-close { margin-top: 10px; }
+
 /* --- asset thumbs (supplied image / generic fallback / explicit missing) --- */
 .asset-thumb {
   display: inline-block; vertical-align: middle; margin-right: 4px;

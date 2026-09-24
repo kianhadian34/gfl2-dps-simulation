@@ -24,6 +24,7 @@ export interface WeaponSource {
   name: string;
   rarity: string;
   atkLvl60: number;
+  subStats?: Array<{ stat: "pctAtk" | "pctHp" | "pctDef"; value: number }>;
   ownerCharacterId?: string;
   calibrations?: Record<number, unknown>;
 }
@@ -52,6 +53,7 @@ export function buildWeaponViews(weapons: WeaponSource[]): WeaponView[] {
     name: w.name,
     rarity: w.rarity,
     atkLvl60: w.atkLvl60,
+    subStats: (w.subStats ?? []).map((s) => ({ ...s })),
     ...(w.ownerCharacterId !== undefined ? { ownerCharacterId: w.ownerCharacterId } : {}),
     calibrations: w.calibrations ? Object.keys(w.calibrations).map(Number).sort((a, b) => a - b) : [],
   }));
