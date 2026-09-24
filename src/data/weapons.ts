@@ -11,7 +11,10 @@ import type { WeaponDef } from "../model/types.js";
 export const WEAPONS: WeaponDef[] = [
   {
     id: "jinshizou",
-    name: "Jinshizou (金石奏)",
+    // Authoritative ENGLISH player-facing name. The CN name is deliberately NOT part of the
+    // name field (the weapon concept is documented as "Golden Melody" in comments; the id
+    // "jinshizou" is never display text).
+    name: "Jinshizou",
     rarity: "elite",
     atkLvl1: 53,
     atkLvl60: 369,

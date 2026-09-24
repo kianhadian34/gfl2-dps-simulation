@@ -250,8 +250,8 @@ test("presentation: the authoritative key number is derived from the engine id, 
   assert.equal(fixedKeyNumber("a_key_without_number"), undefined, "no number → undefined (label falls back to the plain name)");
 });
 
-test("presentation: the option label is 'Fixed Key <N> - <Name>' with the correct name (incl. (凝神))", () => {
-  assert.equal(fixedKeyLabel({ id: "qiongjiu_fk1_concentration", name: "Concentration (凝神)", number: 1 }), "Fixed Key 1 - Concentration (凝神)");
+test("presentation: the option label is 'Fixed Key <N> - <Name>' — English names only", () => {
+  assert.equal(fixedKeyLabel({ id: "qiongjiu_fk1_concentration", name: "Concentration", number: 1 }), "Fixed Key 1 - Concentration");
   assert.equal(fixedKeyLabel({ id: "qiongjiu_fk2_efficient_planning", name: "Efficient Planning" }), "Fixed Key 2 - Efficient Planning", "number derived when the view omits it");
   assert.equal(fixedKeyLabel({ id: "other", name: "Something" }), "Something", "no number → plain name, no invented prefix");
 });
@@ -299,4 +299,37 @@ test("presentation: selection still produces the EXACT same equippedFixedKeys ID
   assert.deepEqual(sc.team[0].equippedFixedKeys, labels, "ids carried verbatim (label change never touches ids)");
   s = toggleFixedKey(s, "qiongjiu", "qiongjiu_fk4_point_of_vulnerability");
   assert.equal(equipmentOf(s.characters[0]).equippedFixedKeys!.length, 3, "4th key still a no-op — cap unchanged");
+});
+
+// ---------------------------------------------------------------------------
+// ENGLISH-ONLY PLAYER-FACING NAMES (2026) — no Chinese characters anywhere in the
+// player-facing equipment presentation; authoritative English names only.
+// ---------------------------------------------------------------------------
+
+const CJK = /[\u4e00-\u9fff]/;
+
+test("english-only e2e: all six Fixed Keys display English names only (no CJK in name or tooltip text)", async () => {
+  const reg = await import(new URL("../../../dist/data/registry.js", import.meta.url).href);
+  const REGISTRY = (reg as { REGISTRY: unknown }).REGISTRY as {
+    getCharacter: (id: string) => { fixedKeys: Array<{ id: string; name: string; description?: string }> } | undefined;
+  };
+  const def = REGISTRY.getCharacter("qiongjiu")!;
+  const view = buildCharacterMetaView({ id: "qiongjiu", name: "Qiongjiu", fixedKeys: def.fixedKeys });
+  const EXPECTED_ENGLISH = ["Concentration", "Efficient Planning", "Targeted Training", "Point of Vulnerability", "Necessary Adjustments", "Steadiness"];
+  for (let i = 0; i < view.fixedKeys!.length; i++) {
+    const k = view.fixedKeys![i];
+    assert.equal(k.name, EXPECTED_ENGLISH[i], `Fixed Key ${i + 1} shows the authoritative English name only`);
+    assert.equal(CJK.test(k.name), false, `name ${k.name} has no Chinese characters`);
+    assert.equal(CJK.test(k.description ?? ""), false, `tooltip text for ${k.id} has no Chinese characters`);
+    assert.equal(CJK.test(fixedKeyLabel(k)), false, `label for ${k.id} has no Chinese characters`);
+  }
+});
+
+test("english-only e2e: the weapon displays the authoritative English name only; the internal id is unchanged", async () => {
+  const w = await import(new URL("../../../dist/data/weapons.js", import.meta.url).href);
+  const views = buildWeaponViews((w as { WEAPONS: unknown[] }).WEAPONS as Parameters<typeof buildWeaponViews>[0]);
+  const gm = views.find((v) => v.id === "jinshizou")!;
+  assert.equal(gm.name, "Jinshizou", "authoritative English weapon name");
+  assert.equal(CJK.test(gm.name), false, "weapon name has no Chinese characters");
+  assert.equal(gm.id, "jinshizou", "internal weapon id unchanged");
 });

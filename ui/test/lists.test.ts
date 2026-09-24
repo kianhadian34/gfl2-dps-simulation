@@ -42,7 +42,7 @@ test("unit: buildCharacterMetaView maps optional member/key metadata", () => {
       name: "Qiongjiu",
       mobility: 5,
       fixedKeys: [
-        { id: "qiongjiu_fk1_concentration", name: "Concentration (凝神)", description: "Gains 3 Confectance Index at the start of battle." },
+        { id: "qiongjiu_fk1_concentration", name: "Concentration", description: "Gains 3 Confectance Index at the start of battle." },
         { id: "qiongjiu_fk3_targeted_training", name: "Targeted Training", description: "While in Support Mode, applies Defense Down II to the target for 1 turn before the allied unit's attack." },
       ],
       expansionKey: { id: "qiongjiu_ruined_gem", name: "Ruined Gem" },
@@ -53,7 +53,7 @@ test("unit: buildCharacterMetaView maps optional member/key metadata", () => {
       name: "Qiongjiu",
       mobility: 5,
       fixedKeys: [
-        { id: "qiongjiu_fk1_concentration", name: "Concentration (凝神)", number: 1, description: "Gains 3 Confectance Index at the start of battle." },
+        { id: "qiongjiu_fk1_concentration", name: "Concentration", number: 1, description: "Gains 3 Confectance Index at the start of battle." },
         { id: "qiongjiu_fk3_targeted_training", name: "Targeted Training", number: 3, description: "While in Support Mode, applies Defense Down II to the target for 1 turn before the allied unit's attack." },
       ],
       expansionKey: { id: "qiongjiu_ruined_gem", name: "Ruined Gem" },

@@ -14,7 +14,7 @@ const FIXED_IDS = [
 
 test("Qiongjiu records all six Fixed Keys with panel names and descriptions", () => {
   assert.deepEqual(QIONGJIU.fixedKeys.map((k) => k.id), FIXED_IDS);
-  assert.equal(QIONGJIU.fixedKeys[0].name, "Concentration (凝神)");
+  assert.equal(QIONGJIU.fixedKeys[0].name, "Concentration");
   assert.equal(QIONGJIU.fixedKeys[1].name, "Efficient Planning");
   assert.equal(QIONGJIU.fixedKeys[2].name, "Targeted Training");
   assert.equal(QIONGJIU.fixedKeys[3].name, "Point of Vulnerability");

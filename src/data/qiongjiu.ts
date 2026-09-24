@@ -359,7 +359,7 @@ export const QIONGJIU: CharacterDef = {
   fixedKeys: [
     {
       id: "qiongjiu_fk1_concentration",
-      name: "Concentration (凝神)",
+      name: "Concentration",
       verified: true,
       battleStartEffects: [{ resource: "confectance", amount: 3 }],
       description: "Gains 3 Confectance Index at the start of battle.",
