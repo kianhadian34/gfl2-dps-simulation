@@ -176,7 +176,7 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .fixed-key-card .asset-thumb { margin-right: 0; }
 .fixed-key-card-name { display: flex; flex-direction: column; margin-top: 6px; line-height: 1.25; }
 .fixed-key-card-head { color: var(--text); font-weight: 600; }
-.fixed-key-card-rest { color: var(--muted); }
+.fixed-key-card-rest { color: var(--text); font-weight: 600; }
 .fixed-key-card:hover .tooltip,
 .fixed-key-card:focus-within .tooltip { display: block; }
 .fixed-key-card .tooltip .tooltip-row { display: block; color: var(--muted); }

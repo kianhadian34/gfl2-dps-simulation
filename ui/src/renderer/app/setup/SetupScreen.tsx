@@ -360,7 +360,6 @@ export function SetupScreen(props: {
                                   </span>
                                   {k.description ? (
                                     <span className="tooltip">
-                                      <b>{fixedKeyLabel(k)}</b>
                                       <span className="tooltip-row">{k.description}</span>
                                     </span>
                                   ) : null}

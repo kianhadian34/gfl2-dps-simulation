@@ -47,6 +47,12 @@ test("the card grid is in place and uses the resolver — no hardcoded asset pat
   assert.ok(s.includes('<input\n                                    type="checkbox"'), "real checkbox retained inside each card (keyboard accessible)");
   assert.ok(s.includes("toggleFixedKey(props.setup, c.id, k.id)"), "selection still flows through toggleFixedKey (3-key cap preserved)");
   assert.ok(s.includes("fixedKeyLabel(k)"), "authoritative label text used");
+  assert.ok(!s.includes("<b>{fixedKeyLabel(k)}</b>"), "key number/name is NOT repeated inside the tooltip — the card label is the single source");
+  const css = readFileSync(srcFile("../../src/renderer/styles.css"), "utf8");
+  assert.ok(
+    css.includes(".fixed-key-card-rest { color: var(--text); font-weight: 600; }"),
+    "key name uses the same bold/color as the key number (head/rest uniform)",
+  );
   assert.ok(!s.includes('src="/assets'), "no hardcoded asset URL in the component");
   for (const name of ["Concentration", "Efficient Planning", "Targeted Training", "Point of Vulnerability", "Necessary Adjustments", "Steadiness"]) {
     assert.ok(!s.includes(`"${name}"`), `key name "${name}" is NOT hardcoded in the component (comes from the engine data)`);
