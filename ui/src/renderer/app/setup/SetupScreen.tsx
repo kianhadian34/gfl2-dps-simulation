@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useSession } from "../../../shared/use-sim.js";
 import {
   buildScenario,
@@ -24,9 +24,11 @@ import {
 } from "../../../shared/setup.js";
 import type { ScenarioView, WeaponView, CommonKeyListResult, CharacterMetaView } from "../../../shared/engine-types.js";
 import { fixedKeyLabel } from "../../../shared/lists.js";
+import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset } from "../../../shared/assets.js";
+import { AssetThumb } from "./AssetThumb.js";
 
 /**
- * SIMULATION SETUP — choose the target (dummy), pick characters from the engine registry,
+ * SIMULATION SETUP â€” choose the target (dummy), pick characters from the engine registry,
  * configure the fixed rotation and MVP settings, then Start Simulation.
  */
 export function SetupScreen(props: {
@@ -40,7 +42,7 @@ export function SetupScreen(props: {
   const [charsLoaded, setCharsLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  // Engine-sourced equipment option lists (IPC — never duplicated in the renderer).
+  // Engine-sourced equipment option lists (IPC â€” never duplicated in the renderer).
   const [weapons, setWeapons] = useState<WeaponView[]>([]);
   const [commonKeys, setCommonKeys] = useState<CommonKeyListResult | null>(null);
   const [meta, setMeta] = useState<Record<string, CharacterMetaView>>({});
@@ -103,16 +105,16 @@ export function SetupScreen(props: {
   return (
     <div className="app setup">
       <div className="toolbar">
-        <span className="muted">GFL2: Exilium DPS Simulator — Simulation Setup</span>
+        <span className="muted">GFL2: Exilium DPS Simulator â€” Simulation Setup</span>
         <span className="spacer" />
-        <button onClick={props.onOpenScenario}>Load scenario JSON…</button>
+        <button onClick={props.onOpenScenario}>Load scenario JSONâ€¦</button>
       </div>
       <div className="content setup-grid">
         <section>
           <h2>Simulation target</h2>
-          <p className="muted">Training Dummy — stationary, no cover (MVP).</p>
+          <p className="muted">Training Dummy â€” stationary, no cover (MVP).</p>
           {/* preventDefault: an implicit form submission (Enter in a field) must NOT reload the
-              renderer — a reload silently resets the entire Setup state (this caused the
+              renderer â€” a reload silently resets the entire Setup state (this caused the
               "configured 7 turns" run to execute with the DEFAULT 2 turns). */}
           <form className="form" onSubmit={(e) => e.preventDefault()}>
             <label>HP <input type="number" value={props.setup.dummy.hp} onChange={(e) => set({ dummy: { ...props.setup.dummy, hp: Number(e.target.value) } })} /></label>
@@ -163,12 +165,13 @@ export function SetupScreen(props: {
         <section>
           <h2>Characters (engine registry)</h2>
           {!charsLoaded ? (
-            <p className="muted">Loading…</p>
+            <p className="muted">Loadingâ€¦</p>
           ) : (
             <div className="form">
               {props.setup.characters.map((c) => (
                 <label key={c.id} className="inline">
                   <input type="checkbox" checked={c.selected} onChange={(e) => toggleChar(c.id, e.target.checked)} />
+                  <AssetThumb asset={portraitAsset(c.id)} alt={c.name} size={28} />
                   {c.name} <span className="muted">({c.id})</span>
                 </label>
               ))}
@@ -203,7 +206,7 @@ export function SetupScreen(props: {
                       type="button"
                       onClick={() => set({ rotations: { ...props.setup.rotations, [c.id]: (props.setup.rotations[c.id] ?? []).slice(0, -1) } })}
                     >
-                      − remove
+                      âˆ’ remove
                     </button>
                     <button type="button" onClick={() => set({ rotations: { ...props.setup.rotations, [c.id]: [] } })}>
                       clear
@@ -218,7 +221,7 @@ export function SetupScreen(props: {
           <h2>Doll equipment (engine-sourced options)</h2>
           {props.setup.debug.enabled && (
             <p className="muted">
-              <b>DEBUG MODE</b> — every equipment selector below is OPTIONAL (no weapon, 0 keys allowed). The normal mode
+              <b>DEBUG MODE</b> â€” every equipment selector below is OPTIONAL (no weapon, 0 keys allowed). The normal mode
               requirements apply only when Debug Mode is off.
             </p>
           )}
@@ -235,13 +238,13 @@ export function SetupScreen(props: {
                 return (
                   <div key={c.id} className="rot-builder">
                     <div className="mname">
-                      {c.name} <span className="muted">equipment — engine-sourced, engine-validated</span>
+                      {c.name} <span className="muted">equipment â€” engine-sourced, engine-validated</span>
                     </div>
 
                     <div className="form">
                       <fieldset>
                         <legend>
-                          Fixed Keys ({equ.equippedFixedKeys?.length ?? 0}/{MAX_FIXED_KEYS}) — 0–3
+                          Fixed Keys ({equ.equippedFixedKeys?.length ?? 0}/{MAX_FIXED_KEYS}) â€” 0â€“3
                         </legend>
                         {(m?.fixedKeys ?? []).length === 0 ? (
                           <span className="muted">no Fixed Keys available for this doll</span>
@@ -255,6 +258,7 @@ export function SetupScreen(props: {
                                 checked={(equ.equippedFixedKeys ?? []).includes(k.id)}
                                 onChange={() => props.onChange(toggleFixedKey(props.setup, c.id, k.id))}
                               />
+                              <AssetThumb asset={fixedKeyAsset(k.id)} alt={k.name} size={22} />
                               {fixedKeyLabel(k)}
                               {k.description ? (
                                 <span className="tooltip">
@@ -277,14 +281,17 @@ export function SetupScreen(props: {
                             props.onChange(setWeapon(props.setup, c.id, id, w?.calibrations ?? []));
                           }}
                         >
-                          <option value="">— no weapon —</option>
+                          <option value="">â€” no weapon â€”</option>
                           {weapons.map((w) => (
+                            // Player-facing name ONLY (never the internal id): e.g. "Golden Melody".
                             <option key={w.id} value={w.id}>
-                              {w.name} ({w.id})
+                              {w.name}
                             </option>
                           ))}
                         </select>
+                        {equ.weaponId !== undefined ? <AssetThumb asset={weaponAsset(equ.weaponId)} alt={weapon?.name ?? "weapon"} size={22} /> : null}
                       </label>
+                      <p className="muted">Weapon ids are internal only â€” never shown to the player (display name: {weapon?.name ?? "â€”"}).</p>
 
                       {calibrations.length > 0 ? (
                         <label>
@@ -297,7 +304,7 @@ export function SetupScreen(props: {
                               )
                             }
                           >
-                            <option value="">— none —</option>
+                            <option value="">â€” none â€”</option>
                             {calibrations.map((lv) => (
                               <option key={lv} value={lv}>
                                 C{lv}
@@ -311,7 +318,7 @@ export function SetupScreen(props: {
 
                       <fieldset>
                         <legend>
-                          Common Keys ({equ.commonKeyIds?.length ?? 0}/{MAX_COMMON_KEYS_UI}) — engine 3-slot max
+                          Common Keys ({equ.commonKeyIds?.length ?? 0}/{MAX_COMMON_KEYS_UI}) â€” engine 3-slot max
                         </legend>
                         {(commonKeys?.items ?? []).length === 0 ? (
                           <span className="muted">no Common Keys available (IPC list empty)</span>
@@ -323,41 +330,44 @@ export function SetupScreen(props: {
                                 checked={(equ.commonKeyIds ?? []).includes(k.id)}
                                 onChange={() => props.onChange(toggleCommonKey(props.setup, c.id, k.id, commonKeys?.maxCommonKeys ?? MAX_COMMON_KEYS_UI))}
                               />
+                              <AssetThumb asset={commonKeyAsset(k.id)} alt={k.name} size={22} />
                               {k.name}
-                              {k.characterScope ? <span className="muted"> · {k.characterScope}</span> : null}
+                              {k.characterScope ? <span className="muted"> Â· {k.characterScope}</span> : null}
                             </label>
                           ))
                         )}
                       </fieldset>
 
                       <label>
-                        Affinity Key <span className="muted">(exactly 1 — engine `affinityKeyId`)</span>
+                        Affinity Key <span className="muted">(exactly 1 â€” engine `affinityKeyId`)</span>
                         <select
                           value={equ.affinityKeyId ?? ""}
                           onChange={(e) => props.onChange(setAffinityKey(props.setup, c.id, e.target.value === "" ? undefined : e.target.value))}
                         >
-                          <option value="">— none —</option>
+                          <option value="">â€” none â€”</option>
                           {m?.affinityKey ? (
                             <option value={m.affinityKey.id}>
                               {m.affinityKey.name} ({m.affinityKey.id})
                             </option>
                           ) : null}
                         </select>
+                        {equ.affinityKeyId !== undefined ? <AssetThumb asset={affinityKeyAsset(equ.affinityKeyId)} alt={m?.affinityKey?.name ?? "affinity key"} size={22} /> : null}
                       </label>
 
                       <label>
-                        Expansion Key <span className="muted">(engine contract: single `expansionKeyId` — 0–1)</span>
+                        Expansion Key <span className="muted">(engine contract: single `expansionKeyId` â€” 0â€“1)</span>
                         <select
                           value={equ.expansionKeyId ?? ""}
                           onChange={(e) => props.onChange(setExpansionKey(props.setup, c.id, e.target.value === "" ? undefined : e.target.value))}
                         >
-                          <option value="">— none —</option>
+                          <option value="">â€” none â€”</option>
                           {m?.expansionKey ? (
                             <option value={m.expansionKey.id}>
                               {m.expansionKey.name} ({m.expansionKey.id})
                             </option>
                           ) : null}
                         </select>
+                        {equ.expansionKeyId !== undefined ? <AssetThumb asset={expansionKeyAsset(equ.expansionKeyId)} alt={m?.expansionKey?.name ?? "expansion key"} size={22} /> : null}
                       </label>
                     </div>
                   </div>
@@ -365,25 +375,25 @@ export function SetupScreen(props: {
               })
           )}
           <p className="muted">
-            The engine remains authoritative: it validates every id, the 3-slot Common Key maximum, C1–C6 calibrations, and
-            calibration-without-weapon. Local caps (0–3 Keys, exactly-1 weapon/affinity once equipment is engaged) are UI-only.
+            The engine remains authoritative: it validates every id, the 3-slot Common Key maximum, C1â€“C6 calibrations, and
+            calibration-without-weapon. Local caps (0â€“3 Keys, exactly-1 weapon/affinity once equipment is engaged) are UI-only.
           </p>
         </section>
 
         <section>
           <h2>Simulation settings</h2>
-          {/* preventDefault — see the note on the target form: implicit submission reloads
+          {/* preventDefault â€” see the note on the target form: implicit submission reloads
               the renderer and discards the configured state. */}
           <form className="form" onSubmit={(e) => e.preventDefault()}>
             <label>
-              Turns (1–7) <input type="number" min={1} max={7} value={props.setup.turns} onChange={(e) => set({ turns: Number(e.target.value) })} />
+              Turns (1â€“7) <input type="number" min={1} max={7} value={props.setup.turns} onChange={(e) => set({ turns: Number(e.target.value) })} />
             </label>
             <label>
               Seed <input type="number" value={props.setup.seed} onChange={(e) => set({ seed: Number(e.target.value) })} />
             </label>
             <label className="inline">
               <input type="checkbox" checked={props.setup.gridEnabled} onChange={(e) => set({ gridEnabled: e.target.checked })} />
-              Enable 15×15 grid (sample layout)
+              Enable 15Ã—15 grid (sample layout)
             </label>
           </form>
         </section>
@@ -393,7 +403,7 @@ export function SetupScreen(props: {
           <form className="form" onSubmit={(e) => e.preventDefault()}>
             <label className="inline">
               <input type="checkbox" checked={props.setup.debug.enabled} onChange={(e) => props.onChange(setDebugEnabled(props.setup, e.target.checked))} />
-              <b>Enable DEBUG MODE</b> <span className="muted">— skips the normal equipment requirements; base stats below replace the Doll's own</span>
+              <b>Enable DEBUG MODE</b> <span className="muted">â€” skips the normal equipment requirements; base stats below replace the Doll's own</span>
             </label>
           </form>
           {props.setup.debug.enabled &&
@@ -403,7 +413,7 @@ export function SetupScreen(props: {
               return (
                 <div key={c.id} className="rot-builder">
                   <div className="mname">
-                    {c.name} <span className="muted">BASE STATS OVERRIDE — replaces the Doll's own base stats (before weapon/equipment)</span>
+                    {c.name} <span className="muted">BASE STATS OVERRIDE â€” replaces the Doll's own base stats (before weapon/equipment)</span>
                   </div>
                   <div className="form">
                     {DEBUG_STAT_KEYS.map((key) => {
@@ -435,7 +445,7 @@ export function SetupScreen(props: {
       <div className="footer">
         {(formError || props.error) && <div className="error">{formError ?? props.error}</div>}
         <button className="primary" disabled={busy} onClick={start}>
-          {busy ? "Running…" : "Start Simulation"}
+          {busy ? "Runningâ€¦" : "Start Simulation"}
         </button>
       </div>
     </div>
