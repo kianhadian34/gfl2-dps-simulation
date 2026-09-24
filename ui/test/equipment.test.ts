@@ -139,6 +139,25 @@ test("equipment: affinity level is stored and carried verbatim into the scenario
   assert.equal(equipmentOf(s.characters[0]).affinityLevel, undefined, "clearing the key clears the level");
 });
 
+test("equipment: calibration and affinity level are REQUIRED once their key/weapon is equipped (debug mode exempt)", () => {
+  let s = setupWith();
+  s = setWeapon(s, "qiongjiu", "jinshizou", [1, 2, 3, 4, 5, 6]);
+  const noCal = equipmentErrors(s);
+  assert.ok(noCal.some((e) => e.includes("weapon calibration level")), "weapon equipped without calibration → blocked");
+  s = setCalibration(s, "qiongjiu", 1);
+  assert.ok(!equipmentErrors(s).some((e) => e.includes("weapon calibration level")), "calibration chosen → allowed");
+
+  s = setAffinityKey(s, "qiongjiu", "qiongjiu_affinity_warm_as_jade");
+  const noLv = equipmentErrors(s);
+  assert.ok(noLv.some((e) => e.includes("affinity level")), "affinity key equipped without level → blocked");
+  s = setAffinityLevel(s, "qiongjiu", 9);
+  assert.ok(!equipmentErrors(s).some((e) => e.includes("affinity level")), "affinity level chosen → allowed");
+
+  // DEBUG MODE: the normal requirements do not apply — an equipped weapon/key without level is fine.
+  const dbg: SetupState = { ...s, debug: { enabled: true, baseStats: {} } };
+  assert.deepEqual(equipmentErrors(dbg), [], "debug mode relaxes the new required-level rules too");
+});
+
 test("equipment: 0 Common Keys is valid", () => {
   const sc: ScenarioView = buildScenario(setupWith());
   assert.equal(sc.team[0].commonKeyIds, undefined, "no commonKeyIds emitted for an unconfigured doll");
@@ -280,7 +299,7 @@ test("equipment: a fully-configured doll is ACCEPTED by the real engine (weapon 
         id: "qiongjiu",
         name: "Qiongjiu",
         selected: true,
-        equipment: { weaponId: "jinshizou", calibrationLevel: 1, commonKeyIds: [KEY_SN], equippedFixedKeys: [FK_CONCENTRATION], affinityKeyId: AFF_WARM_AS_JADE },
+        equipment: { weaponId: "jinshizou", calibrationLevel: 1, commonKeyIds: [KEY_SN], equippedFixedKeys: [FK_CONCENTRATION], affinityKeyId: AFF_WARM_AS_JADE, affinityLevel: 9 },
       },
     ],
   };

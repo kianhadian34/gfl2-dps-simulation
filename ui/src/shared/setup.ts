@@ -367,6 +367,12 @@ export function equipmentErrors(state: SetupState): string[] {
     if (e.affinityKeyId === undefined) {
       errors.push(`${c.name}: select an Affinity Key (equipment is partially configured).`);
     }
+    if (e.weaponId !== undefined && e.calibrationLevel === undefined) {
+      errors.push(`${c.name}: select a weapon calibration level (C1–C6).`);
+    }
+    if (e.affinityKeyId !== undefined && e.affinityLevel === undefined) {
+      errors.push(`${c.name}: select an affinity level for the equipped key.`);
+    }
     if (e.calibrationLevel !== undefined && (e.weaponId === undefined || e.calibrationLevel < MIN_CALIBRATION_LEVEL || e.calibrationLevel > MAX_CALIBRATION_LEVEL)) {
       errors.push(`${c.name}: calibration requires an equipped weapon and a C1–C6 level.`);
     }
