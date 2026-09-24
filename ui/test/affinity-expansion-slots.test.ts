@@ -29,7 +29,7 @@ test("affinity key: badge slot + picker reuse the common-key card pattern and se
   assert.ok(!s.includes("e.target.value === \"\" ? undefined : e.target.value"), "legacy select forms removed");
 });
 
-test("affinity level: picker offers the exact recorded levels (data-driven) and the badge filters to the chosen level", () => {
+test("affinity level: picker offers the exact recorded levels (data-driven), the badge filters to the chosen level, and the slot shows inline pills for the SIGNATURE key", () => {
   const s = readFileSync(srcFile("../../src/renderer/app/setup/SetupScreen.tsx"), "utf8");
   assert.ok(s.includes("affinity-level-pill"), "affinity level pills exist");
   assert.ok(s.includes("Object.keys(affinityKey.levels)"), "levels come from the engine data (never hardcoded)");
@@ -37,6 +37,10 @@ test("affinity level: picker offers the exact recorded levels (data-driven) and 
   assert.ok(s.includes("Level {lv}"), "pills label the level data-driven");
   assert.ok(s.includes("level={equ.affinityLevel}") && s.includes("affinityKeyStatLines(k, level)"), "badge/tooltip show ONLY the chosen level's stats");
   assert.ok(s.includes("equ.affinityLevel === lv ? \" is-selected\""), "chosen level highlighted");
+  assert.ok(s.includes('className="affinity-levels" onClick={(e) => e.stopPropagation()}'), "level pills are ALSO rendered next to the selected key in the slot (quick change)");
+  assert.ok(s.includes('role="button"') && s.includes("onKeyDown"), "slot pills are accessible inside the slot button");
+  const sig = s.match(/equ\.affinityKeyId === affinityKey\.id/g) ?? [];
+  assert.ok(sig.length >= 2, "the level selector appears ONLY when the signature affinity key is equipped (slot + picker)");
 });
 
 test("affinity/expansion data actually reaches the UI: session.ts IPC passes description/levels/genericBonus", () => {

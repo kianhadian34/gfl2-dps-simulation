@@ -608,7 +608,35 @@ export function SetupScreen(props: {
                                 onClick={() => setAffinityPickerFor(c.id)}
                               >
                                 {equ.affinityKeyId ? (
-                                  <AffinityKeyBadge k={affinityKey} size={64} level={equ.affinityLevel} />
+                                  <>
+                                    <AffinityKeyBadge k={affinityKey} size={64} level={equ.affinityLevel} />
+                                    {equ.affinityKeyId === affinityKey.id ? (
+                                      <span className="affinity-levels" onClick={(e) => e.stopPropagation()}>
+                                        <span className="affinity-levels-label">Affinity Level</span>
+                                        {(affinityKey.levels ? Object.keys(affinityKey.levels).map(Number).sort((a, b) => a - b) : []).map((lv) => (
+                                          <span
+                                            key={lv}
+                                            role="button"
+                                            tabIndex={0}
+                                            className={`affinity-level-pill${equ.affinityLevel === lv ? " is-selected" : ""}`}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              props.onChange(setAffinityLevel(props.setup, c.id, lv));
+                                            }}
+                                            onKeyDown={(e) => {
+                                              if (e.key === "Enter" || e.key === " ") {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                props.onChange(setAffinityLevel(props.setup, c.id, lv));
+                                              }
+                                            }}
+                                          >
+                                            Level {lv}
+                                          </span>
+                                        ))}
+                                      </span>
+                                    ) : null}
+                                  </>
                                 ) : (
                                   <span className="common-key-slot-plus">+</span>
                                 )}
@@ -638,6 +666,7 @@ export function SetupScreen(props: {
                                   >
                                     <AffinityKeyBadge k={affinityKey} size={56} />
                                   </button>
+                                {equ.affinityKeyId === affinityKey.id ? (
                                 <div className="affinity-levels">
                                   <span className="affinity-levels-label">Affinity Level</span>
                                   {(affinityKey.levels ? Object.keys(affinityKey.levels).map(Number).sort((a, b) => a - b) : []).map((lv) => (
@@ -651,6 +680,7 @@ export function SetupScreen(props: {
                                     </button>
                                   ))}
                                 </div>
+                              ) : null}
                               </div>
                                 <button type="button" className="common-key-picker-close" onClick={() => setAffinityPickerFor(null)}>
                                   Close
