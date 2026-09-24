@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -19,7 +19,7 @@ import { dirname, join } from "node:path";
  */
 
 const srcFile = (rel: string): string => join(dirname(fileURLToPath(import.meta.url)), rel);
-const MOJIBAKE = /\u00E2\u20AC|\u00C3[\u2014\u00D7]/;
+const MOJIBAKE = /\u00E2[\u20AC\u02C6]|\u00C2\u00B7|\u00C3[\u2014\u00D7\u00A0-\u00FF]/;
 
 test("encoding: representative UI strings are correct UTF-8 in SetupScreen.tsx", () => {
   const s = readFileSync(srcFile("../../src/renderer/app/setup/SetupScreen.tsx"), "utf8");
@@ -29,6 +29,14 @@ test("encoding: representative UI strings are correct UTF-8 in SetupScreen.tsx",
   assert.ok(s.includes("Turns (1\u20137)"), "en dash – range");
   assert.ok(s.includes("Enable 15\u00D715 grid"), "multiplication sign ×");
   assert.ok(s.includes("\u2014 skips the normal equipment requirements"), "em dash — in the DEBUG MODE hint");
+});
+
+test("encoding: the Rotation remove label uses the intended minus sign (no minus mojibake)", () => {
+  const s = readFileSync(srcFile("../../src/renderer/app/setup/SetupScreen.tsx"), "utf8");
+  assert.ok(s.includes("\u2212 remove"), "rotation remove uses − (U+2212)");
+  assert.ok(!s.includes("\u00E2\u02C6\u2019"), "the double-encoded minus is gone");
+  assert.ok(!s.includes("\u00C2\u00B7"), "the double-encoded middle dot is gone (· is U+00B7)");
+  assert.ok(s.includes("\u00B7 {k.characterScope"), "common-key scope separator is the real ·");
 });
 
 test("encoding: no mojibake tokens remain in the renderer sources", () => {
@@ -42,4 +50,23 @@ test("encoding: no mojibake tokens remain in the renderer sources", () => {
 test("encoding: the asset test sources are also clean UTF-8 (no mojibake in test fixtures/comments)", () => {
   const t = readFileSync(srcFile("../../test/assets.test.ts"), "utf8");
   assert.equal(MOJIBAKE.test(t), false);
+});
+
+test("encoding: FULL-TREE scan — zero mojibake tokens under ui/src/renderer, ui/src/shared and ui/test", () => {
+  const roots = [srcFile("../../src/renderer"), srcFile("../../src/shared"), srcFile("../../test")];
+  const files: string[] = [];
+  const walk = (dir: string): void => {
+    for (const e of readdirSync(dir)) {
+      const p = join(dir, e);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (/\.(ts|tsx|html|css)$/.test(e)) files.push(p);
+    }
+  };
+  roots.forEach(walk);
+  let bad = "";
+  for (const f of files) {
+    const t = readFileSync(f, "utf8");
+    if (MOJIBAKE.test(t)) bad += `\n  ${f.replace(/.*[/\\](src[/\\]|test[/\\])/, "$1")}`;
+  }
+  assert.equal(bad, "", `mojibake tokens anywhere in the UI sources:${bad}`);
 });

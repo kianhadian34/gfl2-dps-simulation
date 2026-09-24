@@ -223,7 +223,7 @@ export function SetupScreen(props: {
                       type="button"
                       onClick={() => set({ rotations: { ...props.setup.rotations, [c.id]: (props.setup.rotations[c.id] ?? []).slice(0, -1) } })}
                     >
-                      âˆ’ remove
+                      − remove
                     </button>
                     <button type="button" onClick={() => set({ rotations: { ...props.setup.rotations, [c.id]: [] } })}>
                       clear
@@ -423,7 +423,7 @@ export function SetupScreen(props: {
                               />
                               <AssetThumb asset={commonKeyAsset(k.id)} alt={k.name} size={22} />
                               {k.name}
-                              {k.characterScope ? <span className="muted"> Â· {k.characterScope}</span> : null}
+                              {k.characterScope ? <span className="muted"> · {k.characterScope}</span> : null}
                             </label>
                           ))
                         )}
