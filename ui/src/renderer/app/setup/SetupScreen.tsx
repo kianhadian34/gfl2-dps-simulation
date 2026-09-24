@@ -371,7 +371,11 @@ export function SetupScreen(props: {
                         )}
                       </fieldset>
 
-                      <div className="weapon-slot-section">
+                      <fieldset>
+                        <legend>
+                          Weapon <span className="muted">(exactly 1 — engine `weaponId`)</span>
+                        </legend>
+                        <div className="weapon-slot-section">
                         <div className="weapon-slot-wrap">
                           {equ.weaponId === undefined ? (
                             <button type="button" className="weapon-slot is-empty" onClick={() => setWeaponPickerFor(c.id)} aria-label="Select weapon">
@@ -480,7 +484,8 @@ export function SetupScreen(props: {
                             </button>
                           </div>
                         )}
-                      </div>
+                        </div>
+                      </fieldset>
 
                       <fieldset>
                         <legend>

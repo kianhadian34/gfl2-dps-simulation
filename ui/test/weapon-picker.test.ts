@@ -94,6 +94,17 @@ test("picker cards still give the wide weapon artwork a large contain box; slot 
   assert.ok(/width: 220px/.test(cardBlock), "picker cards widened to 220px");
 });
 
+test("weapon: section uses the same fieldset wrapper structure as the other equipment sections", () => {
+  const s = readFileSync(srcFile("../../src/renderer/app/setup/SetupScreen.tsx"), "utf8");
+  const fk = s.indexOf("<fieldset>");
+  assert.ok(fk !== -1 && s.indexOf('Weapon <span className="muted">(exactly 1 — engine `weaponId`)</span>') > fk, "dedicated WEAPON legend inside a fieldset");
+  assert.ok(s.includes('<div className="weapon-slot-section">'), "existing weapon slot section kept inside the wrapper");
+  const wpStart = s.indexOf("weapon-slot-section");
+  const wpClose = s.indexOf("</fieldset>", wpStart);
+  const affLegend = s.indexOf("Affinity Key", wpStart);
+  assert.ok(wpClose !== -1 && affLegend > wpClose, "weapon wrapper closes before the next section");
+});
+
 test("WeaponView exposes subStats (Attack Boost) from authoritative engine data", async () => {
   const { buildWeaponViews } = await import("../src/shared/lists.js");
   const w = await import(new URL("../../../dist/data/weapons.js", import.meta.url).href);
