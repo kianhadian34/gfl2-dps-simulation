@@ -249,25 +249,40 @@ export function SetupScreen(props: {
                         {(m?.fixedKeys ?? []).length === 0 ? (
                           <span className="muted">no Fixed Keys available for this doll</span>
                         ) : (
-                          (m?.fixedKeys ?? []).map((k) => (
-                            // Presentation: "Fixed Key <N> - <Name>" (N + description are engine-sourced);
-                            // tooltip = the authoritative in-game description (KeyDef.description).
-                            <label key={k.id} className="inline fixed-key-toggle" aria-label={`${fixedKeyLabel(k)}${k.description ? `. ${k.description}` : ""}`}>
-                              <input
-                                type="checkbox"
-                                checked={(equ.equippedFixedKeys ?? []).includes(k.id)}
-                                onChange={() => props.onChange(toggleFixedKey(props.setup, c.id, k.id))}
-                              />
-                              <AssetThumb asset={fixedKeyAsset(k.id)} alt={k.name} size={22} />
-                              {fixedKeyLabel(k)}
-                              {k.description ? (
-                                <span className="tooltip">
-                                  <b>{fixedKeyLabel(k)}</b>
-                                  <span className="tooltip-row">{k.description}</span>
-                                </span>
-                              ) : null}
-                            </label>
-                          ))
+                          <div className="fixed-key-cards">
+                            {(m?.fixedKeys ?? []).map((k) => {
+                              const checked = (equ.equippedFixedKeys ?? []).includes(k.id);
+                              // Presentation: "Fixed Key <N> - <Name>" (N + name are engine-sourced);
+                              // tooltip = the authoritative in-game description (KeyDef.description).
+                              // The FULL label is shown (e.g. "Fixed Key 1 - Concentration"), split
+                              // over two card rows for readability — never a renamed/re-written name.
+                              const [head = "", ...rest] = fixedKeyLabel(k).split(" - ");
+                              return (
+                                <label
+                                  key={k.id}
+                                  className={`fixed-key-card${checked ? " is-selected" : ""}`}
+                                  aria-label={`${fixedKeyLabel(k)} (${checked ? "selected" : "not selected"})${k.description ? `. ${k.description}` : ""}`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => props.onChange(toggleFixedKey(props.setup, c.id, k.id))}
+                                  />
+                                  <AssetThumb asset={fixedKeyAsset(k.id)} alt={k.name} size={110} />
+                                  <span className="fixed-key-card-name">
+                                    <span className="fixed-key-card-head">{head}</span>
+                                    {rest.length > 0 ? <span className="fixed-key-card-rest">{rest.join(" - ")}</span> : null}
+                                  </span>
+                                  {k.description ? (
+                                    <span className="tooltip">
+                                      <b>{fixedKeyLabel(k)}</b>
+                                      <span className="tooltip-row">{k.description}</span>
+                                    </span>
+                                  ) : null}
+                                </label>
+                              );
+                            })}
+                          </div>
                         )}
                       </fieldset>
 
