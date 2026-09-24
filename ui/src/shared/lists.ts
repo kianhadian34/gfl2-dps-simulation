@@ -40,6 +40,7 @@ export interface CharacterMetaSource {
   id: string;
   name: string;
   mobility?: number;
+  base?: { atk: number; hp: number; def: number; stability: number; critRate: number; critDmg: number };
   fixedKeys?: Array<{ id: string; name: string; description?: string }>;
   expansionKey?: { id: string; name: string };
   affinityKey?: { id: string; name: string };
@@ -87,6 +88,7 @@ export function buildCharacterMetaView(def: CharacterMetaSource): CharacterMetaV
     id: def.id,
     name: def.name,
     ...(def.mobility !== undefined ? { mobility: def.mobility } : {}),
+    ...(def.base !== undefined ? { base: { ...def.base } } : {}),
     ...(def.fixedKeys !== undefined
       ? {
           fixedKeys: def.fixedKeys.map((k) => ({

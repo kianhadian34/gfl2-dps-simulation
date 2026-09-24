@@ -4,8 +4,11 @@ import {
   buildScenario,
   equipmentErrors,
   equipmentOf,
+  seedDebugBaseStats,
   setAffinityKey,
   setCalibration,
+  setDebugBaseStat,
+  setDebugEnabled,
   setExpansionKey,
   setWeapon,
   toggleCommonKey,
@@ -15,6 +18,7 @@ import {
   ROTATION_SLOTS,
   MAX_FIXED_KEYS,
   MAX_COMMON_KEYS_UI,
+  DEBUG_STAT_KEYS,
   type RotationSlot,
   type SetupState,
 } from "../../../shared/setup.js";
@@ -48,7 +52,15 @@ export function SetupScreen(props: {
         setWeapons(wl);
         setCommonKeys(ckl);
         setMeta(Object.fromEntries(chars.map((c) => [c.id, c])));
-        props.onChange({ ...props.setup, characters: chars.map((c) => ({ id: c.id, name: c.name, selected: false, ...(c.mobility !== undefined ? { mobility: c.mobility } : {}) })) });
+        // Seed DEBUG MODE base stats from the characters' REAL CharacterDef.base (engine-sourced).
+        const baseById: Record<string, { atk: number; hp: number; def: number; stability: number; critRate: number; critDmg: number }> = {};
+        for (const c of chars) if (c.base) baseById[c.id] = c.base;
+        props.onChange(
+          seedDebugBaseStats(
+            { ...props.setup, characters: chars.map((c) => ({ id: c.id, name: c.name, selected: false, ...(c.mobility !== undefined ? { mobility: c.mobility } : {}) })) },
+            baseById,
+          ),
+        );
         setCharsLoaded(true);
       })
       .catch((e: unknown) => setFormError(String(e)));
@@ -204,6 +216,12 @@ export function SetupScreen(props: {
 
         <section>
           <h2>Doll equipment (engine-sourced options)</h2>
+          {props.setup.debug.enabled && (
+            <p className="muted">
+              <b>DEBUG MODE</b> — every equipment selector below is OPTIONAL (no weapon, 0 keys allowed). The normal mode
+              requirements apply only when Debug Mode is off.
+            </p>
+          )}
           {props.setup.characters.filter((c) => c.selected).length === 0 ? (
             <p className="muted">Select a character to configure its equipment.</p>
           ) : (
@@ -368,6 +386,50 @@ export function SetupScreen(props: {
               Enable 15×15 grid (sample layout)
             </label>
           </form>
+        </section>
+
+        <section>
+          <h2>DEBUG MODE (controlled testing)</h2>
+          <form className="form" onSubmit={(e) => e.preventDefault()}>
+            <label className="inline">
+              <input type="checkbox" checked={props.setup.debug.enabled} onChange={(e) => props.onChange(setDebugEnabled(props.setup, e.target.checked))} />
+              <b>Enable DEBUG MODE</b> <span className="muted">— skips the normal equipment requirements; base stats below replace the Doll's own</span>
+            </label>
+          </form>
+          {props.setup.debug.enabled &&
+            props.setup.characters.filter((c) => c.selected).map((c) => {
+              const cfg = props.setup.debug.baseStats[c.id];
+              const base = cfg?.values ?? (meta[c.id]?.base as (typeof cfg)["values"] | undefined);
+              return (
+                <div key={c.id} className="rot-builder">
+                  <div className="mname">
+                    {c.name} <span className="muted">BASE STATS OVERRIDE — replaces the Doll's own base stats (before weapon/equipment)</span>
+                  </div>
+                  <div className="form">
+                    {DEBUG_STAT_KEYS.map((key) => {
+                      const label = key === "critRate" || key === "critDmg" ? `Crit ${key === "critRate" ? "Rate" : "DMG"} (${key})` : key === "atk" ? "ATK" : key.toUpperCase();
+                      return (
+                        <label key={key}>
+                          {label}
+                          <input
+                            type="number"
+                            step="any"
+                            min={0}
+                            value={base ? String(base[key]) : ""}
+                            onChange={(e) => {
+                              const v = Number(e.target.value);
+                              if (Number.isNaN(v)) return; // engine rejects invalid values; keep the field editable
+                              props.onChange(setDebugBaseStat(props.setup, c.id, key, v));
+                            }}
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p className="muted">Only edited fields are sent as baseStatOverrides; never derive equipment-modified panel stats.</p>
+                </div>
+              );
+            })}
         </section>
       </div>
       <div className="footer">

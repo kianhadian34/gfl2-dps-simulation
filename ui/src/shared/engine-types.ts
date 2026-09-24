@@ -48,6 +48,16 @@ export interface ScenarioTeamMemberView {
   calibrationLevel?: number;
   /** Equipped Expansion Key id (e.g. Qiongjiu's Ruined Gem). */
   expansionKeyId?: string;
+  /** DEBUG/controlled-testing (2026): per-member replacement of the character's OWN base stats
+   *  (applied BEFORE weapon/equipment/stat-modifier calculation; engine-validated, never clamped). */
+  baseStatOverrides?: {
+    atk?: number;
+    hp?: number;
+    def?: number;
+    stability?: number;
+    critRate?: number;
+    critDmg?: number;
+  };
 }
 
 export interface GridCoordView {
@@ -91,10 +101,21 @@ export interface FixedKeyView {
   /** Authoritative in-game tooltip text (engine `KeyDef.description`). Absent when the key data has none. */
   description?: string;
 }
+/** Engine-sourced initial base stats for DEBUG MODE (CharacterDef.base — NOT derived panel stats). */
+export interface BaseStatsView {
+  atk: number;
+  hp: number;
+  def: number;
+  stability: number;
+  critRate: number;
+  critDmg: number;
+}
 export interface CharacterMetaView {
   id: string;
   name: string;
   mobility?: number;
+  /** The character's OWN CharacterDef.base — DEBUG MODE initial values only (never panel/equipment-modified). */
+  base?: BaseStatsView;
   /** Character's Fixed Keys (id + name + authoritative number/description) — selections are validated by the engine. */
   fixedKeys?: FixedKeyView[];
   /** Character's Expansion Key (e.g. Ruined Gem), when defined. */

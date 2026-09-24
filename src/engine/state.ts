@@ -275,7 +275,23 @@ function resolveAffinityBonus(
   return { atk: foreign.genericBonus?.atk ?? 0, hp: foreign.genericBonus?.hp ?? 0, critDmg: foreign.genericBonus?.critDmg ?? 0 };
 }
 
-function makeDoll(def: CharacterDef, rotation: ActionSlot[], keys: string[], affinity: { keyId?: string; level?: number } | undefined, commonKeyIds: string[], expansionKeyId: string | undefined, weapon: WeaponDef | null, weaponCalibrationLevel: number | undefined, config: ResolvedConfig, registry: Registry): UnitState {
+function makeDoll(
+  sourceDef: CharacterDef,
+  rotation: ActionSlot[],
+  keys: string[],
+  affinity: { keyId?: string; level?: number } | undefined,
+  commonKeyIds: string[],
+  expansionKeyId: string | undefined,
+  weapon: WeaponDef | null,
+  weaponCalibrationLevel: number | undefined,
+  baseStatOverrides: { atk?: number; hp?: number; def?: number; stability?: number; critRate?: number; critDmg?: number } | undefined,
+  config: ResolvedConfig,
+  registry: Registry,
+): UnitState {
+  // DEBUG/controlled-testing (2026): per-member base-stat override merged into a LOCAL def
+  // copy BEFORE any equipment/stat-modifier calculation. `computePanel` stays the ONE panel
+  // path; the registry CharacterDef is never mutated.
+  const def = baseStatOverrides ? { ...sourceDef, base: { ...sourceDef.base, ...baseStatOverrides } } : sourceDef;
   const panel = computePanel(def, weapon);
   const aff = resolveAffinityBonus(def, affinity?.keyId, affinity?.level, registry);
   // Common Keys (generic architecture, 2026): REUSABLE definitions resolved via the registry
@@ -445,6 +461,15 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
         `Team member ${m.characterId}: at most ${MAX_COMMON_KEYS} Common Keys may be equipped (3 Common Key Slots); got ${m.commonKeyIds?.length}`,
       );
     }
+    // DEBUG/controlled-testing (2026): every supplied base-stat override must be a finite,
+    // non-negative number — rejected loudly, never silently clamped.
+    if (m.baseStatOverrides) {
+      for (const [field, value] of Object.entries(m.baseStatOverrides)) {
+        if (!Number.isFinite(value) || value < 0) {
+          throw new Error(`Team member ${m.characterId}: baseStatOverrides.${field} must be a finite number >= 0 (got ${value})`);
+        }
+      }
+    }
   }
   const config = resolveConfig(scenario.configOverrides);
   const units: UnitState[] = scenario.team.map((m) => {
@@ -471,7 +496,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
       }
     }
     const weaponCalibrationLevel = m.calibrationLevel ?? weapon?.calibrationLevel;
-    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, weaponCalibrationLevel, config, registry);
+    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, weaponCalibrationLevel, m.baseStatOverrides, config, registry);
   });
   const dummy = makeDummy(scenario.dummy);
   return {

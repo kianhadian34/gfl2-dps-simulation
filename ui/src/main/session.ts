@@ -147,6 +147,7 @@ export function registerSimHandlers(): void {
       return buildCharacterMetaView({
         id,
         name: def?.name ?? id,
+        ...(def ? { base: { ...def.base } } : {}),
         ...(def && def.mobility !== undefined ? { mobility: def.mobility } : {}),
         ...(def
           ? {

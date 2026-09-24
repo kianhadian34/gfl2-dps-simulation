@@ -767,6 +767,22 @@ export interface ScenarioTeamMember {
   calibrationLevel?: number;
   /** Equipped Expansion Key id (e.g. Qiongjiu's Ruined Gem). Absent = no expansion-key behavior. */
   expansionKeyId?: string;
+  /**
+   * DEBUG / CONTROLLED-TESTING ONLY (2026): per-member replacement of the character's OWN
+   * `CharacterDef.base` value for each supplied field — applied BEFORE weapon/equipment/
+   * stat-modifier calculations. Absent fields keep the character's normal base value.
+   * `computePanel()` remains the single calculation path (no second stat system, no duplicate
+   * formula). Values are validated: finite and >= 0, or the scenario is rejected (never silently
+   * clamped). Never mutates the registry `CharacterDef` — the override is per-scenario/per-member.
+   */
+  baseStatOverrides?: {
+    atk?: number;
+    hp?: number;
+    def?: number;
+    stability?: number;
+    critRate?: number;
+    critDmg?: number;
+  };
 }
 
 export interface Scenario {

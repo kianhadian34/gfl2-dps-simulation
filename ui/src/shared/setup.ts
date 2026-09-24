@@ -82,6 +82,75 @@ export interface SetupState {
   /** Fixed rotation per selected character id. */
   rotations: Record<string, RotationSlot[]>;
   gridEnabled: boolean;
+  /** DEBUG MODE (controlled testing, 2026): an EXPLICIT configuration path that relaxes the
+   *  normal equipment requirements and allows manual base-stat overrides. It never adds keys,
+   *  weapons, buffs or stat modifiers by itself; the engine remains authoritative. */
+  debug: DebugSetup;
+}
+
+// ---------------------------------------------------------------------------
+// DEBUG MODE (2026) — per-character controlled base stats.
+// The INITIAL values come from the selected character's engine `CharacterDef.base`
+// (via sim:listCharacters → CharacterMetaView.base). Only fields the user actually
+// EDITED (`touched`) are emitted as `baseStatOverrides` — never derived panel stats.
+// ---------------------------------------------------------------------------
+export type DebugStatKey = "atk" | "hp" | "def" | "stability" | "critRate" | "critDmg";
+export type DebugBaseStats = Record<DebugStatKey, number>;
+
+export interface DebugMemberConfig {
+  /** Current entered values (seeded from the character's real CharacterDef.base). */
+  values: DebugBaseStats;
+  /** Fields the user actually edited — ONLY these reach the engine as overrides. */
+  touched: Partial<Record<DebugStatKey, true>>;
+}
+
+export interface DebugSetup {
+  enabled: boolean;
+  baseStats: Record<string, DebugMemberConfig>;
+}
+
+export const DEBUG_STAT_KEYS: DebugStatKey[] = ["atk", "hp", "def", "stability", "critRate", "critDmg"];
+
+export function seedDebugBaseStats(setup: SetupState, baseById: Record<string, DebugBaseStats>): SetupState {
+  let changed = false;
+  const baseStats = { ...setup.debug.baseStats };
+  for (const [id, base] of Object.entries(baseById)) {
+    if (baseStats[id]) continue;
+    baseStats[id] = { values: { ...base }, touched: {} }; // seeded, NOT touched — no accidental overrides
+    changed = true;
+  }
+  return changed ? { ...setup, debug: { ...setup.debug, baseStats } } : setup;
+}
+
+export function setDebugEnabled(setup: SetupState, enabled: boolean): SetupState {
+  return { ...setup, debug: { ...setup.debug, enabled } };
+}
+
+/** Record an edited base stat (marks the field `touched` so ONLY it becomes an override). */
+export function setDebugBaseStat(setup: SetupState, charId: string, key: DebugStatKey, value: number): SetupState {
+  const cur = setup.debug.baseStats[charId];
+  if (!cur) return setup; // no seeded values yet (character meta not loaded)
+  return {
+    ...setup,
+    debug: {
+      ...setup.debug,
+      baseStats: {
+        ...setup.debug.baseStats,
+        [charId]: { values: { ...cur.values, [key]: value }, touched: { ...cur.touched, [key]: true } },
+      },
+    },
+  };
+}
+
+export type DebugBaseStatOverrides = { atk?: number; hp?: number; def?: number; stability?: number; critRate?: number; critDmg?: number };
+
+/** The DEBUG override object for a character (only fields the user EDITED; {} when Debug Mode is off). */
+export function debugBaseStatOverrides(setup: SetupState, charId: string): DebugBaseStatOverrides {
+  const cfg = setup.debug.baseStats[charId];
+  if (!setup.debug.enabled || !cfg) return {};
+  const out: DebugBaseStatOverrides = {};
+  for (const key of DEBUG_STAT_KEYS) if (cfg.touched[key]) out[key] = cfg.values[key];
+  return out;
 }
 
 export const DEFAULT_SETUP: SetupState = {
@@ -91,6 +160,7 @@ export const DEFAULT_SETUP: SetupState = {
   characters: [],
   rotations: {},
   gridEnabled: false,
+  debug: { enabled: false, baseStats: {} },
 };
 
 // ---------------------------------------------------------------------------
@@ -214,6 +284,10 @@ export function setExpansionKey(state: SetupState, charId: string, keyId: string
  */
 export function equipmentErrors(state: SetupState): string[] {
   const errors: string[] = [];
+  // DEBUG MODE (2026): an explicit alternative path — the normal exactly-1 weapon/affinity and
+  // calibration requirements do NOT apply; keys/weapon are all optional there. Cap violations
+  // remain impossible through the capped toggle helpers.
+  if (state.debug.enabled) return errors;
   for (const c of state.characters.filter((x) => x.selected)) {
     const e = equipmentOf(c);
     if (!equipmentEngaged(c)) continue; // legacy mode: entirely unconfigured = valid
@@ -269,6 +343,8 @@ export function buildScenario(setup: SetupState): ScenarioView {
       // engine is the only validator). Absent equipment reproduces the EXACT legacy member
       // shape (`equippedFixedKeys: []`, no weapon/key fields).
       const equ = c.equipment ?? {};
+      // DEBUG MODE (2026): only fields the user EDITED become baseStatOverrides.
+      const debugOv = debugBaseStatOverrides(setup, c.id);
       return {
         characterId: c.id,
         rotation,
@@ -279,6 +355,7 @@ export function buildScenario(setup: SetupState): ScenarioView {
         ...(equ.weaponId !== undefined ? { weaponId: equ.weaponId } : {}),
         ...(equ.calibrationLevel !== undefined ? { calibrationLevel: equ.calibrationLevel } : {}),
         ...(equ.expansionKeyId !== undefined ? { expansionKeyId: equ.expansionKeyId } : {}),
+        ...(Object.keys(debugOv).length > 0 ? { baseStatOverrides: debugOv } : {}),
       };
     });
   if (team.length === 0) throw new SetupError("Select at least one character.");
