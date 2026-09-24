@@ -17,7 +17,7 @@ import type { Scenario } from "../model/types.js";
 test("Golden Melody ('jinshizou') resolves from the registry with 369 max-level ATK and +15% ATK", () => {
   const w = REGISTRY.getWeapon("jinshizou")!;
   assert.ok(w, "Golden Melody registered");
-  assert.equal(w.name, "Jinshizou");
+  assert.equal(w.name, "Golden Melody", "player-facing weapon name");
   assert.equal(w.rarity, "elite");
   assert.equal(w.atkLvl60, 369, "max-level ATK 369");
   assert.deepEqual(w.subStats, [{ stat: "pctAtk", value: 0.15 }], "+15% ATK sub-stat");

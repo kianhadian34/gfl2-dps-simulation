@@ -329,7 +329,7 @@ test("english-only e2e: the weapon displays the authoritative English name only;
   const w = await import(new URL("../../../dist/data/weapons.js", import.meta.url).href);
   const views = buildWeaponViews((w as { WEAPONS: unknown[] }).WEAPONS as Parameters<typeof buildWeaponViews>[0]);
   const gm = views.find((v) => v.id === "jinshizou")!;
-  assert.equal(gm.name, "Jinshizou", "authoritative English weapon name");
+  assert.equal(gm.name, "Golden Melody", "authoritative player-facing weapon name (id 'jinshizou' stays internal)");
   assert.equal(CJK.test(gm.name), false, "weapon name has no Chinese characters");
   assert.equal(gm.id, "jinshizou", "internal weapon id unchanged");
 });
