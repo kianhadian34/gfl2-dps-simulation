@@ -19,6 +19,7 @@ import {
   type SetupState,
 } from "../../../shared/setup.js";
 import type { ScenarioView, WeaponView, CommonKeyListResult, CharacterMetaView } from "../../../shared/engine-types.js";
+import { fixedKeyLabel } from "../../../shared/lists.js";
 
 /**
  * SIMULATION SETUP — choose the target (dummy), pick characters from the engine registry,
@@ -228,13 +229,21 @@ export function SetupScreen(props: {
                           <span className="muted">no Fixed Keys available for this doll</span>
                         ) : (
                           (m?.fixedKeys ?? []).map((k) => (
-                            <label key={k.id} className="inline" title={k.name}>
+                            // Presentation: "Fixed Key <N> - <Name>" (N + description are engine-sourced);
+                            // tooltip = the authoritative in-game description (KeyDef.description).
+                            <label key={k.id} className="inline fixed-key-toggle" aria-label={`${fixedKeyLabel(k)}${k.description ? `. ${k.description}` : ""}`}>
                               <input
                                 type="checkbox"
                                 checked={(equ.equippedFixedKeys ?? []).includes(k.id)}
                                 onChange={() => props.onChange(toggleFixedKey(props.setup, c.id, k.id))}
                               />
-                              {k.name}
+                              {fixedKeyLabel(k)}
+                              {k.description ? (
+                                <span className="tooltip">
+                                  <b>{fixedKeyLabel(k)}</b>
+                                  <span className="tooltip-row">{k.description}</span>
+                                </span>
+                              ) : null}
                             </label>
                           ))
                         )}

@@ -41,7 +41,10 @@ test("unit: buildCharacterMetaView maps optional member/key metadata", () => {
       id: "qiongjiu",
       name: "Qiongjiu",
       mobility: 5,
-      fixedKeys: [{ id: "fk1", name: "Concentration" }, { id: "fk3", name: "Targeted Training" }],
+      fixedKeys: [
+        { id: "qiongjiu_fk1_concentration", name: "Concentration (凝神)", description: "Gains 3 Confectance Index at the start of battle." },
+        { id: "qiongjiu_fk3_targeted_training", name: "Targeted Training", description: "While in Support Mode, applies Defense Down II to the target for 1 turn before the allied unit's attack." },
+      ],
       expansionKey: { id: "qiongjiu_ruined_gem", name: "Ruined Gem" },
       affinityKey: { id: "qiongjiu_warm_as_jade", name: "Warm as Jade" },
     }),
@@ -49,7 +52,10 @@ test("unit: buildCharacterMetaView maps optional member/key metadata", () => {
       id: "qiongjiu",
       name: "Qiongjiu",
       mobility: 5,
-      fixedKeys: [{ id: "fk1", name: "Concentration" }, { id: "fk3", name: "Targeted Training" }],
+      fixedKeys: [
+        { id: "qiongjiu_fk1_concentration", name: "Concentration (凝神)", number: 1, description: "Gains 3 Confectance Index at the start of battle." },
+        { id: "qiongjiu_fk3_targeted_training", name: "Targeted Training", number: 3, description: "While in Support Mode, applies Defense Down II to the target for 1 turn before the allied unit's attack." },
+      ],
       expansionKey: { id: "qiongjiu_ruined_gem", name: "Ruined Gem" },
       affinityKey: { id: "qiongjiu_warm_as_jade", name: "Warm as Jade" },
     },

@@ -150,7 +150,7 @@ export function registerSimHandlers(): void {
         ...(def && def.mobility !== undefined ? { mobility: def.mobility } : {}),
         ...(def
           ? {
-              fixedKeys: def.fixedKeys.map((k) => ({ id: k.id, name: k.name })),
+              fixedKeys: def.fixedKeys.map((k) => ({ id: k.id, name: k.name, ...(k.description ? { description: k.description } : {}) })),
               ...(def.expansionKey ? { expansionKey: { id: def.expansionKey.id, name: def.expansionKey.name } } : {}),
               ...(def.affinityKey ? { affinityKey: { id: def.affinityKey.id, name: def.affinityKey.name } } : {}),
             }

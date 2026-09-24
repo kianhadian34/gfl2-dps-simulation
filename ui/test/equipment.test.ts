@@ -17,7 +17,7 @@ import {
   toggleFixedKey,
   type SetupState,
 } from "../src/shared/setup.js";
-import { buildWeaponViews } from "../src/shared/lists.js";
+import { buildWeaponViews, buildCharacterMetaView, fixedKeyLabel, fixedKeyNumber } from "../src/shared/lists.js";
 import type { ScenarioView } from "../src/shared/engine-types.js";
 
 /**
@@ -236,4 +236,67 @@ test("equipment: a fully-configured doll is ACCEPTED by the real engine (weapon 
   assert.ok((basic?.effectSources ?? []).some((s) => /Golden Melody|Jinshizou/i.test(s)), "weapon Effect provenance reaches the log");
   // The same setup passes the UI-local validation (complete equipment).
   assert.deepEqual(equipmentErrors(setup as SetupState), []);
+});
+
+// ---------------------------------------------------------------------------
+// FIXED KEY PRESENTATION (2026) — "Fixed Key <N> - <Name>" + authoritative tooltip.
+// Numbers + descriptions come ONLY from the engine data (id `fk<N>` + `KeyDef.description`);
+// the renderer never hardcodes numbers or invents descriptions.
+// ---------------------------------------------------------------------------
+
+test("presentation: the authoritative key number is derived from the engine id, not hardcoded", () => {
+  assert.equal(fixedKeyNumber("qiongjiu_fk1_concentration"), 1);
+  assert.equal(fixedKeyNumber("qiongjiu_fk6_steadiness"), 6);
+  assert.equal(fixedKeyNumber("a_key_without_number"), undefined, "no number → undefined (label falls back to the plain name)");
+});
+
+test("presentation: the option label is 'Fixed Key <N> - <Name>' with the correct name (incl. (凝神))", () => {
+  assert.equal(fixedKeyLabel({ id: "qiongjiu_fk1_concentration", name: "Concentration (凝神)", number: 1 }), "Fixed Key 1 - Concentration (凝神)");
+  assert.equal(fixedKeyLabel({ id: "qiongjiu_fk2_efficient_planning", name: "Efficient Planning" }), "Fixed Key 2 - Efficient Planning", "number derived when the view omits it");
+  assert.equal(fixedKeyLabel({ id: "other", name: "Something" }), "Something", "no number → plain name, no invented prefix");
+});
+
+test("presentation: the view carries the authoritative player-facing description (tooltip source)", () => {
+  const view = buildCharacterMetaView({
+    id: "q",
+    name: "Q",
+    fixedKeys: [{ id: "qiongjiu_fk2_efficient_planning", name: "Efficient Planning", description: "Before a Support Action, cleanses 1 buff from the target." }],
+  });
+  assert.deepEqual(view.fixedKeys, [
+    { id: "qiongjiu_fk2_efficient_planning", name: "Efficient Planning", number: 2, description: "Before a Support Action, cleanses 1 buff from the target." },
+  ]);
+});
+
+test("presentation e2e: ALL currently available Fixed Keys are represented with number + name + description from the engine registry", async () => {
+  const reg = await import(new URL("../../../dist/data/registry.js", import.meta.url).href);
+  const REGISTRY = (reg as { REGISTRY: unknown }).REGISTRY as {
+    getCharacter: (id: string) => { fixedKeys: Array<{ id: string; name: string; description?: string }> } | undefined;
+  };
+  const def = REGISTRY.getCharacter("qiongjiu")!;
+  const view = buildCharacterMetaView({ id: "qiongjiu", name: "Qiongjiu", fixedKeys: def.fixedKeys });
+  assert.equal(view.fixedKeys!.length, def.fixedKeys.length, "every engine Fixed Key is represented");
+  const ids = view.fixedKeys!.map((k) => k.id);
+  assert.deepEqual(ids, [
+    "qiongjiu_fk1_concentration",
+    "qiongjiu_fk2_efficient_planning",
+    "qiongjiu_fk3_targeted_training",
+    "qiongjiu_fk4_point_of_vulnerability",
+    "qiongjiu_fk5_necessary_adjustments",
+    "qiongjiu_fk6_steadiness",
+  ]);
+  for (const k of view.fixedKeys!) {
+    assert.equal(k.number, Number(/fk(\d+)/.exec(k.id)![1]), `number for ${k.id} matches the engine id`);
+    assert.ok(k.name.length > 0);
+    assert.ok(k.description !== undefined && k.description.length > 0, `player-facing description present for ${k.id}`);
+  }
+});
+
+test("presentation: selection still produces the EXACT same equippedFixedKeys IDs; 0–3 cap unchanged", () => {
+  let s = setupWith();
+  const labels = ["qiongjiu_fk1_concentration", "qiongjiu_fk2_efficient_planning", "qiongjiu_fk6_steadiness"];
+  for (const id of labels) s = toggleFixedKey(s, "qiongjiu", id);
+  const sc = buildScenario(s);
+  assert.deepEqual(sc.team[0].equippedFixedKeys, labels, "ids carried verbatim (label change never touches ids)");
+  s = toggleFixedKey(s, "qiongjiu", "qiongjiu_fk4_point_of_vulnerability");
+  assert.equal(equipmentOf(s.characters[0]).equippedFixedKeys!.length, 3, "4th key still a no-op — cap unchanged");
 });

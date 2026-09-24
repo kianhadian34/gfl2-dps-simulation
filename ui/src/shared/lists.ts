@@ -40,7 +40,7 @@ export interface CharacterMetaSource {
   id: string;
   name: string;
   mobility?: number;
-  fixedKeys?: Array<{ id: string; name: string }>;
+  fixedKeys?: Array<{ id: string; name: string; description?: string }>;
   expansionKey?: { id: string; name: string };
   affinityKey?: { id: string; name: string };
 }
@@ -67,12 +67,36 @@ export function buildCommonKeyViews(keys: CommonKeySource[], maxCommonKeys: numb
   };
 }
 
+/**
+ * Authoritative Fixed Key number from the ENGINE data id (`qiongjiu_fk1_concentration` → 1).
+ * Pure/id-derived — never hardcoded in the renderer; absent when the id carries no `fk<N>`.
+ */
+export function fixedKeyNumber(id: string): number | undefined {
+  const m = /fk(\d+)/.exec(id);
+  return m ? Number(m[1]) : undefined;
+}
+
+/** Player-facing label: "Fixed Key <number> - <name>" (falls back to the plain name if no number). */
+export function fixedKeyLabel(k: { id: string; name: string; number?: number }): string {
+  const n = k.number ?? fixedKeyNumber(k.id);
+  return n !== undefined ? `Fixed Key ${n} - ${k.name}` : k.name;
+}
+
 export function buildCharacterMetaView(def: CharacterMetaSource): CharacterMetaView {
   return {
     id: def.id,
     name: def.name,
     ...(def.mobility !== undefined ? { mobility: def.mobility } : {}),
-    ...(def.fixedKeys !== undefined ? { fixedKeys: def.fixedKeys.map((k) => ({ id: k.id, name: k.name })) } : {}),
+    ...(def.fixedKeys !== undefined
+      ? {
+          fixedKeys: def.fixedKeys.map((k) => ({
+            id: k.id,
+            name: k.name,
+            number: fixedKeyNumber(k.id),
+            ...(k.description !== undefined ? { description: k.description } : {}),
+          })),
+        }
+      : {}),
     ...(def.expansionKey !== undefined ? { expansionKey: { id: def.expansionKey.id, name: def.expansionKey.name } } : {}),
     ...(def.affinityKey !== undefined ? { affinityKey: { id: def.affinityKey.id, name: def.affinityKey.name } } : {}),
   };

@@ -139,6 +139,21 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .status-chip .tooltip .tooltip-note { display: block; margin: 3px 0; color: var(--text); }
 .status-chip .tooltip .tooltip-row { display: block; color: var(--muted); }
 
+/* --- fixed-key equipment toggles: same tooltip pattern on the inline checkbox labels --- */
+.form label.inline.fixed-key-toggle {
+  position: relative; cursor: help; border-bottom: 1px dotted var(--accent);
+}
+.form label.inline.fixed-key-toggle .tooltip {
+  display: none; position: absolute; z-index: 30; left: 0; top: calc(100% + 4px);
+  min-width: 220px; max-width: 320px; padding: 6px 8px;
+  background: var(--bg-3); border: 1px solid var(--border); border-radius: 3px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  font-family: var(--mono); font-size: 11px; text-align: left; white-space: normal;
+}
+.form label.inline.fixed-key-toggle:hover .tooltip,
+.form label.inline.fixed-key-toggle:focus-within .tooltip { display: block; }
+.form label.inline.fixed-key-toggle .tooltip .tooltip-row { display: block; color: var(--muted); }
+
 /* --- effect-source references (same interaction pattern; visually distinct) --- */
 .effect-source-chip {
   border-bottom-style: dashed;

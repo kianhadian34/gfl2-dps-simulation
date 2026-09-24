@@ -83,12 +83,20 @@ export interface CommonKeyListResult {
 }
 
 /** Engine-sourced per-character key/member metadata (extends the legacy listCharacters shape). */
+export interface FixedKeyView {
+  id: string;
+  name: string;
+  /** Authoritative Fixed Key number — derived from the engine data id (`qiongjiu_fk<N>_…`). Absent when the id carries no number. */
+  number?: number;
+  /** Authoritative in-game tooltip text (engine `KeyDef.description`). Absent when the key data has none. */
+  description?: string;
+}
 export interface CharacterMetaView {
   id: string;
   name: string;
   mobility?: number;
-  /** Character's Fixed Keys (id + name) — selections are validated by the engine. */
-  fixedKeys?: Array<{ id: string; name: string }>;
+  /** Character's Fixed Keys (id + name + authoritative number/description) — selections are validated by the engine. */
+  fixedKeys?: FixedKeyView[];
   /** Character's Expansion Key (e.g. Ruined Gem), when defined. */
   expansionKey?: { id: string; name: string };
   /** Character's Affinity Key (bond), when defined. */
