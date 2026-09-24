@@ -16,6 +16,7 @@ import type {
   CommonKeyListResult,
   CommonKeyView,
   CharacterMetaView,
+  WeaponCalibrationEffectView,
 } from "./engine-types.js";
 
 /** Structural engine weapon shape (satisfied by engine `WeaponDef`). */
@@ -26,7 +27,7 @@ export interface WeaponSource {
   atkLvl60: number;
   subStats?: Array<{ stat: "pctAtk" | "pctHp" | "pctDef"; value: number }>;
   ownerCharacterId?: string;
-  calibrations?: Record<number, unknown>;
+  calibrations?: Record<number, { damageDealt?: number; charging?: { perStackValue: number; maxStacks: number; stacksPerGain?: number } }>;
 }
 
 /** Structural engine Common-Key shape (satisfied by engine `CommonKeyDef`). */
@@ -48,15 +49,72 @@ export interface CharacterMetaSource {
 }
 
 export function buildWeaponViews(weapons: WeaponSource[]): WeaponView[] {
-  return weapons.map((w) => ({
-    id: w.id,
-    name: w.name,
-    rarity: w.rarity,
-    atkLvl60: w.atkLvl60,
-    subStats: (w.subStats ?? []).map((s) => ({ ...s })),
-    ...(w.ownerCharacterId !== undefined ? { ownerCharacterId: w.ownerCharacterId } : {}),
-    calibrations: w.calibrations ? Object.keys(w.calibrations).map(Number).sort((a, b) => a - b) : [],
-  }));
+  return weapons.map((w) => {
+    const calibrationEffects: Record<number, WeaponCalibrationEffectView> = {};
+    if (w.calibrations) {
+      for (const [lv, eff] of Object.entries(w.calibrations)) {
+        calibrationEffects[Number(lv)] = {
+          ...(eff.damageDealt !== undefined ? { damageDealt: eff.damageDealt } : {}),
+          ...(eff.charging ? { charging: { ...eff.charging } } : {}),
+        };
+      }
+    }
+    return {
+      id: w.id,
+      name: w.name,
+      rarity: w.rarity,
+      atkLvl60: w.atkLvl60,
+      subStats: (w.subStats ?? []).map((s) => ({ ...s })),
+      ...(w.ownerCharacterId !== undefined ? { ownerCharacterId: w.ownerCharacterId } : {}),
+      calibrations: w.calibrations ? Object.keys(w.calibrations).map(Number).sort((a, b) => a - b) : [],
+      calibrationEffects,
+    };
+  });
+}
+
+/** A text run of the Effect copy; `cal: true` marks a calibration-dependent value (rendered highlighted). */
+export interface EffectSegment {
+  text: string;
+  cal?: boolean;
+}
+
+/** Renders the Effect template substituting the calibration-dependent numeric lists ({dmgs}/{stacks}/{gains}/{maxes})
+ *  with a single value when `level` is selected, or the full C1–C6 list otherwise. All values come from the
+ *  authoritative `WeaponDef.calibrations` data (never invented/duplicated). Calibration-dependent runs are
+ *  returned as distinct segments (`cal: true`) so the UI can highlight them. */
+export function effectCopyWithCalibration(w: WeaponView | undefined, template: string, level: number | undefined): EffectSegment[] {
+  if (!w) return [{ text: template }];
+  const at = (lv: number, f: (e: WeaponCalibrationEffectView) => number | undefined, fallback: number) => {
+    const e = w.calibrationEffects[lv];
+    return e ? f(e) ?? fallback : fallback;
+  };
+  const useSingle = level !== undefined && w.calibrations.includes(level);
+  /** Single formatted value when a calibration is selected, otherwise the joined per-level list. */
+  const values = (
+    f: (e: WeaponCalibrationEffectView) => number | undefined,
+    fallback: number,
+    fmt: (n: number) => string,
+  ) =>
+    useSingle
+      ? fmt(at(level, f, fallback))
+      : w.calibrations.map((lv) => fmt(at(lv, f, fallback))).join("/");
+  const pctFmt = (n: number) => `${Math.round(n * 100)}%`;
+  const dmgs = values((e) => e.damageDealt, 0, pctFmt);
+  const stacks = values((e) => e.charging?.perStackValue, 0, pctFmt);
+  const gains = values((e) => e.charging?.stacksPerGain, 1, (n) => String(n));
+  const maxes = values((e) => e.charging?.maxStacks, 0, (n) => String(n));
+  const substituted: Record<string, string> = { dmgs, stacks, gains, maxes };
+  const segments: EffectSegment[] = [];
+  const re = /\{(dmgs|stacks|gains|maxes)\}/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(template)) !== null) {
+    if (m.index > last) segments.push({ text: template.slice(last, m.index) });
+    segments.push({ text: substituted[m[1]], cal: true });
+    last = m.index + m[0].length;
+  }
+  if (last < template.length) segments.push({ text: template.slice(last) });
+  return segments;
 }
 
 export function buildCommonKeyViews(keys: CommonKeySource[], maxCommonKeys: number): CommonKeyListResult {

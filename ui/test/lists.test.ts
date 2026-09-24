@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView } from "../src/shared/lists.js";
+import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView, effectCopyWithCalibration } from "../src/shared/lists.js";
 
 /**
  * ENGINE-SOURCED LIST CONTRACT (2026 — plumbing; no UI controls yet).
@@ -11,13 +11,77 @@ import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView } from ".
  * prove the UI-facing lists match the real registry (identical ids/names/numbers).
  */
 
-test("unit: buildWeaponViews maps engine weapon shapes into ascending calibration numbers", () => {
+test("unit: buildWeaponViews maps engine weapon shapes into ascending calibration numbers + effect values", () => {
   const views = buildWeaponViews([
-    { id: "w1", name: "Weapon One", rarity: "elite", atkLvl60: 369, subStats: [{ stat: "pctAtk", value: 0.15 }], ownerCharacterId: "qiongjiu", calibrations: { 2: { value: 0.1 }, 1: { value: 0 }, 6: { value: 0.2 } } },
+    { id: "w1", name: "Weapon One", rarity: "elite", atkLvl60: 369, subStats: [{ stat: "pctAtk", value: 0.15 }], ownerCharacterId: "qiongjiu", calibrations: { 2: { damageDealt: 0.1 }, 1: {}, 6: { damageDealt: 0.2, charging: { perStackValue: 0.2, maxStacks: 4, stacksPerGain: 2 } } } },
     { id: "w2", name: "Weapon Two", rarity: "rare", atkLvl60: 120 }, // no calibrations / no owner / no substats
   ]);
-  assert.deepEqual(views[0], { id: "w1", name: "Weapon One", rarity: "elite", atkLvl60: 369, subStats: [{ stat: "pctAtk", value: 0.15 }], ownerCharacterId: "qiongjiu", calibrations: [1, 2, 6] });
-  assert.deepEqual(views[1], { id: "w2", name: "Weapon Two", rarity: "rare", atkLvl60: 120, subStats: [], calibrations: [] }, "absent owner/calibrations/substats stay empty");
+  assert.deepEqual(views[0], {
+    id: "w1",
+    name: "Weapon One",
+    rarity: "elite",
+    atkLvl60: 369,
+    subStats: [{ stat: "pctAtk", value: 0.15 }],
+    ownerCharacterId: "qiongjiu",
+    calibrations: [1, 2, 6],
+    calibrationEffects: { 1: {}, 2: { damageDealt: 0.1 }, 6: { damageDealt: 0.2, charging: { perStackValue: 0.2, maxStacks: 4, stacksPerGain: 2 } } },
+  });
+  assert.deepEqual(views[1], { id: "w2", name: "Weapon Two", rarity: "rare", atkLvl60: 120, subStats: [], calibrations: [], calibrationEffects: {} }, "absent owner/calibrations/substats stay empty");
+});
+
+test("unit: effectCopyWithCalibration substitutes the calibration-dependent numbers inside Effect", () => {
+  const template =
+    "Increase damage dealt by {dmgs}. When gaining buffs, increase damage dealt by the next Support Action by {stacks} for {gains} time(s), stacking up to {maxes} times.";
+  const gm = buildWeaponViews([
+    {
+      id: "jinshizou",
+      name: "Golden Melody",
+      rarity: "elite",
+      atkLvl60: 369,
+      calibrations: {
+        1: { damageDealt: 0.1, charging: { perStackValue: 0.1, maxStacks: 2, stacksPerGain: 1 } },
+        2: { damageDealt: 0.1, charging: { perStackValue: 0.15, maxStacks: 2, stacksPerGain: 1 } },
+        3: { damageDealt: 0.15, charging: { perStackValue: 0.15, maxStacks: 3, stacksPerGain: 1 } },
+        4: { damageDealt: 0.2, charging: { perStackValue: 0.15, maxStacks: 3, stacksPerGain: 1 } },
+        5: { damageDealt: 0.2, charging: { perStackValue: 0.2, maxStacks: 4, stacksPerGain: 2 } },
+        6: { damageDealt: 0.2, charging: { perStackValue: 0.2, maxStacks: 4, stacksPerGain: 2 } },
+      },
+    },
+  ])[0];
+  // No calibration selected → full C1–C6 slash-separated list (the authoritative values as one multi-level text).
+  assert.deepEqual(
+    effectCopyWithCalibration(gm, template, undefined),
+    [
+      { text: "Increase damage dealt by " },
+      { text: "10%/10%/15%/20%/20%/20%", cal: true },
+      { text: ". When gaining buffs, increase damage dealt by the next Support Action by " },
+      { text: "10%/15%/15%/15%/20%/20%", cal: true },
+      { text: " for " },
+      { text: "1/1/1/1/2/2", cal: true },
+      { text: " time(s), stacking up to " },
+      { text: "2/2/3/3/4/4", cal: true },
+      { text: " times." },
+    ],
+    "segments: only calibration-dependent runs are marked",
+  );
+  // C1 → only C1's values, no slashes anywhere; exactly 4 highlighted runs.
+  const c1 = effectCopyWithCalibration(gm, template, 1);
+  assert.equal(c1.filter((s) => s.cal).length, 4, "four calibration-dependent runs highlighted");
+  const c1Joined = c1.map((s) => s.text).join("");
+  assert.equal(
+    c1Joined,
+    "Increase damage dealt by 10%. When gaining buffs, increase damage dealt by the next Support Action by 10% for 1 time(s), stacking up to 2 times.",
+  );
+  assert.ok(!c1Joined.includes("/"), "no slash-separated list rendered for C1");
+  // C6 → only C6's values.
+  const c6 = effectCopyWithCalibration(gm, template, 6);
+  assert.equal(
+    c6.map((s) => s.text).join(""),
+    "Increase damage dealt by 20%. When gaining buffs, increase damage dealt by the next Support Action by 20% for 2 time(s), stacking up to 4 times.",
+  );
+  assert.ok(!c6.map((s) => s.text).join("").includes("/"), "no slash-separated list rendered for C6");
+  // No weapon → template rendered as-is (nothing invented), un-highlighted.
+  assert.deepEqual(effectCopyWithCalibration(undefined, template, 1), [{ text: template }]);
 });
 
 test("unit: buildCommonKeyViews carries items + the engine 3-slot maximum", () => {

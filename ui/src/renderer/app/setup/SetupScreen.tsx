@@ -23,7 +23,7 @@ import {
   type SetupState,
 } from "../../../shared/setup.js";
 import type { ScenarioView, WeaponView, CommonKeyListResult, CharacterMetaView } from "../../../shared/engine-types.js";
-import { fixedKeyLabel } from "../../../shared/lists.js";
+import { fixedKeyLabel, effectCopyWithCalibration } from "../../../shared/lists.js";
 import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset } from "../../../shared/assets.js";
 import { AssetThumb } from "./AssetThumb.js";
 
@@ -36,7 +36,7 @@ import { AssetThumb } from "./AssetThumb.js";
  */
 const WEAPON_DETAIL_COPY = {
   effect:
-    "Increase damage dealt by 10%/10%/15%/20%/20%/20%. When gaining buffs, increase damage dealt by the next Support Action by 10%/15%/15%/15%/20%/20% for 1/1/1/1/2/2 time(s), stacking up to 2/2/3/3/4/4 times.",
+    "Increase damage dealt by {dmgs}. When gaining buffs, increase damage dealt by the next Support Action by {stacks} for {gains} time(s), stacking up to {maxes} times.",
   trait: "If the user has full HP at the end of the action, she gains a random buff, lasting for 1 turn.",
   imprint:
     "Increase damage dealt to ELIDs by 2.5%. If the target is not protected by Cover, increase it by an additional 2.5%.",
@@ -251,7 +251,6 @@ export function SetupScreen(props: {
                 const equ = equipmentOf(c);
                 const m = meta[c.id];
                 const weapon = equ.weaponId !== undefined ? weapons.find((w) => w.id === equ.weaponId) : undefined;
-                const calibrations = weapon?.calibrations ?? [];
                 const ownerName = weapon?.ownerCharacterId !== undefined ? meta[weapon.ownerCharacterId]?.name : undefined;
                 const atkBoostPct = Math.round((weapon?.subStats.find((s) => s.stat === "pctAtk")?.value ?? 0) * 100);
                 return (
@@ -333,10 +332,40 @@ export function SetupScreen(props: {
                                   <span className="weapon-detail-stat">Attack Boost&nbsp;&nbsp;{atkBoostPct}%</span>
                                 </div>
                               </button>
+                              <div>
+                                <label>
+                                  Calibration <span className="muted">(C{weapon?.calibrations.join("/C") ?? ""})</span>
+                                  <select
+                                    value={equ.calibrationLevel ?? ""}
+                                    onChange={(e) =>
+                                      props.onChange(
+                                        setCalibration(props.setup, c.id, e.target.value === "" ? undefined : Number(e.target.value)),
+                                      )
+                                    }
+                                  >
+                                    <option value="">— none —</option>
+                                    {weapon?.calibrations.map((lv) => (
+                                      <option key={lv} value={lv}>
+                                        C{lv}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              </div>
                               <div className="weapon-detail-cols">
                                 <div className="weapon-detail-col">
                                   <h4>Effect</h4>
-                                  <p>{WEAPON_DETAIL_COPY.effect}</p>
+                                  <p>
+                                    {effectCopyWithCalibration(weapon, WEAPON_DETAIL_COPY.effect, equ.calibrationLevel).map((seg, i) =>
+                                      seg.cal ? (
+                                        <span key={i} className="cal-val">
+                                          {seg.text}
+                                        </span>
+                                      ) : (
+                                        <span key={i}>{seg.text}</span>
+                                      ),
+                                    )}
+                                  </p>
                                 </div>
                                 <div className="weapon-detail-col">
                                   <h4>Trait</h4>
@@ -385,27 +414,6 @@ export function SetupScreen(props: {
                           </div>
                         )}
                       </div>
-
-                      {equ.weaponId !== undefined && calibrations.length > 0 ? (
-                        <label>
-                          Calibration <span className="muted">(C{calibrations.join("/C")})</span>
-                          <select
-                            value={equ.calibrationLevel ?? ""}
-                            onChange={(e) =>
-                              props.onChange(
-                                setCalibration(props.setup, c.id, e.target.value === "" ? undefined : Number(e.target.value)),
-                              )
-                            }
-                          >
-                            <option value="">— none —</option>
-                            {calibrations.map((lv) => (
-                              <option key={lv} value={lv}>
-                                C{lv}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      ) : null}
 
                       <fieldset>
                         <legend>

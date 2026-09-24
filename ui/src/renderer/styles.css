@@ -244,6 +244,8 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .weapon-detail-col:first-child { padding-left: 0; border-left: none; }
 .weapon-detail-col h4 { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.5px; color: var(--accent); }
 .weapon-detail-col p { margin: 0; font-size: 12px; line-height: 1.45; color: var(--text); }
+.weapon-detail-col .cal-val { color: #f59e3d; font-weight: 600; }
+
 .weapon-slot:hover { border-color: var(--accent); }
 .weapon-slot.is-empty { color: var(--muted); }
 .weapon-slot.is-empty:hover { color: var(--text); }

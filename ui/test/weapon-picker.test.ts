@@ -61,17 +61,22 @@ test("Golden Melody: artwork resolves via weaponAsset('jinshizou'); only the pla
 test("reference copy: Effect / Trait / Imprint texts are preserved verbatim (reference-authoritative)", () => {
   const s = readFileSync(srcFile("../../src/renderer/app/setup/SetupScreen.tsx"), "utf8");
   assert.ok(s.includes("<h4>Effect</h4>") && s.includes("<h4>Trait</h4>") && s.includes("Imprint"), "three column headings");
-  assert.ok(s.includes("Increase damage dealt by 10%/10%/15%/20%/20%/20%."), "Effect dealt progression preserved");
-  assert.ok(s.includes("stacking up to 2/2/3/3/4/4 times."), "Effect stacking preserved");
+  assert.ok(s.includes("Increase damage dealt by {dmgs}."), "Effect wording preserved (calibration-dependent values as data tokens)");
+  assert.ok(s.includes("stacking up to {maxes} times."), "Effect stacking wording preserved");
   assert.ok(s.includes("she gains a random buff, lasting for 1 turn."), "Trait text preserved");
   assert.ok(s.includes("Increase damage dealt to ELIDs by 2.5%."), "Imprint text preserved");
 });
 
-test("selection & removal keep the existing setWeapon path; calibration stays below the panel when a weapon is selected", () => {
+test("selection & removal keep the existing setWeapon path; calibration is INSIDE the card, Effect is calibration-aware, no summary", () => {
   const s = readFileSync(srcFile("../../src/renderer/app/setup/SetupScreen.tsx"), "utf8");
   assert.ok(s.includes("setWeapon(props.setup, c.id, w.id, w.calibrations ?? [])"), "selecting a weapon → existing weaponId path");
   assert.ok(s.includes("setWeapon(props.setup, c.id, undefined, [])"), "removing → existing no-weapon state");
-  assert.ok(s.includes("equ.weaponId !== undefined && calibrations.length > 0"), "calibration renders only when a weapon is selected and has levels");
+  assert.ok(s.includes('Calibration <span className="muted">(C{weapon?.calibrations.join("/C")'), "calibration selector lives inside the weapon card");
+  assert.ok(s.includes("effectCopyWithCalibration(weapon, WEAPON_DETAIL_COPY.effect, equ.calibrationLevel)"), "Effect text renders the selected calibration's values");
+  assert.ok(s.includes('className="cal-val"'), "calibration-dependent numbers are highlighted with .cal-val");
+  assert.ok(!s.includes("weapon-detail-cal-line") && !s.includes("weapon-detail-calibration"), "no calibration summary UI remains");
+  assert.ok(!s.includes("calibrationEffectLines"), "no calibration summary helper remains");
+  assert.ok(!s.includes("10%/10%/15%/20%/20%/20%"), "slash-separated C1–C6 values are not hard-coded in the source — they come from the data");
   let st: SetupState = { ...({ turns: 7, seed: 7, dummy: { hp: 1, defense: 1, stability: 1, weaknesses: [], ammoWeaknesses: [] }, characters: [{ id: "qiongjiu", name: "Qiongjiu", selected: true }], rotations: { qiongjiu: ["basic"] }, gridEnabled: false, debug: { enabled: false, baseStats: {} } } as SetupState) };
   st = setWeapon(st, "qiongjiu", "jinshizou", [1, 2, 3, 4, 5, 6]);
   assert.equal(st.characters[0].equipment?.weaponId, "jinshizou");

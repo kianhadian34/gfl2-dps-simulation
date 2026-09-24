@@ -66,18 +66,26 @@ export interface GridCoordView {
 }
 
 /** Engine-sourced weapon listing (built in main from src/data/weapons.ts — never duplicated here). */
+/** Engine-sourced per-calibration Effect values (WeaponDef.calibrations — the data that actually changes with C1–C6). */
+export interface WeaponCalibrationEffectView {
+  damageDealt?: number;
+  charging?: { perStackValue: number; maxStacks: number; stacksPerGain?: number };
+}
+
 export interface WeaponView {
   id: string;
   name: string;
   rarity: string;
-  /** Max-level weapon ATK (lvl60). */
+  /** Max-level weapon ATK (lvl60) — calibration-independent (calibration changes ONLY the Effect). */
   atkLvl60: number;
-  /** Weapon sub-stats (e.g. Attack Boost +15% = pctAtk 0.15) — authoritative WeaponDef data. */
+  /** Weapon sub-stats (e.g. Attack Boost +15% = pctAtk 0.15) — authoritative WeaponDef data, calibration-independent. */
   subStats: Array<{ stat: "pctAtk" | "pctHp" | "pctDef"; value: number }>;
   /** Signature owner (owner-gated mechanics, e.g. the Imprint) — engine data. */
   ownerCharacterId?: string;
   /** Valid calibration levels (C1–C6 = 1–6) as engine-sourced numbers, ascending. */
   calibrations: number[];
+  /** Per-calibration Effect values (C1–C6) — the numbers that DO change with the selected calibration. */
+  calibrationEffects: Record<number, WeaponCalibrationEffectView>;
 }
 
 /** Engine-sourced Common Key listing (src/data/common-keys.ts — never duplicated here). */
