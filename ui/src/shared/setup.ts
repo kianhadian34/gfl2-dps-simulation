@@ -93,6 +93,149 @@ export const DEFAULT_SETUP: SetupState = {
   gridEnabled: false,
 };
 
+// ---------------------------------------------------------------------------
+// DOLL EQUIPMENT SELECTION (2026) — UI-LOCAL state helpers.
+// These functions only shape `SetupState`; they NEVER validate ids against the
+// engine (the ENGINE remains the single validator). Caps here are UI/local-only:
+//   - Fixed Keys: 0–3 (UI requirement; the engine stores ids freely).
+//   - Common Keys: 0–3 (engine MAX_COMMON_KEYS = 3; engine also enforces).
+//   - Expansion Keys: 0–1 (ENGINE CONTRACT: a single `expansionKeyId`;
+//     the requested "0–2" is NOT representable — reported, not invented).
+//   - Weapon: exactly 1 (empty = the engine-valid "no weapon" legacy state).
+//   - Affinity Key: exactly 1 (engine `affinityKeyId`; `affinityLevel` untouched).
+// ---------------------------------------------------------------------------
+export const MAX_FIXED_KEYS = 3;
+export const MAX_COMMON_KEYS_UI = 3; // mirrors the engine 3 Common Key Slots
+/** Engine contract = ONE `expansionKeyId` per member (0–2 requirement NOT representable — see report). */
+export const MAX_EXPANSION_KEYS = 1;
+/** Engine calibration range C1–C6 for weapons that declare calibrations. */
+export const MAX_CALIBRATION_LEVEL = 6;
+export const MIN_CALIBRATION_LEVEL = 1;
+
+export function equipmentOf(c: SetupCharacter): SetupEquipment {
+  return c.equipment ?? {};
+}
+
+/** TRUE when the doll's equipment is engaged at all (any field set) — used to gate the
+ *  "weapon + affinity required" local rule WITHOUT breaking the legacy no-equipment mode. */
+export function equipmentEngaged(c: SetupCharacter): boolean {
+  const e = equipmentOf(c);
+  return (
+    e.weaponId !== undefined ||
+    e.calibrationLevel !== undefined ||
+    (e.commonKeyIds?.length ?? 0) > 0 ||
+    (e.equippedFixedKeys?.length ?? 0) > 0 ||
+    e.expansionKeyId !== undefined ||
+    e.affinityKeyId !== undefined
+  );
+}
+
+type Updater = (e: SetupEquipment) => SetupEquipment;
+
+function updateEquipment(state: SetupState, charId: string, fn: Updater): SetupState {
+  let changed = false;
+  const characters = state.characters.map((c) => {
+    if (c.id !== charId) return c;
+    changed = true;
+    return { ...c, equipment: fn(equipmentOf(c)) };
+  });
+  return changed ? { ...state, characters } : state;
+}
+
+/** Toggle a Fixed Key (0–3). A 4th distinct key is a no-op (never silently drops an earlier one). */
+export function toggleFixedKey(state: SetupState, charId: string, keyId: string): SetupState {
+  return updateEquipment(state, charId, (e) => {
+    const cur = e.equippedFixedKeys ?? [];
+    if (cur.includes(keyId)) return { ...e, equippedFixedKeys: cur.filter((k) => k !== keyId) };
+    if (cur.length >= MAX_FIXED_KEYS) return e; // cap: UI-local
+    return { ...e, equippedFixedKeys: [...cur, keyId] };
+  });
+}
+
+/** Toggle a Common Key (0–max). A 4th distinct key is a no-op. */
+export function toggleCommonKey(state: SetupState, charId: string, keyId: string, max = MAX_COMMON_KEYS_UI): SetupState {
+  return updateEquipment(state, charId, (e) => {
+    const cur = e.commonKeyIds ?? [];
+    if (cur.includes(keyId)) return { ...e, commonKeyIds: cur.filter((k) => k !== keyId) };
+    if (cur.length >= max) return e; // cap: UI-local (engine enforces 3 too)
+    return { ...e, commonKeyIds: [...cur, keyId] };
+  });
+}
+
+/** Set (or clear with `undefined`) the EXACT ONE weapon. Revalidates the stored calibration
+ *  against the engine-sourced calibration list: cleared when the new weapon has none/invalid. */
+export function setWeapon(state: SetupState, charId: string, weaponId: string | undefined, calibrations: number[]): SetupState {
+  return updateEquipment(state, charId, (e) => {
+    const next: SetupEquipment = { ...e, weaponId };
+    if (weaponId === undefined) {
+      delete next.calibrationLevel;
+    } else if (next.calibrationLevel !== undefined && !calibrations.includes(next.calibrationLevel)) {
+      delete next.calibrationLevel; // never silently keep an invalid calibration value
+    }
+    return next;
+  });
+}
+
+/** Set the calibration level (C1–C6) or clear it. */
+export function setCalibration(state: SetupState, charId: string, level: number | undefined): SetupState {
+  return updateEquipment(state, charId, (e) => {
+    const next: SetupEquipment = { ...e };
+    if (level === undefined) delete next.calibrationLevel;
+    else next.calibrationLevel = level;
+    return next;
+  });
+}
+
+/** Set (or clear) the EXACT ONE Affinity Key (engine `affinityKeyId`). `affinityLevel` is preserved as-is. */
+export function setAffinityKey(state: SetupState, charId: string, keyId: string | undefined): SetupState {
+  return updateEquipment(state, charId, (e) => {
+    const next: SetupEquipment = { ...e };
+    if (keyId === undefined) delete next.affinityKeyId;
+    else next.affinityKeyId = keyId;
+    return next;
+  });
+}
+
+/** Set (or clear) the single Expansion Key (engine contract: one `expansionKeyId`). */
+export function setExpansionKey(state: SetupState, charId: string, keyId: string | undefined): SetupState {
+  return updateEquipment(state, charId, (e) => {
+    const next: SetupEquipment = { ...e };
+    if (keyId === undefined) delete next.expansionKeyId;
+    else next.expansionKeyId = keyId;
+    return next;
+  });
+}
+
+/**
+ * UI-LOCAL "obviously invalid" checks (displayed before Start; the ENGINE remains the final
+ * authority). A doll with NO equipment at all keeps the legacy valid state (no weapon/affinity
+ * is engine-valid); once equipment is ENGAGED, exactly-one weapon + exactly-one affinity are
+ * required locally, and cap violations are reported.
+ */
+export function equipmentErrors(state: SetupState): string[] {
+  const errors: string[] = [];
+  for (const c of state.characters.filter((x) => x.selected)) {
+    const e = equipmentOf(c);
+    if (!equipmentEngaged(c)) continue; // legacy mode: entirely unconfigured = valid
+    if (e.equippedFixedKeys && e.equippedFixedKeys.length > MAX_FIXED_KEYS) {
+      errors.push(`${c.name}: more than ${MAX_FIXED_KEYS} Fixed Keys selected (max 3).`);
+    }
+    if (e.commonKeyIds && e.commonKeyIds.length > MAX_COMMON_KEYS_UI) {
+      errors.push(`${c.name}: more than ${MAX_COMMON_KEYS_UI} Common Keys selected (3 slots).`);
+    }
+    if (e.weaponId === undefined) {
+      errors.push(`${c.name}: select a Weapon (equipment is partially configured).`);
+    }
+    if (e.affinityKeyId === undefined) {
+      errors.push(`${c.name}: select an Affinity Key (equipment is partially configured).`);
+    }
+    if (e.calibrationLevel !== undefined && (e.weaponId === undefined || e.calibrationLevel < MIN_CALIBRATION_LEVEL || e.calibrationLevel > MAX_CALIBRATION_LEVEL)) {
+      errors.push(`${c.name}: calibration requires an equipped weapon and a C1–C6 level.`);
+    }
+  }
+  return errors;
+}
+
 export class SetupError extends Error {}
 
 /**

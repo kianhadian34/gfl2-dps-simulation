@@ -1,7 +1,24 @@
 import { useEffect, useState } from "react";
 import { useSession } from "../../../shared/use-sim.js";
-import { buildScenario, PHASE_WEAKNESSES, AMMO_WEAKNESSES, ROTATION_SLOTS, type RotationSlot, type SetupState } from "../../../shared/setup.js";
-import type { ScenarioView } from "../../../shared/engine-types.js";
+import {
+  buildScenario,
+  equipmentErrors,
+  equipmentOf,
+  setAffinityKey,
+  setCalibration,
+  setExpansionKey,
+  setWeapon,
+  toggleCommonKey,
+  toggleFixedKey,
+  PHASE_WEAKNESSES,
+  AMMO_WEAKNESSES,
+  ROTATION_SLOTS,
+  MAX_FIXED_KEYS,
+  MAX_COMMON_KEYS_UI,
+  type RotationSlot,
+  type SetupState,
+} from "../../../shared/setup.js";
+import type { ScenarioView, WeaponView, CommonKeyListResult, CharacterMetaView } from "../../../shared/engine-types.js";
 
 /**
  * SIMULATION SETUP — choose the target (dummy), pick characters from the engine registry,
@@ -14,21 +31,28 @@ export function SetupScreen(props: {
   onStart: (scenario: ScenarioView) => Promise<void>;
   onOpenScenario: () => Promise<void>;
 }): JSX.Element {
-  const { listCharacters } = useSession();
+  const { listCharacters, listWeapons, listCommonKeys } = useSession();
   const [charsLoaded, setCharsLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  // Engine-sourced equipment option lists (IPC — never duplicated in the renderer).
+  const [weapons, setWeapons] = useState<WeaponView[]>([]);
+  const [commonKeys, setCommonKeys] = useState<CommonKeyListResult | null>(null);
+  const [meta, setMeta] = useState<Record<string, CharacterMetaView>>({});
 
   useEffect(() => {
     if (charsLoaded) return;
-    listCharacters()
-      .then((list) => {
-        props.onChange({ ...props.setup, characters: list.map((c) => ({ id: c.id, name: c.name, selected: false, ...(c.mobility !== undefined ? { mobility: c.mobility } : {}) })) });
+    Promise.all([listCharacters(), listWeapons(), listCommonKeys()])
+      .then(([chars, wl, ckl]) => {
+        setWeapons(wl);
+        setCommonKeys(ckl);
+        setMeta(Object.fromEntries(chars.map((c) => [c.id, c])));
+        props.onChange({ ...props.setup, characters: chars.map((c) => ({ id: c.id, name: c.name, selected: false, ...(c.mobility !== undefined ? { mobility: c.mobility } : {}) })) });
         setCharsLoaded(true);
       })
       .catch((e: unknown) => setFormError(String(e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [charsLoaded, listCharacters]);
+  }, [charsLoaded, listCharacters, listWeapons, listCommonKeys]);
 
   const set = (patch: Partial<SetupState>): void => props.onChange({ ...props.setup, ...patch });
 
@@ -46,6 +70,12 @@ export function SetupScreen(props: {
 
   const start = async (): Promise<void> => {
     setFormError(null);
+    // UI-local "obviously invalid" equipment checks (engine validation remains authoritative).
+    const equipmentErrorsList = equipmentErrors(props.setup);
+    if (equipmentErrorsList.length > 0) {
+      setFormError(equipmentErrorsList.join(" "));
+      return;
+    }
     try {
       const scenario = buildScenario(props.setup);
       setBusy(true);
@@ -169,6 +199,148 @@ export function SetupScreen(props: {
                 </div>
               ))
           )}
+        </section>
+
+        <section>
+          <h2>Doll equipment (engine-sourced options)</h2>
+          {props.setup.characters.filter((c) => c.selected).length === 0 ? (
+            <p className="muted">Select a character to configure its equipment.</p>
+          ) : (
+            props.setup.characters
+              .filter((c) => c.selected)
+              .map((c) => {
+                const equ = equipmentOf(c);
+                const m = meta[c.id];
+                const weapon = equ.weaponId !== undefined ? weapons.find((w) => w.id === equ.weaponId) : undefined;
+                const calibrations = weapon?.calibrations ?? [];
+                return (
+                  <div key={c.id} className="rot-builder">
+                    <div className="mname">
+                      {c.name} <span className="muted">equipment — engine-sourced, engine-validated</span>
+                    </div>
+
+                    <div className="form">
+                      <fieldset>
+                        <legend>
+                          Fixed Keys ({equ.equippedFixedKeys?.length ?? 0}/{MAX_FIXED_KEYS}) — 0–3
+                        </legend>
+                        {(m?.fixedKeys ?? []).length === 0 ? (
+                          <span className="muted">no Fixed Keys available for this doll</span>
+                        ) : (
+                          (m?.fixedKeys ?? []).map((k) => (
+                            <label key={k.id} className="inline" title={k.name}>
+                              <input
+                                type="checkbox"
+                                checked={(equ.equippedFixedKeys ?? []).includes(k.id)}
+                                onChange={() => props.onChange(toggleFixedKey(props.setup, c.id, k.id))}
+                              />
+                              {k.name}
+                            </label>
+                          ))
+                        )}
+                      </fieldset>
+
+                      <label>
+                        Weapon <span className="muted">(exactly 1; empty = engine-valid no-weapon legacy)</span>
+                        <select
+                          value={equ.weaponId ?? ""}
+                          onChange={(e) => {
+                            const id = e.target.value === "" ? undefined : e.target.value;
+                            const w = id !== undefined ? weapons.find((x) => x.id === id) : undefined;
+                            props.onChange(setWeapon(props.setup, c.id, id, w?.calibrations ?? []));
+                          }}
+                        >
+                          <option value="">— no weapon —</option>
+                          {weapons.map((w) => (
+                            <option key={w.id} value={w.id}>
+                              {w.name} ({w.id})
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      {calibrations.length > 0 ? (
+                        <label>
+                          Calibration <span className="muted">(C{calibrations.join("/C")})</span>
+                          <select
+                            value={equ.calibrationLevel ?? ""}
+                            onChange={(e) =>
+                              props.onChange(
+                                setCalibration(props.setup, c.id, e.target.value === "" ? undefined : Number(e.target.value)),
+                              )
+                            }
+                          >
+                            <option value="">— none —</option>
+                            {calibrations.map((lv) => (
+                              <option key={lv} value={lv}>
+                                C{lv}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : (
+                        <span className="muted">no calibration option for this weapon</span>
+                      )}
+
+                      <fieldset>
+                        <legend>
+                          Common Keys ({equ.commonKeyIds?.length ?? 0}/{MAX_COMMON_KEYS_UI}) — engine 3-slot max
+                        </legend>
+                        {(commonKeys?.items ?? []).length === 0 ? (
+                          <span className="muted">no Common Keys available (IPC list empty)</span>
+                        ) : (
+                          (commonKeys?.items ?? []).map((k) => (
+                            <label key={k.id} className="inline" title={k.name}>
+                              <input
+                                type="checkbox"
+                                checked={(equ.commonKeyIds ?? []).includes(k.id)}
+                                onChange={() => props.onChange(toggleCommonKey(props.setup, c.id, k.id, commonKeys?.maxCommonKeys ?? MAX_COMMON_KEYS_UI))}
+                              />
+                              {k.name}
+                              {k.characterScope ? <span className="muted"> · {k.characterScope}</span> : null}
+                            </label>
+                          ))
+                        )}
+                      </fieldset>
+
+                      <label>
+                        Affinity Key <span className="muted">(exactly 1 — engine `affinityKeyId`)</span>
+                        <select
+                          value={equ.affinityKeyId ?? ""}
+                          onChange={(e) => props.onChange(setAffinityKey(props.setup, c.id, e.target.value === "" ? undefined : e.target.value))}
+                        >
+                          <option value="">— none —</option>
+                          {m?.affinityKey ? (
+                            <option value={m.affinityKey.id}>
+                              {m.affinityKey.name} ({m.affinityKey.id})
+                            </option>
+                          ) : null}
+                        </select>
+                      </label>
+
+                      <label>
+                        Expansion Key <span className="muted">(engine contract: single `expansionKeyId` — 0–1)</span>
+                        <select
+                          value={equ.expansionKeyId ?? ""}
+                          onChange={(e) => props.onChange(setExpansionKey(props.setup, c.id, e.target.value === "" ? undefined : e.target.value))}
+                        >
+                          <option value="">— none —</option>
+                          {m?.expansionKey ? (
+                            <option value={m.expansionKey.id}>
+                              {m.expansionKey.name} ({m.expansionKey.id})
+                            </option>
+                          ) : null}
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+                );
+              })
+          )}
+          <p className="muted">
+            The engine remains authoritative: it validates every id, the 3-slot Common Key maximum, C1–C6 calibrations, and
+            calibration-without-weapon. Local caps (0–3 Keys, exactly-1 weapon/affinity once equipment is engaged) are UI-only.
+          </p>
         </section>
 
         <section>
