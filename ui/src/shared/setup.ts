@@ -74,6 +74,27 @@ export interface SetupEquipment {
   affinityLevel?: number;
 }
 
+/** Fresh engine character rows (sim:listCharacters) vs the user's CURRENT setup: KEEP the user's
+ *  selection/equipment for characters that still exist (no wipe on remount or on app-start restore);
+ *  brand-new engine characters join unselected; mobility stays engine-sourced. */
+export function mergeFreshCharacters(
+  existing: SetupCharacter[],
+  fresh: Array<{ id: string; name: string; mobility?: number }>,
+): SetupCharacter[] {
+  const byId = new Map(existing.map((c) => [c.id, c]));
+  return fresh.map((c) => {
+    const prev = byId.get(c.id);
+    const merged: SetupCharacter = {
+      id: c.id,
+      name: c.name,
+      selected: prev?.selected ?? false,
+      ...(c.mobility !== undefined ? { mobility: c.mobility } : {}),
+      ...(prev?.equipment !== undefined ? { equipment: prev.equipment } : {}),
+    };
+    return merged;
+  });
+}
+
 export interface SetupState {
   turns: number;
   seed: number;

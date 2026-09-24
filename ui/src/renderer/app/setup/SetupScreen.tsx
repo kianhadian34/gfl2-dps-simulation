@@ -5,6 +5,7 @@ import {
   equipmentErrors,
   equipmentOf,
   seedDebugBaseStats,
+  mergeFreshCharacters,
   setAffinityKey,
   setCalibration,
   setDebugBaseStat,
@@ -141,7 +142,7 @@ export function SetupScreen(props: {
         for (const c of chars) if (c.base) baseById[c.id] = c.base;
         props.onChange(
           seedDebugBaseStats(
-            { ...props.setup, characters: chars.map((c) => ({ id: c.id, name: c.name, selected: false, ...(c.mobility !== undefined ? { mobility: c.mobility } : {}) })) },
+            { ...props.setup, characters: mergeFreshCharacters(props.setup.characters, chars) },
             baseById,
           ),
         );
