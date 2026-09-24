@@ -17,6 +17,8 @@ import type {
   CommonKeyView,
   CharacterMetaView,
   WeaponCalibrationEffectView,
+  AffinityKeyView,
+  ExpansionKeyView,
 } from "./engine-types.js";
 
 /** Structural engine weapon shape (satisfied by engine `WeaponDef`). */
@@ -47,8 +49,13 @@ export interface CharacterMetaSource {
   mobility?: number;
   base?: { atk: number; hp: number; def: number; stability: number; critRate: number; critDmg: number };
   fixedKeys?: Array<{ id: string; name: string; description?: string }>;
-  expansionKey?: { id: string; name: string };
-  affinityKey?: { id: string; name: string };
+  expansionKey?: { id: string; name: string; description?: string };
+  affinityKey?: {
+    id: string;
+    name: string;
+    levels?: Record<number, { critDmg?: number; atk?: number; hp?: number }>;
+    genericBonus?: { atk?: number; hp?: number };
+  };
 }
 
 export function buildWeaponViews(weapons: WeaponSource[]): WeaponView[] {
@@ -185,10 +192,61 @@ export function buildCharacterMetaView(def: CharacterMetaSource): CharacterMetaV
           })),
         }
       : {}),
-    ...(def.expansionKey !== undefined ? { expansionKey: { id: def.expansionKey.id, name: def.expansionKey.name } } : {}),
-    ...(def.affinityKey !== undefined ? { affinityKey: { id: def.affinityKey.id, name: def.affinityKey.name } } : {}),
+    ...(def.expansionKey !== undefined
+      ? { expansionKey: { id: def.expansionKey.id, name: def.expansionKey.name, ...(def.expansionKey.description !== undefined ? { description: def.expansionKey.description } : {}) } }
+      : {}),
+    ...(def.affinityKey !== undefined
+      ? {
+          affinityKey: {
+            id: def.affinityKey.id,
+            name: def.affinityKey.name,
+            ...(def.affinityKey.levels !== undefined
+              ? {
+                  levels: Object.fromEntries(
+                    Object.entries(def.affinityKey.levels).map(([lv, s]) => [Number(lv), { ...s }]),
+                  ),
+                }
+              : {}),
+            ...(def.affinityKey.genericBonus !== undefined ? { genericBonus: { ...def.affinityKey.genericBonus } } : {}),
+          },
+        }
+      : {}),
   };
 }
 
+/** Affinity Key stat lines. With `level` chosen, returns ONLY that level's stats (the stats the user is
+ *  actually getting — engine `levels[level]`, exact levels only); without a level, all recorded levels +
+ *  the foreign generic bonus (picker preview). */
+export function affinityKeyStatLines(a: AffinityKeyView, level?: number): string[] {
+  const lines: string[] = [];
+  if (a.levels) {
+    const statsOf = (s: { atk?: number; hp?: number; critDmg?: number }) => {
+      const parts: string[] = [];
+      if (s.atk !== undefined) parts.push(`ATK +${pct1(s.atk)}`);
+      if (s.hp !== undefined) parts.push(`HP +${pct1(s.hp)}`);
+      if (s.critDmg !== undefined) parts.push(`Crit DMG +${pct1(s.critDmg)}`);
+      return parts;
+    };
+    if (level !== undefined) {
+      const s = a.levels[level];
+      if (!s) return []; // unrecorded level: nothing (no interpolation, engine-exact)
+      return statsOf(s); // each stat on its own line — only what the user is getting
+    }
+    for (const [lv, s] of Object.entries(a.levels).sort(([x], [y]) => Number(x) - Number(y))) {
+      for (const stat of statsOf(s)) lines.push(`Lv${lv} · ${stat}`);
+    }
+  }
+  if (a.genericBonus && level === undefined) {
+    if (a.genericBonus.atk !== undefined) lines.push(`Foreign · ATK +${pct1(a.genericBonus.atk)}`);
+    if (a.genericBonus.hp !== undefined) lines.push(`Foreign · HP +${pct1(a.genericBonus.hp)}`);
+  }
+  return lines;
+}
+
+/** Expansion Key effect line — its authoritative in-game description (engine `KeyDef.description`). */
+export function expansionKeyEffectLine(e: ExpansionKeyView | undefined): string | undefined {
+  return e?.description;
+}
+
 /** Convenience re-export for callers that only need the view types. */
-export type { WeaponView, CommonKeyListResult, CommonKeyView, CharacterMetaView };
+export type { WeaponView, CommonKeyListResult, CommonKeyView, CharacterMetaView, AffinityKeyView, ExpansionKeyView };

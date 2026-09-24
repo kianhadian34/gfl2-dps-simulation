@@ -284,12 +284,27 @@ export function setCalibration(state: SetupState, charId: string, level: number 
   });
 }
 
-/** Set (or clear) the EXACT ONE Affinity Key (engine `affinityKeyId`). `affinityLevel` is preserved as-is. */
+/** Set (or clear) the EXACT ONE Affinity Key (engine `affinityKeyId`). Clearing also clears the level
+ *  (a level without a key is meaningless); changing keys keeps the old level until re-picked. */
 export function setAffinityKey(state: SetupState, charId: string, keyId: string | undefined): SetupState {
   return updateEquipment(state, charId, (e) => {
     const next: SetupEquipment = { ...e };
-    if (keyId === undefined) delete next.affinityKeyId;
-    else next.affinityKeyId = keyId;
+    if (keyId === undefined) {
+      delete next.affinityKeyId;
+      delete next.affinityLevel;
+    } else {
+      next.affinityKeyId = keyId;
+    }
+    return next;
+  });
+}
+
+/** Set (or clear) the affinity LEVEL with the equipped key — exact levels only (engine `levels` keys,
+ *  e.g. 5 / 9; the engine grants nothing on levels without an entry). Stored verbatim into the scenario. */
+export function setAffinityLevel(state: SetupState, charId: string, level: number | undefined): SetupState {
+  return updateEquipment(state, charId, (e) => {
+    const next: SetupEquipment = { ...e, ...(level === undefined ? {} : { affinityLevel: level }) };
+    if (level === undefined) delete next.affinityLevel;
     return next;
   });
 }

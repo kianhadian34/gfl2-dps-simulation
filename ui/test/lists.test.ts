@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine } from "../src/shared/lists.js";
+import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, expansionKeyEffectLine } from "../src/shared/lists.js";
 
 /**
  * ENGINE-SOURCED LIST CONTRACT (2026 — plumbing; no UI controls yet).
@@ -55,6 +55,59 @@ test("unit: commonKeyStatLines/EffectLine render the granted stats and the addit
   assert.equal(commonKeyEffectLine(epic), "Boosts Phase damage by 5%.", "recorded secondary effect preferred over stats");
   assert.deepEqual(commonKeyStatLines(bare), []);
   assert.equal(commonKeyEffectLine(bare), undefined, "no stats/effect → nothing emitted");
+});
+
+test("unit: affinity/expansion key lines come from the engine data (never invented)", () => {
+  const meta = buildCharacterMetaView({
+    id: "qiongjiu",
+    name: "Qiongjiu",
+    expansionKey: {
+      id: "qiongjiu_exp_ruined_gem",
+      name: "Ruined Gem",
+      description: "Support Action damage type becomes Burn damage. Damage dealt to targets with Burn debuffs is increased by 15%.",
+    },
+    affinityKey: {
+      id: "qiongjiu_affinity_warm_as_jade",
+      name: "Warm as Jade",
+      levels: { 9: { critDmg: 0.045, atk: 0.045, hp: 0.045 }, 5: { critDmg: 0.033, atk: 0.033, hp: 0.033 } },
+      genericBonus: { atk: 0.03, hp: 0.03 },
+    },
+  });
+  assert.deepEqual(
+    meta.expansionKey,
+    { id: "qiongjiu_exp_ruined_gem", name: "Ruined Gem", description: "Support Action damage type becomes Burn damage. Damage dealt to targets with Burn debuffs is increased by 15%." },
+    "expansion description carried through",
+  );
+  assert.deepEqual(meta.affinityKey?.levels, { 5: { critDmg: 0.033, atk: 0.033, hp: 0.033 }, 9: { critDmg: 0.045, atk: 0.045, hp: 0.045 } }, "affinity levels deep-copied");
+  assert.deepEqual(meta.affinityKey?.genericBonus, { atk: 0.03, hp: 0.03 });
+  assert.deepEqual(
+    affinityKeyStatLines(meta.affinityKey!),
+    [
+      "Lv5 · ATK +3.3%",
+      "Lv5 · HP +3.3%",
+      "Lv5 · Crit DMG +3.3%",
+      "Lv9 · ATK +4.5%",
+      "Lv9 · HP +4.5%",
+      "Lv9 · Crit DMG +4.5%",
+      "Foreign · ATK +3.0%",
+      "Foreign · HP +3.0%",
+    ],
+    "preview: one stat per line, level-prefixed",
+  );
+  assert.deepEqual(
+    affinityKeyStatLines(meta.affinityKey!, 5),
+    ["ATK +3.3%", "HP +3.3%", "Crit DMG +3.3%"],
+    "chosen level → ONLY that level's stats, each on its own line",
+  );
+  assert.deepEqual(
+    affinityKeyStatLines(meta.affinityKey!, 9),
+    ["ATK +4.5%", "HP +4.5%", "Crit DMG +4.5%"],
+    "level 9 → only the level-9 stats, each on its own line",
+  );
+  assert.deepEqual(affinityKeyStatLines(meta.affinityKey!, 4), [], "unrecorded level → nothing (no interpolation)");
+  assert.equal(expansionKeyEffectLine(meta.expansionKey), "Support Action damage type becomes Burn damage. Damage dealt to targets with Burn debuffs is increased by 15%.");
+  assert.equal(expansionKeyEffectLine(undefined), undefined, "no expansion key → no effect line");
+  assert.deepEqual(affinityKeyStatLines({ id: "x", name: "X" }), [], "no levels/generic → nothing emitted");
 });
 
 test("unit: effectCopyWithCalibration substitutes the calibration-dependent numbers inside Effect", () => {

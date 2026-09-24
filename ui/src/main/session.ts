@@ -152,8 +152,25 @@ export function registerSimHandlers(): void {
         ...(def
           ? {
               fixedKeys: def.fixedKeys.map((k) => ({ id: k.id, name: k.name, ...(k.description ? { description: k.description } : {}) })),
-              ...(def.expansionKey ? { expansionKey: { id: def.expansionKey.id, name: def.expansionKey.name } } : {}),
-              ...(def.affinityKey ? { affinityKey: { id: def.affinityKey.id, name: def.affinityKey.name } } : {}),
+              ...(def.expansionKey
+                ? {
+                    expansionKey: {
+                      id: def.expansionKey.id,
+                      name: def.expansionKey.name,
+                      ...(def.expansionKey.description ? { description: def.expansionKey.description } : {}),
+                    },
+                  }
+                : {}),
+              ...(def.affinityKey
+                ? {
+                    affinityKey: {
+                      id: def.affinityKey.id,
+                      name: def.affinityKey.name,
+                      ...(def.affinityKey.levels ? { levels: def.affinityKey.levels } : {}),
+                      ...(def.affinityKey.genericBonus ? { genericBonus: def.affinityKey.genericBonus } : {}),
+                    },
+                  }
+                : {}),
             }
           : {}),
       });

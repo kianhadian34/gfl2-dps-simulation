@@ -124,6 +124,24 @@ export interface BaseStatsView {
   critRate: number;
   critDmg: number;
 }
+/** Engine-sourced Affinity Key metadata (levels/generic bonus are the authoritative stat data). */
+export interface AffinityKeyView {
+  id: string;
+  name: string;
+  /** Exact affinity levels → stat block (engine `AffinityKeyDef.levels`; only recorded levels exist). */
+  levels?: Record<number, { critDmg?: number; atk?: number; hp?: number }>;
+  /** Foreign-key generic bonus (engine `genericBonus`; absent = none recorded). */
+  genericBonus?: { atk?: number; hp?: number };
+}
+
+/** Engine-sourced Expansion Key metadata (its recorded tooltip is the effect source). */
+export interface ExpansionKeyView {
+  id: string;
+  name: string;
+  /** Authoritative in-game description (engine `KeyDef.description`); absent when the key has none. */
+  description?: string;
+}
+
 export interface CharacterMetaView {
   id: string;
   name: string;
@@ -133,9 +151,9 @@ export interface CharacterMetaView {
   /** Character's Fixed Keys (id + name + authoritative number/description) — selections are validated by the engine. */
   fixedKeys?: FixedKeyView[];
   /** Character's Expansion Key (e.g. Ruined Gem), when defined. */
-  expansionKey?: { id: string; name: string };
+  expansionKey?: ExpansionKeyView;
   /** Character's Affinity Key (bond), when defined. */
-  affinityKey?: { id: string; name: string };
+  affinityKey?: AffinityKeyView;
 }
 
 export type TileHeight = "ground" | "high";

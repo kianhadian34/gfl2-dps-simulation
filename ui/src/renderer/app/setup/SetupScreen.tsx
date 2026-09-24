@@ -12,6 +12,7 @@ import {
   setExpansionKey,
   setWeapon,
   setCommonKeyAt,
+  setAffinityLevel,
   toggleFixedKey,
   PHASE_WEAKNESSES,
   AMMO_WEAKNESSES,
@@ -22,8 +23,8 @@ import {
   type RotationSlot,
   type SetupState,
 } from "../../../shared/setup.js";
-import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CharacterMetaView } from "../../../shared/engine-types.js";
-import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine } from "../../../shared/lists.js";
+import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CharacterMetaView, AffinityKeyView, ExpansionKeyView } from "../../../shared/engine-types.js";
+import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, expansionKeyEffectLine } from "../../../shared/lists.js";
 import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset } from "../../../shared/assets.js";
 import { AssetThumb } from "./AssetThumb.js";
 
@@ -47,8 +48,45 @@ const WEAPON_DETAIL_COPY = {
  * configure the fixed rotation and MVP settings, then Start Simulation.
  */
 
-/** Common Key presentation (fixed-key card style): large artwork, name, the granted stats, and
- *  the additional effect. All numbers come from the engine `CommonKeyDef` data via lists.ts. */
+/** Affinity Key presentation (same card style as Common Keys): artwork, name, per-level stats. */
+function AffinityKeyBadge({ k, size, level }: { k: AffinityKeyView; size: number; level?: number }) {
+  const lines = affinityKeyStatLines(k, level);
+  const tip = [k.name, ...lines].join("\n");
+  return (
+    <span className="common-key-badge" title={tip}>
+      <AssetThumb asset={affinityKeyAsset(k.id)} alt={k.name} size={size} />
+      <span className="common-key-badge-text">
+        <span className="common-key-name">{k.name}</span>
+        {lines.map((ln) => (
+          <span key={ln} className="common-key-stat">
+            {ln}
+          </span>
+        ))}
+      </span>
+    </span>
+  );
+}
+
+/** Expansion Key presentation (same card style): artwork, name, its authoritative effect text.
+ *  Tooltips can be long, so the visible effect line is clamped and the FULL tooltip is available
+ *  on hover (title) — the card layout stays compact. */
+function ExpansionKeyBadge({ k, size }: { k: ExpansionKeyView; size: number }) {
+  const effect = expansionKeyEffectLine(k);
+  const tip = effect !== undefined ? [k.name, effect].join("\n") : k.name;
+  return (
+    <span className="common-key-badge" title={tip}>
+      <AssetThumb asset={expansionKeyAsset(k.id)} alt={k.name} size={size} />
+      <span className="common-key-badge-text">
+        <span className="common-key-name">{k.name}</span>
+        {effect ? (
+          <span key={effect} className="common-key-effect">
+            {effect}
+          </span>
+        ) : null}
+      </span>
+    </span>
+  );
+}
 function CommonKeyBadge({ k, size }: { k: CommonKeyView; size: number }) {
   const effect = commonKeyEffectLine(k);
   return (
@@ -85,6 +123,8 @@ export function SetupScreen(props: {
   const [weapons, setWeapons] = useState<WeaponView[]>([]);
   const [commonKeys, setCommonKeys] = useState<CommonKeyListResult | null>(null);
   const [commonKeySlot, setCommonKeySlot] = useState<number | null>(null);
+  const [affinityPickerFor, setAffinityPickerFor] = useState<string | null>(null);
+  const [expansionPickerFor, setExpansionPickerFor] = useState<string | null>(null);
   const [meta, setMeta] = useState<Record<string, CharacterMetaView>>({});
   // Which doll's weapon picker is currently open (renderer-local presentation state only).
   const [weaponPickerFor, setWeaponPickerFor] = useState<string | null>(null);
@@ -277,6 +317,8 @@ export function SetupScreen(props: {
                 const m = meta[c.id];
                 const weapon = equ.weaponId !== undefined ? weapons.find((w) => w.id === equ.weaponId) : undefined;
                 const ownerName = weapon?.ownerCharacterId !== undefined ? meta[weapon.ownerCharacterId]?.name : undefined;
+                const affinityKey = m?.affinityKey;
+                const expansionKey = m?.expansionKey;
                 const atkBoostPct = Math.round((weapon?.subStats.find((s) => s.stat === "pctAtk")?.value ?? 0) * 100);
                 return (
                   <div key={c.id} className="rot-builder">
@@ -548,37 +590,128 @@ export function SetupScreen(props: {
                         )}
                       </fieldset>
 
-                      <label>
-                        Affinity Key <span className="muted">(exactly 1 — engine `affinityKeyId`)</span>
-                        <select
-                          value={equ.affinityKeyId ?? ""}
-                          onChange={(e) => props.onChange(setAffinityKey(props.setup, c.id, e.target.value === "" ? undefined : e.target.value))}
-                        >
-                          <option value="">— none —</option>
-                          {m?.affinityKey ? (
-                            <option value={m.affinityKey.id}>
-                              {m.affinityKey.name} ({m.affinityKey.id})
-                            </option>
-                          ) : null}
-                        </select>
-                        {equ.affinityKeyId !== undefined ? <AssetThumb asset={affinityKeyAsset(equ.affinityKeyId)} alt={m?.affinityKey?.name ?? "affinity key"} size={22} /> : null}
-                      </label>
+                      <fieldset>
+                        <legend>
+                          Affinity Key <span className="muted">(exactly 1 — engine `affinityKeyId`)</span>
+                        </legend>
+                        {affinityKey ? (
+                          <>
+                            <div className="common-key-slots is-single">
+                              <button
+                                type="button"
+                                className={`common-key-slot${equ.affinityKeyId ? " is-filled" : " is-empty"}`}
+                                onClick={() => setAffinityPickerFor(c.id)}
+                              >
+                                {equ.affinityKeyId ? (
+                                  <AffinityKeyBadge k={affinityKey} size={64} level={equ.affinityLevel} />
+                                ) : (
+                                  <span className="common-key-slot-plus">+</span>
+                                )}
+                              </button>
+                            </div>
+                            {affinityPickerFor === c.id ? (
+                              <div className="common-key-picker" role="dialog" aria-label="Choose Affinity Key">
+                                <div className="common-key-picker-list">
+                                  <button
+                                    type="button"
+                                    className="common-key-picker-card is-remove"
+                                    onClick={() => {
+                                      props.onChange(setAffinityKey(props.setup, c.id, undefined));
+                                      setAffinityPickerFor(null);
+                                    }}
+                                  >
+                                    <span className="common-key-slot-plus">+</span>
+                                    <span className="common-key-picker-name">— clear —</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`common-key-picker-card${equ.affinityKeyId === affinityKey.id ? " is-selected" : ""}`}
+                                    onClick={() => {
+                                      props.onChange(setAffinityKey(props.setup, c.id, affinityKey.id));
+                                      setAffinityPickerFor(null);
+                                    }}
+                                  >
+                                    <AffinityKeyBadge k={affinityKey} size={56} />
+                                  </button>
+                                <div className="affinity-levels">
+                                  <span className="affinity-levels-label">Affinity Level</span>
+                                  {(affinityKey.levels ? Object.keys(affinityKey.levels).map(Number).sort((a, b) => a - b) : []).map((lv) => (
+                                    <button
+                                      key={lv}
+                                      type="button"
+                                      className={`affinity-level-pill${equ.affinityLevel === lv ? " is-selected" : ""}`}
+                                      onClick={() => props.onChange(setAffinityLevel(props.setup, c.id, lv))}
+                                    >
+                                      Level {lv}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                                <button type="button" className="common-key-picker-close" onClick={() => setAffinityPickerFor(null)}>
+                                  Close
+                                </button>
+                              </div>
+                            ) : null}
+                          </>
+                        ) : (
+                          <span className="muted">no Affinity Key defined for this character</span>
+                        )}
+                      </fieldset>
 
-                      <label>
-                        Expansion Key <span className="muted">(engine contract: single `expansionKeyId` — 0–1)</span>
-                        <select
-                          value={equ.expansionKeyId ?? ""}
-                          onChange={(e) => props.onChange(setExpansionKey(props.setup, c.id, e.target.value === "" ? undefined : e.target.value))}
-                        >
-                          <option value="">— none —</option>
-                          {m?.expansionKey ? (
-                            <option value={m.expansionKey.id}>
-                              {m.expansionKey.name} ({m.expansionKey.id})
-                            </option>
-                          ) : null}
-                        </select>
-                        {equ.expansionKeyId !== undefined ? <AssetThumb asset={expansionKeyAsset(equ.expansionKeyId)} alt={m?.expansionKey?.name ?? "expansion key"} size={22} /> : null}
-                      </label>
+                      <fieldset>
+                        <legend>
+                          Expansion Key <span className="muted">(engine contract: single `expansionKeyId` — 0–1)</span>
+                        </legend>
+                        {expansionKey ? (
+                          <>
+                            <div className="common-key-slots is-single">
+                              <button
+                                type="button"
+                                className={`common-key-slot${equ.expansionKeyId ? " is-filled" : " is-empty"}`}
+                                onClick={() => setExpansionPickerFor(c.id)}
+                              >
+                                {equ.expansionKeyId ? (
+                                  <ExpansionKeyBadge k={expansionKey} size={64} />
+                                ) : (
+                                  <span className="common-key-slot-plus">+</span>
+                                )}
+                              </button>
+                            </div>
+                            {expansionPickerFor === c.id ? (
+                              <div className="common-key-picker" role="dialog" aria-label="Choose Expansion Key">
+                                <div className="common-key-picker-list">
+                                  <button
+                                    type="button"
+                                    className="common-key-picker-card is-remove"
+                                    onClick={() => {
+                                      props.onChange(setExpansionKey(props.setup, c.id, undefined));
+                                      setExpansionPickerFor(null);
+                                    }}
+                                  >
+                                    <span className="common-key-slot-plus">+</span>
+                                    <span className="common-key-picker-name">— clear —</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`common-key-picker-card${equ.expansionKeyId === expansionKey.id ? " is-selected" : ""}`}
+                                    onClick={() => {
+                                      props.onChange(setExpansionKey(props.setup, c.id, expansionKey.id));
+                                      setExpansionPickerFor(null);
+                                    }}
+                                  >
+                                    <ExpansionKeyBadge k={expansionKey} size={56} />
+                                  </button>
+                                </div>
+                                <button type="button" className="common-key-picker-close" onClick={() => setExpansionPickerFor(null)}>
+                                  Close
+                                </button>
+                              </div>
+                            ) : null}
+                          </>
+                        ) : (
+                          <span className="muted">no Expansion Key defined for this character</span>
+                        )}
+                      </fieldset>
                     </div>
                   </div>
                 );

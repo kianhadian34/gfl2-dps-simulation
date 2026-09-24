@@ -10,6 +10,7 @@ import {
   MAX_COMMON_KEYS_UI,
   MAX_EXPANSION_KEYS,
   setAffinityKey,
+  setAffinityLevel,
   setCalibration,
   setExpansionKey,
   setWeapon,
@@ -122,6 +123,21 @@ test("equipment: calibration selection populates calibrationLevel; cleared when 
 // ---------------------------------------------------------------------------
 // COMMON KEYS (0–3, engine 3-slot maximum)
 // ---------------------------------------------------------------------------
+
+test("equipment: affinity level is stored and carried verbatim into the scenario; clearing the key clears it", () => {
+  let s = setupWith();
+  s = setAffinityKey(s, "qiongjiu", "qiongjiu_affinity_warm_as_jade");
+  s = setAffinityLevel(s, "qiongjiu", 9);
+  assert.equal(equipmentOf(s.characters[0]).affinityLevel, 9);
+  let sc: ScenarioView = buildScenario(s);
+  assert.equal(sc.team[0].affinityLevel, 9, "engine contract carries affinityLevel verbatim");
+  s = setAffinityLevel(s, "qiongjiu", undefined);
+  assert.equal(equipmentOf(s.characters[0]).affinityLevel, undefined, "level can be cleared");
+  s = setAffinityLevel(s, "qiongjiu", 5);
+  s = setAffinityKey(s, "qiongjiu", undefined);
+  assert.equal(equipmentOf(s.characters[0]).affinityKeyId, undefined);
+  assert.equal(equipmentOf(s.characters[0]).affinityLevel, undefined, "clearing the key clears the level");
+});
 
 test("equipment: 0 Common Keys is valid", () => {
   const sc: ScenarioView = buildScenario(setupWith());

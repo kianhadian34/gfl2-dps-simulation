@@ -248,6 +248,7 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 
 /* --- Common Keys: 3 slot selection (2026) --- */
 .common-key-slots { display: flex; gap: 8px; margin: 2px 0 8px; }
+.common-key-slots.is-single .common-key-slot { flex: 0 1 200px; }
 .common-key-slot {
   flex: 1; min-width: 0; min-height: 150px; position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px;
@@ -262,9 +263,14 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .common-key-slot .common-key-badge-text {
   display: flex; flex-direction: column; align-items: center; gap: 1px;
 }
+.common-key-badge { display: flex; flex-direction: column; align-items: center; gap: 3px; max-width: 100%; }
 .common-key-name { font-size: 11px; line-height: 1.2; text-align: center; color: var(--text); font-weight: 600; }
 .common-key-stat { font-size: 10px; line-height: 1.3; text-align: center; color: var(--muted); }
-.common-key-effect { font-size: 10px; line-height: 1.3; text-align: center; color: var(--dmg); }
+.common-key-effect {
+  font-size: 10px; line-height: 1.3; text-align: center; color: var(--dmg);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  max-width: 100%;
+}
 .common-key-slot-remove {
   position: absolute; top: 2px; right: 7px; color: var(--muted); font-size: 14px; line-height: 1;
   cursor: pointer; z-index: 1;
@@ -293,6 +299,22 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
   color: var(--text); cursor: pointer; padding: 3px 10px; font-size: 12px;
 }
 .common-key-picker-close:hover { border-color: var(--accent); }
+
+/* --- affinity level selection (2026): exact levels only (engine `levels` keys) --- */
+.affinity-levels {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px;
+  padding-top: 8px; border-top: 1px solid var(--border);
+}
+.affinity-levels-label { font-size: 11px; color: var(--muted); margin-right: 2px; }
+.affinity-level-pill {
+  border: 1px solid var(--border); border-radius: 999px; background: var(--bg-2);
+  color: var(--text); cursor: pointer; padding: 2px 10px; font-size: 12px;
+}
+.affinity-level-pill:hover { border-color: var(--accent); }
+.affinity-level-pill.is-selected {
+  border-color: var(--accent); background: var(--accent); color: var(--bg);
+  font-weight: 600;
+}
 
 .weapon-slot:hover { border-color: var(--accent); }
 .weapon-slot.is-empty { color: var(--muted); }
