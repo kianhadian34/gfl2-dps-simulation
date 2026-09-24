@@ -35,6 +35,9 @@ export interface CommonKeySource {
   id: string;
   name: string;
   characterScope?: string;
+  stats?: { atkPct?: number; critRate?: number; critDmg?: number; outOfTurnDmg?: number };
+  /** Engine secondary-effect shape; only its recorded description is surfaced to the UI. */
+  secondaryEffect?: { description?: string };
 }
 
 /** Structural engine character shape (satisfied by engine `CharacterDef`). */
@@ -123,9 +126,32 @@ export function buildCommonKeyViews(keys: CommonKeySource[], maxCommonKeys: numb
       id: k.id,
       name: k.name,
       ...(k.characterScope !== undefined ? { characterScope: k.characterScope } : {}),
+      ...(k.stats ? { stats: { ...k.stats } } : {}),
+      ...(k.secondaryEffect?.description !== undefined ? { secondaryEffect: k.secondaryEffect.description } : {}),
     })),
     maxCommonKeys,
   };
+}
+
+const pct1 = (n: number) => `${(n * 100).toFixed(1)}%`;
+
+/** Player-facing stat lines a Common Key grants (data-driven label map over `stats`; never invented). */
+export function commonKeyStatLines(k: CommonKeyView): string[] {
+  const s = k.stats;
+  if (!s) return [];
+  const lines: string[] = [];
+  if (s.atkPct !== undefined) lines.push(`Attack Boost +${pct1(s.atkPct)}`);
+  if (s.critRate !== undefined) lines.push(`Crit Rate +${pct1(s.critRate)}`);
+  if (s.critDmg !== undefined) lines.push(`Crit DMG +${pct1(s.critDmg)}`);
+  return lines;
+}
+
+/** The key's additional effect line: the recorded secondary effect when present, else the out-of-turn
+ *  damage stat (Golden Melody/Strategic Negotiation source data grants it as the effect component). */
+export function commonKeyEffectLine(k: CommonKeyView): string | undefined {
+  if (k.secondaryEffect !== undefined) return k.secondaryEffect;
+  if (k.stats?.outOfTurnDmg !== undefined) return `+${pct1(k.stats.outOfTurnDmg)} damage dealt outside the unit's own turn`;
+  return undefined;
 }
 
 /**

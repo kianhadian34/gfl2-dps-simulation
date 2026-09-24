@@ -233,6 +233,33 @@ export function toggleCommonKey(state: SetupState, charId: string, keyId: string
   });
 }
 
+/** Set the Common Key for a specific 0-based slot. `undefined` removes that slot's key (slots stay
+ *  compact — later keys shift left). Reuses the existing per-member equipment list and cap:
+ *  selecting a key already present elsewhere MOVES it to this slot, and a 4th distinct key is a no-op. */
+export function setCommonKeyAt(
+  state: SetupState,
+  charId: string,
+  slot: number,
+  keyId: string | undefined,
+  max = MAX_COMMON_KEYS_UI,
+): SetupState {
+  if (!Number.isInteger(slot) || slot < 0 || slot > max - 1) return state;
+  return updateEquipment(state, charId, (e) => {
+    const cur = e.commonKeyIds ?? [];
+    if (keyId === undefined) {
+      if (slot >= cur.length) return e;
+      const next = cur.filter((_, i) => i !== slot);
+      return { ...e, commonKeyIds: next };
+    }
+    const removed = cur.filter((_, i) => i !== slot); // drop the slot's current occupant
+    const dedup = removed.includes(keyId) ? removed.filter((k) => k !== keyId) : removed; // move, not duplicate
+    if (dedup.length >= max) return e; // cap preserved (4th distinct key is a no-op)
+    const next = [...dedup];
+    next.splice(Math.min(slot, next.length), 0, keyId);
+    return { ...e, commonKeyIds: next };
+  });
+}
+
 /** Set (or clear with `undefined`) the EXACT ONE weapon. Revalidates the stored calibration
  *  against the engine-sourced calibration list: cleared when the new weapon has none/invalid. */
 export function setWeapon(state: SetupState, charId: string, weaponId: string | undefined, calibrations: number[]): SetupState {

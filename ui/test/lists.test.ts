@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView, effectCopyWithCalibration } from "../src/shared/lists.js";
+import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine } from "../src/shared/lists.js";
 
 /**
  * ENGINE-SOURCED LIST CONTRACT (2026 — plumbing; no UI controls yet).
@@ -27,6 +27,34 @@ test("unit: buildWeaponViews maps engine weapon shapes into ascending calibratio
     calibrationEffects: { 1: {}, 2: { damageDealt: 0.1 }, 6: { damageDealt: 0.2, charging: { perStackValue: 0.2, maxStacks: 4, stacksPerGain: 2 } } },
   });
   assert.deepEqual(views[1], { id: "w2", name: "Weapon Two", rarity: "rare", atkLvl60: 120, subStats: [], calibrations: [], calibrationEffects: {} }, "absent owner/calibrations/substats stay empty");
+});
+
+test("unit: commonKeyStatLines/EffectLine render the granted stats and the additional effect (data-driven, nothing invented)", () => {
+  const res = buildCommonKeyViews(
+    [
+      {
+        id: "qiongjiu_common_strategic_negotiation",
+        name: "Strategic Negotiation",
+        characterScope: "qiongjiu",
+        stats: { atkPct: 0.05, critRate: 0.05, critDmg: 0.05, outOfTurnDmg: 0.07 },
+      },
+      { id: "generic_epic", name: "Generic Epic", stats: { atkPct: 0.06, critRate: 0.03, critDmg: 0.03 }, secondaryEffect: { description: "Boosts Phase damage by 5%." } },
+      { id: "bare", name: "Bare Key" },
+    ],
+    3,
+  );
+  const [sn, epic, bare] = res.items;
+  assert.deepEqual(
+    sn.stats,
+    { atkPct: 0.05, critRate: 0.05, critDmg: 0.05, outOfTurnDmg: 0.07 },
+    "stats deep-copied from the engine data",
+  );
+  assert.deepEqual(commonKeyStatLines(sn), ["Attack Boost +5.0%", "Crit Rate +5.0%", "Crit DMG +5.0%"], "3 stats listed");
+  assert.equal(commonKeyEffectLine(sn), "+7.0% damage dealt outside the unit's own turn", "out-of-turn damage shown as the additional effect");
+  assert.deepEqual(commonKeyStatLines(epic), ["Attack Boost +6.0%", "Crit Rate +3.0%", "Crit DMG +3.0%"]);
+  assert.equal(commonKeyEffectLine(epic), "Boosts Phase damage by 5%.", "recorded secondary effect preferred over stats");
+  assert.deepEqual(commonKeyStatLines(bare), []);
+  assert.equal(commonKeyEffectLine(bare), undefined, "no stats/effect → nothing emitted");
 });
 
 test("unit: effectCopyWithCalibration substitutes the calibration-dependent numbers inside Effect", () => {

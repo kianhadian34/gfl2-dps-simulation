@@ -246,6 +246,54 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .weapon-detail-col p { margin: 0; font-size: 12px; line-height: 1.45; color: var(--text); }
 .weapon-detail-col .cal-val { color: #f59e3d; font-weight: 600; }
 
+/* --- Common Keys: 3 slot selection (2026) --- */
+.common-key-slots { display: flex; gap: 8px; margin: 2px 0 8px; }
+.common-key-slot {
+  flex: 1; min-width: 0; min-height: 150px; position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px;
+  border: 1px dashed var(--border); border-radius: 4px; background: var(--bg-3);
+  color: var(--text); cursor: pointer; padding: 8px 6px;
+}
+.common-key-slot.is-filled { border-style: solid; border-color: var(--accent); }
+.common-key-slot:not(.is-filled):hover { border-color: var(--accent); }
+.common-key-slot-plus { font-size: 26px; line-height: 1; color: var(--muted); }
+.common-key-slot.is-empty { justify-content: center; }
+.common-key-slot.is-empty:hover .common-key-slot-plus { color: var(--text); }
+.common-key-slot .common-key-badge-text {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+}
+.common-key-name { font-size: 11px; line-height: 1.2; text-align: center; color: var(--text); font-weight: 600; }
+.common-key-stat { font-size: 10px; line-height: 1.3; text-align: center; color: var(--muted); }
+.common-key-effect { font-size: 10px; line-height: 1.3; text-align: center; color: var(--dmg); }
+.common-key-slot-remove {
+  position: absolute; top: 2px; right: 7px; color: var(--muted); font-size: 14px; line-height: 1;
+  cursor: pointer; z-index: 1;
+}
+.common-key-slot-remove:hover { color: var(--bad); }
+.common-key-picker {
+  margin-top: 4px; padding: 10px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg-2); color: var(--text);
+}
+.common-key-picker-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.common-key-picker-card {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; width: 150px;
+  border: 1px solid var(--border); border-radius: 4px; background: var(--bg-3);
+  color: var(--text); cursor: pointer; padding: 8px 6px; font-size: 12px;
+}
+.common-key-picker-card:hover:not(:disabled) { border-color: var(--accent); }
+.common-key-picker-card.is-selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.common-key-picker-card.is-used { opacity: 0.5; cursor: not-allowed; }
+.common-key-picker-card.is-remove { border-style: dashed; justify-content: center; min-height: 150px; color: var(--muted); }
+.common-key-picker-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.common-key-picker .common-key-badge-text {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.common-key-picker-close {
+  margin-top: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-2);
+  color: var(--text); cursor: pointer; padding: 3px 10px; font-size: 12px;
+}
+.common-key-picker-close:hover { border-color: var(--accent); }
+
 .weapon-slot:hover { border-color: var(--accent); }
 .weapon-slot.is-empty { color: var(--muted); }
 .weapon-slot.is-empty:hover { color: var(--text); }

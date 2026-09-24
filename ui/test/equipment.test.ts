@@ -13,6 +13,7 @@ import {
   setCalibration,
   setExpansionKey,
   setWeapon,
+  setCommonKeyAt,
   toggleCommonKey,
   toggleFixedKey,
   type SetupState,
@@ -134,6 +135,44 @@ test("equipment: up to 3 Common Keys can be selected; a 4th is a no-op", () => {
   s = toggleCommonKey(s, "qiongjiu", "ck4", 3);
   assert.deepEqual(equipmentOf(s.characters[0]).commonKeyIds, ["ck1", "ck2", "ck3"], "4th Common Key rejected");
   assert.ok(equipmentOf(s.characters[0]).commonKeyIds!.length <= MAX_COMMON_KEYS_UI);
+});
+
+test("equipment: setCommonKeyAt fills the chosen empty slot and keeps the counter at its index", () => {
+  let s = setupWith();
+  s = setCommonKeyAt(s, "qiongjiu", 0, "ck1", 3);
+  s = setCommonKeyAt(s, "qiongjiu", 1, "ck2", 3);
+  assert.deepEqual(equipmentOf(s.characters[0]).commonKeyIds, ["ck1", "ck2"], "2/3 after filling slots 0 and 1");
+  s = setCommonKeyAt(s, "qiongjiu", 2, "ck3", 3);
+  assert.deepEqual(equipmentOf(s.characters[0]).commonKeyIds, ["ck1", "ck2", "ck3"], "3/3 after filling slot 2");
+  const sc: ScenarioView = buildScenario(s);
+  assert.deepEqual(sc.team[0].commonKeyIds, ["ck1", "ck2", "ck3"], "carried verbatim into the engine scenario");
+});
+
+test("equipment: setCommonKeyAt replaces in place (change) and keeps the 3-key cap", () => {
+  let s = setupWith();
+  s = setCommonKeyAt(s, "qiongjiu", 0, "ck1", 3);
+  s = setCommonKeyAt(s, "qiongjiu", 1, "ck2", 3);
+  // change slot 1 with ck3 (new key)
+  s = setCommonKeyAt(s, "qiongjiu", 1, "ck3", 3);
+  assert.deepEqual(equipmentOf(s.characters[0]).commonKeyIds, ["ck1", "ck3"], "slot 1 replaced with ck3");
+  // changing the full slot 2 to a new key keeps exactly 3 keys (never 4)
+  s = setCommonKeyAt(s, "qiongjiu", 2, "ck4", 3);
+  assert.deepEqual(equipmentOf(s.characters[0]).commonKeyIds, ["ck1", "ck3", "ck4"], "slot-2 change stays within the 3-key cap");
+  assert.ok(equipmentOf(s.characters[0]).commonKeyIds!.length <= MAX_COMMON_KEYS_UI);
+});
+
+test("equipment: setCommonKeyAt(undefined) removes the slot's key and shifts later keys left", () => {
+  let s = setupWith();
+  s = setCommonKeyAt(s, "qiongjiu", 0, "ck1", 3);
+  s = setCommonKeyAt(s, "qiongjiu", 1, "ck2", 3);
+  s = setCommonKeyAt(s, "qiongjiu", 0, undefined, 3);
+  assert.deepEqual(equipmentOf(s.characters[0]).commonKeyIds, ["ck2"], "removed slot 0, ck2 shifted to slot 0 (1/3)");
+  s = setCommonKeyAt(s, "qiongjiu", 0, undefined, 3);
+  assert.equal(equipmentOf(s.characters[0]).commonKeyIds!.length, 0, "0/3 after removing the last key");
+  // out-of-range slot is a no-op
+  const before = equipmentOf(s.characters[0]).commonKeyIds;
+  s = setCommonKeyAt(s, "qiongjiu", 5, "ck1", 3);
+  assert.equal(equipmentOf(s.characters[0]).commonKeyIds, before, "out-of-range slot rejected");
 });
 
 // ---------------------------------------------------------------------------

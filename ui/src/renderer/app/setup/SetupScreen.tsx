@@ -11,7 +11,7 @@ import {
   setDebugEnabled,
   setExpansionKey,
   setWeapon,
-  toggleCommonKey,
+  setCommonKeyAt,
   toggleFixedKey,
   PHASE_WEAKNESSES,
   AMMO_WEAKNESSES,
@@ -22,8 +22,8 @@ import {
   type RotationSlot,
   type SetupState,
 } from "../../../shared/setup.js";
-import type { ScenarioView, WeaponView, CommonKeyListResult, CharacterMetaView } from "../../../shared/engine-types.js";
-import { fixedKeyLabel, effectCopyWithCalibration } from "../../../shared/lists.js";
+import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CharacterMetaView } from "../../../shared/engine-types.js";
+import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine } from "../../../shared/lists.js";
 import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset } from "../../../shared/assets.js";
 import { AssetThumb } from "./AssetThumb.js";
 
@@ -46,6 +46,30 @@ const WEAPON_DETAIL_COPY = {
  * SIMULATION SETUP — choose the target (dummy), pick characters from the engine registry,
  * configure the fixed rotation and MVP settings, then Start Simulation.
  */
+
+/** Common Key presentation (fixed-key card style): large artwork, name, the granted stats, and
+ *  the additional effect. All numbers come from the engine `CommonKeyDef` data via lists.ts. */
+function CommonKeyBadge({ k, size }: { k: CommonKeyView; size: number }) {
+  const effect = commonKeyEffectLine(k);
+  return (
+    <>
+      <AssetThumb asset={commonKeyAsset(k.id)} alt={k.name} size={size} />
+      <span className="common-key-badge-text">
+        <span className="common-key-name">{k.name}</span>
+        {commonKeyStatLines(k).map((ln) => (
+          <span key={ln} className="common-key-stat">
+            {ln}
+          </span>
+        ))}
+        {effect ? (
+          <span key={effect} className="common-key-effect">
+            {effect}
+          </span>
+        ) : null}
+      </span>
+    </>
+  );
+}
 export function SetupScreen(props: {
   setup: SetupState;
   onChange: (next: SetupState) => void;
@@ -60,6 +84,7 @@ export function SetupScreen(props: {
   // Engine-sourced equipment option lists (IPC — never duplicated in the renderer).
   const [weapons, setWeapons] = useState<WeaponView[]>([]);
   const [commonKeys, setCommonKeys] = useState<CommonKeyListResult | null>(null);
+  const [commonKeySlot, setCommonKeySlot] = useState<number | null>(null);
   const [meta, setMeta] = useState<Record<string, CharacterMetaView>>({});
   // Which doll's weapon picker is currently open (renderer-local presentation state only).
   const [weaponPickerFor, setWeaponPickerFor] = useState<string | null>(null);
@@ -422,18 +447,104 @@ export function SetupScreen(props: {
                         {(commonKeys?.items ?? []).length === 0 ? (
                           <span className="muted">no Common Keys available (IPC list empty)</span>
                         ) : (
-                          (commonKeys?.items ?? []).map((k) => (
-                            <label key={k.id} className="inline" title={k.name}>
-                              <input
-                                type="checkbox"
-                                checked={(equ.commonKeyIds ?? []).includes(k.id)}
-                                onChange={() => props.onChange(toggleCommonKey(props.setup, c.id, k.id, commonKeys?.maxCommonKeys ?? MAX_COMMON_KEYS_UI))}
-                              />
-                              <AssetThumb asset={commonKeyAsset(k.id)} alt={k.name} size={22} />
-                              {k.name}
-                              {k.characterScope ? <span className="muted"> · {k.characterScope}</span> : null}
-                            </label>
-                          ))
+                          <>
+                            <div className="common-key-slots">
+                              {[0, 1, 2].map((slot) => {
+                                const keyId = (equ.commonKeyIds ?? [])[slot];
+                                const k = keyId !== undefined ? (commonKeys?.items ?? []).find((x) => x.id === keyId) : undefined;
+                                return (
+                                  <button
+                                    key={slot}
+                                    type="button"
+                                    className={`common-key-slot${k ? " is-filled" : " is-empty"}`}
+                                    onClick={() => setCommonKeySlot(slot)}
+                                  >
+                                    {k ? (
+                                      <>
+                                        <CommonKeyBadge k={k} size={64} />
+                                        <span
+                                          className="common-key-slot-remove"
+                                          title="Remove"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            props.onChange(
+                                              setCommonKeyAt(
+                                                props.setup,
+                                                c.id,
+                                                slot,
+                                                undefined,
+                                                commonKeys?.maxCommonKeys ?? MAX_COMMON_KEYS_UI,
+                                              ),
+                                            );
+                                          }}
+                                        >
+                                          ×
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span className="common-key-slot-plus">+</span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            {commonKeySlot !== null ? (
+                              <div className="common-key-picker" role="dialog" aria-label="Choose Common Key">
+                                <div className="common-key-picker-list">
+                                  <button
+                                    type="button"
+                                    className="common-key-picker-card is-remove"
+                                    onClick={() => {
+                                      props.onChange(
+                                        setCommonKeyAt(
+                                          props.setup,
+                                          c.id,
+                                          commonKeySlot,
+                                          undefined,
+                                          commonKeys?.maxCommonKeys ?? MAX_COMMON_KEYS_UI,
+                                        ),
+                                      );
+                                      setCommonKeySlot(null);
+                                    }}
+                                  >
+                                    <span className="common-key-slot-plus">+</span>
+                                    <span className="common-key-picker-name">— clear this slot —</span>
+                                  </button>
+                                  {(commonKeys?.items ?? []).map((k) => {
+                                    const inSlot = (equ.commonKeyIds ?? [])[commonKeySlot] === k.id;
+                                    const usedElsewhere = (equ.commonKeyIds ?? []).includes(k.id) && !inSlot;
+                                    return (
+                                      <button
+                                        key={k.id}
+                                        type="button"
+                                        className={`common-key-picker-card${inSlot ? " is-selected" : ""}${usedElsewhere ? " is-used" : ""}`}
+                                        disabled={usedElsewhere}
+                                        title={usedElsewhere ? "Already equipped in another slot" : undefined}
+                                        onClick={() => {
+                                          props.onChange(
+                                            setCommonKeyAt(
+                                              props.setup,
+                                              c.id,
+                                              commonKeySlot,
+                                              k.id,
+                                              commonKeys?.maxCommonKeys ?? MAX_COMMON_KEYS_UI,
+                                            ),
+                                          );
+                                          setCommonKeySlot(null);
+                                        }}
+                                      >
+                                        <CommonKeyBadge k={k} size={56} />
+                                        {k.characterScope ? <span className="muted"> · {k.characterScope}</span> : null}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                <button type="button" className="common-key-picker-close" onClick={() => setCommonKeySlot(null)}>
+                                  Close
+                                </button>
+                              </div>
+                            ) : null}
+                          </>
                         )}
                       </fieldset>
 

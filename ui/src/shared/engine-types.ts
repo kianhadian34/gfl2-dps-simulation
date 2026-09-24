@@ -94,6 +94,10 @@ export interface CommonKeyView {
   name: string;
   /** Character association (data-only; absent = generic key). */
   characterScope?: string;
+  /** Stat block — exactly the fields the key grants (engine `CommonKeyDef.stats`, data-driven; absent = none). */
+  stats?: { atkPct?: number; critRate?: number; critDmg?: number; outOfTurnDmg?: number };
+  /** Secondary-effect description (engine `CommonKeyDef.secondaryEffect.description`; absent = none). */
+  secondaryEffect?: string;
 }
 
 export interface CommonKeyListResult {
