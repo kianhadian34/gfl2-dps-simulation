@@ -154,7 +154,8 @@ export function debugBaseStatOverrides(setup: SetupState, charId: string): Debug
 }
 
 export const DEFAULT_SETUP: SetupState = {
-  turns: 2,
+  // Default simulation length: 7 turns (the MVP cap). Users may still choose 1–7.
+  turns: 7,
   seed: 7,
   dummy: { hp: 999999999, defense: 5000, stability: 6, weaknesses: [], ammoWeaknesses: [] },
   characters: [],

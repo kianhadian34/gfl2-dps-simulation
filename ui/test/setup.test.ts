@@ -11,10 +11,11 @@ function setupWith(): SetupState {
   };
 }
 
-test("setup: builds a valid engine scenario from the form state (no grid by default)", () => {
+test("setup: the default Turns value is 7 (MVP cap), preserved into the engine scenario", () => {
+  assert.equal(DEFAULT_SETUP.turns, 7, "Simulation Settings default Turns = 7");
   const sc: ScenarioView = buildScenario(setupWith());
   assert.equal(sc.version, 1);
-  assert.equal(sc.turns, 2);
+  assert.equal(sc.turns, 7, "default turns reach the engine scenario");
   assert.equal(sc.seed, 7);
   assert.equal(sc.team.length, 1);
   assert.deepEqual(sc.team[0].rotation, ["basic", "active1"]);
@@ -275,6 +276,6 @@ test("end-to-end: grid-enabled no-Mobility Qiongjiu setup runs the real engine w
     assert.fail(`grid-enabled run threw: ${String(e)}`);
     return;
   }
-  assert.equal(result.turns, 2);
+  assert.equal(result.turns, DEFAULT_SETUP.turns);
   assert.ok(result.log.length >= 1, "simulation produced events");
 });
