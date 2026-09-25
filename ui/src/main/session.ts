@@ -172,6 +172,16 @@ export function registerSimHandlers(): void {
                   }
                 : {}),
               ...(def && def.affinityLevelStats ? { affinityLevelStats: def.affinityLevelStats } : {}),
+              ...(def && def.skills
+                ? {
+                    skills: {
+                      ...(def.skills.basic ? { basic: { id: def.skills.basic.id, name: def.skills.basic.name } } : {}),
+                      ...(def.skills.active1 ? { active1: { id: def.skills.active1.id, name: def.skills.active1.name } } : {}),
+                      ...(def.skills.active2 ? { active2: { id: def.skills.active2.id, name: def.skills.active2.name } } : {}),
+                      ...(def.skills.ultimate ? { ultimate: { id: def.skills.ultimate.id, name: def.skills.ultimate.name } } : {}),
+                    },
+                  }
+                : {}),
             }
           : {}),
       });

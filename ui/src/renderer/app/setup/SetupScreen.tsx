@@ -26,7 +26,7 @@ import {
 } from "../../../shared/setup.js";
 import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CharacterMetaView, AffinityKeyView, ExpansionKeyView } from "../../../shared/engine-types.js";
 import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, expansionKeyEffectLine, affinityLevelStatLines } from "../../../shared/lists.js";
-import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset } from "../../../shared/assets.js";
+import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset, skillAsset } from "../../../shared/assets.js";
 import { AssetThumb } from "./AssetThumb.js";
 
 /**
@@ -269,22 +269,49 @@ export function SetupScreen(props: {
           ) : (
             props.setup.characters
               .filter((c) => c.selected)
-              .map((c) => (
+              .map((c) => {
+                const skillOf = (slot: RotationSlot) => meta[c.id]?.skills?.[slot];
+                return (
                 <div key={c.id} className="rot-builder">
-                  <div className="mname">{c.name}</div>
-                  <div className="slots">
-                    {(props.setup.rotations[c.id] ?? []).map((slot, i) => (
-                      <span key={i} className="badge">
-                        {slot}
-                      </span>
-                    ))}
+                  <div className="mname">
+                    <AssetThumb asset={portraitAsset(c.id)} alt={c.name} size={26} />
+                    {c.name}
                   </div>
-                  <div className="slot-buttons">
-                    {ROTATION_SLOTS.map((slot) => (
-                      <button key={slot} type="button" onClick={() => addSlot(c.id, slot)}>
-                        + {slot}
-                      </button>
-                    ))}
+                  <div className="rot-slots">
+                    {(props.setup.rotations[c.id] ?? []).map((slot, i) => {
+                      const sk = skillOf(slot);
+                      return (
+                        <span key={i} className="rot-slot-card">
+                          {sk ? (
+                            <>
+                              <AssetThumb asset={skillAsset(sk.id)} alt={sk.name} size={34} />
+                              <span className="rot-slot-name">{sk.name}</span>
+                            </>
+                          ) : (
+                            slot
+                          )}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <div className="rot-cards">
+                    {ROTATION_SLOTS.map((slot) => {
+                      const sk = skillOf(slot);
+                      return (
+                        <button key={slot} type="button" className="rot-card" onClick={() => addSlot(c.id, slot)}>
+                          {sk ? (
+                            <>
+                              <AssetThumb asset={skillAsset(sk.id)} alt={sk.name} size={72} />
+                              <span className="rot-card-name">{sk.name}</span>
+                            </>
+                          ) : (
+                            <span className="rot-card-name">{slot}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="rot-actions">
                     <button
                       type="button"
                       onClick={() => set({ rotations: { ...props.setup.rotations, [c.id]: (props.setup.rotations[c.id] ?? []).slice(0, -1) } })}
@@ -296,7 +323,8 @@ export function SetupScreen(props: {
                     </button>
                   </div>
                 </div>
-              ))
+                );
+              })
           )}
         </section>
 

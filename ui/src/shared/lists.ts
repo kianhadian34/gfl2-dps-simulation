@@ -57,6 +57,7 @@ export interface CharacterMetaSource {
     genericBonus?: { atk?: number; hp?: number };
   };
   affinityLevelStats?: Record<number, { atkPct?: number; hpPct?: number; defPct?: number }>;
+  skills?: { basic?: { id: string; name: string }; active1?: { id: string; name: string }; active2?: { id: string; name: string }; ultimate?: { id: string; name: string } };
 }
 
 export function buildWeaponViews(weapons: WeaponSource[]): WeaponView[] {
@@ -217,6 +218,16 @@ export function buildCharacterMetaView(def: CharacterMetaSource): CharacterMetaV
           affinityLevelStats: Object.fromEntries(
             Object.entries(def.affinityLevelStats).map(([lv, s]) => [Number(lv), { ...s }]),
           ),
+        }
+      : {}),
+    ...(def.skills
+      ? {
+          skills: {
+            ...(def.skills.basic ? { basic: { ...def.skills.basic } } : {}),
+            ...(def.skills.active1 ? { active1: { ...def.skills.active1 } } : {}),
+            ...(def.skills.active2 ? { active2: { ...def.skills.active2 } } : {}),
+            ...(def.skills.ultimate ? { ultimate: { ...def.skills.ultimate } } : {}),
+          },
         }
       : {}),
   };

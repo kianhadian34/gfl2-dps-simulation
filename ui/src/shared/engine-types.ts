@@ -157,6 +157,15 @@ export interface CharacterMetaView {
   /** STANDALONE character Affinity-LEVEL stat bonuses (engine `CharacterDef.affinityLevelStats` — exact
    *  level map; Lv5 = none, Lv9 = ATK/HP/DEF +5%). Independent of the equipped Affinity Key. */
   affinityLevelStats?: Record<number, { atkPct?: number; hpPct?: number; defPct?: number }>;
+  /** Rotation abilities (engine `CharacterDef.skills` — basic/active1/active2/ultimate), used to show
+   *  each ability's artwork + name in the Rotation builder. */
+  skills?: { basic?: RotationSkillView; active1?: RotationSkillView; active2?: RotationSkillView; ultimate?: RotationSkillView };
+}
+
+/** Engine-sourced ability metadata for one rotation slot (the skill id feeds the asset resolver). */
+export interface RotationSkillView {
+  id: string;
+  name: string;
 }
 
 export type TileHeight = "ground" | "high";

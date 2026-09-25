@@ -399,9 +399,31 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .form fieldset { border: 1px solid var(--border); padding: 6px 8px; margin: 0; }
 .form legend { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
 .rot-builder { margin-bottom: 10px; }
-.rot-builder .slots { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; min-height: 20px; }
-.rot-builder .slot-buttons { display: flex; flex-wrap: wrap; gap: 4px; }
-.rot-builder .slot-buttons button { padding: 2px 8px; font-size: 11px; }
+.rot-builder .mname { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
+.rot-builder .rot-slots { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; min-height: 20px; }
+.rot-builder .rot-slot-card {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--border); border-radius: 4px; background: var(--bg-3);
+  padding: 3px 8px 3px 3px; font-size: 11px; color: var(--text);
+}
+.rot-builder .rot-cards { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0; }
+.rot-builder .rot-card {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  width: 120px; padding: 8px 6px 7px;
+  background: var(--bg-3); border: 1px solid var(--border); border-radius: 4px;
+  cursor: pointer; color: var(--text);
+}
+.rot-builder .rot-card:hover { border-color: var(--accent); }
+.rot-builder .rot-card .asset-thumb,
+.rot-builder .rot-slot-card .asset-thumb { margin-right: 0; }
+.rot-builder .rot-card-name { font-size: 11px; font-weight: 600; line-height: 1.2; text-align: center; }
+.rot-builder .rot-slot-name { font-size: 11px; line-height: 1.2; }
+.rot-builder .rot-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.rot-builder .rot-actions button {
+  border: 1px solid var(--border); border-radius: 4px; background: var(--bg-2);
+  color: var(--text); cursor: pointer; padding: 4px 12px; font-size: 12px;
+}
+.rot-builder .rot-actions button:hover { border-color: var(--accent); }
 .footer {
   display: flex; gap: 12px; align-items: center; padding: 8px 12px;
   border-top: 1px solid var(--border); background: var(--bg-2);
