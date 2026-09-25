@@ -461,5 +461,13 @@ export const QIONGJIU: CharacterDef = {
     // affinity level never upgrades it. Ownership is decided by `affinityKeyId === def.affinityKey.id`.
     genericBonus: { atk: 0.03, hp: 0.03 },
   },
+  // STANDALONE character Affinity-LEVEL stat bonuses (2026, CONFIRMED) — independent of the
+  // Affinity Key: Lv5 none; Lv9 ATK/HP/DEF +5% (the simulator models the in-game Lv6 unlock
+  // state as Lv9; Lv6–8 have no separate simulation states). Lv9 stacks additively with key
+  // bonuses in the same Final Stat percentage buckets.
+  affinityLevelStats: {
+    5: {},
+    9: { atkPct: 0.05, hpPct: 0.05, defPct: 0.05 },
+  },
   // Common Keys are REUSABLE registry definitions (src/data/common-keys.ts) — SN lives there.
 };

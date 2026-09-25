@@ -416,6 +416,18 @@ export interface AffinityKeyDef {
   verified: boolean;
   deferredNote?: string;
 }
+/**
+ * STANDALONE character Affinity-LEVEL stat bonuses (2026, confirmed) — completely independent of
+ * the equipped Affinity Key: Lv5 = none; Lv9 = ATK/HP/DEF +5%. Same exact-per-level representation
+ * as Affinity Key levels (absent levels grant nothing, no interpolation; the simulator represents
+ * the in-game Lv6 unlock state as Lv9). Folded through the existing Final Stat percentage paths.
+ */
+export interface AffinityLevelStats {
+  atkPct?: number;
+  hpPct?: number;
+  defPct?: number;
+}
+
 
 /**
  * Common Key STAT BLOCK — kept EXPLICITLY SEPARATE from the optional secondary effect.
@@ -502,6 +514,11 @@ export interface CharacterDef {
   fortificationMap?: FortificationUpgrade[];
   /** Expansion Key (1 per doll) — recorded data; engine behavior deferred. */
   expansionKey?: KeyDef;
+  /**
+   * STANDALONE character Affinity-LEVEL stat bonuses (2026, confirmed) — independent of the
+   * equipped Affinity Key; exact-level map, absent levels grant nothing.
+   */
+  affinityLevelStats?: Record<number, AffinityLevelStats>;
   /** Affinity Key (bond) — recorded data; engine consumption deferred. */
   affinityKey?: AffinityKeyDef;
   // Common Keys are REUSABLE definitions — they live in the Common Key registry

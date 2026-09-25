@@ -11,17 +11,22 @@ import type { CharacterDef } from "../model/types.js";
  * AFFINITY KEY — Warm as Jade (VALIDATED in-game 2026):
  * OWN key: Lv5 → +3.3% ATK/HP/CritDMG; Lv9 → +4.5%; NO interpolation (Lv1–4, 6–8 = nothing).
  * FOREIGN key: only the generic +3% stat bonus applies (+3% ATK & HP) — **VALIDATED 2026**; the
- * holder's affinity LEVEL never upgrades it (a Lv9 QJ with someone else's key still gets only +3%).
+ * holder's affinity LEVEL never upgrades it (a Lv9 QJ with someone else's key still gets +3% on the
+ * KEY part).
+ * STANDALONE character Affinity-LEVEL bonuses (2026, confirmed) — independent of the key: Lv5 none,
+ * Lv9 ATK/HP/DEF +5% (in-game Lv6 unlock modeled as Lv9). Stacks additively with key bonuses.
  * Ownership test uses id "qjaw" for a Qiongjiu clone and "gj" for another doll owning its own
  * (foreign) affinity key — the helper registry pins id "qiongjiu" to the real doll.
  *
  * Deterministic ATK math (mirror: base ATK 2000, no weapon substats, no key-bracket passives):
  *   panel = ceil(2000 × (1 + pct)):
- *     no key 2000 · own Lv5 ceil(2000 × 1.033) = 2066 · own Lv9 ceil(2000 × 1.045) = 2090
- *     foreign  ceil(2000 × 1.03)  = 2060 · Lv1/Lv7 (no interpolation) = 2000
+ *     no key/Lv5 2000 · own Lv5 ceil(2000 × 1.033) = 2066
+ *     own Lv9     ceil(2000 × (1 + 0.045 + 0.05)) = 2190  (key 4.5% + character Lv9 5%)
+ *     foreign Lv5 ceil(2000 × 1.03) = 2060 · foreign Lv9 ceil(2000 × (1 + 0.03 + 0.05)) = 2160
+ *     Lv1/Lv7 (no interpolation) = 2000
  * Damage (Basic Fuse, mult 0.8, DEF 5000, no weaknesses): final = ceil(atk × 0.8 × atk/(atk+5000))
- *   non-crit: 2000→458 · 2066→484 · 2090→493 · 2060→481
- * Crit (critRate 1): mult = 1 + critDmg  2000+0→458 · 2066+0.033→500 · 2090+0.045→516 · 2060+0→481.
+ *   non-crit: 2000→458 · 2066→484 · 2190→534 · 2060→481 · 2160→522
+ * Crit (critRate 1): mult = 1 + critDmg  2000+0→458 · 2066+0.033→500 · 2190+0.045→558 · 2060+0→481.
  */
 
 const WARM = "qiongjiu_affinity_warm_as_jade";
@@ -64,22 +69,22 @@ test("Warm as Jade OWN key Lv5: ATK +3.3% (panel 2066), CritDMG +3.3% (crit ×1.
   assert.equal(crit.finalDamage, 500, "483.24 × (1 + 0.033) — +3.3% Crit DMG");
 });
 
-test("Warm as Jade OWN key Lv9: ATK +4.5% (panel 2090), CritDMG +4.5% (crit ×1.045)", () => {
+test("Warm as Jade OWN key Lv9: ATK +4.5% key + +5% character-level (panel 2190), CritDMG +4.5% (crit ×1.045)", () => {
   const nonCrit = run({ keyId: WARM, level: 9 }).log.find((e) => e.action === "qiongjiu_basic")!;
-  assert.equal(nonCrit.attackerAtk, 2090, "ceil(2000 × 1.045) = 2090 — +4.5% ATK");
-  assert.equal(nonCrit.finalDamage, 493, "ceil(2090 × 0.8 × 2090/7090)");
+  assert.equal(nonCrit.attackerAtk, 2190, "ceil(2000 × 1.095) = 2190 — key +4.5% + character-level Lv9 +5% ATK");
+  assert.equal(nonCrit.finalDamage, 534, "ceil(2190 × 0.8 × 2190/7190)");
   const crit = run({ keyId: WARM, level: 9, critRate: 1 }).log.find((e) => e.action === "qiongjiu_basic")!;
-  assert.equal(crit.finalDamage, 516, "492.87 × (1 + 0.045) — +4.5% Crit DMG");
+  assert.equal(crit.finalDamage, 558, "533.64 × (1 + 0.045) — +4.5% Crit DMG (key only; character-level adds no CritDMG)");
 });
 
-test("FOREIGN affinity key: generic +3% (2060) applies; Qiongjiu's Lv9 does NOT upgrade it", () => {
+test("FOREIGN affinity key: generic +3% only — key values never upgrade; character-level Lv9 +5% applies independently (2160)", () => {
   const lv9 = run({ keyId: FOREIGN, level: 9 }).log.find((e) => e.action === "qiongjiu_basic")!;
-  assert.equal(lv9.attackerAtk, 2060, "foreign key: ceil(2000 × 1.03) = 2060 — generic +3% ONLY");
-  assert.equal(lv9.finalDamage, 481, "ceil(2060 × 0.8 × 2060/7060)");
+  assert.equal(lv9.attackerAtk, 2160, "ceil(2000 × 1.08) = 2160 — foreign key +3% + character-level Lv9 +5% (key part stays 3%)");
+  assert.equal(lv9.finalDamage, 522, "ceil(2160 × 0.8 × 2160/7160)");
   const lv9crit = run({ keyId: FOREIGN, level: 9, critRate: 1 }).log.find((e) => e.action === "qiongjiu_basic")!;
-  assert.equal(lv9crit.finalDamage, 481, "foreign key adds NO Crit DMG — the holder's level (9) does not pull her own 4.5% values");
+  assert.equal(lv9crit.finalDamage, 522, "foreign key adds NO Crit DMG — the holder's own 4.5% values never apply to a foreign key");
   const lv5 = run({ keyId: FOREIGN, level: 5 }).log.find((e) => e.action === "qiongjiu_basic")!;
-  assert.equal(lv5.attackerAtk, 2060, "a foreign key at ANY level stays at the generic +3% (never 3.3%)");
+  assert.equal(lv5.attackerAtk, 2060, "Lv5: foreign key generic +3% only (no character-level bonus at Lv5) — never 3.3%");
 });
 
 test("NO interpolation: Lv1–4 and Lv6–8 grant nothing (panel stays 2000)", () => {

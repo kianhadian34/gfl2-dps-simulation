@@ -307,8 +307,12 @@ function makeDoll(
       commonStats[stat as CommonKeyStat] = (commonStats[stat as CommonKeyStat] ?? 0) + (value ?? 0);
     }
   }
-  const atkPct = (commonStats.atkPct ?? 0) + aff.atk;
-  const hpPct = aff.hp;
+  // STANDALONE character Affinity-LEVEL stats (2026, confirmed): Lv5 none, Lv9 ATK/HP/DEF +5% —
+  // independent of the equipped Affinity Key (exact level map; absent levels grant nothing).
+  const levelStat = def.affinityLevelStats?.[affinity?.level ?? 0] ?? {};
+  const atkPct = (commonStats.atkPct ?? 0) + aff.atk + (levelStat.atkPct ?? 0);
+  const hpPct = aff.hp + (levelStat.hpPct ?? 0);
+  const defPct = levelStat.defPct ?? 0;
   let confectance = config.confectanceStart;
   for (const k of def.fixedKeys) {
     if (keys.includes(k.id)) {
@@ -343,7 +347,7 @@ function makeDoll(
     panelAtk: atkPct > 0 ? finalStat(panel.atk, 0, atkPct) : panel.atk,
     hp: hpPct > 0 ? finalStat(panel.hp, 0, hpPct) : panel.hp,
     maxHp: hpPct > 0 ? finalStat(panel.hp, 0, hpPct) : panel.hp,
-    defStat: panel.def,
+    defStat: defPct > 0 ? finalStat(panel.def, 0, defPct) : panel.def,
     critRate: def.base.critRate + (commonStats.critRate ?? 0),
     critDmg: def.base.critDmg + aff.critDmg + (commonStats.critDmg ?? 0),
     outOfTurnDmg: commonStats.outOfTurnDmg ?? 0,
