@@ -19,7 +19,7 @@ export const QIONGJIU: CharacterDef = {
     basic: {
       id: "qiongjiu_basic",
       name: "Fuse",
-      playerDescription: "Deal 80% ATK damage. Medium Ammo.",
+      playerDescription: "Selects 1 enemy target within 8 tiles and deals Physical damage equal to 80% of attack to it.",
       type: "basic",
       levels: {
         1: {
@@ -42,7 +42,7 @@ export const QIONGJIU: CharacterDef = {
     active1: {
       id: "qiongjiu_common_rail",
       name: "Common Rail",
-      playerDescription: "Deal 150% ATK Burn damage. Applies Support Boost I to self.",
+      playerDescription: "Selects 1 enemy target within 8 tiles, deals Burn damage equal to 150% of attack to them and the user gains Support Boost I.",
       type: "active",
       levels: {
         1: {
@@ -78,6 +78,8 @@ export const QIONGJIU: CharacterDef = {
           // (target >0 → 0 on this hit), grant the +30% Support Boost variant to Qiongjiu —
           // persistent, activation-consumed, un-cleansable (generic onKillStatuses hook).
           onKillStatuses: [{ statusId: "support_boost_i_30", stacks: 1, target: "self" }],
+          // Lv2 player tooltip (exact in-game text, 2026).
+          playerDescription: "Selects 1 enemy target within 8 tiles, dealing Burn damage equal to 150% of attack to them. Additionally, this unit gains Support Boost I as well. If the enemy is killed from this skill, increases the damage bonus from Support Boost by 30%.",
         },
       },
     },
@@ -87,7 +89,7 @@ export const QIONGJIU: CharacterDef = {
     active2: {
       id: "qiongjiu_guide_to_victory",
       name: "Guide to Victory",
-      playerDescription: "Deal 110% ATK Burn damage.",
+      playerDescription: "Selects 1 direction and deals AoE Burn damage equal to 110% of attack to the first enemy target within 8 tiles in the selected direction. Applies Overburn for 2 turns.",
       type: "active",
       levels: {
         1: {
@@ -122,6 +124,8 @@ export const QIONGJIU: CharacterDef = {
           // hits when the target has Overburn; NOT a permanent Crit Rate increase). Implemented
           // via the generic `guaranteedCritWhenHasStatus` hook.
           guaranteedCritWhenHasStatus: "overburn",
+          // Lv2 player tooltip (exact in-game text, 2026).
+          playerDescription: "Selects 1 direction and deals AoE Burn damage equal to 110% of attack to the first enemy target within 8 tiles in the selected direction. Applies Overburn for 2 turns. If the target is already affected by Overburn, the critical rate of this attack is increased by 100%.",
         },
       },
     },
@@ -135,7 +139,7 @@ export const QIONGJIU: CharacterDef = {
     ultimate: {
       id: "qiongjiu_pressing_momentum",
       name: "Pressing the Momentum",
-      playerDescription: "Buff/Debuff Ultimate. Applies 3 Support Boost II stacks; at max Confectance grants an extra Support Boost II stack and +1 Support Action.",
+      playerDescription: "Gains 3 stacks of Support Boost II. At max Confectance Index, gains 1 additional stack and increases the maximum number of Support Action this turn by 1.",
       type: "ultimate",
       levels: {
         1: {
@@ -181,6 +185,8 @@ export const QIONGJIU: CharacterDef = {
           // Qiongjiu's Support Action resolves — for 1 turn (expires when the target finishes
           // its own turn). Independent of Confectance level / the max-Confectance branch.
           beforeSupportStatuses: [{ statusId: "vulnerable_i", durationRounds: 1, target: "target" }],
+          // Lv2 player tooltip (exact in-game text, 2026).
+          playerDescription: "Gains 3 stacks of Support Boost II. At max Confectance Index, gains 1 additional stack and increases the maximum number of Support Action this turn by 1. Applies Vulnerable I for 1 turn to targets not protected by Cover.",
         },
         3: {
           id: "qiongjiu_pressing_momentum",
@@ -208,6 +214,8 @@ export const QIONGJIU: CharacterDef = {
             owner: [{ statusId: "damage_up_ii", durationRounds: 1 }],
             triggeringAlly: [{ statusId: "damage_up_ii", durationRounds: 1 }],
           },
+          // Lv3 player tooltip (exact in-game text, 2026).
+          playerDescription: "Gains 3 stacks of Support Boost II. At max Confectance Index, gains 1 additional stack and increases the maximum number of Support Action this turn by 1. Applies Vulnerable I to targets not protected by Cover. When performing Support Action, applies Damage Up II to self and the allied unit before the aforementioned allied unit makes their attack, lasting for 1 turn.",
         },
       },
     },
@@ -240,7 +248,7 @@ export const QIONGJIU: CharacterDef = {
   passive: {
     id: "qiongjiu_steady_plan",
     name: "Steady Plan",
-    playerDescription: "Grants +1 Confectance on each damage event. Damage +10% against No-Cover targets. Support Attack (90% ATK) triggers after an allied single-target hit, up to 3 per round.",
+    playerDescription: "Gains 1 point of Confectance Index each time after dealing damage. Increases damage dealt to targets not under the protection of Cover by 10%. When an enemy unit within range receives targeted damage from an ally, performs 1 instance of Support Action, dealing Physical damage equal to 90% of attack and 2 points of stability damage. This effect can be triggered up to 3 times per turn.",
     // Baseline = Lv1 (engine fallback when no resolved level list exists).
     effects: [
       // +1 Confectance per damage event (CONFIRMED, research §3.12).
@@ -345,6 +353,11 @@ export const QIONGJIU: CharacterDef = {
         },
       ],
     },
+    // Lv2/Lv3 player tooltips (exact in-game passive text, 2026).
+    levelDescriptions: {
+      2: "Gains 1 point of Confectance Index each time after dealing damage. Increases damage dealt to targets not under the protection of Cover by 10%. When an enemy unit within range receives targeted damage from an ally, performs 1 instance of Support Action, dealing Physical damage equal to 90% of attack and 2 points of stability damage. This effect can be triggered up to 3 times per turn. After performing Support Action, applies Overburn to the target for 2 turns. Damage dealt by Support Action is increased by 10%.",
+      3: "Gains 1 point of Confectance Index each time after dealing damage. Increases damage dealt to targets not under the protection of Cover by 20%. When an enemy unit within range receives targeted damage from an ally, performs 1 instance of Support Action, dealing Physical damage equal to 90% of attack and 2 points of stability damage. This effect can be triggered up to 3 times per turn. After performing Support Action, applies Overburn to the target for 2 turns. Damage dealt by Support Action is increased by 10%.",
+    },
     deferredNotes: {},
   },
   // Authoritative Fortification map (character screens, 2026): each Fortification raises exactly one ability.
@@ -413,6 +426,7 @@ export const QIONGJIU: CharacterDef = {
         ability: "active1",
         statuses: [{ statusId: "blazing_assault_ii", durationRounds: 2 }],
       },
+
     },
     {
       id: "qiongjiu_fk6_steadiness",

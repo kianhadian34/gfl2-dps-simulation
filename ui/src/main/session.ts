@@ -175,12 +175,16 @@ export function registerSimHandlers(): void {
               ...(def && def.skills
                 ? {
                     skills: {
-                      ...(def.skills.basic ? { basic: { id: def.skills.basic.id, name: def.skills.basic.name } } : {}),
-                      ...(def.skills.active1 ? { active1: { id: def.skills.active1.id, name: def.skills.active1.name } } : {}),
-                      ...(def.skills.active2 ? { active2: { id: def.skills.active2.id, name: def.skills.active2.name } } : {}),
-                      ...(def.skills.ultimate ? { ultimate: { id: def.skills.ultimate.id, name: def.skills.ultimate.name } } : {}),
+                      ...(def.skills.basic ? { basic: { id: def.skills.basic.id, name: def.skills.basic.name, ...(def.skills.basic.playerDescription ? { description: def.skills.basic.playerDescription } : {}), ...(Object.keys(def.skills.basic.levels).length > 0 ? { descriptions: Object.fromEntries(Object.entries(def.skills.basic.levels).filter(([, v]) => v.playerDescription).map(([lv, v]) => [Number(lv), v.playerDescription!])) } : {}) } } : {}),
+                      ...(def.skills.active1 ? { active1: { id: def.skills.active1.id, name: def.skills.active1.name, ...(def.skills.active1.playerDescription ? { description: def.skills.active1.playerDescription } : {}), ...(Object.keys(def.skills.active1.levels).length > 0 ? { descriptions: Object.fromEntries(Object.entries(def.skills.active1.levels).filter(([, v]) => v.playerDescription).map(([lv, v]) => [Number(lv), v.playerDescription!])) } : {}) } } : {}),
+                      ...(def.skills.active2 ? { active2: { id: def.skills.active2.id, name: def.skills.active2.name, ...(def.skills.active2.playerDescription ? { description: def.skills.active2.playerDescription } : {}), ...(Object.keys(def.skills.active2.levels).length > 0 ? { descriptions: Object.fromEntries(Object.entries(def.skills.active2.levels).filter(([, v]) => v.playerDescription).map(([lv, v]) => [Number(lv), v.playerDescription!])) } : {}) } } : {}),
+                      ...(def.skills.ultimate ? { ultimate: { id: def.skills.ultimate.id, name: def.skills.ultimate.name, ...(def.skills.ultimate.playerDescription ? { description: def.skills.ultimate.playerDescription } : {}), ...(Object.keys(def.skills.ultimate.levels).length > 0 ? { descriptions: Object.fromEntries(Object.entries(def.skills.ultimate.levels).filter(([, v]) => v.playerDescription).map(([lv, v]) => [Number(lv), v.playerDescription!])) } : {}) } } : {}),
                     },
                   }
+                : {}),
+              ...(def && def.fortificationMap ? { fortificationMap: def.fortificationMap } : {}),
+              ...(def && def.passive
+                ? { passive: { ...(def.passive.playerDescription ? { playerDescription: def.passive.playerDescription } : {}), ...(def.passive.levelDescriptions ? { levelDescriptions: def.passive.levelDescriptions } : {}) } }
                 : {}),
             }
           : {}),

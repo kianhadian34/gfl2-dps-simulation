@@ -160,12 +160,34 @@ export interface CharacterMetaView {
   /** Rotation abilities (engine `CharacterDef.skills` — basic/active1/active2/ultimate), used to show
    *  each ability's artwork + name in the Rotation builder. */
   skills?: { basic?: RotationSkillView; active1?: RotationSkillView; active2?: RotationSkillView; ultimate?: RotationSkillView };
+  /** Engine-sourced Fortification map (engine `CharacterDef.fortificationMap`) — resolves effective ability levels. */
+  fortificationMap?: FortificationUpgradeView[];
+  /** Engine-sourced passive metadata (per-level exact in-game text). */
+  passive?: PassiveDescriptionView;
 }
 
 /** Engine-sourced ability metadata for one rotation slot (the skill id feeds the asset resolver). */
 export interface RotationSkillView {
   id: string;
   name: string;
+  /** Authoritative player-facing ability tooltip (engine `AbilityDef.playerDescription`); absent when none. */
+  description?: string;
+  /** Per-level player-facing tooltips (engine `SkillDefVariant.playerDescription` keyed by ability level). */
+  descriptions?: Record<number, string>;
+}
+
+/** Engine-sourced Fortification upgrade (engine `FortificationUpgrade`) — used to resolve the effective
+ *  ability level for a chosen fortificationLevel (same semantics as the engine's `effectiveAbilityLevel`). */
+export interface FortificationUpgradeView {
+  v: number;
+  ability: string;
+  toLevel: number;
+}
+
+/** Engine-sourced passive metadata (its per-level exact in-game text). */
+export interface PassiveDescriptionView {
+  playerDescription?: string;
+  levelDescriptions?: Record<number, string>;
 }
 
 export type TileHeight = "ground" | "high";

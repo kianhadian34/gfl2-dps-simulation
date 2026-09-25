@@ -25,7 +25,7 @@ import {
   type SetupState,
 } from "../../../shared/setup.js";
 import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CharacterMetaView, AffinityKeyView, ExpansionKeyView } from "../../../shared/engine-types.js";
-import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, expansionKeyEffectLine, affinityLevelStatLines } from "../../../shared/lists.js";
+import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, expansionKeyEffectLine, affinityLevelStatLines, rotationAbilityDescription } from "../../../shared/lists.js";
 import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset, skillAsset } from "../../../shared/assets.js";
 import { AssetThumb } from "./AssetThumb.js";
 
@@ -281,7 +281,7 @@ export function SetupScreen(props: {
                     {(props.setup.rotations[c.id] ?? []).map((slot, i) => {
                       const sk = skillOf(slot);
                       return (
-                        <span key={i} className="rot-slot-card">
+                        <span key={i} className="rot-slot-card" title={rotationAbilityDescription(meta[c.id] as CharacterMetaView, slot, props.setup.fortificationLevel)}>
                           {sk ? (
                             <>
                               <AssetThumb asset={skillAsset(sk.id)} alt={sk.name} size={34} />
@@ -298,7 +298,7 @@ export function SetupScreen(props: {
                     {ROTATION_SLOTS.map((slot) => {
                       const sk = skillOf(slot);
                       return (
-                        <button key={slot} type="button" className="rot-card" onClick={() => addSlot(c.id, slot)}>
+                        <button key={slot} type="button" className="rot-card" title={rotationAbilityDescription(meta[c.id] as CharacterMetaView, slot, props.setup.fortificationLevel)} onClick={() => addSlot(c.id, slot)}>
                           {sk ? (
                             <>
                               <AssetThumb asset={skillAsset(sk.id)} alt={sk.name} size={72} />

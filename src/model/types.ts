@@ -112,6 +112,10 @@ export interface SkillDefVariant {
    * Data-driven and generic; only set when the repo has validated evidence.
    */
   guaranteedCritWhenHasStatus?: string;
+  /** Optional level-specific player-facing tooltip (2026): the in-game description for THIS level.
+ *  Absent → callers fall back to the ability's top-level `playerDescription` (Lv1/fallback text).
+ *  Same contract as `playerDescription` — never internal documentation/evidence. */
+  playerDescription?: string;
   /** Direction of a cardinal-ray ability (Guide to Victory, VALIDATED screenshot/tooltip 2026). Diagonal directions are NOT valid. */
   /**
    * GUIDE TO VICTORY targeting (VALIDATED 2026, screenshot + tooltip): select one cardinal
@@ -324,6 +328,11 @@ export interface PassiveDef {
    * Same contract as StatusDef.playerDescription — never internal documentation/evidence.
    */
   playerDescription?: string;
+  /**
+   * Level-specific player-facing tooltips (2026): exact in-game passive text per level (e.g.
+   * Steady Plan Lv2/Lv3). Absent level → callers fall back to `playerDescription` (Lv1/fallback).
+   */
+  levelDescriptions?: Record<number, string>;
   /** Per-level authoritative text that is NOT executable by the engine (recorded faithfully, deferred). */
   deferredNotes?: Record<number, string>;
 }

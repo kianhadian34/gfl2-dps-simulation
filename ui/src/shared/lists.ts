@@ -57,7 +57,9 @@ export interface CharacterMetaSource {
     genericBonus?: { atk?: number; hp?: number };
   };
   affinityLevelStats?: Record<number, { atkPct?: number; hpPct?: number; defPct?: number }>;
-  skills?: { basic?: { id: string; name: string }; active1?: { id: string; name: string }; active2?: { id: string; name: string }; ultimate?: { id: string; name: string } };
+  skills?: { basic?: { id: string; name: string; description?: string; descriptions?: Record<number, string> }; active1?: { id: string; name: string; description?: string; descriptions?: Record<number, string> }; active2?: { id: string; name: string; description?: string; descriptions?: Record<number, string> }; ultimate?: { id: string; name: string; description?: string; descriptions?: Record<number, string> } };
+  fortificationMap?: Array<{ v: number; ability: string; toLevel: number }>;
+  passive?: { playerDescription?: string; levelDescriptions?: Record<number, string> };
 }
 
 export function buildWeaponViews(weapons: WeaponSource[]): WeaponView[] {
@@ -230,7 +232,48 @@ export function buildCharacterMetaView(def: CharacterMetaSource): CharacterMetaV
           },
         }
       : {}),
+    ...(def.fortificationMap !== undefined ? { fortificationMap: def.fortificationMap.map((f) => ({ ...f })) } : {}),
+    ...(def.passive !== undefined
+      ? {
+          passive: {
+            ...(def.passive.playerDescription !== undefined ? { playerDescription: def.passive.playerDescription } : {}),
+            ...(def.passive.levelDescriptions !== undefined ? { levelDescriptions: { ...def.passive.levelDescriptions } } : {}),
+          },
+        }
+      : {}),
   };
+}
+
+/** Effective ability level for a slot at a given fortificationLevel — SAME semantics as the engine's
+ *  `effectiveAbilityLevel` (basic always Lv1; highest `toLevel` with `v <= fortificationLevel`; else Lv1).
+ *  Pure data over the character's engine-sourced `fortificationMap` — never hard-coded to a character. */
+export function effectiveAbilityLevel(
+  map: Array<{ v: number; ability: string; toLevel: number }> | undefined,
+  slot: string,
+  fortificationLevel: number,
+): number {
+  if (slot === "basic") return 1;
+  let level = 1;
+  for (const f of map ?? []) {
+    if (f.ability === slot && f.v <= fortificationLevel && f.toLevel > level) level = f.toLevel;
+  }
+  return level;
+}
+
+/** Level-aware player-facing ability description for a rotation slot: the per-level in-game text when
+ *  available, else the ability's top-level player description, else its name. Exact engine data only. */
+export function rotationAbilityDescription(v: CharacterMetaView | undefined, slot: string, fortificationLevel: number): string {
+  if (!v) return slot;
+  const sk = v.skills?.[slot as "basic"];
+  if (!sk) return slot;
+  const lv = effectiveAbilityLevel(v.fortificationMap, slot, fortificationLevel);
+  return sk.descriptions?.[lv] ?? sk.description ?? sk.name;
+}
+
+/** Level-aware player-facing PASSIVE description (per-level exact text, else the top-level Lv1/fallback). */
+export function passiveDescription(v: CharacterMetaView, fortificationLevel: number): string | undefined {
+  const lv = effectiveAbilityLevel(v.fortificationMap, "passive", fortificationLevel);
+  return v.passive?.levelDescriptions?.[lv] ?? v.passive?.playerDescription;
 }
 
 /** STANDALONE character Affinity-LEVEL stat lines (engine `CharacterDef.affinityLevelStats` — confirmed
