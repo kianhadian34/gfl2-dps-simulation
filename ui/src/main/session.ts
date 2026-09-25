@@ -171,6 +171,7 @@ export function registerSimHandlers(): void {
                     },
                   }
                 : {}),
+              ...(def && def.affinityLevelStats ? { affinityLevelStats: def.affinityLevelStats } : {}),
             }
           : {}),
       });

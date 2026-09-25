@@ -43,10 +43,21 @@ test("affinity level: picker offers the exact recorded levels (data-driven), the
   assert.ok(sig.length >= 2, "the level selector appears ONLY when the signature affinity key is equipped (slot + picker)");
 });
 
-test("affinity/expansion data actually reaches the UI: session.ts IPC passes description/levels/genericBonus", () => {
+test("affinity/expansion data actually reaches the UI: session.ts IPC passes description/levels/genericBonus/affinityLevelStats", () => {
   const s = readFileSync(srcFile("../../src/main/session.ts"), "utf8");
   assert.ok(s.includes("description: def.expansionKey.description"), "expansion description is forwarded to the renderer");
   assert.ok(s.includes("levels: def.affinityKey.levels") && s.includes("genericBonus: def.affinityKey.genericBonus"), "affinity levels + generic bonus are forwarded to the renderer");
+  assert.ok(s.includes("affinityLevelStats: def.affinityLevelStats"), "standalone character affinity-level stats are forwarded to the renderer");
+});
+
+test("affinity section shows the standalone CHARACTER Affinity row at Lv9 (data-driven), never at Lv5", () => {
+  const s = readFileSync(srcFile("../../src/renderer/app/setup/SetupScreen.tsx"), "utf8");
+  assert.ok(s.includes("affinityLevelStatLines(m, equ.affinityLevel)"), "character-level bonus lines come from the data helper");
+  assert.ok(s.includes("Character Affinity"), "row is labeled as character-level (not the key)");
+  assert.ok(s.includes("affinity-level-bonus"), "separate row structure (distinct from key stats)");
+  assert.ok(s.includes("affinityLevelStatLines(m, equ.affinityLevel).length > 0"), "row renders only when the level has standalone stats (Lv9; Lv5 → empty → hidden)");
+  // Existing key display untouched: badge + key stats still render as before.
+  assert.ok(s.includes("<AffinityKeyBadge k={affinityKey} size={64} level={equ.affinityLevel} />"), "affinity key badge unchanged");
 });
 
 test("expansion key: badge slot + picker reuse the common-key card pattern and setExpansionKey", () => {

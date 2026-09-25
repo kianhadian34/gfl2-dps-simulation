@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, expansionKeyEffectLine } from "../src/shared/lists.js";
+import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, expansionKeyEffectLine, affinityLevelStatLines } from "../src/shared/lists.js";
 
 /**
  * ENGINE-SOURCED LIST CONTRACT (2026 — plumbing; no UI controls yet).
@@ -55,6 +55,20 @@ test("unit: commonKeyStatLines/EffectLine render the granted stats and the addit
   assert.equal(commonKeyEffectLine(epic), "Boosts Phase damage by 5%.", "recorded secondary effect preferred over stats");
   assert.deepEqual(commonKeyStatLines(bare), []);
   assert.equal(commonKeyEffectLine(bare), undefined, "no stats/effect → nothing emitted");
+});
+
+test("unit: affinityLevelStatLines — Lv9 data-driven lines, Lv5/none-empty (independent of the key)", () => {
+  const meta = buildCharacterMetaView({
+    id: "qiongjiu",
+    name: "Qiongjiu",
+    affinityLevelStats: { 5: {}, 9: { atkPct: 0.05, hpPct: 0.05, defPct: 0.05 } },
+  });
+  assert.deepEqual(meta.affinityLevelStats, { 5: {}, 9: { atkPct: 0.05, hpPct: 0.05, defPct: 0.05 } }, "deep-copied from the engine data");
+  assert.deepEqual(affinityLevelStatLines(meta, 9), ["ATK +5.0%", "HP +5.0%", "DEF +5.0%"], "Lv9 → the data-driven standalone lines");
+  assert.deepEqual(affinityLevelStatLines(meta, 5), [], "Lv5 → no standalone bonus");
+  assert.deepEqual(affinityLevelStatLines(meta, 4), [], "unrecorded level → nothing (no interpolation)");
+  assert.deepEqual(affinityLevelStatLines({ id: "x", name: "X" }, 9), [], "no affinityLevelStats → no lines");
+  assert.deepEqual(affinityLevelStatLines(meta, undefined), [], "no level → no lines");
 });
 
 test("unit: affinity/expansion key lines come from the engine data (never invented)", () => {

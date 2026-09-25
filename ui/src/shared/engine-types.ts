@@ -154,6 +154,9 @@ export interface CharacterMetaView {
   expansionKey?: ExpansionKeyView;
   /** Character's Affinity Key (bond), when defined. */
   affinityKey?: AffinityKeyView;
+  /** STANDALONE character Affinity-LEVEL stat bonuses (engine `CharacterDef.affinityLevelStats` — exact
+   *  level map; Lv5 = none, Lv9 = ATK/HP/DEF +5%). Independent of the equipped Affinity Key. */
+  affinityLevelStats?: Record<number, { atkPct?: number; hpPct?: number; defPct?: number }>;
 }
 
 export type TileHeight = "ground" | "high";

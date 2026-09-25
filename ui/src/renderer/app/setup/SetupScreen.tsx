@@ -25,7 +25,7 @@ import {
   type SetupState,
 } from "../../../shared/setup.js";
 import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CharacterMetaView, AffinityKeyView, ExpansionKeyView } from "../../../shared/engine-types.js";
-import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, expansionKeyEffectLine } from "../../../shared/lists.js";
+import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, expansionKeyEffectLine, affinityLevelStatLines } from "../../../shared/lists.js";
 import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset } from "../../../shared/assets.js";
 import { AssetThumb } from "./AssetThumb.js";
 
@@ -642,6 +642,16 @@ export function SetupScreen(props: {
                                 )}
                               </button>
                             </div>
+                            {affinityLevelStatLines(m, equ.affinityLevel).length > 0 ? (
+                              <div className="affinity-level-bonus">
+                                <span className="affinity-level-bonus-label">Character Affinity</span>
+                                {affinityLevelStatLines(m, equ.affinityLevel).map((ln) => (
+                                  <span key={ln} className="affinity-level-bonus-stat">
+                                    {ln}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
                             {affinityPickerFor === c.id ? (
                               <div className="common-key-picker" role="dialog" aria-label="Choose Affinity Key">
                                 <div className="common-key-picker-list">

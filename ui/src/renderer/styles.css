@@ -300,6 +300,15 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 }
 .common-key-picker-close:hover { border-color: var(--accent); }
 
+/* --- standalone character Affinity-LEVEL bonus row (2026): separate from the Affinity Key --- */
+.affinity-level-bonus {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px;
+  margin: 2px 0 8px; padding: 4px 8px;
+  border-left: 2px solid var(--buff); background: var(--bg-2);
+}
+.affinity-level-bonus-label { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
+.affinity-level-bonus-stat { font-size: 11px; color: var(--buff); font-weight: 600; }
+
 /* --- affinity level selection (2026): exact levels only (engine `levels` keys) --- */
 .affinity-levels {
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px;

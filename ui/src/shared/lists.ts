@@ -56,6 +56,7 @@ export interface CharacterMetaSource {
     levels?: Record<number, { critDmg?: number; atk?: number; hp?: number }>;
     genericBonus?: { atk?: number; hp?: number };
   };
+  affinityLevelStats?: Record<number, { atkPct?: number; hpPct?: number; defPct?: number }>;
 }
 
 export function buildWeaponViews(weapons: WeaponSource[]): WeaponView[] {
@@ -211,7 +212,27 @@ export function buildCharacterMetaView(def: CharacterMetaSource): CharacterMetaV
           },
         }
       : {}),
+    ...(def.affinityLevelStats !== undefined
+      ? {
+          affinityLevelStats: Object.fromEntries(
+            Object.entries(def.affinityLevelStats).map(([lv, s]) => [Number(lv), { ...s }]),
+          ),
+        }
+      : {}),
   };
+}
+
+/** STANDALONE character Affinity-LEVEL stat lines (engine `CharacterDef.affinityLevelStats` — confirmed
+ *  mechanic: Lv5 none, Lv9 ATK/HP/DEF +5%). Data-driven only — no Qiongjiu values hardcoded here; missing
+ *  stats for the level → no lines. Independent of the Affinity Key. */
+export function affinityLevelStatLines(v: CharacterMetaView, level: number | undefined): string[] {
+  const stats = level !== undefined ? v.affinityLevelStats?.[level] : undefined;
+  if (!stats) return [];
+  const lines: string[] = [];
+  if (stats.atkPct !== undefined) lines.push(`ATK +${pct1(stats.atkPct)}`);
+  if (stats.hpPct !== undefined) lines.push(`HP +${pct1(stats.hpPct)}`);
+  if (stats.defPct !== undefined) lines.push(`DEF +${pct1(stats.defPct)}`);
+  return lines;
 }
 
 /** Affinity Key stat lines. With `level` chosen, returns ONLY that level's stats (the stats the user is
