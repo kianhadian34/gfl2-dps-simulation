@@ -411,6 +411,10 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
   padding: 3px 8px 3px 3px; font-size: 11px; color: var(--text);
 }
 .rot-builder .rot-cards { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0; }
+/* Hover must hit the titled card, not the artwork: the image fills most of the card, and an
+   untitled img would swallow the hover target (no native tooltip while over it). */
+.rot-builder .rot-card img,
+.rot-builder .rot-slot-card img { pointer-events: none; }
 .rot-builder .rot-card {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   width: 120px; padding: 8px 6px 7px;
