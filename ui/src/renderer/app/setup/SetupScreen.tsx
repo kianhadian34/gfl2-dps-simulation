@@ -356,6 +356,19 @@ export function SetupScreen(props: {
                     </div>
 
                     <div className="form">
+                      <div className="pills-row">
+                        <span className="pills-label">Fortification (run-wide; V0 = all abilities Lv1)</span>
+                        {[0, 1, 2, 3, 4, 5, 6].map((v) => (
+                          <button
+                            key={v}
+                            type="button"
+                            className={`affinity-level-pill${props.setup.fortificationLevel === v ? " is-selected" : ""}`}
+                            onClick={() => set({ fortificationLevel: v })}
+                          >
+                            V{v}
+                          </button>
+                        ))}
+                      </div>
                       <fieldset>
                         <legend>
                           Fixed Keys ({equ.equippedFixedKeys?.length ?? 0}/{MAX_FIXED_KEYS}) — 0–3

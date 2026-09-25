@@ -98,6 +98,9 @@ export function mergeFreshCharacters(
 export interface SetupState {
   turns: number;
   seed: number;
+  /** Character Fortification level (V) for the run — GLOBAL scenario config, default V0 (all
+   *  abilities at Level 1/baseline). Independent of Affinity/keys; QJ's map covers V1–V6. */
+  fortificationLevel: number;
   dummy: { hp: number; defense: number; stability: number; weaknesses: string[]; ammoWeaknesses: string[] };
   characters: SetupCharacter[];
   /** Fixed rotation per selected character id. */
@@ -178,6 +181,8 @@ export const DEFAULT_SETUP: SetupState = {
   // Default simulation length: 7 turns (the MVP cap). Users may still choose 1–7.
   turns: 7,
   seed: 7,
+  // Fortification default V0 — all abilities at Level 1/baseline (engine behavior).
+  fortificationLevel: 0,
   dummy: { hp: 999999999, defense: 5000, stability: 6, weaknesses: [], ammoWeaknesses: [] },
   characters: [],
   rotations: {},
@@ -340,6 +345,16 @@ export function setExpansionKey(state: SetupState, charId: string, keyId: string
   });
 }
 
+/** Maximum Fortification level exposed by the UI (per-run global; QJ's engine map covers V1–V6).
+ *  Higher values would just be ignored by the engine's per-character map — no reason to offer them. */
+export const MAX_FORTIFICATION_LEVEL = 6;
+
+/** Set the run's Fortification level (V0–V6, global scenario config). Invalid levels are a no-op. */
+export function setFortificationLevel(state: SetupState, level: number): SetupState {
+  if (!Number.isInteger(level) || level < 0 || level > MAX_FORTIFICATION_LEVEL) return state;
+  return { ...state, fortificationLevel: level };
+}
+
 /**
  * UI-LOCAL "obviously invalid" checks (displayed before Start; the ENGINE remains the final
  * authority). A doll with NO equipment at all keeps the legacy valid state (no weapon/affinity
@@ -487,5 +502,7 @@ export function buildScenario(setup: SetupState): ScenarioView {
     grid: setup.gridEnabled && sampleScenario.grid
       ? { ...sampleScenario.grid, moves: (sampleScenario.grid.moves ?? []).filter((m) => (setup.characters.find((c) => c.id === m.unitId)?.mobility ?? 0) > 0) }
       : undefined,
+    // Fortification (V) is a GLOBAL engine config override — always sent (V0 explicitly as 0).
+    configOverrides: { fortificationLevel: setup.fortificationLevel },
   };
 }

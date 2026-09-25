@@ -325,6 +325,10 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
   font-weight: 600;
 }
 
+/* --- generic pill row (Fortification etc.) --- */
+.pills-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 12px 0 14px; }
+.pills-label { font-size: 11px; color: var(--muted); margin-right: 2px; }
+
 .weapon-slot:hover { border-color: var(--accent); }
 .weapon-slot.is-empty { color: var(--muted); }
 .weapon-slot.is-empty:hover { color: var(--text); }

@@ -77,7 +77,7 @@ test("selection & removal keep the existing setWeapon path; calibration is INSID
   assert.ok(!s.includes("weapon-detail-cal-line") && !s.includes("weapon-detail-calibration"), "no calibration summary UI remains");
   assert.ok(!s.includes("calibrationEffectLines"), "no calibration summary helper remains");
   assert.ok(!s.includes("10%/10%/15%/20%/20%/20%"), "slash-separated C1–C6 values are not hard-coded in the source — they come from the data");
-  let st: SetupState = { ...({ turns: 7, seed: 7, dummy: { hp: 1, defense: 1, stability: 1, weaknesses: [], ammoWeaknesses: [] }, characters: [{ id: "qiongjiu", name: "Qiongjiu", selected: true }], rotations: { qiongjiu: ["basic"] }, gridEnabled: false, debug: { enabled: false, baseStats: {} } } as SetupState) };
+  let st: SetupState = { ...({ turns: 7, seed: 7, fortificationLevel: 0, dummy: { hp: 1, defense: 1, stability: 1, weaknesses: [], ammoWeaknesses: [] }, characters: [{ id: "qiongjiu", name: "Qiongjiu", selected: true }], rotations: { qiongjiu: ["basic"] }, gridEnabled: false, debug: { enabled: false, baseStats: {} } } as SetupState) };
   st = setWeapon(st, "qiongjiu", "jinshizou", [1, 2, 3, 4, 5, 6]);
   assert.equal(st.characters[0].equipment?.weaponId, "jinshizou");
   st = setWeapon(st, "qiongjiu", undefined, []);
