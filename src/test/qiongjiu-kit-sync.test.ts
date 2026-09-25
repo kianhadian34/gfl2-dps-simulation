@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createState } from "../engine/state.js";
+import { simulateScenario } from "../simulate.js";
 import { REGISTRY } from "../data/registry.js";
 import { QIONGJIU } from "../data/qiongjiu.js";
 import { customRegistry, scenario } from "./helpers.js";
@@ -102,5 +103,9 @@ test("Vulnerable I = +10% damage taken, defense debuff; Damage Up II = +20% dama
   assert.deepEqual(vul?.effects, [{ kind: "damage_modifier", scope: "taken", mode: "additive", value: 0.1 }]);
   assert.equal(dmgUp?.category, "buff");
   assert.deepEqual(dmgUp?.effects, [{ kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.2 }]);
+});
+test("QJ at V6 with a populated fortificationMap produces NO Fortification warning (2026 stale-guard regression)", () => {
+  const r = simulateScenario(scenario({ turns: 1, rotation: ["basic"], config: { fortificationLevel: 6 } }), customRegistry({}));
+  assert.ok(!r.warnings.some((w) => w.includes("fortificationLevel")), r.warnings.join("; "));
 });
 

@@ -22,6 +22,7 @@ import {
 import { applyStabilityDamage, endOfRoundStability } from "./stability.js";
 import { abilitySourceLabel, createState, DEFAULT_CONFIG, fortificationV, passiveSourceLabel, supportAttackQuota, weaponCalibration, type EffectiveStatusDef, type SimulationState, type UnitState } from "./state.js";
 import type { ActiveStatus } from "../model/runtime.js";
+import type { CharacterDef } from "../model/types.js";
 
 /**
  * Element/Phase interactions — CORRECTED 2026: GFL2 has NO elemental counter
@@ -1010,7 +1011,15 @@ function collectWarnings(state: SimulationState): void {
     warn.add(`cooldown model = ${c.cooldownModel} — non-confirmed alternative (confirmed rule: wait N full turns after the cast turn, U11 RESOLVED 2026-09-03)`);
   }
   if (c.fortificationLevel > 0) {
-    warn.add(`fortificationLevel = ${c.fortificationLevel} — Fortification→ability mappings not yet collected/validated (QJ fortificationMap is empty); levels resolve to 1 or an ability's baseline`);
+    // Data-aware (2026): warn ONLY when a team member actually has NO fortificationMap — a populated
+    // map (e.g. QJ V1–V6) resolves normally and must not raise a false warning. Never hard-coded to
+    // a character; reads the real CharacterDef data.
+    const mapLess = state.units
+      .filter((u) => u.def !== null && !(u.def as CharacterDef).fortificationMap?.length)
+      .map((u) => u.name);
+    if (mapLess.length > 0) {
+      warn.add(`fortificationLevel = ${c.fortificationLevel} — no fortificationMap for: ${mapLess.join(", ")} (Fortification cannot raise those abilities above their baseline levels)`);
+    }
   }
   // No elemental counter wheel exists in GFL2 (corrected 2026) — no phase warning is emitted.
   const referenced = new Set<string>();

@@ -510,7 +510,8 @@ export interface CharacterDef {
   skills: { basic: AbilityDef; active1: AbilityDef; active2: AbilityDef; ultimate: AbilityDef; support?: AbilityDef };
   passive: PassiveDef;
   fixedKeys: KeyDef[];
-  /** Fortification → ability-level upgrades (V index → ONE ability, explicit resulting level). Empty/absent until mappings are collected & validated. */
+  /** Fortification → ability-level upgrades (V index → ONE ability, explicit resulting level
+   *  — e.g. QJ's populated V1–V6 map). Absent = the character has no Fortification map. */
   fortificationMap?: FortificationUpgrade[];
   /** Expansion Key (1 per doll) — recorded data; engine behavior deferred. */
   expansionKey?: KeyDef;
@@ -748,7 +749,7 @@ export interface ConfigOverrides {
   /**
    * Character Fortification level (V) for this run — default 0 (all abilities at
    * Level 1 or their baseline). Mappings are per-character `fortificationMap`
-   * data; QJ's is empty until collected in-game.
+   * data; QJ's map is POPULATED (V1–V6, validated 2026).
    */
   fortificationLevel?: number;
 }
