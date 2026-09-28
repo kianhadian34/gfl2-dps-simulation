@@ -51,7 +51,7 @@ function Row(props: {
         T{props.ev.round} A{props.ev.turn} {actor} Used {ability}
         {lvl} -&gt; {tgt} For <span className="dmg">{props.ev.finalDamage} Damage</span>
         {props.ev.critical ? <span className="crit"> CRIT</span> : null}
-        {props.ev.supportAttack ? " [support]" : null}
+        {props.ev.supportAttack ? " [support]" : null}.
         {applied.buffs.length > 0 ? (
           <>
             {" "}Buffs Gained: {chips(applied.buffs)}.

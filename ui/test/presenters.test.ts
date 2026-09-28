@@ -80,7 +80,7 @@ test("buildLogRows: head uses the READABLE format (actor/ability Lv -> target Fo
   const rows = buildLogRows([ev]);
   assert.equal(
     rows[0].head,
-    "T1 A1 Friendly Dummy Used Basic Attack Lv.1 -> Training Dummy For 160 Damage",
+    "T1 A1 Friendly Dummy Used Basic Attack Lv.1 -> Training Dummy For 160 Damage.",
   );
 });
 
