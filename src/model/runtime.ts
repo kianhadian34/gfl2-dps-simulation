@@ -76,6 +76,14 @@ export interface LogEvent {
   statusTick?: { statusId: string; amount: number };
   /** Independently ceiled Fixed Damage component (U21) — absent for normal-only hits. */
   fixedDamage?: number;
+  /** Readable actor display name (2026 log polish) — absent for ticks/fixed events without an actor. */
+  actorName?: string;
+  /** Readable ability name for main/support actions (resolved variant name); absent otherwise. */
+  abilityName?: string;
+  /** Resolved ability level for main/support actions; absent otherwise. */
+  abilityLevel?: number;
+  /** Readable target display name; absent otherwise. */
+  targetName?: string;
 }
 
 /** docs/schemas.md §10. */

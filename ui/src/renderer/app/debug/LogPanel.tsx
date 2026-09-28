@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { buildLogRows, effectSourceRefs, movementRows, resolveStatus, statusRefsFor, statusTooltipLines, totalsRows } from "../../../shared/presenters.js";
+import { appliedStatusLabels, buildLogRows, effectSourceRefs, humanizeId, movementRows, resolveStatus, statusRefsFor, statusTooltipLines, totalsRows } from "../../../shared/presenters.js";
 import { EffectSourceRef } from "../../../shared/effect-source-ref.js";
 import { fmt } from "../../../shared/format.js";
 import type { LogEventView, SessionView, StatusInfoView, EffectSourceInfoView } from "../../../shared/engine-types.js";
@@ -21,9 +21,23 @@ function Row(props: {
   const [open, setOpen] = useState(false);
   const cat = props.ev.actionType === "status_tick" ? "tick" : props.ev.supportAttack ? "support" : props.ev.fixedDamage !== undefined || props.ev.statusTick ? "fixed" : "action";
   const cls = `event cat-${cat}`;
-  const statuses = props.ev.statusesApplied.length > 0 ? ` <span class="plus">+${props.ev.statusesApplied.join(",")}</span>` : "";
-  const expired = props.ev.statusesExpired.length > 0 ? ` <span class="expired">−${props.ev.statusesExpired.join(",")}</span>` : "";
+  const actor = props.ev.actorName ?? humanizeId(props.ev.unit);
+  const ability = props.ev.abilityName ?? humanizeId(props.ev.action);
+  const lvl = props.ev.abilityLevel !== undefined ? ` Lv.${props.ev.abilityLevel}` : "";
+  const tgt = props.ev.targetName ?? humanizeId(props.ev.target);
+  const applied = appliedStatusLabels(props.ev.statusesApplied, props.catalog);
+  const expiredNames = [...new Set(props.ev.statusesExpired)].map((id) => props.catalog[id]?.name ?? humanizeId(id));
   const refRows = statusRefsFor(props.ev);
+  const chips = (statuses: { id: string; name: string }[]) => (
+    <>
+      {statuses.map((s, i) => (
+        <span key={s.id}>
+          {i > 0 ? ", " : null}
+          <StatusChip statusId={s.id} catalog={props.catalog} />
+        </span>
+      ))}
+    </>
+  );
   return (
     <>
       <button
@@ -32,10 +46,25 @@ function Row(props: {
           setOpen((o) => !o);
           props.onSelect(props.index);
         }}
-        dangerouslySetInnerHTML={{
-          __html: `<span class="glyph">${GLYPH[cat]}</span>R${props.ev.round} T${props.ev.turn} ${props.ev.unit}.${props.ev.action} → ${props.ev.target} <span class="dmg">${props.ev.finalDamage} dmg</span>${props.ev.critical ? ' <span class="crit">CRIT</span>' : ""}${props.ev.supportAttack ? " [support]" : ""}${statuses}${expired}`,
-        }}
-      />
+      >
+        <span className="glyph">{GLYPH[cat]}</span>
+        T{props.ev.round} A{props.ev.turn} {actor} Used {ability}
+        {lvl} -&gt; {tgt} For <span className="dmg">{props.ev.finalDamage} Damage</span>
+        {props.ev.critical ? <span className="crit"> CRIT</span> : null}
+        {props.ev.supportAttack ? " [support]" : null}
+        {applied.buffs.length > 0 ? (
+          <>
+            {" "}Buffs Gained: {chips(applied.buffs)}.
+          </>
+        ) : null}
+        {applied.debuffs.length > 0 ? (
+          <>
+            {" "}
+            {applied.debuffs.length > 1 ? "Debuffs applied" : "Debuff applied"}: {chips(applied.debuffs)}.
+          </>
+        ) : null}
+        {expiredNames.length > 0 ? ` Expired: ${expiredNames.join(", ")}.` : null}
+      </button>
       {open && (
         <div className="event-detail">
           <table>
@@ -84,7 +113,7 @@ function StatusChip(props: { statusId: string; source?: string; stacks?: number;
   if (!tip) return <>{props.statusId}</>;
   return (
     <span className="status-chip" tabIndex={0} aria-label={`status ${tip.name}`}>
-      {props.statusId}
+      {tip.name}
       {props.stacks !== undefined ? ` (${props.stacks})` : ""}
       <span className="tooltip">
         <b>{tip.name}</b> <span className="muted">[{tip.category}]</span>

@@ -22,7 +22,7 @@ import {
 import { applyStabilityDamage, endOfRoundStability } from "./stability.js";
 import { abilitySourceLabel, createState, DEFAULT_CONFIG, fortificationV, passiveSourceLabel, supportAttackQuota, weaponCalibration, type EffectiveStatusDef, type SimulationState, type UnitState } from "./state.js";
 import type { ActiveStatus } from "../model/runtime.js";
-import type { CharacterDef } from "../model/types.js";
+import type { AbilitySlot, CharacterDef } from "../model/types.js";
 
 /**
  * Element/Phase interactions — CORRECTED 2026: GFL2 has NO elemental counter
@@ -902,6 +902,14 @@ function newEvent(
     target: target.id,
     source,
     supportAttack,
+    // Readable display fields (2026 log polish): actor/ability/target names + resolved ability level.
+    actorName: actor.name,
+    abilityName: skill.name,
+    abilityLevel: (() => {
+      const skillSlot = (Object.keys(actor.skills) as AbilitySlot[]).find((s) => actor.skills[s]?.id === skill.id);
+      return skillSlot !== undefined ? (actor.skillLevels[skillSlot] ?? 1) : undefined;
+    })(),
+    targetName: target.name,
     weaknessExploited: [],
     phaseMult: 1,
     bonusBracket: 1,

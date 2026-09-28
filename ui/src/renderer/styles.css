@@ -129,8 +129,9 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
   font-family: var(--mono); font-size: 11px;
 }
 .status-chip .tooltip {
-  display: none; position: absolute; z-index: 30; left: 0; top: calc(100% + 4px);
-  min-width: 220px; max-width: 320px; padding: 6px 8px;
+  display: none; position: absolute; z-index: 30; left: 0; bottom: calc(100% + 4px); /* pop UP: long tooltips stay visible above the row */
+  min-width: 220px; max-width: min(420px, 80vw); padding: 6px 8px;
+  max-height: none; overflow: visible; /* height follows the text — never clipped/scrollable */
   background: var(--bg-3); border: 1px solid var(--border); border-radius: 3px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   font-family: var(--mono); font-size: 11px; text-align: left; white-space: normal;

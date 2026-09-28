@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  appliedStatusLabels,
   buildLogRows,
   classifyEvent,
   movementRows,
@@ -63,6 +64,44 @@ test("buildLogRows: preserves every LogEvent field in the detail expansion", () 
   for (const required of ["attackerAtk", "targetDef", "critical", "critMultiplier", "weaknessExploited", "phaseMult", "bonusBracket", "reductionMult", "exposed", "finalDamage", "killingBlow", "confectance", "cooldownAfter", "statusesApplied", "appliedSources", "effectSources", "statusesExpired", "upgradeStacks", "statusTick", "fixedDamage"]) {
     assert.ok(labels.includes(required), `detail must expose ${required}`);
   }
+});
+
+test("buildLogRows: head uses the READABLE format (actor/ability Lv -> target For Damage) with engine display fields", () => {
+  const ev = basEv({
+    unit: "basic_attack_dummy",
+    action: "basic_attack_dummy_basic",
+    actorName: "Basic Attack Dummy",
+    abilityName: "Basic Attack",
+    abilityLevel: 1,
+    targetName: "Training Dummy",
+    finalDamage: 160,
+    statusesApplied: ["damage_up_ii", "damage_up_ii"],
+  });
+  const rows = buildLogRows([ev]);
+  assert.equal(
+    rows[0].head,
+    "T1 A1 Basic Attack Dummy Used Basic Attack Lv.1 -> Training Dummy For 160 Damage",
+  );
+});
+
+test("humanizeId: snake_case ids become display names (roman numerals uppercased)", async () => {
+  const { humanizeId } = await import("../src/shared/presenters.js");
+  assert.equal(humanizeId("basic_attack_dummy"), "Basic Attack Dummy");
+  assert.equal(humanizeId("damage_up_ii"), "Damage Up II");
+  assert.equal(humanizeId("training_dummy"), "Training Dummy");
+  assert.equal(humanizeId("qiongjiu"), "Qiongjiu");
+});
+
+test("appliedStatusLabels: buffs vs debuffs split by status category (deduplicated; unknown → buff)", () => {
+  const applied = appliedStatusLabels;
+  const catalog = {
+    overburn: { name: "Overburn", category: "debuff" },
+    damage_up_ii: { name: "Damage Up II", category: "buff" },
+  };
+  assert.deepEqual(appliedStatusLabels(["overburn", "overburn"], catalog), { buffs: [], debuffs: [{ id: "overburn", name: "Overburn" }] }, "debuff → Debuff applied (id kept for hover chips)");
+  assert.deepEqual(appliedStatusLabels(["damage_up_ii", "damage_up_ii"], catalog), { buffs: [{ id: "damage_up_ii", name: "Damage Up II" }], debuffs: [] }, "buff stays Buffs Gained, deduplicated");
+  assert.deepEqual(appliedStatusLabels(["overburn", "damage_up_ii"], catalog), { buffs: [{ id: "damage_up_ii", name: "Damage Up II" }], debuffs: [{ id: "overburn", name: "Overburn" }] }, "mixed split");
+  assert.deepEqual(appliedStatusLabels(["unknown_status"], catalog), { buffs: [{ id: "unknown_status", name: "Unknown Status" }], debuffs: [] }, "unknown category → buff with humanized name");
 });
 
 test("rotationStates: completed / current / upcoming derived from the engine log only", () => {

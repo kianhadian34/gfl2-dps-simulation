@@ -163,17 +163,39 @@ export function buildLogRows(events: LogEventView[]): EventRow[] {
   });
 }
 
+/** Humanize an id for display ("basic_attack_dummy" → "Basic Attack Dummy", "damage_up_ii" → "Damage Up II"). */
+export function humanizeId(id: string): string {
+  return id
+    .split("_")
+    .map((w) => (/^(i|ii|iii|iv|v)$/i.test(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(" ");
+}
+
+/** Split applied statuses into BUFFS vs DEBUFFS using the status catalog category (unknown → buff),
+ *  deduplicated; keeps the status id (for hoverable chips) plus the display name. */
+export function appliedStatusLabels(
+  statusesApplied: string[],
+  catalog: Record<string, { name?: string; category?: string }>,
+): { buffs: { id: string; name: string }[]; debuffs: { id: string; name: string }[] } {
+  const buffs: { id: string; name: string }[] = [];
+  const debuffs: { id: string; name: string }[] = [];
+  for (const id of [...new Set(statusesApplied)]) {
+    const info = catalog[id];
+    const label = { id, name: info?.name ?? humanizeId(id) };
+    (info?.category === "debuff" ? debuffs : buffs).push(label);
+  }
+  return { buffs, debuffs };
+}
+
 function describeEvent(ev: LogEventView, category: LogCategory): string {
   const tag = ev.supportAttack ? " [support]" : "";
   const crit = ev.critical ? " CRIT" : "";
-  switch (category) {
-    case "tick":
-      return `R${ev.round} T${ev.turn} ${ev.unit}.${ev.action} → ${ev.target} (status tick)`;
-    case "fixed":
-      return `R${ev.round} T${ev.turn} ${ev.unit}.${ev.action} → ${ev.target}: ${ev.finalDamage} total${crit}${tag}`;
-    default:
-      return `R${ev.round} T${ev.turn} ${ev.unit}.${ev.action} → ${ev.target}: ${ev.finalDamage} dmg${crit}${tag}`;
-  }
+  const actor = ev.actorName ?? humanizeId(ev.unit);
+  const ability = ev.abilityName ?? humanizeId(ev.action);
+  const lvl = ev.abilityLevel !== undefined ? ` Lv.${ev.abilityLevel}` : "";
+  const tgt = ev.targetName ?? humanizeId(ev.target);
+  if (category === "tick") return `T${ev.round} A${ev.turn} ${actor} — status tick on ${tgt}`;
+  return `T${ev.round} A${ev.turn} ${actor} Used ${ability}${lvl} -> ${tgt} For ${ev.finalDamage} Damage${crit}${tag}`;
 }
 
 export function detailFields(ev: LogEventView): Array<{ label: string; value: string }> {
