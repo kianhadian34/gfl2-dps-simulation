@@ -84,6 +84,9 @@ export interface LogEvent {
   abilityLevel?: number;
   /** Readable target display name; absent otherwise. */
   targetName?: string;
+  /** For SUPPORT ATTACK events: the passive that triggered it (e.g. Steady Plan) and its level. */
+  triggerName?: string;
+  triggerLevel?: number;
 }
 
 /** docs/schemas.md §10. */

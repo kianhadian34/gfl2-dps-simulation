@@ -188,7 +188,6 @@ export function appliedStatusLabels(
 }
 
 function describeEvent(ev: LogEventView, category: LogCategory): string {
-  const tag = ev.supportAttack ? " [support]" : "";
   const crit = ev.critical ? " CRIT" : "";
   const actor = ev.actorName ?? humanizeId(ev.unit);
   const ability = ev.abilityName ?? humanizeId(ev.action);
@@ -198,7 +197,12 @@ function describeEvent(ev: LogEventView, category: LogCategory): string {
     const vTick = ev.statusTick;
     return `T${ev.round} A${ev.turn} ${actor}'s ${vTick ? humanizeId(vTick.statusId) : humanizeId(ev.action)} -> ${tgt} For ${ev.finalDamage} Damage.`;
   }
-  return `T${ev.round} A${ev.turn} ${actor} Used ${ability}${lvl} -> ${tgt} For ${ev.finalDamage} Damage${crit}${tag}.`;
+  if (ev.supportAttack) {
+    const trigger = ev.triggerName ?? "Passive";
+    const triggerLv = ev.triggerLevel !== undefined ? ` Lv.${ev.triggerLevel}` : "";
+    return `T${ev.round} A${ev.turn} ${actor} Triggered ${trigger}${triggerLv} -> ${ability}${lvl} -> ${tgt} For ${ev.finalDamage} Damage${crit}.`;
+  }
+  return `T${ev.round} A${ev.turn} ${actor} Used ${ability}${lvl} -> ${tgt} For ${ev.finalDamage} Damage${crit}.`;
 }
 
 export function detailFields(ev: LogEventView): Array<{ label: string; value: string }> {

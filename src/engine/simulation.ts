@@ -919,6 +919,9 @@ function newEvent(
       return skillSlot !== undefined ? (actor.skillLevels[skillSlot] ?? 1) : undefined;
     })(),
     targetName: target.name,
+    ...(supportAttack
+      ? { triggerName: actor.def?.passive?.name, triggerLevel: actor.passiveLevel } // passive that triggered this Support Attack
+      : {}),
     weaknessExploited: [],
     phaseMult: 1,
     bonusBracket: 1,

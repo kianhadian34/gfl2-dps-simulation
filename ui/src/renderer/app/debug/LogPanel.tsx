@@ -53,12 +53,30 @@ function Row(props: {
             T{props.ev.round} A{props.ev.turn} {actor}&apos;s {props.ev.statusTick ? humanizeId(props.ev.statusTick.statusId) : humanizeId(props.ev.action)} -&gt; {tgt} For{" "}
             <span className="dmg">{props.ev.finalDamage} Damage</span>.
           </>
+        ) : props.ev.supportAttack ? (
+          <>
+            T{props.ev.round} A{props.ev.turn} {actor} Triggered {props.ev.triggerName ?? "Passive"}
+            {props.ev.triggerLevel !== undefined ? ` Lv.${props.ev.triggerLevel}` : ""} -&gt; {ability}
+            {lvl} -&gt; {tgt} For <span className="dmg">{props.ev.finalDamage} Damage</span>
+            {props.ev.critical ? <span className="crit"> CRIT</span> : null}.
+            {applied.buffs.length > 0 ? (
+              <>
+                {" "}Buffs Gained: {chips(applied.buffs)}.
+              </>
+            ) : null}
+            {applied.debuffs.length > 0 ? (
+              <>
+                {" "}
+                {applied.debuffs.length > 1 ? "Debuffs applied" : "Debuff applied"}: {chips(applied.debuffs)}.
+              </>
+            ) : null}
+            {expiredNames.length > 0 ? ` Expired: ${expiredNames.join(", ")}.` : null}
+          </>
         ) : (
           <>
             T{props.ev.round} A{props.ev.turn} {actor} Used {ability}
             {lvl} -&gt; {tgt} For <span className="dmg">{props.ev.finalDamage} Damage</span>
-            {props.ev.critical ? <span className="crit"> CRIT</span> : null}
-            {props.ev.supportAttack ? " [support]" : null}.
+            {props.ev.critical ? <span className="crit"> CRIT</span> : null}.
             {applied.buffs.length > 0 ? (
               <>
                 {" "}Buffs Gained: {chips(applied.buffs)}.

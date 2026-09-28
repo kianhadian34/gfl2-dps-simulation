@@ -99,6 +99,28 @@ test("buildLogRows: tick events use the possessive format (Qiongjiu's Overburn -
   assert.equal(rows[0].head, "T1 A1 Qiongjiu's Overburn -> Training Dummy For 123 Damage.");
 });
 
+test("buildLogRows: support attacks render as passive TRIGGERED lines (no [support] tag)", () => {
+  const ev = basEv({
+    supportAttack: true,
+    unit: "qiongjiu",
+    action: "qiongjiu_support",
+    target: "training_dummy",
+    actorName: "Qiongjiu",
+    abilityName: "Support Attack",
+    abilityLevel: 1,
+    targetName: "Training Dummy",
+    triggerName: "Steady Plan",
+    triggerLevel: 3,
+    finalDamage: 772,
+    statusesApplied: ["overburn"],
+  });
+  const rows = buildLogRows([ev]);
+  assert.equal(
+    rows[0].head,
+    "T1 A1 Qiongjiu Triggered Steady Plan Lv.3 -> Support Attack Lv.1 -> Training Dummy For 772 Damage.",
+  );
+});
+
 test("humanizeId: snake_case ids become display names (roman numerals uppercased)", async () => {
   const { humanizeId } = await import("../src/shared/presenters.js");
   assert.equal(humanizeId("basic_attack_dummy"), "Basic Attack Dummy");
