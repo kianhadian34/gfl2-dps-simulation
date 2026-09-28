@@ -219,16 +219,16 @@ export const QIONGJIU: CharacterDef = {
         },
       },
     },
-    // ---------------------------------------------------------------- Support Shot: current definition held at Lv1 (default level); validated level UNKNOWN.
+    // ---------------------------------------------------------------- Support Attack: current definition held at Lv1 (default level); validated level UNKNOWN.
     support: {
       id: "qiongjiu_support",
-      name: "Steady Plan — Support Shot",
+      name: "Steady Plan — Support Attack",
       playerDescription: "Support Attack: deal 90% ATK damage. Medium Ammo.",
       type: "support",
       levels: {
         1: {
           id: "qiongjiu_support",
-          name: "Steady Plan — Support Shot",
+          name: "Steady Plan — Support Attack",
           type: "support",
           element: null, // phase-less (physical-ammo attack): Physical is the Ammo Weakness dimension, not an element
           ammoType: "medium_ammo",
