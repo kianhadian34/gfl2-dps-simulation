@@ -194,7 +194,10 @@ function describeEvent(ev: LogEventView, category: LogCategory): string {
   const ability = ev.abilityName ?? humanizeId(ev.action);
   const lvl = ev.abilityLevel !== undefined ? ` Lv.${ev.abilityLevel}` : "";
   const tgt = ev.targetName ?? humanizeId(ev.target);
-  if (category === "tick") return `T${ev.round} A${ev.turn} ${actor} — status tick on ${tgt}`;
+  if (category === "tick") {
+    const vTick = ev.statusTick;
+    return `T${ev.round} A${ev.turn} ${actor}'s ${vTick ? humanizeId(vTick.statusId) : humanizeId(ev.action)} -> ${tgt} For ${ev.finalDamage} Damage.`;
+  }
   return `T${ev.round} A${ev.turn} ${actor} Used ${ability}${lvl} -> ${tgt} For ${ev.finalDamage} Damage${crit}${tag}.`;
 }
 

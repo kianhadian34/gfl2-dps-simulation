@@ -48,22 +48,31 @@ function Row(props: {
         }}
       >
         <span className="glyph">{GLYPH[cat]}</span>
-        T{props.ev.round} A{props.ev.turn} {actor} Used {ability}
-        {lvl} -&gt; {tgt} For <span className="dmg">{props.ev.finalDamage} Damage</span>
-        {props.ev.critical ? <span className="crit"> CRIT</span> : null}
-        {props.ev.supportAttack ? " [support]" : null}.
-        {applied.buffs.length > 0 ? (
+        {cat === "tick" ? (
           <>
-            {" "}Buffs Gained: {chips(applied.buffs)}.
+            T{props.ev.round} A{props.ev.turn} {actor}&apos;s {props.ev.statusTick ? humanizeId(props.ev.statusTick.statusId) : humanizeId(props.ev.action)} -&gt; {tgt} For{" "}
+            <span className="dmg">{props.ev.finalDamage} Damage</span>.
           </>
-        ) : null}
-        {applied.debuffs.length > 0 ? (
+        ) : (
           <>
-            {" "}
-            {applied.debuffs.length > 1 ? "Debuffs applied" : "Debuff applied"}: {chips(applied.debuffs)}.
+            T{props.ev.round} A{props.ev.turn} {actor} Used {ability}
+            {lvl} -&gt; {tgt} For <span className="dmg">{props.ev.finalDamage} Damage</span>
+            {props.ev.critical ? <span className="crit"> CRIT</span> : null}
+            {props.ev.supportAttack ? " [support]" : null}.
+            {applied.buffs.length > 0 ? (
+              <>
+                {" "}Buffs Gained: {chips(applied.buffs)}.
+              </>
+            ) : null}
+            {applied.debuffs.length > 0 ? (
+              <>
+                {" "}
+                {applied.debuffs.length > 1 ? "Debuffs applied" : "Debuff applied"}: {chips(applied.debuffs)}.
+              </>
+            ) : null}
+            {expiredNames.length > 0 ? ` Expired: ${expiredNames.join(", ")}.` : null}
           </>
-        ) : null}
-        {expiredNames.length > 0 ? ` Expired: ${expiredNames.join(", ")}.` : null}
+        )}
       </button>
       {open && (
         <div className="event-detail">

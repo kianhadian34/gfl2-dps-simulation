@@ -84,6 +84,21 @@ test("buildLogRows: head uses the READABLE format (actor/ability Lv -> target Fo
   );
 });
 
+test("buildLogRows: tick events use the possessive format (Qiongjiu's Overburn -> Training Dummy For 123 Damage)", () => {
+  const ev = basEv({
+    actionType: "status_tick",
+    unit: "qiongjiu",
+    action: "overburn",
+    target: "training_dummy",
+    actorName: "Qiongjiu",
+    targetName: "Training Dummy",
+    finalDamage: 123,
+    statusTick: { statusId: "overburn", amount: 123 },
+  });
+  const rows = buildLogRows([ev]);
+  assert.equal(rows[0].head, "T1 A1 Qiongjiu's Overburn -> Training Dummy For 123 Damage.");
+});
+
 test("humanizeId: snake_case ids become display names (roman numerals uppercased)", async () => {
   const { humanizeId } = await import("../src/shared/presenters.js");
   assert.equal(humanizeId("basic_attack_dummy"), "Basic Attack Dummy");
