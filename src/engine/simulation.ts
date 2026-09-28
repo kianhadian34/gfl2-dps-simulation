@@ -862,17 +862,23 @@ function resolveSupportHit(state: SimulationState, shooter: UnitState, skill: Sk
   // "After Support Action" passive statuses (Steady Plan Lv2/Lv3: Overburn 2r, SOURCE 2026):
   // applied to the support target whenever a Support Action is performed — no extra gate
   // (the generic trigger flow already ensures supports fire on qualifying ally damage).
+  const pendingOnApply: string[] = [];
   for (const pe of shooter.passives) {
     if (pe.kind !== "after_support_status") continue;
     const label = passiveSourceLabel(shooter.def!, shooter.passiveLevel);
-    const appliedId = applyStatus(state, dummy, {
+    const created = applyStatus(state, dummy, {
       statusId: pe.statusId,
       durationRounds: pe.durationRounds,
       stacks: pe.stacks,
       applier: { id: shooter.id, atk: shooter.panelAtk },
       source: label,
     });
-    if (appliedId) {
+    // Validated (2026): gaining Overburn deals fixed damage = 10% of the APPLIER's ATK ON APPLICATION —
+    // same immediate trigger as normal skill applications (applySkillStatuses). Logged AFTER the
+    // Support Attack's own event so the line reads "Use Support Attack … Debuff applied: Overburn."
+    // followed by the immediate Overburn tick.
+    if (created) pendingOnApply.push(pe.statusId);
+    if (created || dummy.statuses.some((s) => s.statusId === pe.statusId)) {
       ev.statusesApplied.push(pe.statusId);
       (ev.appliedSources ??= []).push({ statusId: pe.statusId, source: label });
     }
@@ -882,6 +888,9 @@ function resolveSupportHit(state: SimulationState, shooter: UnitState, skill: Sk
   ev.cooldownAfter = Object.fromEntries(shooter.cooldowns);
   accumulate(state, shooter, "passive", ev.finalDamage);
   state.log.push(ev);
+  // Fire the immediate on-application fixed damage AFTER the support event (same validated timing,
+  // correct log ordering).
+  for (const sid of pendingOnApply) applyStatusFixedDamage(state, dummy, sid, "onApply", state.round);
 }
 
 function newEvent(
