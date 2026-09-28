@@ -79,7 +79,7 @@ test("Basic Attack stays Level 1 even at a high Fortification value", () => {
 test("an ability with no applicable Fortification resolves to Level 1", () => {
   // The map raises ultimate to Lv2 (which exists at level 2 here) — active1 must stay Lv1.
   const c = leveledChar(active1Levels([1, 2, 3]), [{ v: 2, ability: "ultimate", toLevel: 2 }]);
-  c.skills.ultimate = { ...c.skills.ultimate, levels: { 1: c.skills.ultimate.levels[1], 2: { ...c.skills.ultimate.levels[1] } } };
+  c.skills.ultimate = { ...c.skills.ultimate!, levels: { 1: c.skills.ultimate!.levels[1], 2: { ...c.skills.ultimate!.levels[1] } } };
   assert.equal(levelsFor(c, { fortificationLevel: 2 }).active1, 1);
 });
 

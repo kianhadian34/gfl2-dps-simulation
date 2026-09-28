@@ -39,8 +39,8 @@ function qjgm(): CharacterDef {
   // supplied via the member's `weaponId` + the fixture registry below.
   // Test-local clone only: drop the Ultimate's SB II ×3 grant (and the at-max extra stack) so
   // the observed no-SB II support bucket is reproducible; keep V5's beforeSupportTrigger (DU2).
-  q.skills.ultimate.levels[3] = {
-    ...q.skills.ultimate.levels[3],
+  q.skills.ultimate!.levels[3] = {
+    ...q.skills.ultimate!.levels[3],
     appliesStatuses: undefined,
     onCastAtMaxConfectance: undefined,
   };

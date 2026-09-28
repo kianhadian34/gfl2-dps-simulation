@@ -30,9 +30,9 @@ function attacker(id: string, aoe: boolean): CharacterDef {
   const ally = makeAlly(id, 1000);
   ally.skills.basic = abilities({
     basic: { ...ally.skills.basic.levels[1], multiplier: 0.8, damageCategory: aoe ? "aoe" : undefined },
-    active1: ally.skills.active1.levels[1],
-    active2: ally.skills.active2.levels[1],
-    ultimate: ally.skills.ultimate.levels[1],
+    active1: ally.skills.active1!.levels[1],
+    active2: ally.skills.active2!.levels[1],
+    ultimate: ally.skills.ultimate!.levels[1],
   }).basic;
   return ally;
 }

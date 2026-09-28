@@ -82,9 +82,9 @@ test("Guide to Victory V2: +100% crit is scoped to the V2 attack only (no perman
 });
 
 test("Guide to Victory V2: only the Lv2 variant carries the conditional, Lv1 is unchanged", () => {
-  assert.equal(QIONGJIU.skills.active2.levels[2].guaranteedCritWhenHasStatus, "overburn");
-  assert.equal(QIONGJIU.skills.active2.levels[1].guaranteedCritWhenHasStatus, undefined);
-  assert.equal(QIONGJIU.skills.active2.levels[2].multiplier, 1.1, "V2 has the same damage multiplier as Lv1");
+  assert.equal(QIONGJIU.skills.active2!.levels[2].guaranteedCritWhenHasStatus, "overburn");
+  assert.equal(QIONGJIU.skills.active2!.levels[1].guaranteedCritWhenHasStatus, undefined);
+  assert.equal(QIONGJIU.skills.active2!.levels[2].multiplier, 1.1, "V2 has the same damage multiplier as Lv1");
   // Lv1 validated numbers are unchanged (V6 no-cover bracket):
   assert.equal(guideDamage(guideDef(1962)), 803);
 });

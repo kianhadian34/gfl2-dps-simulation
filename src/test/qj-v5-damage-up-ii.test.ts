@@ -25,7 +25,7 @@ function idleUlt(id: string): SkillDefVariant {
 
 /** Clone an ally but swap in the idle 0-damage ultimate (all other skills kept at their Lv1 variants). */
 function withIdleUlt(b: CharacterDef, id: string): CharacterDef {
-  const v = (slot: "basic" | "active1" | "active2" | "ultimate") => b.skills[slot].levels[1];
+  const v = (slot: "basic" | "active1" | "active2" | "ultimate") => b.skills[slot]!.levels[1];
   return { ...b, id, name: id, skills: abilities({ basic: v("basic"), active1: v("active1"), active2: v("active2"), ultimate: idleUlt(id) }) };
 }
 

@@ -148,9 +148,9 @@ test("Max-Confectance Ultimate (VALIDATED 2026): 4 SB II stacks AND 4 Support Ac
         name: id,
         skills: abilities({
           basic: { ...ALLY.skills.basic.levels[1], id: `${id}_basic` },
-          active1: ALLY.skills.active1.levels[1],
-          active2: ALLY.skills.active2.levels[1],
-          ultimate: ALLY.skills.ultimate.levels[1],
+          active1: ALLY.skills.active1!.levels[1],
+          active2: ALLY.skills.active2!.levels[1],
+          ultimate: ALLY.skills.ultimate!.levels[1],
         }),
       },
     ])),

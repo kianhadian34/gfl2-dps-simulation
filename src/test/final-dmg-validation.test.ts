@@ -53,7 +53,7 @@ function runOverburn(
   const specs: StatusApplySpec[] = [];
   if (opts.reduction) specs.push({ statusId: "final_dmg_reduction", durationRounds: 2, target: "target" });
   const c = makeOverburnApplier("fd", atk, { increase: opts.increase, ordinaryNoCover: opts.ordinaryNoCover ? 0.2 : 0 });
-  c.skills.active1.levels[1].appliesStatuses = [...specs, ...(c.skills.active1.levels[1].appliesStatuses ?? [])];
+  c.skills.active1!.levels[1].appliesStatuses = [...specs, ...(c.skills.active1!.levels[1].appliesStatuses ?? [])];
   const dummyPassives: PassiveEffect[] = opts.ordinaryDR
     ? [{ kind: "conditional_damage_modifier", scope: "taken", mode: "multiplicative", value: 0.2, when: "target.noCover" }]
     : [];
@@ -106,7 +106,7 @@ test("fixed: ordinary No-Cover Damage Increase is IGNORED, and fixed damage neve
 test("skill-sourced absolute fixed damage also receives the Final DMG chain (100 × 0.40 = 40)", () => {
   const c = makeOverburnApplier("sk", 1000);
   c.skills.basic.levels[1] = { ...c.skills.basic.levels[1], multiplier: 0, fixedDamage: 100 };
-  c.skills.active1.levels[1].appliesStatuses = [{ statusId: "final_dmg_reduction", durationRounds: 2, target: "target" }];
+  c.skills.active1!.levels[1].appliesStatuses = [{ statusId: "final_dmg_reduction", durationRounds: 2, target: "target" }];
   const r = simulateScenario(
     {
       version: 1,

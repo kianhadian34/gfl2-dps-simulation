@@ -85,9 +85,9 @@ test("U15b: AWU stays out of Phase damage — no stack advancement and no AWU te
     ...makeBurnMirror("d"),
     skills: abilities({
       basic: { id: "d_burn", name: "Burn", type: "basic" as const, element: "burn" as const, ammoType: "medium_ammo" as const, multiplier: MULT, stabDamage: 0, cooldown: 0, confectanceCost: 0 },
-      active1: base.active1.levels[1],
-      active2: base.active2.levels[1],
-      ultimate: base.ultimate.levels[1],
+      active1: base.active1!.levels[1],
+      active2: base.active2!.levels[1],
+      ultimate: base.ultimate!.levels[1],
     }),
   };
   const ev = simulateScenario(

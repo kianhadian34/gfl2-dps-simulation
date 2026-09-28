@@ -48,9 +48,9 @@ const BREAKER: CharacterDef = {
   ...ALLY,
   skills: abilities({
     basic: { ...ALLY.skills.basic.levels[1], stabDamage: 3 },
-    active1: ALLY.skills.active1.levels[1],
-    active2: ALLY.skills.active2.levels[1],
-    ultimate: ALLY.skills.ultimate.levels[1],
+    active1: ALLY.skills.active1!.levels[1],
+    active2: ALLY.skills.active2!.levels[1],
+    ultimate: ALLY.skills.ultimate!.levels[1],
   }),
 };
 
@@ -60,9 +60,9 @@ const DEBUFFER: CharacterDef = {
   id: "sbii_debuff",
   skills: abilities({
     basic: { ...ALLY.skills.basic.levels[1], id: "sbii_debuff_basic", appliesStatuses: [{ statusId: "vulnerable_i", durationRounds: 1, target: "target" }] },
-    active1: ALLY.skills.active1.levels[1],
-    active2: ALLY.skills.active2.levels[1],
-    ultimate: ALLY.skills.ultimate.levels[1],
+    active1: ALLY.skills.active1!.levels[1],
+    active2: ALLY.skills.active2!.levels[1],
+    ultimate: ALLY.skills.ultimate!.levels[1],
   }),
 };
 

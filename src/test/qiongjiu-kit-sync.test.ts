@@ -17,13 +17,13 @@ test("QJ Basic Attack is Level 1 at Fortification 0 and at V6 (never upgraded)",
 });
 
 test("Common Rail Lv1 = 150% ATK / Stability 3 (authoritative), and V1 → Lv2 (skill-specific killing-blow +30% Support Boost)", () => {
-  const lv1 = QIONGJIU.skills.active1.levels[1];
+  const lv1 = QIONGJIU.skills.active1!.levels[1];
   assert.equal(lv1.multiplier, 1.5);
   assert.equal(lv1.stabDamage, 3);
   assert.equal(lv1.element, "burn");
   assert.equal(qjState(0).units[0].skillLevels.active1, 1);
   assert.equal(qjState(1).units[0].skillLevels.active1, 2); // V1 → Common Rail Lv2
-  const lv2 = QIONGJIU.skills.active1.levels[2];
+  const lv2 = QIONGJIU.skills.active1!.levels[2];
   assert.equal(lv2.multiplier, 1.5); // no multiplier change at Lv2
   // V1 is now IMPLEMENTED: killing-blow → +30% Support Boost variant (no longer deferred).
   assert.equal(lv2.deferredNote, undefined, "V1 deferredNote must be gone (implemented)");
@@ -31,13 +31,13 @@ test("Common Rail Lv1 = 150% ATK / Stability 3 (authoritative), and V1 → Lv2 (
 });
 
 test("Guide to Victory Lv1 Stability = 3 (corrected from 0), and V2 → Lv2 (validated +100% crit vs Overburn)", () => {
-  const lv1 = QIONGJIU.skills.active2.levels[1];
+  const lv1 = QIONGJIU.skills.active2!.levels[1];
   assert.equal(lv1.stabDamage, 3);
   assert.equal(lv1.multiplier, 1.1);
   assert.equal(qjState(2).units[0].skillLevels.active2, 2); // V2 → Guide to Victory Lv2
   // V2 conditional crit vs Overburn: VALIDATED in-game 2026 and IMPLEMENTED via the generic hook.
-  assert.equal(QIONGJIU.skills.active2.levels[2].guaranteedCritWhenHasStatus, "overburn");
-  assert.equal(QIONGJIU.skills.active2.levels[1].guaranteedCritWhenHasStatus, undefined);
+  assert.equal(QIONGJIU.skills.active2!.levels[2].guaranteedCritWhenHasStatus, "overburn");
+  assert.equal(QIONGJIU.skills.active2!.levels[1].guaranteedCritWhenHasStatus, undefined);
 });
 
 test("Steady Plan is level-aware (Lv1/Lv2/Lv3) with the V1–V6 Fortification map", () => {
@@ -84,13 +84,13 @@ test("Ultimate: V4 → Lv2 (before-support Vulnerable I) and V5 → Lv3 (before-
   assert.equal(qjState(4).units[0].skillLevels.ultimate, 2);
   assert.equal(qjState(5).units[0].skillLevels.ultimate, 3);
   // V4: no longer a placeholder — declares the before-support Vulnerable I application.
-  assert.equal(QIONGJIU.skills.ultimate.levels[2].deferredNote, undefined, "V4 deferredNote must be gone (implemented)");
-  assert.deepEqual(QIONGJIU.skills.ultimate.levels[2].beforeSupportStatuses, [
+  assert.equal(QIONGJIU.skills.ultimate!.levels[2].deferredNote, undefined, "V4 deferredNote must be gone (implemented)");
+  assert.deepEqual(QIONGJIU.skills.ultimate!.levels[2].beforeSupportStatuses, [
     { statusId: "vulnerable_i", durationRounds: 1, target: "target" },
   ]);
   // V5: implemented — declares the before-trigger Damage Up II (owner + triggering ally), 1 turn.
-  assert.equal(QIONGJIU.skills.ultimate.levels[3].deferredNote, undefined, "V5 deferredNote must be gone (implemented)");
-  assert.deepEqual(QIONGJIU.skills.ultimate.levels[3].beforeSupportTrigger, {
+  assert.equal(QIONGJIU.skills.ultimate!.levels[3].deferredNote, undefined, "V5 deferredNote must be gone (implemented)");
+  assert.deepEqual(QIONGJIU.skills.ultimate!.levels[3].beforeSupportTrigger, {
     owner: [{ statusId: "damage_up_ii", durationRounds: 1 }],
     triggeringAlly: [{ statusId: "damage_up_ii", durationRounds: 1 }],
   });
