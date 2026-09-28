@@ -108,6 +108,9 @@ export interface SimulationState {
   grid?: GridState;
   statusRegistry: Map<string, EffectiveStatusDef>;
   log: LogEvent[];
+  /** Explicit TRAINING-DUMMY pass-turn events (2026): separate channel so the main combat log
+   *  stays unchanged; the UI interleaves a "Used -> Nothing" row before the target's ticks. */
+  passEvents: Array<{ round: number; turn: number; unit: string; actorName: string; action: string }>;
   warnings: Set<string>;
   accum: Accumulators;
 }
@@ -514,6 +517,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
     grid: scenario.grid ? buildGrid(scenario.grid) : undefined,
     statusRegistry: applyStatusOverrides(registry.getStatusMap(), config.statusOverrides),
     log: [],
+    passEvents: [],
     warnings,
     accum: {
       actions: 0,

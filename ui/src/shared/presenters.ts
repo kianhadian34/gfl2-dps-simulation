@@ -136,10 +136,11 @@ export function statusRefsFor(ev: LogEventView): Array<{ label: string; refs: Ar
   return rows;
 }
 
-export type LogCategory = "action" | "support" | "damage" | "status" | "resource" | "fixed" | "tick" | "movement" | "round";
+export type LogCategory = "action" | "support" | "damage" | "status" | "resource" | "fixed" | "tick" | "movement" | "round" | "pass";
 
 /** Classify a single LogEvent for visual hierarchy (icons + text, never color alone). */
 export function classifyEvent(ev: LogEventView): LogCategory {
+  if (ev.actionType === "dummy_pass") return "pass";
   if (ev.actionType === "status_tick") return "tick";
   if (ev.statusTick || ev.fixedDamage !== undefined) return "fixed";
   if (ev.supportAttack) return "support";
@@ -171,6 +172,52 @@ export function humanizeId(id: string): string {
     .join(" ");
 }
 
+/** Interleave the training-dummy pass events into the main log: each round's pass row is inserted
+ *  just BEFORE that round's final event (the target's action-end ticks), so the log reads
+ *  "Training Dummy Used -> Nothing" immediately followed by the Overburn tick that explains it. */
+export function interleavePasses(
+  events: LogEventView[],
+  passes: Array<{ round: number; turn: number; unit: string; actorName: string; action: string }>,
+): LogEventView[] {
+  if (passes.length === 0) return events;
+  const byRound = new Map<number, typeof passes>();
+  for (const p of passes) {
+    const list = byRound.get(p.round) ?? [];
+    list.push(p);
+    byRound.set(p.round, list);
+  }
+  const passEvent = (p: { round: number; turn: number; unit: string; actorName: string; action: string }): LogEventView => ({
+    round: p.round,
+    turn: p.turn,
+    unit: p.unit,
+    action: p.action,
+    actionType: "dummy_pass",
+    target: "",
+    source: "passive",
+    supportAttack: false,
+    weaknessExploited: [],
+    phaseMult: 1,
+    bonusBracket: 1,
+    reductionMult: 1,
+    finalDamage: 0,
+    cooldownAfter: {},
+    statusesApplied: [],
+    statusesExpired: [],
+    actorName: p.actorName,
+    targetName: p.actorName,
+  });
+  const lastIndexPerRound = new Map<number, number>();
+  events.forEach((ev, i) => lastIndexPerRound.set(ev.round, i));
+  const out: LogEventView[] = [];
+  events.forEach((ev, i) => {
+    if (lastIndexPerRound.get(ev.round) === i) {
+      for (const p of byRound.get(ev.round) ?? []) out.push(passEvent(p));
+    }
+    out.push(ev);
+  });
+  return out;
+}
+
 /** Split applied statuses into BUFFS vs DEBUFFS using the status catalog category (unknown → buff),
  *  deduplicated; keeps the status id (for hoverable chips) plus the display name. */
 export function appliedStatusLabels(
@@ -196,6 +243,9 @@ function describeEvent(ev: LogEventView, category: LogCategory): string {
   if (category === "tick") {
     const vTick = ev.statusTick;
     return `T${ev.round} A${ev.turn} ${actor}'s ${vTick ? humanizeId(vTick.statusId) : humanizeId(ev.action)} -> ${tgt} For ${ev.finalDamage} Damage.`;
+  }
+  if (category === "pass") {
+    return `T${ev.round} A${ev.turn} ${actor} Used -> Nothing`;
   }
   if (ev.supportAttack) {
     const trigger = ev.triggerName ?? "Passive";

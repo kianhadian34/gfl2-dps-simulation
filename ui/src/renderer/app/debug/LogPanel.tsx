@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { appliedStatusLabels, buildLogRows, effectSourceRefs, humanizeId, movementRows, resolveStatus, statusRefsFor, statusTooltipLines, totalsRows } from "../../../shared/presenters.js";
+import { appliedStatusLabels, buildLogRows, effectSourceRefs, humanizeId, interleavePasses, movementRows, resolveStatus, statusRefsFor, statusTooltipLines, totalsRows } from "../../../shared/presenters.js";
 import { EffectSourceRef } from "../../../shared/effect-source-ref.js";
 import { fmt } from "../../../shared/format.js";
 import type { LogEventView, SessionView, StatusInfoView, EffectSourceInfoView } from "../../../shared/engine-types.js";
@@ -8,7 +8,7 @@ import type { LogEventView, SessionView, StatusInfoView, EffectSourceInfoView } 
  * COMBAT LOG PANEL — the primary debugging view. Full LogEvent fidelity: every engine
  * field is visible in the expandable detail; chronological; icon + text hierarchy.
  */
-const GLYPH: Record<string, string> = { action: "▸", support: "⇢", damage: "✱", status: "✚", resource: "◆", fixed: "◈", tick: "↻", movement: "→" };
+const GLYPH: Record<string, string> = { action: "▸", support: "⇢", damage: "✱", status: "✚", resource: "◆", fixed: "◈", tick: "↻", movement: "→", pass: "–" };
 
 function Row(props: {
   ev: LogEventView;
@@ -19,7 +19,7 @@ function Row(props: {
   effectDefs?: Record<string, EffectSourceInfoView>;
 }): JSX.Element {
   const [open, setOpen] = useState(false);
-  const cat = props.ev.actionType === "status_tick" ? "tick" : props.ev.supportAttack ? "support" : props.ev.fixedDamage !== undefined || props.ev.statusTick ? "fixed" : "action";
+  const cat = props.ev.actionType === "status_tick" ? "tick" : props.ev.actionType === "dummy_pass" ? "pass" : props.ev.supportAttack ? "support" : props.ev.fixedDamage !== undefined || props.ev.statusTick ? "fixed" : "action";
   const cls = `event cat-${cat}`;
   const actor = props.ev.actorName ?? humanizeId(props.ev.unit);
   const ability = props.ev.abilityName ?? humanizeId(props.ev.action);
@@ -52,6 +52,10 @@ function Row(props: {
           <>
             T{props.ev.round} A{props.ev.turn} {actor}&apos;s {props.ev.statusTick ? humanizeId(props.ev.statusTick.statusId) : humanizeId(props.ev.action)} -&gt; {tgt} For{" "}
             <span className="dmg">{props.ev.finalDamage} Damage</span>.
+          </>
+        ) : cat === "pass" ? (
+          <>
+            T{props.ev.round} A{props.ev.turn} {actor} Used -&gt; Nothing
           </>
         ) : props.ev.supportAttack ? (
           <>
@@ -191,7 +195,10 @@ function detailFields(ev: LogEventView): [string, string][] {
 }
 
 export function LogPanel(props: { session: SessionView; selected: number | null; onSelect: (i: number | null) => void }): JSX.Element {
-  const rows = useMemo(() => buildLogRows(props.session.result.log), [props.session]);
+  const rows = useMemo(
+    () => buildLogRows(interleavePasses(props.session.result.log, props.session.result.passes ?? [])),
+    [props.session],
+  );
   const moves = useMemo(() => movementRows(props.session), [props.session]);
 
   return (

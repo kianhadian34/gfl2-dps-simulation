@@ -246,7 +246,7 @@ export interface LogEventView {
   turn: number;
   unit: string;
   action: string;
-  actionType: "basic" | "active" | "ultimate" | "support" | "status_tick";
+  actionType: "basic" | "active" | "ultimate" | "support" | "status_tick" | "dummy_pass";
   target: string;
   source: SourceKind;
   supportAttack: boolean;
@@ -301,6 +301,8 @@ export interface SimulationResultView {
   bySource: Array<{ source: string; damage: number; actions: number }>;
   warnings: string[];
   log: LogEventView[];
+  /** Explicit training-dummy pass-turn events (2026) — UI interleaves them before the target's ticks. */
+  passes: Array<{ round: number; turn: number; unit: string; actorName: string; action: string }>;
 }
 
 /** Engine-computed movement facts (computed in Electron main via src/engine/grid.ts only). */

@@ -1084,6 +1084,7 @@ function buildResults(state: SimulationState, scenario: Scenario): SimulationRes
       .sort((a, b) => b.damage - a.damage),
     warnings: [...state.warnings].sort(),
     log: state.log,
+    passes: state.passEvents,
   };
 }
 
@@ -1138,7 +1139,11 @@ export function simulate(scenario: Scenario, registry: Registry): SimulationResu
     }
     // Dummy pass-turn (validated 2026): the stationary dummy advances through a
     // no-op action cycle (no attacks/skills/resources/AI) so target-side
-    // ownActionEnd statuses (e.g. Overburn) tick naturally. Invisible otherwise.
+    // ownActionEnd statuses (e.g. Overburn) tick naturally. Emit an explicit PASS
+    // event in a SEPARATE channel (results.passes) — the main combat log (and its
+    // oracles) stays unchanged; the UI interleaves pass rows before the ticks so
+    // the log explains why the following debuff damage occurs.
+    state.passEvents.push({ round: state.round, turn, unit: state.dummy.id, actorName: state.dummy.name, action: "pass" });
     endOfOwnTurn(state, state.dummy);
     endOfRound(state);
   }

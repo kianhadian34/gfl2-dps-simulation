@@ -4,6 +4,7 @@ import {
   appliedStatusLabels,
   buildLogRows,
   classifyEvent,
+  interleavePasses,
   movementRows,
   resolveStatus,
   rotationStates,
@@ -121,6 +122,31 @@ test("buildLogRows: support attacks render as passive TRIGGERED lines (no [suppo
   );
 });
 
+test("buildLogRows: dummy pass-turn renders as 'Used -> Nothing'", () => {
+  const ev = basEv({
+    actionType: "dummy_pass",
+    unit: "training_dummy",
+    action: "pass",
+    target: "",
+    actorName: "Training Dummy",
+    finalDamage: 0,
+  });
+  const rows = buildLogRows([ev]);
+  assert.equal(rows[0].head, "T1 A1 Training Dummy Used -> Nothing");
+});
+
+test("interleavePasses: inserts the pass row right BEFORE the round's final event (where the tick lands)", () => {
+  const ev1 = basEv({ round: 1, turn: 1, action: "basic" });
+  const ev2 = basEv({ round: 1, turn: 2, actionType: "status_tick", action: "overburn", statusTick: { statusId: "overburn", amount: 123 }, finalDamage: 123 });
+  const merged = interleavePasses([ev1, ev2], [{ round: 1, turn: 2, unit: "training_dummy", actorName: "Training Dummy", action: "pass" }]);
+  assert.equal(merged.length, 3);
+  assert.equal(merged[1].actionType, "dummy_pass", "pass inserted immediately before the tick");
+  assert.equal(merged[2].action, "overburn", "tick follows the pass");
+  const rows = buildLogRows(merged);
+  assert.equal(rows[1].head, "T1 A2 Training Dummy Used -> Nothing");
+  assert.equal(rows[2].head, "T1 A2 Tester's Overburn -> Training Dummy For 123 Damage.");
+});
+
 test("humanizeId: snake_case ids become display names (roman numerals uppercased)", async () => {
   const { humanizeId } = await import("../src/shared/presenters.js");
   assert.equal(humanizeId("basic_attack_dummy"), "Basic Attack Dummy");
@@ -174,6 +200,7 @@ test("totalsRows and movementRows present engine numbers verbatim", () => {
     bySource: [],
     warnings: [],
     log: [],
+    passes: [],
   };
   const rows = totalsRows(result);
   assert.ok(rows.some((r) => r.label === "Total damage" && r.value === "1,234"));

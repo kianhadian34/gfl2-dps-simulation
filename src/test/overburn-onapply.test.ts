@@ -58,6 +58,15 @@ test("re-applying Overburn on a LATER Support Attack does NOT re-fire on-applica
   assert.notEqual(after?.action, "overburn", "refresh application → no immediate tick (only the action-end ticks)");
 });
 
+test("training dummy emits an explicit pass event (results.passes) for its turn — the why-behind-the-tick line", () => {
+  const r = run();
+  const pass = r.passes.find((p) => p.round === 2);
+  assert.ok(pass, "round-2 pass event present in the separate passes channel");
+  assert.equal(pass.unit, "training_dummy");
+  assert.equal(pass.actorName, "Training Dummy");
+  assert.equal(pass.action, "pass");
+});
+
 test("with the Support Attack the rounds still end with the holder's action-end Overburn ticks", () => {
   const r = run();
   // Round 2's only overburn damage is its action-end tick (123), logged at round 2.

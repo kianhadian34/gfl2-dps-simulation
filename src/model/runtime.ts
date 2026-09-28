@@ -28,7 +28,7 @@ export interface LogEvent {
   turn: number;
   unit: string;
   action: string;
-  actionType: "basic" | "active" | "ultimate" | "support" | "status_tick";
+  actionType: "basic" | "active" | "ultimate" | "support" | "status_tick" | "dummy_pass";
   target: string;
   source: SourceKind;
   supportAttack: boolean;
@@ -98,4 +98,6 @@ export interface SimulationResult {
   bySource: { source: SourceKind; damage: number; actions: number }[];
   warnings: string[];
   log: LogEvent[];
+  /** Explicit training-dummy pass-turn events (2026) — UI interleaves them before the target's ticks. */
+  passes: Array<{ round: number; turn: number; unit: string; actorName: string; action: string }>;
 }
