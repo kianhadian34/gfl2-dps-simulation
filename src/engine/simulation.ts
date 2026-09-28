@@ -1035,7 +1035,7 @@ function collectWarnings(state: SimulationState): void {
     const def = u.def;
     if (!def) continue;
     for (const ability of [def.skills.basic, def.skills.active1, def.skills.active2, def.skills.ultimate]) {
-      if (!ability) continue; // optional slots — absent on minimal units (e.g. Basic Attack Dummy)
+      if (!ability) continue; // optional slots — absent on minimal units (e.g. Friendly Dummy)
       for (const sk of Object.values(ability.levels)) {
         for (const spec of sk.appliesStatuses ?? []) referenced.add(spec.statusId);
       }

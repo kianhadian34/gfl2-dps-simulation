@@ -208,10 +208,10 @@ export function detailFields(ev: LogEventView): Array<{ label: string; value: st
   const pushNumeric = (label: string, value: unknown) => d.push({ label, value: value === undefined || value === null ? "—" : fmt(value) });
   push("round", ev.round);
   push("turn", ev.turn);
-  push("unit", ev.unit);
-  push("action", ev.action);
+  push("unit", ev.actorName ? `${ev.actorName} (${ev.unit})` : `${humanizeId(ev.unit)} (${ev.unit})`);
+  push("action", ev.abilityName ? `${ev.abilityName}${ev.abilityLevel !== undefined ? ` Lv.${ev.abilityLevel}` : ""} (${ev.action})` : ev.action);
   push("actionType", ev.actionType);
-  push("target", ev.target);
+  push("target", ev.targetName ? `${ev.targetName} (${ev.target})` : `${humanizeId(ev.target)} (${ev.target})`);
   push("source", ev.source);
   push("supportAttack", ev.supportAttack);
   pushNumeric("baseDamage", ev.baseDamage);

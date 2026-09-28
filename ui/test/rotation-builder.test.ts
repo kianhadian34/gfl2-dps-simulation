@@ -127,7 +127,7 @@ test("rotation: only the character's EXISTING abilities are shown as cards (dumm
   );
   const b = buildCharacterMetaView({
     id: "basic_attack_dummy",
-    name: "Basic Attack Dummy",
+    name: "Friendly Dummy",
     skills: { basic: { id: "basic_attack_dummy_basic", name: "Basic Attack" } },
   });
   assert.deepEqual(Object.keys(b.skills ?? {}), ["basic"], "dummy metadata exposes only Basic Attack → only its card renders");

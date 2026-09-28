@@ -164,7 +164,7 @@ test("equipment: setRoundOrder sets per-round orders (validated permutations) an
     const s = setupWith();
     return {
       ...s,
-      characters: order.map((id) => ({ id, name: id === "qiongjiu" ? "Qiongjiu" : "Basic Attack Dummy", selected: true })),
+      characters: order.map((id) => ({ id, name: id === "qiongjiu" ? "Qiongjiu" : "Friendly Dummy", selected: true })),
       rotations: { qiongjiu: ["basic"], basic_attack_dummy: ["basic"] },
     };
   };

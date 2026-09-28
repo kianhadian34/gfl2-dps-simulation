@@ -129,6 +129,11 @@ function StatusChip(props: { statusId: string; source?: string; stacks?: number;
 function detailFields(ev: LogEventView): [string, string][] {
   const out: [string, string][] = [];
   const put = (k: keyof LogEventView | string, v: unknown) => out.push([String(k), v === undefined || v === null ? "—" : Array.isArray(v) ? (v.length ? JSON.stringify(v) : "[]") : String(v)]);
+  // Raw ids stay in the detail table for fidelity, but the identity fields also expose the readable
+  // names (actor/ability/level/target) — no raw-looking "basic_attack_dummy" without context.
+  put("unit", ev.actorName ? `${ev.actorName} (${ev.unit})` : (humanizeId(ev.unit) + ` (${ev.unit})`));
+  put("action", ev.abilityName ? `${ev.abilityName}${ev.abilityLevel !== undefined ? ` Lv.${ev.abilityLevel}` : ""} (${ev.action})` : ev.action);
+  put("target", ev.targetName ? `${ev.targetName} (${ev.target})` : (humanizeId(ev.target) + ` (${ev.target})`));
   // Numeric fields render through the max-2-decimal formatter (display-only; engine values untouched).
   const putN = (k: keyof LogEventView | string, v: unknown) => out.push([String(k), v === undefined || v === null ? "—" : fmt(v)]);
   putN("baseDamage", ev.baseDamage);

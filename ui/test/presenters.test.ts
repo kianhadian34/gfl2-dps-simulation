@@ -70,7 +70,7 @@ test("buildLogRows: head uses the READABLE format (actor/ability Lv -> target Fo
   const ev = basEv({
     unit: "basic_attack_dummy",
     action: "basic_attack_dummy_basic",
-    actorName: "Basic Attack Dummy",
+    actorName: "Friendly Dummy",
     abilityName: "Basic Attack",
     abilityLevel: 1,
     targetName: "Training Dummy",
@@ -80,7 +80,7 @@ test("buildLogRows: head uses the READABLE format (actor/ability Lv -> target Fo
   const rows = buildLogRows([ev]);
   assert.equal(
     rows[0].head,
-    "T1 A1 Basic Attack Dummy Used Basic Attack Lv.1 -> Training Dummy For 160 Damage",
+    "T1 A1 Friendly Dummy Used Basic Attack Lv.1 -> Training Dummy For 160 Damage",
   );
 });
 

@@ -517,7 +517,7 @@ export interface CharacterDef {
   // definitions equipped per scenario via `ScenarioTeamMember.weaponId` (1 Weapon Slot) and
   // resolved through `Registry.getWeapon` (src/data/weapons.ts). Property removed from CharacterDef.
   /** Ability kit. `basic` is always required; active1/active2/ultimate/support are OPTIONAL — a
-   *  minimal unit (e.g. the Basic Attack Dummy) may declare only `basic`. Engine paths that resolve
+   *  minimal unit (e.g. the Friendly Dummy) may declare only `basic`. Engine paths that resolve
    *  abilities skip absent slots; `pickAction` treats an absent non-basic slot as unavailable (and
    *  falls back to basic per the existing rotation contract). Qiongjiu supplies all slots. */
   skills: { basic: AbilityDef; active1?: AbilityDef; active2?: AbilityDef; ultimate?: AbilityDef; support?: AbilityDef };

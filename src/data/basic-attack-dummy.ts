@@ -13,7 +13,7 @@ import type { CharacterDef } from "../model/types.js";
  */
 export const BASIC_ATTACK_DUMMY: CharacterDef = {
   id: "basic_attack_dummy",
-  name: "Basic Attack Dummy",
+  name: "Friendly Dummy",
   phase: null,
   base: { atk: 1000, hp: 2000, def: 500, stability: 9, critRate: 0, critDmg: 0 },
   skills: {

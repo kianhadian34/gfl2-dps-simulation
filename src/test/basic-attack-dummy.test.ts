@@ -41,7 +41,7 @@ function run(team: Array<{ characterId: string; rotation: string[] }>, turns = 1
 test("dummy: definition loads from the registry with the exact id/name and no extra systems", () => {
   const def = REGISTRY.getCharacter("basic_attack_dummy");
   assert.ok(def, "registered");
-  assert.equal(def.name, "Basic Attack Dummy");
+  assert.equal(def.name, "Friendly Dummy");
   assert.equal(def.id, "basic_attack_dummy");
   assert.equal(def.base.atk, 1000);
   assert.equal(def.affinityKey, undefined, "no affinity key");
