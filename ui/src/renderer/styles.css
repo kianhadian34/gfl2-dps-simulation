@@ -329,6 +329,15 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .pills-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 12px 0 14px; }
 .pills-label { font-size: 11px; color: var(--muted); margin-right: 2px; }
 
+/* --- per-round action order editor (2026) --- */
+.round-orders { margin: 10px 0 4px; padding-top: 6px; border-top: 1px dashed var(--border); }
+.round-order-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 4px 0; }
+.round-order-label { font-size: 11px; color: var(--muted); margin-right: 6px; min-width: 52px; }
+.round-order-row select {
+  border: 1px solid var(--border); border-radius: 4px; background: var(--bg-2);
+  color: var(--text); font-size: 12px; padding: 2px 6px;
+}
+
 .weapon-slot:hover { border-color: var(--accent); }
 .weapon-slot.is-empty { color: var(--muted); }
 .weapon-slot.is-empty:hover { color: var(--text); }

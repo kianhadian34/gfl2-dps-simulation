@@ -516,7 +516,11 @@ export interface CharacterDef {
   // NOTE (2026): characters no longer carry a permanent equipped weapon — weapons are REUSABLE
   // definitions equipped per scenario via `ScenarioTeamMember.weaponId` (1 Weapon Slot) and
   // resolved through `Registry.getWeapon` (src/data/weapons.ts). Property removed from CharacterDef.
-  skills: { basic: AbilityDef; active1: AbilityDef; active2: AbilityDef; ultimate: AbilityDef; support?: AbilityDef };
+  /** Ability kit. `basic` is always required; active1/active2/ultimate/support are OPTIONAL — a
+   *  minimal unit (e.g. the Basic Attack Dummy) may declare only `basic`. Engine paths that resolve
+   *  abilities skip absent slots; `pickAction` treats an absent non-basic slot as unavailable (and
+   *  falls back to basic per the existing rotation contract). Qiongjiu supplies all slots. */
+  skills: { basic: AbilityDef; active1?: AbilityDef; active2?: AbilityDef; ultimate?: AbilityDef; support?: AbilityDef };
   passive: PassiveDef;
   fixedKeys: KeyDef[];
   /** Fortification → ability-level upgrades (V index → ONE ability, explicit resulting level
@@ -822,4 +826,11 @@ export interface Scenario {
   /** GRID (2026): optional 15×15 battlefield configuration. Absent ⇒ simulation runs without positions (unchanged). */
   grid?: GridConfig;
   configOverrides?: ConfigOverrides;
+  /**
+   * PER-ROUND ACTION ORDER (2026): optional map round → team character ids in the exact order
+   * they act that round. Absent ⇒ the team (member) order is used every round. When present,
+   * every entry must list every team member EXACTLY once (a permutation) — missing/duplicate
+   * members are rejected with a clear error (no implicit skip; Pass is not a feature).
+   */
+  roundOrder?: Record<number, string[]>;
 }

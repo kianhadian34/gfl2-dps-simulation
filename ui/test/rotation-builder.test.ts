@@ -37,12 +37,27 @@ test("rotation: slots and add-buttons use BIG ability artwork with the name unde
     css.includes(".rot-builder .rot-card img,\n.rot-builder .rot-slot-card img { pointer-events: none; }"),
     "artwork doesn't swallow the hover target — the titled card receives hover for the tooltip",
   );
-  assert.ok(s.includes("ROTATION_SLOTS.map") && s.includes("addSlot(c.id, slot)"), "same RotationSlot set + selection behavior unchanged");
+  assert.ok(s.includes("ROTATION_SLOTS.filter") && s.includes(".map((slot)") && s.includes("addSlot(c.id, slot)"), "same RotationSlot set drives the (filtered) cards + selection behavior unchanged");
   const cssActions = readFileSync(srcFile("../../src/renderer/styles.css"), "utf8");
   assert.ok(
     cssActions.includes(".rot-builder .rot-actions button {\n  border: 1px solid var(--border); border-radius: 4px; background: var(--bg-2);"),
     "remove/clear actions use the themed button styling (no browser default)",
   );
+});
+
+test("character list: action ordering is handled ONLY by the per-round panel — no arrow controls remain", () => {
+  const s = readFileSync(srcFile("../../src/renderer/app/setup/SetupScreen.tsx"), "utf8");
+  assert.ok(!s.includes("row-move") && !s.includes("moveCharacter"), "no ↑/↓ reorder arrows in the character selection section");
+  assert.ok(s.includes("Action order per round"), "ordering lives in the per-round action order panel");
+});
+
+test("character list: per-round action order editor (round can differ from team order; full permutation enforced)", () => {
+  const s = readFileSync(srcFile("../../src/renderer/app/setup/SetupScreen.tsx"), "utf8");
+  assert.ok(s.includes("Action order per round") && s.includes("round-order-row"), "per-round order editor present in the Rotation section");
+  assert.ok(s.includes("teamIds.length > 1"), "editor shows whenever 2+ team members are selected (even a single turn)");
+  assert.ok(s.includes("Array.from({ length: props.setup.turns }") && s.includes("Round {round}"), "one row per round (1..turns)");
+  assert.ok(s.includes("props.setup.roundOrder?.[round] ?? teamIds"), "defaults to the team order");
+  assert.ok(s.includes("setRoundOrder(props.setup, round, chosen)"), "edits flow through the validated setRoundOrder");
 });
 
 test("rotation: ability tooltips are level-aware (exact in-game text at the effective level for the selected fortification)", () => {
@@ -102,6 +117,31 @@ test("rotation: ability tooltips are level-aware (exact in-game text at the effe
   assert.equal(rotationAbilityDescription(noDesc, "active1", 9), "B top-level", "skill-level fallback → top-level description");
   assert.equal(rotationAbilityDescription(buildCharacterMetaView({ id: "z", name: "Z" }), "active1", 1), "active1", "no skill metadata → slot id");
   assert.equal(passiveDescription(buildCharacterMetaView({ id: "w", name: "W", passive: { playerDescription: "W passive" } }), 9), "W passive", "passive-level fallback → top-level playerDescription");
+});
+
+test("rotation: only the character's EXISTING abilities are shown as cards (dummy → Basic only; Qiongjiu unchanged)", () => {
+  const s = readFileSync(srcFile("../../src/renderer/app/setup/SetupScreen.tsx"), "utf8");
+  assert.ok(
+    s.includes("ROTATION_SLOTS.filter((slot) => meta[c.id]?.skills?.[slot] !== undefined)"),
+    "card list is filtered by the character's actual skills (data-driven)",
+  );
+  const b = buildCharacterMetaView({
+    id: "basic_attack_dummy",
+    name: "Basic Attack Dummy",
+    skills: { basic: { id: "basic_attack_dummy_basic", name: "Basic Attack" } },
+  });
+  assert.deepEqual(Object.keys(b.skills ?? {}), ["basic"], "dummy metadata exposes only Basic Attack → only its card renders");
+  const qj = buildCharacterMetaView({
+    id: "qiongjiu",
+    name: "Qiongjiu",
+    skills: {
+      basic: { id: "qiongjiu_basic", name: "Fuse" },
+      active1: { id: "qiongjiu_common_rail", name: "Common Rail" },
+      active2: { id: "qiongjiu_guide_to_victory", name: "Guide to Victory" },
+      ultimate: { id: "qiongjiu_pressing_momentum", name: "Pressing the Momentum" },
+    },
+  });
+  assert.deepEqual(Object.keys(qj.skills ?? {}).sort(), ["active1", "active2", "basic", "ultimate"], "Qiongjiu's rotation abilities unchanged");
 });
 
 test("rotation: skill metadata passes through buildCharacterMetaView and session IPC", () => {

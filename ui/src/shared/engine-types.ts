@@ -236,6 +236,8 @@ export interface ScenarioView {
   dummy: DummyConfigView;
   grid?: GridConfigView;
   configOverrides?: Record<string, unknown>;
+  /** Per-round action order (round → team character ids in acting order). Absent = team order each round. */
+  roundOrder?: Record<number, string[]>;
 }
 
 /** Full LogEvent mirror — the log window exposes EVERY field the engine emits. */

@@ -95,6 +95,18 @@ export function mergeFreshCharacters(
   });
 }
 
+/** Set the exact action order for one round. `order` must be a full permutation of the CURRENT
+ *  selected team (every id exactly once) or the change is rejected (no implicit skips). */
+export function setRoundOrder(state: SetupState, round: number, order: string[]): SetupState {
+  if (!Number.isInteger(round) || round < 1) return state;
+  const team = state.characters.filter((c) => c.selected).map((c) => c.id);
+  if (order.length !== team.length || order.some((id) => !team.includes(id))) return state;
+  if (new Set(order).size !== order.length) return state;
+  const next = { ...(state.roundOrder ?? {}) };
+  next[round] = [...order];
+  return { ...state, roundOrder: next };
+}
+
 export interface SetupState {
   turns: number;
   seed: number;
@@ -105,6 +117,8 @@ export interface SetupState {
   characters: SetupCharacter[];
   /** Fixed rotation per selected character id. */
   rotations: Record<string, RotationSlot[]>;
+  /** Per-round action order (round → team character ids in acting order). Absent = team order every round. */
+  roundOrder?: Record<number, string[]>;
   gridEnabled: boolean;
   /** DEBUG MODE (controlled testing, 2026): an EXPLICIT configuration path that relaxes the
    *  normal equipment requirements and allows manual base-stat overrides. It never adds keys,
@@ -504,5 +518,7 @@ export function buildScenario(setup: SetupState): ScenarioView {
       : undefined,
     // Fortification (V) is a GLOBAL engine config override — always sent (V0 explicitly as 0).
     configOverrides: { fortificationLevel: setup.fortificationLevel },
+    // Per-round action order (only when the user configured one; engine validates the permutation).
+    ...(setup.roundOrder ? { roundOrder: setup.roundOrder } : {}),
   };
 }

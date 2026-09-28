@@ -14,6 +14,7 @@ import {
   setWeapon,
   setCommonKeyAt,
   setAffinityLevel,
+  setRoundOrder,
   toggleFixedKey,
   PHASE_WEAKNESSES,
   AMMO_WEAKNESSES,
@@ -295,7 +296,7 @@ export function SetupScreen(props: {
                     })}
                   </div>
                   <div className="rot-cards">
-                    {ROTATION_SLOTS.map((slot) => {
+                    {ROTATION_SLOTS.filter((slot) => meta[c.id]?.skills?.[slot] !== undefined).map((slot) => {
                       const sk = skillOf(slot);
                       return (
                         <button key={slot} type="button" className="rot-card" title={rotationAbilityDescription(meta[c.id] as CharacterMetaView, slot, props.setup.fortificationLevel)} onClick={() => addSlot(c.id, slot)}>
@@ -326,6 +327,43 @@ export function SetupScreen(props: {
                 );
               })
           )}
+        {(() => {
+          const teamIds = props.setup.characters.filter((c) => c.selected).map((c) => c.id);
+          return teamIds.length > 1 ? (
+            <div className="round-orders">
+              <p className="muted">
+                Action order per round (defaults to team order). Every round lists every team unit exactly once — no skips.
+              </p>
+              {Array.from({ length: props.setup.turns }, (_, idx) => idx + 1).map((round) => {
+                const current = props.setup.roundOrder?.[round] ?? teamIds;
+                return (
+                  <div key={round} className="round-order-row">
+                    <span className="round-order-label">Round {round}</span>
+                    {current.map((cid, pos) => (
+                      <select
+                        key={`${round}-${pos}`}
+                        value={cid}
+                        onChange={(e) => {
+                          const chosen = [...current];
+                          const otherPos = chosen.findIndex((x, i) => i !== pos && x === e.target.value);
+                          if (otherPos >= 0) chosen[otherPos] = chosen[pos];
+                          chosen[pos] = e.target.value;
+                          props.onChange(setRoundOrder(props.setup, round, chosen));
+                        }}
+                      >
+                        {teamIds.map((id) => (
+                          <option key={id} value={id}>
+                            {meta[id]?.name ?? id}
+                          </option>
+                        ))}
+                      </select>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          ) : null;
+        })()}
         </section>
 
         <section>

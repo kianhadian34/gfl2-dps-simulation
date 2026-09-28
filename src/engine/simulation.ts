@@ -1027,6 +1027,7 @@ function collectWarnings(state: SimulationState): void {
     const def = u.def;
     if (!def) continue;
     for (const ability of [def.skills.basic, def.skills.active1, def.skills.active2, def.skills.ultimate]) {
+      if (!ability) continue; // optional slots — absent on minimal units (e.g. Basic Attack Dummy)
       for (const sk of Object.values(ability.levels)) {
         for (const spec of sk.appliesStatuses ?? []) referenced.add(spec.statusId);
       }
@@ -1077,7 +1078,16 @@ export function simulate(scenario: Scenario, registry: Registry): SimulationResu
   let turn = 0;
   for (let round = 1; round <= scenario.turns; round++) {
     state.round = round;
-    for (const doll of state.units) {
+    // PER-ROUND ACTION ORDER (2026): `roundOrder[round]` (a permutation of the team) when
+    // present, else the team order. Missing/duplicate/mistyped members are a clear error —
+    // no implicit skip (Pass is not a feature).
+    const order = scenario.roundOrder?.[round] ?? state.units.map((u) => u.id);
+    const byId = new Map(state.units.map((u) => [u.id, u]));
+    if (order.length !== state.units.length || new Set(order).size !== order.length || order.some((id) => !byId.has(id))) {
+      throw new Error(`Round ${round}: roundOrder must list every team unit exactly once (got [${order.join(", ")}])`);
+    }
+    for (const uid of order) {
+      const doll = byId.get(uid)!;
       beginUnitRound(doll);
       // GRID (2026): movement occurs BEFORE the action; action → move is impossible
       // (moves are only applied here); a unit may move and then voluntarily end its turn.

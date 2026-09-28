@@ -1,6 +1,7 @@
 import type { AffinityKeyDef, CharacterDef, CommonKeyDef, StatusDef, WeaponDef } from "../model/types.js";
 import { COMMON_KEYS } from "./common-keys.js";
 import { QIONGJIU } from "./qiongjiu.js";
+import { BASIC_ATTACK_DUMMY } from "./basic-attack-dummy.js";
 import { statusMap } from "./statuses.js";
 import { WEAPONS } from "./weapons.js";
 
@@ -21,7 +22,7 @@ export interface Registry {
   getWeapon(id: string): WeaponDef | undefined;
 }
 
-const CHARACTERS: CharacterDef[] = [QIONGJIU];
+const CHARACTERS: CharacterDef[] = [QIONGJIU, BASIC_ATTACK_DUMMY];
 
 export const REGISTRY: Registry = {
   getCharacter(id) {

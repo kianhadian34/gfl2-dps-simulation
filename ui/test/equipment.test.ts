@@ -12,6 +12,7 @@ import {
   setAffinityKey,
   setAffinityLevel,
   setCalibration,
+  setRoundOrder,
   setExpansionKey,
   setWeapon,
   setCommonKeyAt,
@@ -156,6 +157,26 @@ test("equipment: calibration and affinity level are REQUIRED once their key/weap
   // DEBUG MODE: the normal requirements do not apply — an equipped weapon/key without level is fine.
   const dbg: SetupState = { ...s, debug: { enabled: true, baseStats: {} } };
   assert.deepEqual(equipmentErrors(dbg), [], "debug mode relaxes the new required-level rules too");
+});
+
+test("equipment: setRoundOrder sets per-round orders (validated permutations) and buildScenario carries them", () => {
+  const mk = (order: string[]): SetupState => {
+    const s = setupWith();
+    return {
+      ...s,
+      characters: order.map((id) => ({ id, name: id === "qiongjiu" ? "Qiongjiu" : "Basic Attack Dummy", selected: true })),
+      rotations: { qiongjiu: ["basic"], basic_attack_dummy: ["basic"] },
+    };
+  };
+  let s = mk(["qiongjiu", "basic_attack_dummy"]);
+  s = setRoundOrder(s, 2, ["basic_attack_dummy", "qiongjiu"]);
+  assert.deepEqual(s.roundOrder, { 2: ["basic_attack_dummy", "qiongjiu"] });
+  const sc = buildScenario(s);
+  assert.deepEqual(sc.roundOrder, { 2: ["basic_attack_dummy", "qiongjiu"] }, "carried into the scenario");
+  // Invalid: not a full permutation → rejected (no partial/duplicate rounds).
+  assert.equal(setRoundOrder(s, 2, ["qiongjiu"]), s, "missing member rejected");
+  assert.equal(setRoundOrder(s, 2, ["qiongjiu", "qiongjiu"]), s, "duplicate rejected");
+  assert.equal(setRoundOrder(s, 0, ["qiongjiu", "basic_attack_dummy"]), s, "round < 1 rejected");
 });
 
 test("equipment: 0 Common Keys is valid", () => {
