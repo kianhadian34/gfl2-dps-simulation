@@ -454,7 +454,9 @@ export function buildScenario(setup: SetupState): ScenarioView {
         ...(equ.weaponId !== undefined ? { weaponId: equ.weaponId } : {}),
         ...(equ.calibrationLevel !== undefined ? { calibrationLevel: equ.calibrationLevel } : {}),
         ...(equ.expansionKeyId !== undefined ? { expansionKeyId: equ.expansionKeyId } : {}),
-        ...(Object.keys(debugOv).length > 0 ? { baseStatOverrides: debugOv } : {}),
+        ...(Object.keys(debugOv).length > 0
+          ? { baseStatOverrides: debugOv, overridesAuthoritative: true } // DEBUG-MODE AUTHORITATIVE: overridden stats suppress dispatch (e.g. ATK 1500 stays 1500, no +231)
+          : {}),
       };
     });
   if (team.length === 0) throw new SetupError("Select at least one character.");

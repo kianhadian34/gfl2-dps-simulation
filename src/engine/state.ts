@@ -294,6 +294,7 @@ function makeDoll(
   weaponCalibrationLevel: number | undefined,
   baseStatOverrides: { atk?: number; hp?: number; def?: number; stability?: number; critRate?: number; critDmg?: number } | undefined,
   applyDispatchStats: boolean | undefined,
+  overridesAuthoritative: boolean | undefined,
   config: ResolvedConfig,
   registry: Registry,
 ): UnitState {
@@ -305,7 +306,20 @@ function makeDoll(
   // ATK/HP/DEF automatically. `applyDispatchStats === false` marks a CONTROLLED MATH FIXTURE
   // (test-only, explicit at the scenario boundary); it never affects `baseStatOverrides` or
   // `def.class`, and production gameplay (field absent) always applies dispatch.
-  const dispatchFlat = applyDispatchStats === false ? undefined : DISPATCH_STAT_BUFFS[def.class];
+  // DEBUG-MODE AUTHORITATIVE OVERRIDES (2026): `overridesAuthoritative === true` makes each
+  // supplied `baseStatOverrides` stat authoritative — dispatch is suppressed FOR THAT STAT
+  // only (Debug ATK 1500 stays 1500); unoverridden stats still receive dispatch. This is the
+  // Debug→scenario boundary contract, never the general fixture behavior (which coexists).
+  const dispatchFlat =
+    applyDispatchStats === false
+      ? undefined
+      : overridesAuthoritative && baseStatOverrides
+        ? {
+            atk: Object.prototype.hasOwnProperty.call(baseStatOverrides, "atk") ? 0 : DISPATCH_STAT_BUFFS[def.class].atk,
+            hp: Object.prototype.hasOwnProperty.call(baseStatOverrides, "hp") ? 0 : DISPATCH_STAT_BUFFS[def.class].hp,
+            def: Object.prototype.hasOwnProperty.call(baseStatOverrides, "def") ? 0 : DISPATCH_STAT_BUFFS[def.class].def,
+          }
+        : DISPATCH_STAT_BUFFS[def.class];
   const panel = computePanel(def, weapon, dispatchFlat);
   const aff = resolveAffinityBonus(def, affinity?.keyId, affinity?.level, registry);
   // Common Keys (generic architecture, 2026): REUSABLE definitions resolved via the registry
@@ -514,7 +528,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
       }
     }
     const weaponCalibrationLevel = m.calibrationLevel ?? weapon?.calibrationLevel;
-    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, weaponCalibrationLevel, m.baseStatOverrides, m.applyDispatchStats, config, registry);
+    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, weaponCalibrationLevel, m.baseStatOverrides, m.applyDispatchStats, m.overridesAuthoritative, config, registry);
   });
   const dummy = makeDummy(scenario.dummy);
   return {

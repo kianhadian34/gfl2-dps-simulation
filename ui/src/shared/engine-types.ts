@@ -58,6 +58,10 @@ export interface ScenarioTeamMemberView {
     critRate?: number;
     critDmg?: number;
   };
+  /** DEBUG-MODE AUTHORITATIVE OVERRIDES (2026): each supplied override field is authoritative —
+   *  global `dispatch_stat_buffs` is suppressed for overridden stats only (set at the Debug→
+   *  scenario boundary; never in normal gameplay or engine math fixtures). */
+  overridesAuthoritative?: boolean;
 }
 
 export interface GridCoordView {

@@ -116,6 +116,7 @@ test("final scenario contains exactly the selected debug values + equipment fiel
     rotation: ["basic"],
     equippedFixedKeys: [],
     baseStatOverrides: { atk: 2000 },
+    overridesAuthoritative: true, // DEBUG-AUTHORITATIVE: overridden stats suppress dispatch
   });
 });
 

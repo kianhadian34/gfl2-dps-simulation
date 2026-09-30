@@ -825,6 +825,16 @@ export interface ScenarioTeamMember {
     critDmg?: number;
   };
   /**
+   * DEBUG-MODE AUTHORITATIVE OVERRIDES (2026): when `true`, every `baseStatOverrides` field is
+   * the AUTHORITATIVE value for that stat — the permanent global `dispatch_stat_buffs` is NOT
+   * added underneath an overridden stat (e.g. Debug ATK 1500 on a Sentinel stays 1500, no +231).
+   * Stats WITHOUT an override still receive dispatch normally. This flag lives ONLY at the
+   * Debug→scenario boundary (set by the Debug Mode UI); normal scenarios and engine math
+   * fixtures that use `baseStatOverrides` as controlled inputs NEVER set it — their overrides
+   * keep coexisting with dispatch (established, tested behavior).
+   */
+  overridesAuthoritative?: boolean;
+  /**
    * TEST-ONLY FIXTURE SWITCH (2026): `applyDispatchStats: false` declares this member a
    * CONTROLLED MATH FIXTURE — it does NOT receive the permanent global `dispatch_stat_buffs`
    * system and its panel equals exactly finalStat(base + weapon flat, weapon pct). This is

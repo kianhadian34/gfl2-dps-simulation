@@ -66,3 +66,43 @@ test("percentage modifiers (common keys) operate on the dispatch-inclusive panel
   assert.equal(u.panelAtk, 1085, "dispatch participates in the SAME finalStat(base + flat, pct) product");
   assert.equal(u.hp, 2412, "no HP% → HP stays the dispatch-inclusive value");
 });
+test("DEBUG-authoritative overrides: ATK 1500 override suppresses Sentinel dispatch (panel stays 1500); HP/DEF still dispatch", () => {
+  const u = createState(qjScenario({ baseStatOverrides: { atk: 1500 }, overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
+  assert.equal(u.panelAtk, 1500, "overridden stat is authoritative ? no +231 underneath");
+  assert.equal(u.hp, 2412, "HP not overridden ? dispatch still applies (1893 + 519)");
+  assert.equal(u.defStat, 750, "DEF not overridden ? dispatch still applies (528 + 222)");
+});
+
+test("DEBUG-authoritative overrides: HP override suppresses dispatch HP; ATK/DEF still dispatch", () => {
+  const u = createState(qjScenario({ baseStatOverrides: { hp: 2000 }, overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
+  assert.equal(u.hp, 2000, "HP override authoritative");
+  assert.equal(u.maxHp, 2000);
+  assert.equal(u.panelAtk, 1033, "ATK still receives dispatch");
+  assert.equal(u.defStat, 750, "DEF still receives dispatch");
+});
+
+test("DEBUG-authoritative overrides: DEF override suppresses dispatch DEF; ATK/HP still dispatch", () => {
+  const u = createState(qjScenario({ baseStatOverrides: { def: 700 }, overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
+  assert.equal(u.defStat, 700, "DEF override authoritative");
+  assert.equal(u.panelAtk, 1033, "ATK still receives dispatch");
+  assert.equal(u.hp, 2412, "HP still receives dispatch");
+});
+
+test("DEBUG-authoritative overrides: all three overridden ? all authoritative", () => {
+  const u = createState(qjScenario({ baseStatOverrides: { atk: 1500, hp: 2000, def: 700 }, overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
+  assert.equal(u.panelAtk, 1500);
+  assert.equal(u.hp, 2000);
+  assert.equal(u.defStat, 700);
+});
+
+test("DEBUG-authoritative flag with NO overrides ? dispatch fully applies (no phantoms)", () => {
+  const u = createState(qjScenario({ overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
+  assert.equal(u.panelAtk, 1033);
+  assert.equal(u.hp, 2412);
+  assert.equal(u.defStat, 750);
+});
+
+test("math fixtures WITHOUT the flag keep override + dispatch coexistence: ATK 2000 override ? 2231", () => {
+  const u = createState(qjScenario({ baseStatOverrides: { atk: 2000 } }), REGISTRY, new Set()).units[0];
+  assert.equal(u.panelAtk, 2231, "fixture override coexists with dispatch (established engine-fixture behavior)");
+});
