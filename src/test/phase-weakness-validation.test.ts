@@ -22,6 +22,7 @@ const MULT = 1.5; // Common Rail
 
 function makeBurnMirror(id: string, critRate = 0): CharacterDef {
   return {
+    class: "support",
     id,
     name: id,
     phase: "burn",
@@ -48,7 +49,8 @@ function burnRun(c: CharacterDef, def: number, weaknesses: Element[]) {
       version: 1,
       seed: 11,
       turns: 1,
-      team: [{ characterId: c.id, rotation: ["basic"], equippedFixedKeys: [] }],
+      team: [{ characterId: c.id, applyDispatchStats: false,
+        rotation: ["basic"], equippedFixedKeys: [] }],
       dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: def, stability: 0, weaknesses, phase: null, cover: "none" },
     },
     customRegistry({ [c.id]: c }),
@@ -95,7 +97,8 @@ test("U15b: AWU stays out of Phase damage — no stack advancement and no AWU te
       version: 1,
       seed: 11,
       turns: 1,
-      team: [{ characterId: c.id, rotation: ["basic"], equippedFixedKeys: [] }],
+      team: [{ characterId: c.id, applyDispatchStats: false,
+        rotation: ["basic"], equippedFixedKeys: [] }],
       dummy: {
         id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0,
         weaknesses: ["burn"], weaknessTags: ["medium_ammo"], phase: null, cover: "none",

@@ -36,6 +36,7 @@ function active1Levels(levelsToInclude: number[]): Record<number, SkillDefVarian
 
 function leveledChar(active1: Record<number, SkillDefVariant>, map?: FortificationUpgrade[]): CharacterDef {
   return {
+    class: "support",
     ...BASE,
     skills: {
       basic: makeAbility({ id: "lc_basic", name: "Hit", type: "basic", element: PHASE_LESS, multiplier: 1.0, stabDamage: 0, cooldown: 0, confectanceCost: 0 }),
@@ -52,7 +53,8 @@ function sc(config?: ConfigOverrides): Scenario {
     version: 1,
     seed: 3,
     turns: 2,
-    team: [{ characterId: "lc", rotation: ["active1", "active1"], equippedFixedKeys: [] }],
+    team: [{ characterId: "lc", applyDispatchStats: false,
+      rotation: ["active1", "active1"], equippedFixedKeys: [] }],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
     configOverrides: config ?? {},
   };

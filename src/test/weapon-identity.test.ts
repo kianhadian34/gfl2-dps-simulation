@@ -28,7 +28,7 @@ test("Qiongjiu with weaponId 'jinshizou' resolves Golden Melody and keeps the es
   const st = createState(
     {
       ...scenario({ turns: 1 }),
-      team: [{ characterId: "qiongjiu",
+      team: [{ characterId: "qiongjiu", applyDispatchStats: false,
        baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou" }],
     },
     REGISTRY,
@@ -42,7 +42,7 @@ test("Qiongjiu with weaponId 'jinshizou' resolves Golden Melody and keeps the es
 test("Unknown weaponId throws a clear error", () => {
   const sc: Scenario = {
     ...scenario({ turns: 1 }),
-    team: [{ characterId: "qiongjiu",
+    team: [{ characterId: "qiongjiu", applyDispatchStats: false,
      baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [], weaponId: "definitely_not_a_weapon" }],
   };
   assert.throws(() => simulateScenario(sc, customRegistry({})), /Unknown weapon: definitely_not_a_weapon/);
@@ -52,7 +52,7 @@ test("A character WITHOUT weaponId equips NO weapon — nothing is inherited fro
   const st = createState(
     {
       ...scenario({ turns: 1 }),
-      team: [{ characterId: "qiongjiu",
+      team: [{ characterId: "qiongjiu", applyDispatchStats: false,
        baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [] }],
     },
     REGISTRY,
@@ -67,7 +67,7 @@ test("calibration C1 resolves correctly (equipped-weapon configuration), no cali
   const c1 = createState(
     {
       ...scenario({ turns: 1 }),
-      team: [{ characterId: "qiongjiu",
+      team: [{ characterId: "qiongjiu", applyDispatchStats: false,
        baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel: 1 }],
     },
     REGISTRY,
@@ -81,7 +81,7 @@ test("calibration C1 resolves correctly (equipped-weapon configuration), no cali
   const none = createState(
     {
       ...scenario({ turns: 1 }),
-      team: [{ characterId: "qiongjiu",
+      team: [{ characterId: "qiongjiu", applyDispatchStats: false,
        baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou" }],
     },
     REGISTRY,
@@ -95,7 +95,7 @@ test("calibration C6 resolves correctly (Damage Dealt +20%, Charging +20%/stack,
   const c6 = createState(
     {
       ...scenario({ turns: 1 }),
-      team: [{ characterId: "qiongjiu",
+      team: [{ characterId: "qiongjiu", applyDispatchStats: false,
        baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel: 6 }],
     },
     REGISTRY,
@@ -113,7 +113,7 @@ test("calibration never changes the weapon's max-level base stats (panel + weapo
     createState(
       {
         ...scenario({ turns: 1 }),
-        team: [{ characterId: "qiongjiu",
+        team: [{ characterId: "qiongjiu", applyDispatchStats: false,
          baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel }],
       },
       REGISTRY,
@@ -129,7 +129,7 @@ test("invalid calibration levels are rejected (out of C1–C6, non-integer, or w
     createState(
       {
         ...scenario({ turns: 1 }),
-        team: [{ characterId: "qiongjiu",
+        team: [{ characterId: "qiongjiu", applyDispatchStats: false,
          baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [], weaponId, calibrationLevel }],
       },
       REGISTRY,

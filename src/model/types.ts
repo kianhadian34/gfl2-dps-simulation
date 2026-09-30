@@ -507,9 +507,19 @@ export interface CommonKeyDef {
   description?: string;
 }
 
+export type DollClass = "bulwark" | "vanguard" | "support" | "sentinel";
+
 export interface CharacterDef {
   id: string;
   name: string;
+  /**
+   * DOLL CLASS (2026, dispatch_stat_buffs): the permanent global Dispatch stat system grants
+   * EVERY doll a flat ATK/HP/DEF bonus by class — always present in real gameplay. Real
+   * characters MUST declare their authoritative class (e.g. Qiongjiu "sentinel"); controlled
+   * test fixtures still declare a class (mandatory) but opt out of dispatch per-membership via
+   * `ScenarioTeamMember.applyDispatchStats: false`. NEVER set `undefined`.
+   */
+  class: DollClass;
   /** Doll's own phase element (null = phase-less, e.g. physical-ammo dolls). */
   phase: Element | null;
   base: { atk: number; hp: number; def: number; stability: number; critRate: number; critDmg: number };
@@ -814,6 +824,15 @@ export interface ScenarioTeamMember {
     critRate?: number;
     critDmg?: number;
   };
+  /**
+   * TEST-ONLY FIXTURE SWITCH (2026): `applyDispatchStats: false` declares this member a
+   * CONTROLLED MATH FIXTURE — it does NOT receive the permanent global `dispatch_stat_buffs`
+   * system and its panel equals exactly finalStat(base + weapon flat, weapon pct). This is
+   * explicit at the scenario boundary and NEVER used by real characters: production gameplay
+   * (UI/buildScenario, real scenario data) leaves it absent, so dispatch is always applied.
+   * It never alters `baseStatOverrides` or `CharacterDef.class` (both stay fully valid).
+   */
+  applyDispatchStats?: boolean;
 }
 
 export interface Scenario {

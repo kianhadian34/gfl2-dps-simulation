@@ -14,6 +14,9 @@ import type { CharacterDef } from "../model/types.js";
 export const BASIC_ATTACK_DUMMY: CharacterDef = {
   id: "basic_attack_dummy",
   name: "Friendly Dummy",
+  // Class: sentinel (2026, decided) ⇒ this registry unit receives the permanent Dispatch stats
+  // (+231/+519/+222) in real gameplay; controlled tests may opt out per-membership.
+  class: "sentinel",
   phase: null,
   base: { atk: 1000, hp: 2000, def: 500, stability: 9, critRate: 0, critDmg: 0 },
   skills: {

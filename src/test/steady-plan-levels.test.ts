@@ -13,6 +13,7 @@ import type { CharacterDef, ConfigOverrides, Scenario } from "../model/types.js"
  */
 
 const ALLY: CharacterDef = {
+  class: "support",
   id: "sp_ally",
   name: "sp_ally",
   phase: null,

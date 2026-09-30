@@ -22,6 +22,7 @@ import type { CharacterDef, WeaponDef, Scenario, Element } from "../model/types.
 
 function doll(id: string, element: Element | null, noCover = 0): CharacterDef {
   return {
+    class: "support",
     id,
     name: id,
     phase: null,
@@ -61,7 +62,8 @@ function run(char: CharacterDef, statusId: string | undefined, turns = 3): Retur
     version: 1,
     seed: 7,
     turns,
-    team: [{ characterId: char.id, rotation: ["basic", "basic", "basic"], equippedFixedKeys: [], weaponId: "w_pb" }],
+    team: [{ characterId: char.id, applyDispatchStats: false,
+      rotation: ["basic", "basic", "basic"], equippedFixedKeys: [], weaponId: "w_pb" }],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 4000, stability: 0, weaknesses: [], phase: null, cover: "none" },
   };
   return simulateScenario(sc, customRegistry({ [char.id]: char }, {}, { w_pb: weapon("w_pb", statusId) }));

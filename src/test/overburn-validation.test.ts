@@ -16,6 +16,7 @@ import type { CharacterDef } from "../model/types.js";
 
 function makeApplier(id: string, atk: number): CharacterDef {
   return {
+    class: "support",
     id,
     name: id,
     phase: "burn",
@@ -41,7 +42,8 @@ function run(atk: number) {
       version: 1,
       seed: 3,
       turns: 3,
-      team: [{ characterId: c.id, rotation: ["active1", "basic", "basic"], equippedFixedKeys: [] }],
+      team: [{ characterId: c.id, applyDispatchStats: false,
+        rotation: ["active1", "basic", "basic"], equippedFixedKeys: [] }],
       dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 0, weaknesses: [], phase: null, cover: "none" },
     },
     customRegistry({ [c.id]: c }),

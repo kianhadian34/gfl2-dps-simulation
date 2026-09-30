@@ -25,6 +25,7 @@ const AOE_WITH_BUFF = 191;
 
 function doll(id: string, aoe: boolean): CharacterDef {
   return {
+    class: "support",
     id,
     name: id,
     phase: null,
@@ -70,7 +71,8 @@ function run(char: CharacterDef, weaponId: string, withTrait: boolean, turns = 3
     version: 1,
     seed: 7,
     turns,
-    team: [{ characterId: char.id, rotation: ["basic", "basic", "basic"], equippedFixedKeys: [], weaponId }],
+    team: [{ characterId: char.id, applyDispatchStats: false,
+      rotation: ["basic", "basic", "basic"], equippedFixedKeys: [], weaponId }],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: DEF, stability: 0, weaknesses: [], phase: null, cover: "none" },
   };
   return simulateScenario(sc, customRegistry({ [char.id]: char }, {}, { [weaponId]: weapon(weaponId, withTrait) }));

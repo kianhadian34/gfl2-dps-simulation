@@ -42,7 +42,8 @@ function run(fortificationLevel: number, grid?: GridConfig) {
   return simulateScenario(
     {
       version: 1, seed: 7, turns: 1,
-      team: [{ characterId: "qjf", rotation: ["active1"], equippedFixedKeys: [] }],
+      team: [{ characterId: "qjf", applyDispatchStats: false,
+        rotation: ["active1"], equippedFixedKeys: [] }],
       dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: ["burn"], phase: null, cover: "none" },
       configOverrides: { fortificationLevel },
       ...(grid ? { grid } : {}),

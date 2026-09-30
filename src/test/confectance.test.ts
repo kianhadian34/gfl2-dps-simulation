@@ -7,6 +7,7 @@ import type { CharacterDef } from "../model/types.js";
 /** Synthetic attacker with TWO independent onDamageDealt Confectance gains (+1 and +2). */
 function multiGainChar(id: string): CharacterDef {
   return {
+    class: "support",
     id,
     name: id,
     phase: null,

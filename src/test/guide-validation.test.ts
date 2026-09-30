@@ -29,7 +29,8 @@ function guideDamage(def: CharacterDef): number {
       version: 1,
       seed: 7,
       turns: 1,
-      team: [{ characterId: "gj", rotation: ["active2"], equippedFixedKeys: [] }],
+      team: [{ characterId: "gj", applyDispatchStats: false,
+        rotation: ["active2"], equippedFixedKeys: [] }],
       dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: ["burn"], phase: null, cover: "none" },
       configOverrides: { fortificationLevel: 6 }, // V6 → Steady Plan Lv3: No-Cover as a single +20% total
     },
@@ -95,6 +96,7 @@ function overburnAlly(): CharacterDef {
   const basic = { id: "ally_basic", name: "Ally Hit", type: "basic", element: null, multiplier: 1.0, stabDamage: 1, cooldown: 0, confectanceCost: 0, appliesStatuses: [{ statusId: "overburn", durationRounds: 3, target: "target" }] } as const;
   const noop = { ...basic, id: "ally_noop", multiplier: 0, appliesStatuses: undefined };
   return {
+    class: "support",
     ...base,
     fixedKeys: [],
     passive: { id: "ally_passive", name: "-", effects: [] },

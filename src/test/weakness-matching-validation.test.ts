@@ -25,6 +25,7 @@ const MULT = 1.5; // Common Rail
 
 function makeCommonRail(id: string, critRate: number, critDmg: number): CharacterDef {
   return {
+    class: "support",
     id,
     name: id,
     phase: "burn",
@@ -51,7 +52,8 @@ function railRun(c: CharacterDef, weaknesses: Element[], ammoTags: AmmoType[] = 
       version: 1,
       seed: 3,
       turns: 1,
-      team: [{ characterId: c.id, rotation: ["basic"], equippedFixedKeys: [] }],
+      team: [{ characterId: c.id, applyDispatchStats: false,
+        rotation: ["basic"], equippedFixedKeys: [] }],
       dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 0, weaknesses, weaknessTags: ammoTags, phase: null, cover: "none" },
     },
     customRegistry({ [c.id]: c }),

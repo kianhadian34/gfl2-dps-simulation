@@ -81,7 +81,8 @@ function sb2Scenario(dummyStability: number): Scenario {
     seed: 7,
     turns: 1,
     team: [
-      { characterId: "qjsb2", rotation: ["ultimate"] as ActionSlot[], equippedFixedKeys: [] },
+      { characterId: "qjsb2", applyDispatchStats: false,
+        rotation: ["ultimate"] as ActionSlot[], equippedFixedKeys: [] },
       { characterId: "sbii_debuff", rotation: ["basic"] as ActionSlot[], equippedFixedKeys: [] },
       { characterId: "sbii_ally", rotation: ["basic"] as ActionSlot[], equippedFixedKeys: [] },
     ],

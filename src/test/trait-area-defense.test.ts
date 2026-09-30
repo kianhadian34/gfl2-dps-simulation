@@ -62,7 +62,8 @@ function run(opts: { aoe: boolean; withKey: boolean }): ReturnType<typeof simula
     seed: 7,
     turns: 1,
     team: [
-      { characterId: "ally", rotation: ["basic"], equippedFixedKeys: [] },
+      { characterId: "ally", applyDispatchStats: false,
+        rotation: ["basic"], equippedFixedKeys: [] },
       { characterId: "qjfix", rotation: ["basic"], equippedFixedKeys: opts.withKey ? ["fixture_area_defense_key"] : [] },
     ],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: DEF, stability: 0, weaknesses: [], phase: null, cover: "none" },

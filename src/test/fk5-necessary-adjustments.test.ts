@@ -41,7 +41,8 @@ function run(opts: {
     {
       version: 1, seed: 7, turns: opts.turns ?? 1,
       team: [
-        { characterId: "qjf5", rotation: (opts.rotation ?? ["active1"]) as never, equippedFixedKeys: opts.fk5 ? ["qiongjiu_fk5_necessary_adjustments"] : [] },
+        { characterId: "qjf5", applyDispatchStats: false,
+          rotation: (opts.rotation ?? ["active1"]) as never, equippedFixedKeys: opts.fk5 ? ["qiongjiu_fk5_necessary_adjustments"] : [] },
       ] as never,
       dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses, weaknessTags, phase: null, cover: "none" },
       configOverrides: { fortificationLevel: opts.fortificationLevel ?? 0 },

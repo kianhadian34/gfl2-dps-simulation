@@ -53,7 +53,8 @@ function run(opts: { keyId?: string; level?: number; critRate?: number; critDmg?
     {
       version: 1, seed: 7, turns: 1,
       team: [
-        { characterId: "qjaw", rotation: ["basic"], equippedFixedKeys: [], affinityKeyId: opts.keyId, affinityLevel: opts.level },
+        { characterId: "qjaw", applyDispatchStats: false,
+          rotation: ["basic"], equippedFixedKeys: [], affinityKeyId: opts.keyId, affinityLevel: opts.level },
       ] as never,
       dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], phase: null, cover: "none" },
     },
@@ -116,7 +117,8 @@ test("Warm as Jade data: own levels, generic +3%, no deferral; HP folds in via t
   const st = createState(
     {
       version: 1, seed: 7, turns: 1,
-      team: [{ characterId: "qjhp", rotation: ["basic"], affinityKeyId: WARM, affinityLevel: 5 }],
+      team: [{ characterId: "qjhp", applyDispatchStats: false,
+        rotation: ["basic"], affinityKeyId: WARM, affinityLevel: 5 }],
       dummy: { id: "d", name: "d", hp: 1, defense: 1, stability: 1, weaknesses: [], phase: null, cover: "none" },
     },
     customRegistry({ qjhp: hpQj }),

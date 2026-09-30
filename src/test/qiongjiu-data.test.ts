@@ -6,6 +6,7 @@ import { REGISTRY } from "../data/registry.js";
 test("Qiongjiu authoritative base data (VALIDATED in-game 2026): 1893/802/528/9/0.2/0.2 + mobility 5", () => {
   assert.deepEqual(QIONGJIU.base, { atk: 802, hp: 1893, def: 528, stability: 9, critRate: 0.2, critDmg: 0.2 });
   assert.equal(QIONGJIU.mobility, 5, "Movement Speed 5 (validated)");
+  assert.equal(QIONGJIU.class, "sentinel", "mandatory Class: Sentinel (dispatch_stat_buffs) edge");
 });
 
 const FIXED_IDS = [

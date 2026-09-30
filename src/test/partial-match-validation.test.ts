@@ -26,6 +26,7 @@ const DEF = 5000;
 
 function makeCommonRail(id: string, critRate: number, critDmg: number): CharacterDef {
   return {
+    class: "support",
     id,
     name: id,
     phase: "burn",
@@ -53,7 +54,8 @@ function run(c: CharacterDef) {
       version: 1,
       seed: 13,
       turns: 1,
-      team: [{ characterId: c.id, rotation: ["basic"], equippedFixedKeys: [] }],
+      team: [{ characterId: c.id, applyDispatchStats: false,
+        rotation: ["basic"], equippedFixedKeys: [] }],
       dummy: {
         id: "training_dummy",
         name: "Training Dummy",

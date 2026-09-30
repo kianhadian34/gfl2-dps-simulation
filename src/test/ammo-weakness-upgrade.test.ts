@@ -78,6 +78,7 @@ function skillsFor(opts: CharOpts): CharacterDef["skills"] {
 /** Plain deterministic attacker for engine-level regression runs. */
 function makeChar(id: string, opts: CharOpts): CharacterDef {
   return {
+    class: "support",
     id,
     name: id,
     phase: null,
@@ -98,7 +99,8 @@ function run(char: CharacterDef, dummy: object, turns = 6) {
       version: 1,
       seed: 7,
       turns,
-      team: [{ characterId: char.id, rotation: ["basic"], equippedFixedKeys: [] }],
+      team: [{ characterId: char.id, applyDispatchStats: false,
+        rotation: ["basic"], equippedFixedKeys: [] }],
       dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 0, weaknesses: [], phase: null, cover: "none", ...dummy },
     },
     customRegistry({ [char.id]: char }),
@@ -222,7 +224,8 @@ function burnRun(c: CharacterDef): ReturnType<typeof simulateScenario> {
       version: 1,
       seed: 7,
       turns: 1,
-      team: [{ characterId: c.id, rotation: ["basic"], equippedFixedKeys: [] }],
+      team: [{ characterId: c.id, applyDispatchStats: false,
+        rotation: ["basic"], equippedFixedKeys: [] }],
       dummy: {
         id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 0,
         weaknesses: ["burn"], weaknessTags: ["medium_ammo"], phase: null, cover: "none",

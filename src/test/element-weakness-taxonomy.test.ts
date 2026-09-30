@@ -26,6 +26,7 @@ function elemSkill(id: string, name: string, element: Element, multiplier: numbe
 /** Doll whose basic attack carries the given element (everything else minimal). */
 function makeElem(id: string, element: Element): CharacterDef {
   return {
+    class: "support",
     id,
     name: id,
     phase: element,
@@ -47,7 +48,8 @@ function run(c: CharacterDef, weaknesses: string[]): { finalDamage: number; weak
       version: 1,
       seed: 7,
       turns: 1,
-      team: [{ characterId: c.id, rotation: ["basic"], equippedFixedKeys: [] }],
+      team: [{ characterId: c.id, applyDispatchStats: false,
+        rotation: ["basic"], equippedFixedKeys: [] }],
       dummy: { id: "d", name: "d", hp: 999999999, defense: 0, stability: 65, weaknesses: weaknesses as never, phase: null, cover: "none" },
     },
     customRegistry({ [c.id]: c }),

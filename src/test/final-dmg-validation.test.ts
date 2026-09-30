@@ -31,6 +31,7 @@ function makeOverburnApplier(
     passive.push({ kind: "conditional_damage_modifier", scope: "dealt", mode: "additive", value: opts.ordinaryNoCover, when: "target.noCover" });
   }
   return {
+    class: "support",
     id,
     name: id,
     phase: "burn",
@@ -62,7 +63,8 @@ function runOverburn(
       version: 1,
       seed: 3,
       turns: 1,
-      team: [{ characterId: c.id, rotation: ["active1"], equippedFixedKeys: [] }],
+      team: [{ characterId: c.id, applyDispatchStats: false,
+        rotation: ["active1"], equippedFixedKeys: [] }],
       dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 0, weaknesses: [], phase: null, cover: "none", passives: dummyPassives.length ? [{ id: "ordinary_dr", name: "Ordinary DR", effects: dummyPassives }] : [] },
     },
     customRegistry({ [c.id]: c }),

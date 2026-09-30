@@ -34,8 +34,8 @@ export function scenario(overrides: {
     team: [
       {
         characterId: "qiongjiu",
-        rotation: overrides.rotation ?? ["basic"],
-        equippedFixedKeys: overrides.keys ?? ["qiongjiu_fk1_concentration"],
+        rotation: overrides.rotation ?? ["basic"], applyDispatchStats: false, // TEST-ONLY fixture factory (controlled inputs)
+          equippedFixedKeys: overrides.keys ?? ["qiongjiu_fk1_concentration"],
         // Qiongjiu's established default loadout: a NON-signature fixture weapon with the SAME max-level
         // stats as Golden Melody (panel ceil((1224+369)×1.15) = 1832 preserved) but NO
         // ownerCharacterId/Imprint — so default scenarios do NOT activate the Imprint (activation
@@ -111,6 +111,7 @@ export function abilities(skills: {
 /** A minimal basic-only doll used to trigger Qiongjiu's support attacks in tests. */
 export function makeAlly(id: string, atk: number): CharacterDef {
   return {
+    class: "support",
     id,
     name: id,
     phase: null,

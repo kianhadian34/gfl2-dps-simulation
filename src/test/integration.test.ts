@@ -22,7 +22,7 @@ test("integration: 7-round fixed rotation (MVP cap), all aggregations consistent
     version: 1,
     seed: 20260903,
     turns: 7,
-    team: [{ characterId: "qiongjiu",
+    team: [{ characterId: "qiongjiu", applyDispatchStats: false,
      baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["ultimate", "active1", "active2", "basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"], weaponId: "weapon_qj_panel_test" }],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
   }, customRegistry({}));
@@ -78,7 +78,7 @@ test("integration: 7-round fixed rotation (MVP cap), all aggregations consistent
     version: 1,
     seed: 20260903,
     turns: 7,
-    team: [{ characterId: "qiongjiu",
+    team: [{ characterId: "qiongjiu", applyDispatchStats: false,
      baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["ultimate", "active1", "active2", "basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"], weaponId: "weapon_qj_panel_test" }],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
   }, customRegistry({}));
@@ -97,7 +97,7 @@ test("validation: unknown character and non-empty rotations are rejected", () =>
       version: 1,
       seed: 1,
       turns: 1,
-      team: [{ characterId: "nobody", rotation: ["basic"] }],
+      team: [{ characterId: "nobody", applyDispatchStats: false, rotation: ["basic"] }],
       dummy: { id: "d", name: "d", hp: 1, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
     }, customRegistry({})),
   );
@@ -106,7 +106,7 @@ test("validation: unknown character and non-empty rotations are rejected", () =>
       version: 1,
       seed: 1,
       turns: 1,
-      team: [{ characterId: "qiongjiu",
+      team: [{ characterId: "qiongjiu", applyDispatchStats: false,
        baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: [] }],
       dummy: { id: "d", name: "d", hp: 1, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
     }, customRegistry({})),

@@ -26,12 +26,13 @@ const TARGET = {
 };
 
 function run(team: Array<{ characterId: string; rotation: string[] }>, turns = 1): ReturnType<typeof simulateScenario> {
+  team = team.map((m) => ({ ...m, applyDispatchStats: false })); // CONTROLLED MATH FIXTURE (no dispatch)
   return simulateScenario(
     {
       version: 1,
       seed: 7,
       turns,
-      team: team.map((m) => ({ characterId: m.characterId, rotation: m.rotation, equippedFixedKeys: [] })),
+      team: team.map((m) => ({ characterId: m.characterId, rotation: m.rotation, equippedFixedKeys: [], applyDispatchStats: false })),
       dummy: TARGET,
     } as Scenario,
     REGISTRY,
@@ -55,7 +56,7 @@ test("dummy: definition loads from the registry with the exact id/name and no ex
 
 test("dummy: exactly one usable ability (basic) — active1/active2/ultimate/support are absent", () => {
   const st = createState(
-    { version: 1, seed: 7, turns: 1, team: [{ characterId: "basic_attack_dummy", rotation: ["basic"], equippedFixedKeys: [] }], dummy: TARGET } as Scenario,
+    { version: 1, seed: 7, turns: 1, team: [{ characterId: "basic_attack_dummy", rotation: ["basic"], equippedFixedKeys: [], applyDispatchStats: false }], dummy: TARGET } as Scenario,
     REGISTRY,
     new Set(),
   );

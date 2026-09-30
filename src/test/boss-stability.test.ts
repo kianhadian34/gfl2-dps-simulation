@@ -25,6 +25,7 @@ function bossPassive(value: number): PassiveDef {
 
 function makePlainChar(id: string): CharacterDef {
   return {
+    class: "support",
     id,
     name: id,
     phase: null,
@@ -52,7 +53,8 @@ function bossRun(over: { stability?: number; passives?: PassiveDef[]; turns?: nu
     version: 1,
     seed: over.seed ?? 1,
     turns: over.turns ?? 3,
-    team: [{ characterId: c.id, rotation: ["basic"], equippedFixedKeys: [] }],
+    team: [{ characterId: c.id, applyDispatchStats: false,
+      rotation: ["basic"], equippedFixedKeys: [] }],
     dummy: {
       id: "training_dummy",
       name: "Training Dummy",

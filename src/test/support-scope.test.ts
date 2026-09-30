@@ -15,6 +15,7 @@ import type { CharacterDef, Scenario, StatusApplySpec } from "../model/types.js"
 /** Doll with a support_attack passive and a basic that applies `statusSpec` to SELF. */
 function scopeChar(id: string, statusSpec: StatusApplySpec): CharacterDef {
   return {
+    class: "support",
     id,
     name: id,
     phase: null,
@@ -41,8 +42,10 @@ function run(char: CharacterDef, turns = 2): ReturnType<typeof simulateScenario>
     seed: 7,
     turns,
     team: [
-      { characterId: "ally", rotation: ["basic"], equippedFixedKeys: [] },
-      { characterId: char.id, rotation: ["basic", "basic"], equippedFixedKeys: [] },
+      { characterId: "ally", applyDispatchStats: false,
+        rotation: ["basic"], equippedFixedKeys: [] },
+      { characterId: char.id, applyDispatchStats: false,
+        rotation: ["basic", "basic"], equippedFixedKeys: [] },
     ],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
   };

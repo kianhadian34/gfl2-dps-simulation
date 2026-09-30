@@ -53,9 +53,9 @@ function qjClone(): CharacterDef {
 
 function ownerRun(opts: { elid: boolean; ally?: boolean }): ReturnType<typeof simulateScenario> {
   const team: Scenario["team"] = [
-    { characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou" },
+    { characterId: "qiongjiu", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou" },
   ];
-  if (opts.ally) team.push({ characterId: "im_ally", rotation: ["basic"], equippedFixedKeys: [] });
+  if (opts.ally) team.push({ characterId: "im_ally", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [] });
   const sc: Scenario = {
     version: 1,
     seed: 7,
@@ -107,7 +107,7 @@ test("Imprint: NON-owner damage gets +0% even while another unit owns/equips Gol
       turns: 1,
       // Qiongjiu (the OWNER) equips Golden Melody, but the ATTACKING unit is a clone that is NOT
       // the owner — the clone's own character id fails the ownerCharacterId gate.
-      team: [{ characterId: "qjgm", rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou" }],
+      team: [{ characterId: "qjgm", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou" }],
       dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], raceTypes: ["elid"], phase: null, cover: "none" },
       configOverrides: { fortificationLevel: 6 },
     },
@@ -126,7 +126,7 @@ test("Imprint: Qiongjiu + NON-signature weapon → INACTIVE even vs an ELID targ
       turns: 1,
       // The test-fixture rifle shares Golden Melody's max-level stats but has NO
       // ownerCharacterId — it is not Qiongjiu's signature weapon, so the Imprint is INACTIVE.
-      team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], weaponId: "weapon_qj_panel_test" }],
+      team: [{ characterId: "qiongjiu", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], weaponId: "weapon_qj_panel_test" }],
       dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], raceTypes: ["elid"], phase: null, cover: "none" },
       configOverrides: { fortificationLevel: 6 },
     },
@@ -143,7 +143,7 @@ test("Imprint: NO weapon equipped → INACTIVE (bracket 1.20, base panel only)",
       version: 1,
       seed: 7,
       turns: 1,
-      team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [] }],
+      team: [{ characterId: "qiongjiu", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [] }],
       dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], raceTypes: ["elid"], phase: null, cover: "none" },
       configOverrides: { fortificationLevel: 6 },
     },

@@ -20,8 +20,8 @@ const scenarioFor = (rotation: string[]): Parameters<typeof simulateScenario>[0]
   version: 1,
   seed: 7,
   turns: 1,
-  team: [{ characterId: "qiongjiu",
-   baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: rotation as never, equippedFixedKeys: [], weaponId: "weapon_qj_panel_test" }],
+  team: [{ characterId: "qiongjiu", applyDispatchStats: false,
+    baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: rotation as never, equippedFixedKeys: [], weaponId: "weapon_qj_panel_test" }],
   dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 6, weaknesses: [], phase: null, cover: "none" },
 });
 

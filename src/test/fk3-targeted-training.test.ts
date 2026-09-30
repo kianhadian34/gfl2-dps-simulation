@@ -26,7 +26,8 @@ function run(link: { fk3: boolean; qjSupport: boolean; turns?: number; allyRotat
     {
       version: 1, seed: 7, turns: link.turns ?? 1,
       team: [
-        { characterId: "ally", rotation: (link.allyRotation ?? ["basic"]) as never, equippedFixedKeys: [] },
+        { characterId: "ally", applyDispatchStats: false,
+          rotation: (link.allyRotation ?? ["basic"]) as never, equippedFixedKeys: [] },
         { characterId: "qjf3", rotation: ["basic"], equippedFixedKeys: link.fk3 ? ["qiongjiu_fk3_targeted_training"] : [] },
       ] as never,
       dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], phase: null, cover: "none" },

@@ -44,8 +44,8 @@ function supportRun(withKey: boolean) {
     {
       version: 1, seed: 1, turns: 1,
       team: [
-        { characterId: "ally", rotation: ["basic"], equippedFixedKeys: [] },
-        { characterId: "qjsn", rotation: ["basic"], equippedFixedKeys: [], commonKeyIds: withKey ? [SN] : undefined },
+        { characterId: "ally", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [] },
+        { characterId: "qjsn", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], commonKeyIds: withKey ? [SN] : undefined },
       ] as never,
       dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], phase: null, cover: "none" },
     },
@@ -57,7 +57,7 @@ function railRun(withKey: boolean) {
   return simulateScenario(
     {
       version: 1, seed: 1, turns: 1,
-      team: [{ characterId: "qjsn", rotation: ["active1"], equippedFixedKeys: [], commonKeyIds: withKey ? [SN] : undefined }],
+      team: [{ characterId: "qjsn", applyDispatchStats: false, rotation: ["active1"], equippedFixedKeys: [], commonKeyIds: withKey ? [SN] : undefined }],
       dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], phase: null, cover: "none" },
     },
     customRegistry({ qjsn: qj({ critRate: 0 }) }),
@@ -93,7 +93,7 @@ test("Crit Rate +5% and Crit DMG +5% are normal additive stat increases (crit ×
     simulateScenario(
       {
         version: 1, seed: 1, turns: 1,
-        team: [{ characterId: "qjsn", rotation: ["basic"], equippedFixedKeys: [], commonKeyIds: withKey ? [SN] : undefined }],
+        team: [{ characterId: "qjsn", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], commonKeyIds: withKey ? [SN] : undefined }],
         dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], phase: null, cover: "none" },
       },
       customRegistry({ qjsn: qj({ passive: false, critRate: 1, critDmg: 0 }) }),
@@ -111,7 +111,7 @@ test("Unequipped / removed: all four bonuses absent (2000 ATK, crit 20%, critDmg
   const st = createState(
     {
       version: 1, seed: 1, turns: 1,
-      team: [{ characterId: "qjsn", rotation: ["basic"], equippedFixedKeys: [] }],
+      team: [{ characterId: "qjsn", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [] }],
       dummy: { id: "d", name: "d", hp: 1, defense: 1, stability: 1, weaknesses: [], phase: null, cover: "none" },
     },
     customRegistry({ qjsn: qj() }),
@@ -134,7 +134,7 @@ test("Strategic Negotiation data + state pins: +5% ATK/CR/CDMG and outOfTurnDmg 
   const st = createState(
     {
       version: 1, seed: 1, turns: 1,
-      team: [{ characterId: "qjsn", rotation: ["basic"], equippedFixedKeys: [], commonKeyIds: [SN] }],
+      team: [{ characterId: "qjsn", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], commonKeyIds: [SN] }],
       dummy: { id: "d", name: "d", hp: 1, defense: 1, stability: 1, weaknesses: [], phase: null, cover: "none" },
     },
     customRegistry({ qjsn: qj() }),
@@ -157,8 +157,8 @@ test("DIRECT in-game match: SN + V6 + DU2 — Support bracket 1.57 reproduces th
     {
       version: 1, seed: 1, turns: 1,
       team: [
-        { characterId: "sn_ally", rotation: ["basic"], equippedFixedKeys: [] },
-        { characterId: "qjsn", rotation: ["basic"], equippedFixedKeys: [], commonKeyIds: [SN] },
+        { characterId: "sn_ally", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [] },
+        { characterId: "qjsn", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], commonKeyIds: [SN] },
       ] as never,
       dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], phase: null, cover: "none" },
       configOverrides: { fortificationLevel: 6 },

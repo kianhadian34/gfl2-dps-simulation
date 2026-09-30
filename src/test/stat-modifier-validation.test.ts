@@ -15,6 +15,7 @@ import type { CharacterDef, StatusApplySpec } from "../model/types.js";
 
 function makeStatChar(id: string, atk: number, selfSpecs: StatusApplySpec[], targetSpecs: StatusApplySpec[]): CharacterDef {
   return {
+    class: "support",
     id,
     name: id,
     phase: null,
@@ -73,7 +74,8 @@ test("integration: self-applied permanent ATK% changes the attacker's effective 
       version: 1,
       seed: 3,
       turns: 2,
-      team: [{ characterId: c.id, rotation: ["active1", "basic"], equippedFixedKeys: [] }],
+      team: [{ characterId: c.id, applyDispatchStats: false,
+        rotation: ["active1", "basic"], equippedFixedKeys: [] }],
       dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 0, weaknesses: [], phase: null, cover: "none" },
     },
     customRegistry({ [c.id]: c }),

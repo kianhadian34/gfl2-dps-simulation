@@ -71,8 +71,8 @@ function scenario(): Scenario {
     seed: 7,
     turns: 1,
     team: [
-      { characterId: "qjgm", rotation: ["ultimate"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel: 1 },
-      { characterId: "gm_ally", rotation: ["basic"], equippedFixedKeys: [] },
+      { characterId: "qjgm", applyDispatchStats: false, rotation: ["ultimate"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel: 1 },
+      { characterId: "gm_ally", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [] },
     ] as never,
     dummy: {
       id: "training_dummy",
@@ -111,7 +111,7 @@ test("Golden Melody C1 Damage Dealt +10% (VALIDATED 975): own-turn Basic bucket 
       version: 1,
       seed: 7,
       turns: 1,
-      team: [{ characterId: "qjgm", rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel: 1 }],
+      team: [{ characterId: "qjgm", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel: 1 }],
       dummy: {
         id: "training_dummy",
         name: "Training Dummy",
@@ -144,7 +144,7 @@ function charger(calibrationLevel: number) {
       version: 1,
       seed: 1,
       turns: 1,
-      team: [{ characterId: "qjgm", rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel }],
+      team: [{ characterId: "qjgm", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel }],
       dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], phase: null, cover: "none" },
     },
     customRegistry({ qjgm: qjgm() }, {}, { jinshizou: GOLDEN_MELODY }),
@@ -196,8 +196,8 @@ test("Activation count: multiple buff gains accumulate per configuration; each S
       seed: 7,
       turns: 3,
       team: [
-        { characterId: "qjgm", rotation: ["ultimate", "basic", "basic"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel: 1 },
-        { characterId: "gm_ally", rotation: ["basic", "basic", "basic"], equippedFixedKeys: [] },
+        { characterId: "qjgm", applyDispatchStats: false, rotation: ["ultimate", "basic", "basic"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel: 1 },
+        { characterId: "gm_ally", applyDispatchStats: false, rotation: ["basic", "basic", "basic"], equippedFixedKeys: [] },
       ] as never,
       dummy: {
         id: "training_dummy",

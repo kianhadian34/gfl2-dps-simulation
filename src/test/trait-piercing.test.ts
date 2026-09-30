@@ -26,6 +26,7 @@ const WITH_BUFF = 191;
 
 function doll(id: string, aoe: boolean): CharacterDef {
   return {
+    class: "support",
     id,
     name: id,
     phase: null,
@@ -63,7 +64,8 @@ function run(char: CharacterDef, poolId: string | undefined, turns = 3): ReturnT
     version: 1,
     seed: 7,
     turns,
-    team: [{ characterId: char.id, rotation: ["basic", "basic", "basic"], equippedFixedKeys: [], weaponId: `w_${poolId ?? "none"}` }],
+    team: [{ characterId: char.id, applyDispatchStats: false,
+      rotation: ["basic", "basic", "basic"], equippedFixedKeys: [], weaponId: `w_${poolId ?? "none"}` }],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: DEF, stability: 0, weaknesses: [], phase: null, cover: "none" },
   };
   return simulateScenario(sc, customRegistry({ [char.id]: char }, {}, { [`w_${poolId ?? "none"}`]: weapon(`w_${poolId ?? "none"}`, poolId) }));

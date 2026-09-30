@@ -23,6 +23,7 @@ const CURRENT_BOSS: DummyConfig = {
 /** Plain, deterministic attacker: critRate 0, no passive → bracket 1.0, no crits. */
 function makeAttacker(id: string, atk: number): CharacterDef {
   return {
+    class: "support",
     id,
     name: id,
     phase: null,
@@ -47,7 +48,8 @@ function run(def: number): ReturnType<typeof simulateScenario> {
       version: 1,
       seed: 1,
       turns: 1,
-      team: [{ characterId: attacker.id, rotation: ["basic"], equippedFixedKeys: [] }],
+      team: [{ characterId: attacker.id, applyDispatchStats: false,
+        rotation: ["basic"], equippedFixedKeys: [] }],
       dummy: { ...CURRENT_BOSS, defense: def },
     },
     customRegistry({ [attacker.id]: attacker }),

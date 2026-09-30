@@ -46,7 +46,8 @@ function state(opts: { keyId?: string; level?: number } = {}) {
     version: 1,
     seed: 7,
     turns: 1,
-    team: [{ characterId: "qjaw", rotation: ["basic"], equippedFixedKeys: [], affinityKeyId: opts.keyId, affinityLevel: opts.level }],
+    team: [{ characterId: "qjaw", applyDispatchStats: false,
+      rotation: ["basic"], equippedFixedKeys: [], affinityKeyId: opts.keyId, affinityLevel: opts.level }],
     dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], phase: null, cover: "none" },
   } as Scenario;
   const sim = createState(scenario, customRegistry({ qjaw: q, gj: foreignDoll() }), new Set());

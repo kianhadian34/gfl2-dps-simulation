@@ -19,7 +19,7 @@ function scenario(member: Partial<ScenarioTeamMember> & { characterId: string },
     version: 1,
     seed: 7,
     turns: 2,
-    team: [{ rotation: ["basic"], equippedFixedKeys: [], ...member }],
+    team: [{ rotation: ["basic"], equippedFixedKeys: [], applyDispatchStats: false, ...member }],
     dummy: {
       id: "training_dummy",
       name: "Training Dummy",

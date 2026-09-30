@@ -140,8 +140,8 @@ test("engine-level U20: 1 weakness ×1.10, 2 weaknesses ×1.20 (count-driven, ad
         // weakness rule is tested, NOT Qiongjiu's authoritative base (which is 802/1893/528).
         team: [
           {
-            characterId: "qiongjiu",
-            rotation: ["active1"],
+            characterId: "qiongjiu", applyDispatchStats: false,
+              rotation: ["active1"],
             equippedFixedKeys: [],
             weaponId: "weapon_qj_panel_test",
             baseStatOverrides: { atk: 1224, hp: 2494, def: 695 },

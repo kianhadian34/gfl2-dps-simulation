@@ -58,6 +58,7 @@ test("linear scaling: crit multiplier is exactly 1 + Crit DMG on the unrounded d
 
 function makeCritDmgChar(id: string, critDmg: number, critRate = 1): CharacterDef {
   return {
+    class: "support",
     id,
     name: id,
     phase: null,
@@ -78,7 +79,8 @@ function charRun(c: CharacterDef, config?: Scenario["configOverrides"]): Scenari
     version: 1,
     seed: 1,
     turns: 2,
-    team: [{ characterId: c.id, rotation: ["basic"], equippedFixedKeys: [] }],
+    team: [{ characterId: c.id, applyDispatchStats: false,
+      rotation: ["basic"], equippedFixedKeys: [] }],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
     configOverrides: config,
   };

@@ -18,6 +18,7 @@ import type { ActionSlot, CharacterDef, Scenario } from "../model/types.js";
  */
 
 const ALLY: CharacterDef = {
+  class: "support",
   id: "int_ally",
   name: "int_ally",
   phase: null,

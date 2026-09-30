@@ -78,7 +78,8 @@ test("targeting: grid-enabled Guide Lv1 damage is UNCHANGED when the same target
       version: 1,
       seed: 7,
       turns: 1,
-      team: [{ characterId: "gj", rotation: ["active2"], equippedFixedKeys: [] }],
+      team: [{ characterId: "gj", applyDispatchStats: false,
+        rotation: ["active2"], equippedFixedKeys: [] }],
       dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: ["burn"], phase: null, cover: "none" },
       configOverrides: { fortificationLevel: 6 }, // V6 No-Cover as a single +20% total
       grid: gridWithEnemy({ x: 7, y: 6 }, { x: 7, y: 14 }),

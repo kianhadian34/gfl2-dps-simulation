@@ -15,6 +15,7 @@ import type { CharacterDef, Element, Scenario } from "../model/types.js";
 
 function makeFixedChar(id: string, fixedDamage: number, element: Element): CharacterDef {
   return {
+    class: "support",
     id,
     name: id,
     phase: null,

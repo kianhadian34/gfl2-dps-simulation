@@ -12,7 +12,8 @@ function twoDollScenario(turns: number): Scenario {
     seed: 7,
     turns,
     team: [
-      { characterId: "test_ally", rotation: ["basic"], equippedFixedKeys: [] },
+      { characterId: "test_ally", applyDispatchStats: false,
+        rotation: ["basic"], equippedFixedKeys: [] },
       { characterId: "qiongjiu",
        baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"] },
     ],

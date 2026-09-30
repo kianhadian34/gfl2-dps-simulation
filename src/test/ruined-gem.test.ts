@@ -39,8 +39,8 @@ function run(opts: { key?: boolean; weaknesses?: string[] }) {
     {
       version: 1, seed: 1, turns: 2,
       team: [
-        { characterId: "rg_ally", rotation: ["basic", "basic"], equippedFixedKeys: [] },
-        { characterId: "qjrg", rotation: ["active2", "basic"], equippedFixedKeys: [], expansionKeyId: opts.key ? RG : undefined },
+        { characterId: "rg_ally", applyDispatchStats: false, rotation: ["basic", "basic"], equippedFixedKeys: [] },
+        { characterId: "qjrg", applyDispatchStats: false, rotation: ["active2", "basic"], equippedFixedKeys: [], expansionKeyId: opts.key ? RG : undefined },
       ] as never,
       dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses, phase: null, cover: "none" },
       configOverrides: { fortificationLevel: 6 },
@@ -76,8 +76,8 @@ test("Ruined Gem equipped but target WITHOUT Overburn: no +15% (bucket stays 1.5
     {
       version: 1, seed: 1, turns: 1,
       team: [
-        { characterId: "rg_ally", rotation: ["basic"], equippedFixedKeys: [] },
-        { characterId: "qjrg", rotation: ["basic"], equippedFixedKeys: [], expansionKeyId: RG },
+        { characterId: "rg_ally", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [] },
+        { characterId: "qjrg", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], expansionKeyId: RG },
       ] as never,
       dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], phase: null, cover: "none" },
       configOverrides: { fortificationLevel: 6 },

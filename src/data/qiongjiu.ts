@@ -8,6 +8,9 @@ import type { CharacterDef } from "../model/types.js";
 export const QIONGJIU: CharacterDef = {
   id: "qiongjiu",
   name: "Qiongjiu",
+  // Validated 2026 in-game: Sentinel class ⇒ permanent Dispatch stats ATK +231 / HP +519 / DEF +222
+  // (separate source, src/data/dispatch.ts — folded into the ONE panel path).
+  class: "sentinel",
   phase: "burn",
   // VALIDATED CHARACTER BASE STATS (2026, in-game character sheet): HP 1893 · ATK 802 · DEF 528 ·
   // Stability 9 · Crit Rate 20% · Crit DMG +20%. Crit values are BONUS fractions (final crit

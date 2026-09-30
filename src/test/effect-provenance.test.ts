@@ -56,6 +56,7 @@ test("provenance: effectSources list the contributing passive sources (deduplica
 
 test("provenance: support-scoped custom doll's support hit reports the passive source; normal hit unaffected", () => {
   const c: CharacterDef = {
+    class: "support",
     id: "pv",
     name: "pv",
     phase: null,
@@ -96,6 +97,7 @@ test("provenance: applying doll status source is used for the bonus's label (dam
   // Uses a custom application with an explicit source on the StatusApplySpec (data-driven provenance).
   const spec: StatusApplySpec = { statusId: "damage_up_ii", durationRounds: 2, target: "self", source: "Pressing the Momentum Lv.3 (V5)" };
   const c: CharacterDef = {
+    class: "support",
     id: "pv2",
     name: "pv2",
     phase: null,

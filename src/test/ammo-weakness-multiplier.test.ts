@@ -18,8 +18,8 @@ function scenarioWith(ammoTags: string[]): Scenario {
     version: 1,
     seed: 7,
     turns: 1,
-    team: [{ characterId: "qiongjiu",
-     baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [] }],
+    team: [{ characterId: "qiongjiu", applyDispatchStats: false,
+      baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [] }],
     dummy: {
       id: "training_dummy",
       name: "Training Dummy",

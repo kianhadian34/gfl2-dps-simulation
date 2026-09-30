@@ -4,6 +4,7 @@ import { finalStat } from "./stats.js";
 import type { ActiveStatus, LogEvent, ResolvedConfig } from "../model/runtime.js";
 import { Rng } from "./rng.js";
 import type { Registry } from "../data/registry.js";
+import { DISPATCH_STAT_BUFFS } from "../data/dispatch.js";
 
 /**
  * MVP simulation duration cap (validation mode): exactly 1–7 turns.
@@ -139,8 +140,12 @@ export function weaponCalibration(weapon: WeaponDef | null, selectedLevel?: numb
   return weapon.calibrations[level];
 }
 
-/** Panel formula: Final Stat = ceil((Initial + Flat) × (1 + Stat%)) — formula Mathematically Proven; integer DISPLAY Validated; exact hidden rounding method Not Tested (stats.ts). `weapon` is the scenario-EQUIPPED weapon (null = none). */
-export function computePanel(def: CharacterDef, weapon: WeaponDef | null): { atk: number; hp: number; def: number } {
+/** Panel formula: Final Stat = ceil((Initial + Flat) × (1 + Stat%)) — formula Mathematically Proven; integer DISPLAY Validated; exact hidden rounding method Not Tested (stats.ts). `weapon` is the scenario-EQUIPPED weapon (null = none). `dispatchFlat` is the permanent global `dispatch_stat_buffs` by Class (src/data/dispatch.ts) — a SEPARATE flat source folded here BEFORE percentage modifiers; absent = no dispatch (two-arg callers unchanged, e.g. direct formula tests). */
+export function computePanel(
+  def: CharacterDef,
+  weapon: WeaponDef | null,
+  dispatchFlat?: { atk?: number; hp?: number; def?: number },
+): { atk: number; hp: number; def: number } {
   const weaponAtkBonus = weaponAtk(weapon);
   const pctAtk = (weapon?.subStats ?? []).filter((s) => s.stat === "pctAtk").reduce((a, s) => a + s.value, 0);
   const pctHp = (weapon?.subStats ?? []).filter((s) => s.stat === "pctHp").reduce((a, s) => a + s.value, 0);
@@ -148,9 +153,9 @@ export function computePanel(def: CharacterDef, weapon: WeaponDef | null): { atk
   // Game-authoritative FINAL STAT rounding: the integer results feed every downstream consumer
   // (damage ATK/DEF, applier-ATK fixed damage, HP pools).
   return {
-    atk: finalStat(def.base.atk, weaponAtkBonus, pctAtk),
-    hp: finalStat(def.base.hp, 0, pctHp),
-    def: finalStat(def.base.def, 0, pctDef),
+    atk: finalStat(def.base.atk, weaponAtkBonus + (dispatchFlat?.atk ?? 0), pctAtk),
+    hp: finalStat(def.base.hp, dispatchFlat?.hp ?? 0, pctHp),
+    def: finalStat(def.base.def, dispatchFlat?.def ?? 0, pctDef),
   };
 }
 
@@ -288,6 +293,7 @@ function makeDoll(
   weapon: WeaponDef | null,
   weaponCalibrationLevel: number | undefined,
   baseStatOverrides: { atk?: number; hp?: number; def?: number; stability?: number; critRate?: number; critDmg?: number } | undefined,
+  applyDispatchStats: boolean | undefined,
   config: ResolvedConfig,
   registry: Registry,
 ): UnitState {
@@ -295,7 +301,12 @@ function makeDoll(
   // copy BEFORE any equipment/stat-modifier calculation. `computePanel` stays the ONE panel
   // path; the registry CharacterDef is never mutated.
   const def = baseStatOverrides ? { ...sourceDef, base: { ...sourceDef.base, ...baseStatOverrides } } : sourceDef;
-  const panel = computePanel(def, weapon);
+  // DISPATCH (2026, permanent global system): real characters receive their Class's flat
+  // ATK/HP/DEF automatically. `applyDispatchStats === false` marks a CONTROLLED MATH FIXTURE
+  // (test-only, explicit at the scenario boundary); it never affects `baseStatOverrides` or
+  // `def.class`, and production gameplay (field absent) always applies dispatch.
+  const dispatchFlat = applyDispatchStats === false ? undefined : DISPATCH_STAT_BUFFS[def.class];
+  const panel = computePanel(def, weapon, dispatchFlat);
   const aff = resolveAffinityBonus(def, affinity?.keyId, affinity?.level, registry);
   // Common Keys (generic architecture, 2026): REUSABLE definitions resolved via the registry
   // (max 3 — "3 Common Key Slots"; fewer allowed). Stats from every selected key SUM and fold
@@ -503,7 +514,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
       }
     }
     const weaponCalibrationLevel = m.calibrationLevel ?? weapon?.calibrationLevel;
-    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, weaponCalibrationLevel, m.baseStatOverrides, config, registry);
+    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, weaponCalibrationLevel, m.baseStatOverrides, m.applyDispatchStats, config, registry);
   });
   const dummy = makeDummy(scenario.dummy);
   return {

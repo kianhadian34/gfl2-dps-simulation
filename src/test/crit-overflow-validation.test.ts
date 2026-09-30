@@ -15,6 +15,7 @@ import type { CharacterDef, PassiveEffect, Scenario } from "../model/types.js";
 
 function makeOverflowChar(id: string, critRate: number, critDmg: number, passive: PassiveEffect[]): CharacterDef {
   return {
+    class: "support",
     id,
     name: id,
     phase: null,
@@ -38,7 +39,8 @@ function run(c: CharacterDef): ReturnType<typeof simulateScenario> {
       version: 1,
       seed: 1,
       turns: 2,
-      team: [{ characterId: c.id, rotation: ["basic"], equippedFixedKeys: [] }],
+      team: [{ characterId: c.id, applyDispatchStats: false,
+        rotation: ["basic"], equippedFixedKeys: [] }],
       dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
     },
     customRegistry({ [c.id]: c }),

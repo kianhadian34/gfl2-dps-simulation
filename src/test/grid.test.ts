@@ -30,6 +30,7 @@ function baseGrid(over: Partial<GridConfig> = {}): GridConfig {
 /** Reusable mover doll with `mobility`. */
 function moverDef(mobility: number): CharacterDef {
   return {
+    class: "support",
     id: "mover",
     name: "mover",
     phase: null,
