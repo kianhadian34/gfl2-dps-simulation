@@ -28,7 +28,8 @@ function sc(opts: { qjRotation: ActionSlot[]; allyRotation: ActionSlot[]; dummyH
     seed: 7,
     turns: opts.turns ?? 1,
     team: [
-      { characterId: "qiongjiu", rotation: opts.qjRotation, equippedFixedKeys: [] },
+      { characterId: "qiongjiu",
+       baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: opts.qjRotation, equippedFixedKeys: [] },
       { characterId: "cr_ally", rotation: opts.allyRotation, equippedFixedKeys: [] },
     ],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: opts.dummyHp, defense: 5000, stability: 6, weaknesses: [], phase: null, cover: "none" },

@@ -13,7 +13,8 @@ function twoDollScenario(turns: number): Scenario {
     turns,
     team: [
       { characterId: "test_ally", rotation: ["basic"], equippedFixedKeys: [] },
-      { characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"] },
+      { characterId: "qiongjiu",
+       baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"] },
     ],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
     configOverrides: { critMultiplier: 1.5 },
@@ -51,7 +52,8 @@ test("a solo doll never fires support attacks (no allies)", () => {
     version: 1,
     seed: 7,
     turns: 2,
-    team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [] }],
+    team: [{ characterId: "qiongjiu",
+     baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [] }],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
   });
   assert.ok(r.log.every((e) => !e.supportAttack));
@@ -67,7 +69,8 @@ test("trigger fidelity: an ally action that deals NO damage does NOT trigger a S
       turns: 2,
       team: [
         { characterId: "test_ally", rotation: ["ultimate"], equippedFixedKeys: [] },
-        { characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"] },
+        { characterId: "qiongjiu",
+         baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"] },
       ],
       dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
       configOverrides: { confectanceStart: 6 }, // keep the 0-damage ally ultimate affordable every round (no basic fallback)

@@ -31,7 +31,8 @@ function run(fortificationLevel = 6): ReturnType<typeof simulateScenario> {
       turns: 2,
       team: [
         { characterId: "basic_attack_dummy", rotation: ["basic", "basic"], equippedFixedKeys: [] },
-        { characterId: "qiongjiu", rotation: ["basic", "basic"], equippedFixedKeys: [] },
+        { characterId: "qiongjiu",
+         baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic", "basic"], equippedFixedKeys: [] },
       ],
       dummy: TARGET,
       configOverrides: { fortificationLevel },

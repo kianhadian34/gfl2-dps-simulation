@@ -30,7 +30,10 @@ import type { CharacterDef, Scenario } from "../model/types.js";
 // Qiongjiu REAL def (owner id "qiongjiu") with critRate 0 for deterministic non-crit oracles.
 const qjNonCrit: Registry = {
   ...REGISTRY,
-  getCharacter: (id) => (id === "qiongjiu" ? { ...QIONGJIU, base: { ...QIONGJIU.base, critRate: 0 } } : REGISTRY.getCharacter(id)),
+  getCharacter: (id) =>
+    id === "qiongjiu"
+      ? { ...QIONGJIU, base: { atk: 1224, hp: 2494, def: 695, stability: 9, critRate: 0, critDmg: 0.2 } } // CONTROLLED FIXTURE: imprint mechanics, not authoritative base (802/1893/528)
+      : REGISTRY.getCharacter(id),
   // TEST-ONLY weapon fixtures (non-game, panel-only) resolve here — production data is clean.
   // Golden Melody is served WITHOUT its Trait pool: the imprint oracles were validated with
   // no Trait contribution (controlled runs); Trait behavior is covered in
@@ -42,7 +45,9 @@ const qjNonCrit: Registry = {
 function qjClone(): CharacterDef {
   const q = structuredClone(QIONGJIU);
   q.id = "qjgm";
-  q.base = { ...q.base, critRate: 0 };
+  // CONTROLLED FIXTURE (2026): explicit panel inputs (base ATK 1224 ? GM panel 1832) ? the imprint
+  // mechanic is tested, NOT Qiongjiu's authoritative base (802/1893/528).
+  q.base = { atk: 1224, hp: 2494, def: 695, stability: 9, critRate: 0, critDmg: 0.2 };
   return q;
 }
 

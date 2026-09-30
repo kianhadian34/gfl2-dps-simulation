@@ -28,7 +28,8 @@ test("Qiongjiu with weaponId 'jinshizou' resolves Golden Melody and keeps the es
   const st = createState(
     {
       ...scenario({ turns: 1 }),
-      team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou" }],
+      team: [{ characterId: "qiongjiu",
+       baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou" }],
     },
     REGISTRY,
     new Set(),
@@ -41,7 +42,8 @@ test("Qiongjiu with weaponId 'jinshizou' resolves Golden Melody and keeps the es
 test("Unknown weaponId throws a clear error", () => {
   const sc: Scenario = {
     ...scenario({ turns: 1 }),
-    team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], weaponId: "definitely_not_a_weapon" }],
+    team: [{ characterId: "qiongjiu",
+     baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [], weaponId: "definitely_not_a_weapon" }],
   };
   assert.throws(() => simulateScenario(sc, customRegistry({})), /Unknown weapon: definitely_not_a_weapon/);
 });
@@ -50,7 +52,8 @@ test("A character WITHOUT weaponId equips NO weapon — nothing is inherited fro
   const st = createState(
     {
       ...scenario({ turns: 1 }),
-      team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [] }],
+      team: [{ characterId: "qiongjiu",
+       baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [] }],
     },
     REGISTRY,
     new Set(),
@@ -64,7 +67,8 @@ test("calibration C1 resolves correctly (equipped-weapon configuration), no cali
   const c1 = createState(
     {
       ...scenario({ turns: 1 }),
-      team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel: 1 }],
+      team: [{ characterId: "qiongjiu",
+       baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel: 1 }],
     },
     REGISTRY,
     new Set(),
@@ -77,7 +81,8 @@ test("calibration C1 resolves correctly (equipped-weapon configuration), no cali
   const none = createState(
     {
       ...scenario({ turns: 1 }),
-      team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou" }],
+      team: [{ characterId: "qiongjiu",
+       baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou" }],
     },
     REGISTRY,
     new Set(),
@@ -90,7 +95,8 @@ test("calibration C6 resolves correctly (Damage Dealt +20%, Charging +20%/stack,
   const c6 = createState(
     {
       ...scenario({ turns: 1 }),
-      team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel: 6 }],
+      team: [{ characterId: "qiongjiu",
+       baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel: 6 }],
     },
     REGISTRY,
     new Set(),
@@ -107,7 +113,8 @@ test("calibration never changes the weapon's max-level base stats (panel + weapo
     createState(
       {
         ...scenario({ turns: 1 }),
-        team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel }],
+        team: [{ characterId: "qiongjiu",
+         baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [], weaponId: "jinshizou", calibrationLevel }],
       },
       REGISTRY,
       new Set(),
@@ -122,7 +129,8 @@ test("invalid calibration levels are rejected (out of C1–C6, non-integer, or w
     createState(
       {
         ...scenario({ turns: 1 }),
-        team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], weaponId, calibrationLevel }],
+        team: [{ characterId: "qiongjiu",
+         baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [], weaponId, calibrationLevel }],
       },
       REGISTRY,
       new Set(),

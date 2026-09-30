@@ -130,8 +130,29 @@ test("engine-level U20: 1 weakness ×1.10, 2 weaknesses ×1.20 (count-driven, ad
   //   ATK 1831.95 — the +1 is caused directly by the validated final-stat rounding)
   //   2 weaknesses → ×1.20 → ceil(3022.8 × 1.2) = 3628   (ratio 1.2/1.1, additive)
   // Same seed ⇒ identical crit outcome in both runs, so the ratio is exact.
-  const r1 = simulateScenario(scenario({ turns: 1, rotation: ["active1"], dummy: { weaknesses: ["burn"] } }), customRegistry({}));
-  const r2 = simulateScenario(scenario({ turns: 1, rotation: ["active1"], dummy: { weaknesses: ["burn", "burn"] } }), customRegistry({}));
+  const mkWeak = (weaknesses: string[]) =>
+    simulateScenario(
+      {
+        version: 1,
+        seed: 1,
+        turns: 1,
+        // CONTROLLED FIXTURE (2026): explicit panel inputs (ATK 1224 + GM-mirror weapon) — the
+        // weakness rule is tested, NOT Qiongjiu's authoritative base (which is 802/1893/528).
+        team: [
+          {
+            characterId: "qiongjiu",
+            rotation: ["active1"],
+            equippedFixedKeys: [],
+            weaponId: "weapon_qj_panel_test",
+            baseStatOverrides: { atk: 1224, hp: 2494, def: 695 },
+          },
+        ],
+        dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: weaknesses as never, phase: null, cover: "none" },
+      },
+      customRegistry({}),
+    );
+  const r1 = mkWeak(["burn"]);
+  const r2 = mkWeak(["burn", "burn"]);
   assert.equal(r1.log[0].finalDamage, 3326);
   assert.equal(r2.log[0].finalDamage, 3628);
   assert.deepEqual(r1.log[0].weaknessExploited, ["burn"]);

@@ -9,7 +9,8 @@ test("panel stats: FINAL STAT = ceil((base + flat) × (1 + Stat%)) — 2026 auth
   const weapon = REGISTRY.getWeapon("jinshizou")!; // Golden Melody, equipped via weaponId
   assert.ok(weapon, "Golden Melody resolves from the weapon registry");
   assert.equal(weaponAtk(weapon), 369); // 金石奏 60
-  const panel = computePanel(QJ, weapon);
+  const fixtureQJ = { ...QJ, base: { ...QJ.base, atk: 1224, hp: 2494, def: 695 } };
+  const panel = computePanel(fixtureQJ as never, weapon);
   // ceil((1224 + 369) × 1.15) = ceil(1831.95) = 1832 — the integer final stat used downstream.
   assert.equal(panel.atk, 1832, `panel.atk=${panel.atk}`);
   assert.equal(panel.def, 695);
@@ -21,7 +22,8 @@ test("integration: 7-round fixed rotation (MVP cap), all aggregations consistent
     version: 1,
     seed: 20260903,
     turns: 7,
-    team: [{ characterId: "qiongjiu", rotation: ["ultimate", "active1", "active2", "basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"], weaponId: "weapon_qj_panel_test" }],
+    team: [{ characterId: "qiongjiu",
+     baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["ultimate", "active1", "active2", "basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"], weaponId: "weapon_qj_panel_test" }],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
   }, customRegistry({}));
 
@@ -76,7 +78,8 @@ test("integration: 7-round fixed rotation (MVP cap), all aggregations consistent
     version: 1,
     seed: 20260903,
     turns: 7,
-    team: [{ characterId: "qiongjiu", rotation: ["ultimate", "active1", "active2", "basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"], weaponId: "weapon_qj_panel_test" }],
+    team: [{ characterId: "qiongjiu",
+     baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["ultimate", "active1", "active2", "basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"], weaponId: "weapon_qj_panel_test" }],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
   }, customRegistry({}));
   assert.equal(JSON.stringify(r.log), JSON.stringify(r2.log));
@@ -103,7 +106,8 @@ test("validation: unknown character and non-empty rotations are rejected", () =>
       version: 1,
       seed: 1,
       turns: 1,
-      team: [{ characterId: "qiongjiu", rotation: [] }],
+      team: [{ characterId: "qiongjiu",
+       baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: [] }],
       dummy: { id: "d", name: "d", hp: 1, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
     }, customRegistry({})),
   );
