@@ -9,8 +9,13 @@ export const QIONGJIU: CharacterDef = {
   id: "qiongjiu",
   name: "Qiongjiu",
   phase: "burn",
-  // Level-60 base stats (research §3.8, CONFIRMED, 2024 data).
-  base: { atk: 1224, hp: 2494, def: 695, stability: 9, critRate: 0.2, critDmg: 0.2 },
+  // VALIDATED CHARACTER BASE STATS (2026, in-game character sheet): HP 1893 · ATK 802 · DEF 528 ·
+  // Stability 9 · Crit Rate 20% · Crit DMG +20%. Crit values are BONUS fractions (final crit
+  // multiplier = 1 + critDmg = 1.20×; the game's displayed "120% Crit DMG" maps to critDmg 0.2).
+  base: { atk: 802, hp: 1893, def: 528, stability: 9, critRate: 0.2, critDmg: 0.2 },
+  // Movement Speed 5 (VALIDATED 2026 in-game character sheet) — the engine's existing `mobility`
+  // field (grid movement budget); Qiongjiu previously left it unset.
+  mobility: 5,
   // NOTE (2026): the unit's weapon is NO LONGER permanent character data — Golden Melody
   // (金石奏 / jinshizou) is a REUSABLE weapon definition in src/data/weapons.ts, equipped via
   // `ScenarioTeamMember.weaponId: "jinshizou"` (see helpers.scenario() default).

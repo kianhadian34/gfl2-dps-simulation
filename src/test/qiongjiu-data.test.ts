@@ -3,6 +3,11 @@ import assert from "node:assert/strict";
 import { QIONGJIU } from "../data/qiongjiu.js";
 import { REGISTRY } from "../data/registry.js";
 
+test("Qiongjiu authoritative base data (VALIDATED in-game 2026): 1893/802/528/9/0.2/0.2 + mobility 5", () => {
+  assert.deepEqual(QIONGJIU.base, { atk: 802, hp: 1893, def: 528, stability: 9, critRate: 0.2, critDmg: 0.2 });
+  assert.equal(QIONGJIU.mobility, 5, "Movement Speed 5 (validated)");
+});
+
 const FIXED_IDS = [
   "qiongjiu_fk1_concentration",
   "qiongjiu_fk2_efficient_planning",
