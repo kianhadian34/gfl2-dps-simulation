@@ -5,6 +5,7 @@ import type { ActiveStatus, LogEvent, ResolvedConfig } from "../model/runtime.js
 import { Rng } from "./rng.js";
 import type { Registry } from "../data/registry.js";
 import { DISPATCH_STAT_BUFFS } from "../data/dispatch.js";
+import { resolveRemolderUnit, resolveRemolderTeam } from "./remolder.js";
 
 /**
  * MVP simulation duration cap (validation mode): exactly 1–7 turns.
@@ -59,6 +60,21 @@ export interface UnitState {
   critDmg: number;
   /** Out-of-Turn Damage: additive % applied to damage dealt OUTSIDE the unit's own turn (in the MVP, Support Actions). Sits in the same additive bracket as the passive 10% (QJ) — Strategic Negotiation +7% → 1.17 validated. */
   outOfTurnDmg: number;
+  /**
+   * PATTERN REMOLDER (2026): resolved per-unit state ? flat source, active (clamped) buffs,
+   * category totals, active Set Bonuses, resolved modifiers (existing buckets) and the
+   * team-granted Unity / battle-start allied percentages ? kept for provenance and the
+   * future stat-source UI. Absent field = no Remolder configured.
+   */
+  remolder?: {
+    flat: { atk: number; hp: number; def: number };
+    activeBuffs: { buffId: string; level: number; category: string }[];
+    categoryTotals: { bulwark: number; vanguard: number; support: number; sentinel: number };
+    activeSetBonusIds: string[];
+    modifiers: import("../model/types.js").RemolderModifier[];
+    unityPct: { atk: number; hp: number; def: number };
+    alliedPct: { atk: number; hp: number; def: number };
+  };
   /** Equipped Expansion Key id (Ruined Gem): drives the Support Action element override and the target-status dealt bonus. */
   expansionKeyId?: string;
   /** Weapon-effect charge counter (Golden Melody Charging, VALIDATED 2026): +1 per buff GAINED (capped by the calibration's maxStacks); 1 consumed per Support Action; persists when unused; inherently un-cleansable (weapon state, not a status). 0 = none. */
@@ -145,6 +161,7 @@ export function computePanel(
   def: CharacterDef,
   weapon: WeaponDef | null,
   dispatchFlat?: { atk?: number; hp?: number; def?: number },
+  remolderFlat?: { atk?: number; hp?: number; def?: number },
 ): { atk: number; hp: number; def: number } {
   const weaponAtkBonus = weaponAtk(weapon);
   const pctAtk = (weapon?.subStats ?? []).filter((s) => s.stat === "pctAtk").reduce((a, s) => a + s.value, 0);
@@ -153,9 +170,9 @@ export function computePanel(
   // Game-authoritative FINAL STAT rounding: the integer results feed every downstream consumer
   // (damage ATK/DEF, applier-ATK fixed damage, HP pools).
   return {
-    atk: finalStat(def.base.atk, weaponAtkBonus + (dispatchFlat?.atk ?? 0), pctAtk),
-    hp: finalStat(def.base.hp, dispatchFlat?.hp ?? 0, pctHp),
-    def: finalStat(def.base.def, dispatchFlat?.def ?? 0, pctDef),
+    atk: finalStat(def.base.atk, weaponAtkBonus + (dispatchFlat?.atk ?? 0) + (remolderFlat?.atk ?? 0), pctAtk),
+    hp: finalStat(def.base.hp, (dispatchFlat?.hp ?? 0) + (remolderFlat?.hp ?? 0), pctHp),
+    def: finalStat(def.base.def, (dispatchFlat?.def ?? 0) + (remolderFlat?.def ?? 0), pctDef),
   };
 }
 
@@ -295,6 +312,8 @@ function makeDoll(
   baseStatOverrides: { atk?: number; hp?: number; def?: number; stability?: number; critRate?: number; critDmg?: number } | undefined,
   applyDispatchStats: boolean | undefined,
   overridesAuthoritative: boolean | undefined,
+  remolderPlan: import("./remolder.js").RemolderUnitPlan,
+  remolderGrants: import("./remolder.js").RemolderTeamGrants,
   config: ResolvedConfig,
   registry: Registry,
 ): UnitState {
@@ -313,14 +332,32 @@ function makeDoll(
   const dispatchFlat =
     applyDispatchStats === false
       ? undefined
-      : overridesAuthoritative && baseStatOverrides
-        ? {
-            atk: Object.prototype.hasOwnProperty.call(baseStatOverrides, "atk") ? 0 : DISPATCH_STAT_BUFFS[def.class].atk,
-            hp: Object.prototype.hasOwnProperty.call(baseStatOverrides, "hp") ? 0 : DISPATCH_STAT_BUFFS[def.class].hp,
-            def: Object.prototype.hasOwnProperty.call(baseStatOverrides, "def") ? 0 : DISPATCH_STAT_BUFFS[def.class].def,
-          }
+      : overridesAuthoritative === true
+        ? baseStatOverrides
+          ? {
+              atk: Object.prototype.hasOwnProperty.call(baseStatOverrides, "atk") ? 0 : DISPATCH_STAT_BUFFS[def.class].atk,
+              hp: Object.prototype.hasOwnProperty.call(baseStatOverrides, "hp") ? 0 : DISPATCH_STAT_BUFFS[def.class].hp,
+              def: Object.prototype.hasOwnProperty.call(baseStatOverrides, "def") ? 0 : DISPATCH_STAT_BUFFS[def.class].def,
+            }
+          : DISPATCH_STAT_BUFFS[def.class]
         : DISPATCH_STAT_BUFFS[def.class];
-  const panel = computePanel(def, weapon, dispatchFlat);
+  // PATTERN REMOLDER FLAT (2026): separate permanent flat source (CharacterDef.remolderFlat,
+  // Lv.60). Debug-authoritative overrides suppress BOTH global flat sources on overridden stats.
+  // Controlled math fixtures (applyDispatchStats === false) exclude BOTH permanent global,
+  // character-level flat sources; Debug-authoritative overrides suppress both on overridden stats.
+  const remolderFlat =
+    applyDispatchStats === false
+      ? { atk: 0, hp: 0, def: 0 }
+      : overridesAuthoritative === true
+        ? (baseStatOverrides
+            ? {
+                atk: Object.prototype.hasOwnProperty.call(baseStatOverrides, "atk") ? 0 : remolderPlan.flat.atk,
+                hp: Object.prototype.hasOwnProperty.call(baseStatOverrides, "hp") ? 0 : remolderPlan.flat.hp,
+                def: Object.prototype.hasOwnProperty.call(baseStatOverrides, "def") ? 0 : remolderPlan.flat.def,
+              }
+            : remolderPlan.flat)
+        : remolderPlan.flat;
+  const panel = computePanel(def, weapon, dispatchFlat, remolderFlat);
   const aff = resolveAffinityBonus(def, affinity?.keyId, affinity?.level, registry);
   // Common Keys (generic architecture, 2026): REUSABLE definitions resolved via the registry
   // (max 3 — "3 Common Key Slots"; fewer allowed). Stats from every selected key SUM and fold
@@ -338,9 +375,9 @@ function makeDoll(
   // STANDALONE character Affinity-LEVEL stats (2026, confirmed): Lv5 none, Lv9 ATK/HP/DEF +5% —
   // independent of the equipped Affinity Key (exact level map; absent levels grant nothing).
   const levelStat = def.affinityLevelStats?.[affinity?.level ?? 0] ?? {};
-  const atkPct = (commonStats.atkPct ?? 0) + aff.atk + (levelStat.atkPct ?? 0);
-  const hpPct = aff.hp + (levelStat.hpPct ?? 0);
-  const defPct = levelStat.defPct ?? 0;
+  const atkPct = (commonStats.atkPct ?? 0) + aff.atk + (levelStat.atkPct ?? 0) + remolderPlan.selfPct.atk + remolderGrants.unityPct.atk + remolderGrants.alliedPct.atk;
+  const hpPct = aff.hp + (levelStat.hpPct ?? 0) + remolderPlan.selfPct.hp + remolderGrants.unityPct.hp + remolderGrants.alliedPct.hp;
+  const defPct = (levelStat.defPct ?? 0) + remolderPlan.selfPct.def + remolderGrants.unityPct.def + remolderGrants.alliedPct.def;
   let confectance = config.confectanceStart;
   for (const k of def.fixedKeys) {
     if (keys.includes(k.id)) {
@@ -376,9 +413,26 @@ function makeDoll(
     hp: hpPct > 0 ? finalStat(panel.hp, 0, hpPct) : panel.hp,
     maxHp: hpPct > 0 ? finalStat(panel.hp, 0, hpPct) : panel.hp,
     defStat: defPct > 0 ? finalStat(panel.def, 0, defPct) : panel.def,
-    critRate: def.base.critRate + (commonStats.critRate ?? 0),
-    critDmg: def.base.critDmg + aff.critDmg + (commonStats.critDmg ?? 0),
-    outOfTurnDmg: commonStats.outOfTurnDmg ?? 0,
+    critRate: def.base.critRate + (commonStats.critRate ?? 0) + remolderPlan.critRate,
+    critDmg: def.base.critDmg + aff.critDmg + (commonStats.critDmg ?? 0) + remolderPlan.critDmg,
+    outOfTurnDmg: (commonStats.outOfTurnDmg ?? 0) + remolderPlan.outOfTurnDmg,
+    // PATTERN REMOLDER (2026): full resolved state kept for combat consumption + provenance.
+    remolder:
+      remolderPlan.activeBuffs.length > 0 ||
+      remolderPlan.activeSetBonusIds.length > 0 ||
+      remolderPlan.flat.atk !== 0 ||
+      remolderPlan.flat.hp !== 0 ||
+      remolderPlan.flat.def !== 0
+        ? {
+            flat: remolderPlan.flat,
+            activeBuffs: remolderPlan.activeBuffs,
+            categoryTotals: remolderPlan.categoryTotals,
+            activeSetBonusIds: remolderPlan.activeSetBonusIds,
+            modifiers: remolderPlan.modifiers,
+            unityPct: remolderGrants.unityPct,
+            alliedPct: remolderGrants.alliedPct,
+          }
+        : undefined,
     expansionKeyId,
     weaponCharges: 0,
     weapon,
@@ -504,7 +558,38 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
     }
   }
   const config = resolveConfig(scenario.configOverrides);
-  const units: UnitState[] = scenario.team.map((m) => {
+  // PATTERN REMOLDER (2026): resolve every member's plan (clamp/totals/set activation) then
+  // the team-level grants (Unity strongest, battle-start allied %) BEFORE makeDoll folds them
+  // into the ONE panel path and the modifier buckets.
+  const remolderBuffDefs = scenario.remolderBuffSet ?? [];
+  const remolderPlans = scenario.team.map((m) => {
+    const rd = registry.getCharacter(m.characterId);
+    if (!rd) throw new Error(`Unknown character: ${m.characterId}`);
+    return resolveRemolderUnit(m.remolderBuffs, remolderBuffDefs, rd.remolderSetBonuses, rd.remolderFlat);
+  });
+  const remolderRawAtk = scenario.team.map((m, i) => {
+    const rd = registry.getCharacter(m.characterId);
+    if (!rd) throw new Error(`Unknown character: ${m.characterId}`);
+    let w: WeaponDef | null = null;
+    if (m.weaponId !== undefined) {
+      const wd = registry.getWeapon(m.weaponId);
+      if (!wd) throw new Error(`Unknown weapon: ${m.weaponId}`);
+      w = wd;
+    }
+    const d = m.baseStatOverrides ? { ...rd, base: { ...rd.base, ...m.baseStatOverrides } } : rd;
+    let flat = { atk: 0, hp: 0, def: 0 };
+    if (m.applyDispatchStats !== false) {
+      const df = DISPATCH_STAT_BUFFS[rd.class];
+      flat = {
+        atk: remolderPlans[i].flat.atk + df.atk,
+        hp: remolderPlans[i].flat.hp + df.hp,
+        def: remolderPlans[i].flat.def + df.def,
+      };
+    }
+    return computePanel(d, w, undefined, flat).atk;
+  });
+  const remolderGrants = resolveRemolderTeam(remolderPlans, remolderRawAtk);
+  const units: UnitState[] = scenario.team.map((m, i) => {
     const def = registry.getCharacter(m.characterId);
     if (!def) throw new Error(`Unknown character: ${m.characterId}`);
     // WEAPON (2026): equipped via `ScenarioTeamMember.weaponId` (1 Weapon Slot) and resolved
@@ -528,7 +613,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
       }
     }
     const weaponCalibrationLevel = m.calibrationLevel ?? weapon?.calibrationLevel;
-    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, weaponCalibrationLevel, m.baseStatOverrides, m.applyDispatchStats, m.overridesAuthoritative, config, registry);
+    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, weaponCalibrationLevel, m.baseStatOverrides, m.applyDispatchStats, m.overridesAuthoritative, remolderPlans[i], remolderGrants[i], config, registry);
   });
   const dummy = makeDummy(scenario.dummy);
   return {

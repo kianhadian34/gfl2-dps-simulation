@@ -1,4 +1,5 @@
 import type { CharacterDef } from "../model/types.js";
+import { QIONGJIU_SET_BONUSES } from "./remolder.js";
 
 /**
  * Qiongjiu (琼玖) — first validation character (docs/architecture.md §11).
@@ -19,6 +20,9 @@ export const QIONGJIU: CharacterDef = {
   // Movement Speed 5 (VALIDATED 2026 in-game character sheet) — the engine's existing `mobility`
   // field (grid movement budget); Qiongjiu previously left it unset.
   mobility: 5,
+  // PATTERN REMOLDER (2026): character-specific Lv.60 Remolder FLAT stats (separate source).
+  remolderFlat: { atk: 252, hp: 651, def: 224 },
+  remolderSetBonuses: QIONGJIU_SET_BONUSES,
   // NOTE (2026): the unit's weapon is NO LONGER permanent character data — Golden Melody
   // (金石奏 / jinshizou) is a REUSABLE weapon definition in src/data/weapons.ts, equipped via
   // `ScenarioTeamMember.weaponId: "jinshizou"` (see helpers.scenario() default).

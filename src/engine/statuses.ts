@@ -2,6 +2,7 @@ import type { Element, StatusApplySpec } from "../model/types.js";
 import type { ActiveStatus } from "../model/runtime.js";
 import type { EffectiveStatusDef, SimulationState, UnitState } from "./state.js";
 import { weaponCalibration } from "./state.js";
+import { remolderDealtBonus, remolderTakenBonus, remolderReductionBonus } from "./remolder.js";
 
 /**
  * GENERIC CLEANSE (2026, FK2 Efficient Planning): remove up to `max` statuses from `target`
@@ -169,7 +170,8 @@ export function additiveDealtBonus(
       }
     }
   }
-  return sum;
+  // PATTERN REMOLDER (2026): permanent modifiers enter the SAME additive DMG% dealt bucket.
+  return sum + remolderDealtBonus(unit, { element, supportAttack: ctx.supportAttack, targetExposed: ctx.targetExposed, isAoE: ctx.isAoE ?? false });
 }
 
 /** Σ additive damage-taken bonuses from the target's own statuses (tier effects gated on the hit element). */
@@ -188,7 +190,8 @@ export function additiveTakenBonus(unit: UnitState, statusRegistry: Map<string, 
       }
     }
   }
-  return sum;
+  // PATTERN REMOLDER (2026): permanent modifiers enter the SAME additive taken bucket.
+  return sum + remolderTakenBonus(unit, element);
 }
 
 /**
@@ -315,6 +318,7 @@ export function multiplicativeTakenMods(
   unit: UnitState,
   statusRegistry: Map<string, EffectiveStatusDef>,
   incomingIsAoE = false,
+  incomingElement: Element | null = null,
 ): { mult: number; red: number } {
   let mult = 1;
   let red = 1;
@@ -339,6 +343,8 @@ export function multiplicativeTakenMods(
       }
     }
   }
+  // PATTERN REMOLDER (2026): permanent reductions enter the SAME multiplicative taken chain.
+  red *= 1 - remolderReductionBonus(unit, incomingElement, incomingIsAoE);
   return { mult, red };
 }
 

@@ -37,55 +37,55 @@ test("dispatch_stat_buffs table: exactly the validated ATK/HP/DEF bonuses for al
 test("Qiongjiu is a Sentinel (mandatory class) and receives Sentinel dispatch", () => {
   assert.equal(QIONGJIU.class, "sentinel");
   const u = createState(qjScenario(), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, 802 + 231, "base 802 + dispatch +231");
-  assert.equal(u.hp, 1893 + 519, "base 1893 + dispatch +519");
-  assert.equal(u.maxHp, 2412);
-  assert.equal(u.defStat, 528 + 222, "base 528 + dispatch +222");
+  assert.equal(u.panelAtk, 1285, "base 802 + dispatch +231 + Remolder flat +252");
+  assert.equal(u.hp, 3063, "base 1893 + dispatch +519 + Remolder flat +651");
+  assert.equal(u.maxHp, 3063);
+  assert.equal(u.defStat, 974, "base 528 + dispatch +222 + Remolder flat +224");
   assert.equal(u.stability, 9, "dispatch never touches stability");
 });
 
-test("clean Qiongjiu panel (no weapon): ATK 1033 / HP 2412 / DEF 750", () => {
+test("clean Qiongjiu panel (no weapon): ATK 1285 / HP 3063 / DEF 974 (base + dispatch + Remolder flat)", () => {
   const u = createState(qjScenario(), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, 1033);
-  assert.equal(u.hp, 2412);
-  assert.equal(u.defStat, 750);
+  assert.equal(u.panelAtk, 1285);
+  assert.equal(u.hp, 3063);
+  assert.equal(u.defStat, 974);
 });
 
-test("dispatch interacts with weapon flat + percentage: ceil((802 + 231 + 369) × 1.15) = 1613", () => {
+test("dispatch + weapon flat + percentage: ceil((802 + 231 + 252 + 369) × 1.15) = 1903", () => {
   const u = createState(qjScenario({ weaponId: "jinshizou" }), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, 1613, "dispatch folded BEFORE the ATK% — one panel path");
+  assert.equal(u.panelAtk, 1903, "dispatch AND Remolder flat folded BEFORE the ATK% — one panel path");
 });
 
 test("dispatch remains separate from baseStatOverrides: ATK 1000 override → 1000 + 231 = 1231", () => {
   const u = createState(qjScenario({ baseStatOverrides: { atk: 1000 } }), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, 1231, "override replaces base only; dispatch is an independent flat source");
+  assert.equal(u.panelAtk, 1483, "override replaces base (1000) then +dispatch 231 +Remolder 252 ? independent flat sources");
 });
 
 test("percentage modifiers (common keys) operate on the dispatch-inclusive panel: ceil(1033 × 1.05) = 1085", () => {
   const u = createState(qjScenario({ commonKeyIds: ["qiongjiu_common_strategic_negotiation"] }), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, 1085, "dispatch participates in the SAME finalStat(base + flat, pct) product");
-  assert.equal(u.hp, 2412, "no HP% → HP stays the dispatch-inclusive value");
+  assert.equal(u.panelAtk, 1350, "ceil(1285 ? 1.05) ? dispatch + Remolder flat participate in the SAME finalStat(base + flat, pct) product");
+  assert.equal(u.hp, 3063, "no HP% → HP stays the dispatch-inclusive value");
 });
 test("DEBUG-authoritative overrides: ATK 1500 override suppresses Sentinel dispatch (panel stays 1500); HP/DEF still dispatch", () => {
   const u = createState(qjScenario({ baseStatOverrides: { atk: 1500 }, overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
   assert.equal(u.panelAtk, 1500, "overridden stat is authoritative ? no +231 underneath");
-  assert.equal(u.hp, 2412, "HP not overridden ? dispatch still applies (1893 + 519)");
-  assert.equal(u.defStat, 750, "DEF not overridden ? dispatch still applies (528 + 222)");
+  assert.equal(u.hp, 3063, "HP not overridden ? dispatch still applies (1893 + 519)");
+  assert.equal(u.defStat, 974, "DEF not overridden ? dispatch still applies (528 + 222)");
 });
 
 test("DEBUG-authoritative overrides: HP override suppresses dispatch HP; ATK/DEF still dispatch", () => {
   const u = createState(qjScenario({ baseStatOverrides: { hp: 2000 }, overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
   assert.equal(u.hp, 2000, "HP override authoritative");
   assert.equal(u.maxHp, 2000);
-  assert.equal(u.panelAtk, 1033, "ATK still receives dispatch");
-  assert.equal(u.defStat, 750, "DEF still receives dispatch");
+  assert.equal(u.panelAtk, 1285, "ATK still receives dispatch + Remolder flat");
+  assert.equal(u.defStat, 974, "DEF still receives dispatch + Remolder flat");
 });
 
 test("DEBUG-authoritative overrides: DEF override suppresses dispatch DEF; ATK/HP still dispatch", () => {
   const u = createState(qjScenario({ baseStatOverrides: { def: 700 }, overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
   assert.equal(u.defStat, 700, "DEF override authoritative");
-  assert.equal(u.panelAtk, 1033, "ATK still receives dispatch");
-  assert.equal(u.hp, 2412, "HP still receives dispatch");
+  assert.equal(u.panelAtk, 1285, "ATK still receives dispatch + Remolder flat");
+  assert.equal(u.hp, 3063, "HP still receives dispatch + Remolder flat");
 });
 
 test("DEBUG-authoritative overrides: all three overridden ? all authoritative", () => {
@@ -97,12 +97,12 @@ test("DEBUG-authoritative overrides: all three overridden ? all authoritative", 
 
 test("DEBUG-authoritative flag with NO overrides ? dispatch fully applies (no phantoms)", () => {
   const u = createState(qjScenario({ overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, 1033);
-  assert.equal(u.hp, 2412);
-  assert.equal(u.defStat, 750);
+  assert.equal(u.panelAtk, 1285);
+  assert.equal(u.hp, 3063);
+  assert.equal(u.defStat, 974);
 });
 
 test("math fixtures WITHOUT the flag keep override + dispatch coexistence: ATK 2000 override ? 2231", () => {
   const u = createState(qjScenario({ baseStatOverrides: { atk: 2000 } }), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, 2231, "fixture override coexists with dispatch (established engine-fixture behavior)");
+  assert.equal(u.panelAtk, 2483, "fixture override 2000 + dispatch 231 + Remolder flat 252 (established coexistence)");
 });

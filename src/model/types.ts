@@ -552,6 +552,118 @@ export interface CharacterDef {
    * Optional — absent means the unit cannot move; existing characters are unaffected.
    */
   mobility?: number;
+  /**
+   * PATTERN REMOLDER (2026, flower system): character-specific Lv.60 REMOLDER FLAT stats ?
+   * a SEPARATE permanent flat source (ATK/HP/DEF), like dispatch_stat_buffs but per-character
+   * (Qiongjiu: ATK +252 / HP +651 / DEF +224). NEVER merged into `base`. Absent = 0.
+   * Always active; enters the ONE panel path: finalStat(base + flat, pct).
+   */
+  remolderFlat?: { atk?: number; hp?: number; def?: number };
+  /**
+   * PATTERN REMOLDER SET BONUSES (2026): per-character definitions (Qiongjiu: Embryo?Blossom).
+   * Activation requires only the four category totals (Bulwark/Vanguard/Support/Sentinel) from
+   * the character's OWN selected Remolder buff levels; ALL qualifying set bonuses are active
+   * simultaneously; level-60 Remolder is always assumed. Effects carry explicit targeting and
+   * "does not stack" semantics.
+   */
+  remolderSetBonuses?: RemolderSetBonusDef[];
+}
+
+export type RemolderCategory = "bulwark" | "vanguard" | "support" | "sentinel";
+
+/**
+ * PATTERN REMOLDER EFFECT GATES (2026): optional conditions evaluated against the CURRENT
+ * damage/stat event, mirroring the existing engine gate vocabulary (support actions, damage
+ * category, Exposed/Stability-Break target, attack element, out-of-turn). Absent gate = applies
+ * always. Gates restrict; they never approximate missing mechanics silently.
+ */
+export interface RemolderEffectGates {
+  /** Restrict to Support Actions only. */
+  actions?: "support";
+  /** Restrict to aoe / targeted attacks (damageCategory). */
+  category?: "aoe" | "targeted";
+  /** Restrict to hits on an Exposed / Stability-Break target. */
+  targetExposed?: boolean;
+  /** Restrict to hits with ANY of these attack elements (null = phase-less/physical). */
+  element?: (Element | null)[];
+  /** Restrict to hits with ANY phase element (element !== null) ? used with `element` for OR-combined gates (e.g. Seedling: physical AND phase). */
+  anyPhase?: boolean;
+  /** Restrict to out-of-turn events (in the MVP, Support Actions ? the only out-of-turn attacker). */
+  outOfTurn?: boolean;
+}
+
+/**
+ * PATTERN REMOLDER EFFECT (2026): expressed in the EXISTING engine vocabulary so effects enter
+ * the existing buckets (additive DMG% dealt/taken, multiplicative damage taken, panel stat
+ * percentages, crit, out-of-turn damage) ? never a parallel stat/damage formula. Each effect
+ * carries optional gates (above) and a source identity for future stat-source UI.
+ */
+export type RemolderEffect =
+  | { kind: "additive_dealt"; value: number; gates?: RemolderEffectGates }
+  | { kind: "additive_taken"; value: number; gates?: RemolderEffectGates }
+  | { kind: "multiplicative_taken"; value: number; gates?: RemolderEffectGates }
+  | { kind: "stat_pct"; stat: "atk" | "hp" | "def"; value: number }
+  | { kind: "crit_rate"; value: number }
+  | { kind: "crit_dmg"; value: number }
+  | { kind: "out_of_turn_dmg"; value: number }
+  | {
+      /**
+       * START-OF-BATTLE ALLIED STAT PCT (2026, e.g. Blossom): at battle start the
+       * top-`count` ALLIED units with the highest ATK (owner excluded) gain `value` as a
+       * percentage stat. "Does not stack": one application per source, strongest value wins.
+       */
+      kind: "allied_stat_pct_battle_start";
+      stat: "atk" | "hp" | "def";
+      value: number;
+      select: "highest_attack";
+      count: number;
+    }
+  | {
+      /**
+       * UNITY (2026): a global ALLIED effect supplied by this buff's level. "Does not stack":
+       * across the team only the STRONGEST active level applies, applied at most once per unity.
+       * `target: "all_allies"` applies to the owner's TEAMMATES (excludes the owner itself ?
+       * the established reading: a bond shared with allies).
+       */
+      kind: "unity";
+      label: string;
+      stat: "atk" | "hp" | "def";
+      target: "all_allies";
+    };
+
+/** PATTERN REMOLDER BUFF DEFINITION (2026): global, shared by every character. */
+export interface RemolderBuffDef {
+  id: string;
+  name: string;
+  category: RemolderCategory;
+  /** Buffs are invalid above this level; supplied levels clamp to it. */
+  maxLevel: number;
+  /** Level ? effects (exact table values from source material; only levels present are defined). */
+  effects: Record<number, RemolderEffect[]>;
+}
+
+/** PATTERN REMOLDER SET BONUS (2026): per-character; requirement = category totals only. */
+export interface RemolderSetBonusDef {
+  id: string;
+  name: string;
+  /** Remolder tier (1/10/20/30/45/60 ? engine always assumes level 60, so all are eligible). */
+  remolderLevel: number;
+  requires: { bulwark: number; vanguard: number; support: number; sentinel: number };
+  /** Self-targeting or team-targeting per effect (see RemolderEffect gates/target). */
+  effects: RemolderEffect[];
+}
+
+/**
+ * RESOLVED REMOLDER MODIFIER (2026): a single implementable effect + source identity, stored
+ * on UnitState.remolder.modifiers so the combat pipeline consumes it via the existing buckets
+ * and the future UI can explain where it came from.
+ */
+export interface RemolderModifier {
+  sourceType: "buff" | "set_bonus";
+  sourceId: string;
+  level: number;
+  label: string;
+  effect: RemolderEffect;
 }
 
 export type StatusEffect =
@@ -843,6 +955,13 @@ export interface ScenarioTeamMember {
    * It never alters `baseStatOverrides` or `CharacterDef.class` (both stay fully valid).
    */
   applyDispatchStats?: boolean;
+  /**
+   * PATTERN REMOLDER (2026): user-provided selected buff levels, buffId -> level.
+   * Level 0 = inactive; levels above a buff''s max clamp; each buff has its own level/value table.
+   * Not character-specific (same global definitions for every character). Buff definitions are
+   * supplied via `Scenario.remolderBuffSet` (production data populates later).
+   */
+  remolderBuffs?: Record<string, number>;
 }
 
 export interface Scenario {
@@ -862,4 +981,10 @@ export interface Scenario {
    * members are rejected with a clear error (no implicit skip; Pass is not a feature).
    */
   roundOrder?: Record<number, string[]>;
+  /**
+   * PATTERN REMOLDER (2026): GLOBAL buff definitions available to this scenario's team.
+   * Production values are populated from source material later; engine tests inject synthetic
+   * definitions here. Shared across all characters (single table, not per-character).
+   */
+  remolderBuffSet?: RemolderBuffDef[];
 }
