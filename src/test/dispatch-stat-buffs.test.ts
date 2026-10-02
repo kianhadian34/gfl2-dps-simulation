@@ -71,8 +71,8 @@ test("Qiongjiu is a Sentinel (mandatory class) and dispatches its class flat ont
   const on = createState(liveScenario({ baseStatOverrides: { atk: 802, hp: 1893, def: 528 } }), REGISTRY, new Set()).units[0];
   assert.equal(off.panelAtk, 802, "control run = base only (bundle OFF)");
   assert.equal(on.panelAtk, 1807, "base 802 + dispatch 231 + Remolder 252 + NH 196, then the live 22% ATK%: ceil(1481 × 1.22)");
-  assert.equal(on.hp, 3431, "base 1893 + dispatch 519 + Remolder 651, then the live 12% HP%: ceil(3063 × 1.12)");
-  assert.equal(on.defStat, 1091, "base 528 + dispatch 222 + Remolder 224, then the live 12% DEF%: ceil(974 × 1.12)");
+  assert.equal(on.hp, 3804, "base 1893 + dispatch 519 + Remolder 651 + NH 333, then the live 12% HP%: ceil(3396 × 1.12)");
+  assert.equal(on.defStat, 1194, "base 528 + dispatch 222 + Remolder 224 + NH 92, then the live 12% DEF%: ceil(1066 × 1.12)");
   assert.equal(on.stability, 9, "dispatch never touches stability");
 });
 
@@ -101,15 +101,15 @@ test("percentage modifiers operate on the dispatch-inclusive flat: ceil((802 + 2
   const u = createState(liveScenario({ baseStatOverrides: { atk: 802, hp: 1893, def: 528 }, commonKeyIds: ["qiongjiu_common_strategic_negotiation"] }), REGISTRY, new Set()).units[0];
   // Live ATK% = NH 22% + Strategic Negotiation 5% = 27%; the common-key % rides the dispatch-inclusive flat.
   assert.equal(u.panelAtk, Math.ceil((802 + 231 + 252 + 196) * (1 + 0.22 + 0.05)), "ceil((base + dispatch + Remolder + NH) × 1.27) — same finalStat(base + flat, pct) product");
-  assert.equal(u.hp, Math.ceil((1893 + 519 + 651) * 1.12), "HP keeps the dispatch-inclusive flat × the live 12% HP%");
+  assert.equal(u.hp, Math.ceil((1893 + 519 + 651 + 333) * 1.12), "HP keeps the dispatch-inclusive flat × the live 12% HP%");
 });
 
 // --- DEBUG-authoritative rows: these intentionally exercise the LIVE permanent stack ------------
 test("DEBUG-authoritative overrides: ATK 1500 override suppresses every ATK source; HP/DEF keep the live stack", () => {
   const u = createState(qjScenario({ baseStatOverrides: { atk: 1500 }, overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
   assert.equal(u.panelAtk, 1500, "overridden stat is authoritative — no dispatch/Remolder/Neural Helix underneath");
-  assert.equal(u.hp, 3431, "HP not overridden — the live permanent flat + 12% HP% apply");
-  assert.equal(u.defStat, 1091, "DEF not overridden — the live permanent flat + 12% DEF% apply");
+  assert.equal(u.hp, 3804, "HP not overridden — the live permanent flat + 12% HP% apply");
+  assert.equal(u.defStat, 1194, "DEF not overridden — the live permanent flat + 12% DEF% apply");
 });
 
 test("DEBUG-authoritative overrides: HP override suppresses every HP source; ATK/DEF keep the live stack", () => {
@@ -117,14 +117,14 @@ test("DEBUG-authoritative overrides: HP override suppresses every HP source; ATK
   assert.equal(u.hp, 2000, "HP override authoritative");
   assert.equal(u.maxHp, 2000);
   assert.equal(u.panelAtk, 1807, "ATK still receives dispatch + Remolder flat + Neural Helix");
-  assert.equal(u.defStat, 1091, "DEF still receives dispatch + Remolder flat + Neural Helix");
+  assert.equal(u.defStat, 1194, "DEF still receives dispatch + Remolder flat + Neural Helix");
 });
 
 test("DEBUG-authoritative overrides: DEF override suppresses every DEF source; ATK/HP keep the live stack", () => {
   const u = createState(qjScenario({ baseStatOverrides: { def: 700 }, overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
   assert.equal(u.defStat, 700, "DEF override authoritative");
   assert.equal(u.panelAtk, 1807, "ATK still receives dispatch + Remolder flat + Neural Helix");
-  assert.equal(u.hp, 3431, "HP still receives dispatch + Remolder flat + Neural Helix");
+  assert.equal(u.hp, 3804, "HP still receives dispatch + Remolder flat + Neural Helix");
 });
 
 test("DEBUG-authoritative overrides: all three overridden — all authoritative", () => {
@@ -137,8 +137,8 @@ test("DEBUG-authoritative overrides: all three overridden — all authoritative"
 test("DEBUG-authoritative flag with NO overrides — the live permanent stack fully applies", () => {
   const u = createState(qjScenario({ overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
   assert.equal(u.panelAtk, 1807);
-  assert.equal(u.hp, 3431);
-  assert.equal(u.defStat, 1091);
+  assert.equal(u.hp, 3804);
+  assert.equal(u.defStat, 1194);
 });
 
 test("math fixtures WITHOUT the authoritative flag keep override + dispatch coexistence: ATK 2000 override", () => {

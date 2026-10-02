@@ -13,7 +13,7 @@ import { QIONGJIU } from "../data/qiongjiu.js";
  *   base 802/1893/528
  *   + Dispatch (Sentinel class)          +231 / +519 / +222
  *   + Pattern Remolder Lv.60 flats        +252 / +651 / +224
- *   + Neural Helix flat                  +196 (ATK only; HP/DEF nodes not yet sourced)
+ *   + Neural Helix flat                  +196 ATK / +333 HP / +92 DEF
  *   then the percentage buckets          ×1.22 ATK (NH 10% + 12%) · ×1.12 HP · ×1.12 DEF
  *
  * These values ARE ALLOWED TO CHANGE when a legitimate permanent stat system is added — that is the
@@ -33,7 +33,7 @@ function realQj(extra: Partial<Scenario["team"][number]> = {}): Scenario {
   };
 }
 
-test("real Qiongjiu: live panel with all implemented permanent systems (ATK 1807 / HP 3431 / DEF 1091)", () => {
+test("real Qiongjiu: live panel with all implemented permanent systems (ATK 1807 / HP 3804 / DEF 1194)", () => {
   const u = createState(realQj(), REGISTRY, new Set()).units[0];
   assert.equal(QIONGJIU.class, "sentinel", "Sentinel class drives the Dispatch row");
   assert.deepEqual(QIONGJIU.remolderFlat, { atk: 252, hp: 651, def: 224 }, "Remolder Lv.60 flats (character data)");
@@ -41,9 +41,9 @@ test("real Qiongjiu: live panel with all implemented permanent systems (ATK 1807
   assert.equal(QIONGJIU.neuralHelixStats?.atkPct, 0.1, "Neural Helix character ATK% (two +5% tabs)");
 
   assert.equal(u.panelAtk, 1807, "ceil((802 + 231 + 252 + 196) × 1.22)");
-  assert.equal(u.hp, 3431, "ceil((1893 + 519 + 651) × 1.12)");
-  assert.equal(u.maxHp, 3431);
-  assert.equal(u.defStat, 1091, "ceil((528 + 222 + 224) × 1.12)");
+  assert.equal(u.hp, 3804, "ceil((1893 + 519 + 651 + 333 NH) × 1.12)");
+  assert.equal(u.maxHp, 3804);
+  assert.equal(u.defStat, 1194, "ceil((528 + 222 + 224 + 92 NH) × 1.12)");
   assert.equal(u.stability, 9);
 });
 

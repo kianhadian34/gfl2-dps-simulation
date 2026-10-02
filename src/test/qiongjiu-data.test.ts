@@ -9,6 +9,14 @@ test("Qiongjiu authoritative base data (VALIDATED in-game 2026): 1893/802/528/9/
   assert.equal(QIONGJIU.class, "sentinel", "mandatory Class: Sentinel (dispatch_stat_buffs) edge");
 });
 
+test("Qiongjiu authoritative Neural Helix data (VALIDATED in-game 2026): 196 flat ATK / 333 flat HP / 92 flat DEF / +10% ATK", () => {
+  assert.deepEqual(
+    QIONGJIU.neuralHelixStats,
+    { atk: 196, hp: 333, def: 92, atkPct: 0.1 },
+    "flat ATK 196 (nodes 37+45+53+61), flat HP 333, flat DEF 92, two +5.0% ATK entries (0.10); the universal +12% is the global constant",
+  );
+});
+
 const FIXED_IDS = [
   "qiongjiu_fk1_concentration",
   "qiongjiu_fk2_efficient_planning",
