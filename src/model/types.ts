@@ -567,6 +567,28 @@ export interface CharacterDef {
    * "does not stack" semantics.
    */
   remolderSetBonuses?: RemolderSetBonusDef[];
+  /**
+   * NEURAL HELIX (2026) — an INDEPENDENT system (NOT Affinity, no levels). ONE static per-character
+   * definition: flat ATK/HP/DEF (into the shared flat bucket) and ATK%/HP%/DEF% (into the shared
+   * percentage buckets, stacked with the universal `NEURAL_HELIX_GLOBAL_PCT`). Never placed in an
+   * Affinity structure; never merged into `base`. Absent = no character-specific contribution
+   * (the universal +12% still applies to real characters).
+   */
+  neuralHelixStats?: NeuralHelixStats;
+}
+
+/**
+ * NEURAL HELIX character-specific stats (2026): static flat + percentage contributions.
+ * `atk/hp/def` are FLAT (added to the shared flat bucket); `atkPct/hpPct/defPct` are FRACTIONS
+ * (e.g. 0.10 = +10%) added to the shared percentage buckets. Independent of Affinity and levels.
+ */
+export interface NeuralHelixStats {
+  atk?: number;
+  hp?: number;
+  def?: number;
+  atkPct?: number;
+  hpPct?: number;
+  defPct?: number;
 }
 
 export type RemolderCategory = "bulwark" | "vanguard" | "support" | "sentinel";

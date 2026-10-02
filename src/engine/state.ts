@@ -6,6 +6,7 @@ import { Rng } from "./rng.js";
 import type { Registry } from "../data/registry.js";
 import { DISPATCH_STAT_BUFFS } from "../data/dispatch.js";
 import { REMOLDER_BUFFS } from "../data/remolder.js";
+import { NEURAL_HELIX_GLOBAL_PCT } from "../data/neural-helix.js";
 import { resolveRemolderUnit, resolveRemolderTeam } from "./remolder.js";
 
 /**
@@ -164,12 +165,13 @@ export function weaponCalibration(weapon: WeaponDef | null, selectedLevel?: numb
   return weapon.calibrations[level];
 }
 
-/** Panel formula: Final Stat = ceil((Initial + Flat) × (1 + Stat%)) — formula Mathematically Proven; integer DISPLAY Validated; exact hidden rounding method Not Tested (stats.ts). `weapon` is the scenario-EQUIPPED weapon (null = none). `dispatchFlat` is the permanent global `dispatch_stat_buffs` by Class (src/data/dispatch.ts) — a SEPARATE flat source folded here BEFORE percentage modifiers; absent = no dispatch (two-arg callers unchanged, e.g. direct formula tests). */
+/** Panel formula: Final Stat = ceil((Initial + Flat) × (1 + Stat%)) — formula Mathematically Proven; integer DISPLAY Validated; exact hidden rounding method Not Tested (stats.ts). `weapon` is the scenario-EQUIPPED weapon (null = none). `dispatchFlat` is the permanent global `dispatch_stat_buffs` by Class (src/data/dispatch.ts) — a SEPARATE flat source folded here BEFORE percentage modifiers; absent = no dispatch (two-arg callers unchanged, e.g. direct formula tests). `remolderFlat`/`neuralHelixFlat` are further SEPARATE flat sources (Pattern Remolder Lv.60 flats; Neural Helix), all summed into the SAME flat bucket. */
 export function computePanel(
   def: CharacterDef,
   weapon: WeaponDef | null,
   dispatchFlat?: { atk?: number; hp?: number; def?: number },
   remolderFlat?: { atk?: number; hp?: number; def?: number },
+  neuralHelixFlat?: { atk?: number; hp?: number; def?: number },
 ): { atk: number; hp: number; def: number } {
   const weaponAtkBonus = weaponAtk(weapon);
   const pctAtk = (weapon?.subStats ?? []).filter((s) => s.stat === "pctAtk").reduce((a, s) => a + s.value, 0);
@@ -178,10 +180,49 @@ export function computePanel(
   // Game-authoritative FINAL STAT rounding: the integer results feed every downstream consumer
   // (damage ATK/DEF, applier-ATK fixed damage, HP pools).
   return {
-    atk: finalStat(def.base.atk, weaponAtkBonus + (dispatchFlat?.atk ?? 0) + (remolderFlat?.atk ?? 0), pctAtk),
-    hp: finalStat(def.base.hp, (dispatchFlat?.hp ?? 0) + (remolderFlat?.hp ?? 0), pctHp),
-    def: finalStat(def.base.def, (dispatchFlat?.def ?? 0) + (remolderFlat?.def ?? 0), pctDef),
+    atk: finalStat(def.base.atk, weaponAtkBonus + (dispatchFlat?.atk ?? 0) + (remolderFlat?.atk ?? 0) + (neuralHelixFlat?.atk ?? 0), pctAtk),
+    hp: finalStat(def.base.hp, (dispatchFlat?.hp ?? 0) + (remolderFlat?.hp ?? 0) + (neuralHelixFlat?.hp ?? 0), pctHp),
+    def: finalStat(def.base.def, (dispatchFlat?.def ?? 0) + (remolderFlat?.def ?? 0) + (neuralHelixFlat?.def ?? 0), pctDef),
   };
+}
+
+/**
+ * NEURAL HELIX FLAT (2026): the character's static flat ATK/HP/DEF (CharacterDef.neuralHelixStats),
+ * gated EXACTLY like the other permanent character/global flat sources — controlled math fixtures
+ * (`applyDispatchStats === false`) exclude it, and Debug-authoritative overrides suppress it on
+ * overridden stats. Extracted so the panel path and the raw-ATK basis used for team-order selection
+ * (Blossom top-N) share ONE implementation and can never diverge.
+ */
+function resolveNeuralHelixFlat(
+  def: CharacterDef,
+  applyDispatchStats: boolean | undefined,
+  overridesAuthoritative: boolean | undefined,
+  baseStatOverrides: { atk?: number; hp?: number; def?: number; stability?: number; critRate?: number; critDmg?: number } | undefined,
+): { atk: number; hp: number; def: number } {
+  const base = { atk: def.neuralHelixStats?.atk ?? 0, hp: def.neuralHelixStats?.hp ?? 0, def: def.neuralHelixStats?.def ?? 0 };
+  if (applyDispatchStats === false) return { atk: 0, hp: 0, def: 0 };
+  if (overridesAuthoritative === true && baseStatOverrides) {
+    return {
+      atk: Object.prototype.hasOwnProperty.call(baseStatOverrides, "atk") ? 0 : base.atk,
+      hp: Object.prototype.hasOwnProperty.call(baseStatOverrides, "hp") ? 0 : base.hp,
+      def: Object.prototype.hasOwnProperty.call(baseStatOverrides, "def") ? 0 : base.def,
+    };
+  }
+  return base;
+}
+
+/**
+ * Debug-authoritative per-stat key test: an explicit `baseStatOverrides.<stat>` under
+ * `overridesAuthoritative` makes that stat AUTHORITATIVE — the other permanent sources must not
+ * alter it. Shared predicate so the Neural Helix FLAT and PERCENTAGE contributions suppress the
+ * same stats consistently (Debug ATK override stays exactly 1500).
+ */
+function isAuthoritativelyOverridden(
+  baseStatOverrides: { atk?: number; hp?: number; def?: number } | undefined,
+  stat: "atk" | "hp" | "def",
+  overridesAuthoritative: boolean | undefined,
+): boolean {
+  return overridesAuthoritative === true && baseStatOverrides !== undefined && Object.prototype.hasOwnProperty.call(baseStatOverrides, stat);
 }
 
 export function resolveConfig(overrides: ConfigOverrides | undefined): ResolvedConfig {
@@ -378,7 +419,11 @@ function makeDoll(
               }
             : remolderFlatFull)
         : remolderFlatFull;
-  const panel = computePanel(def, weapon, dispatchFlat, remolderFlat);
+  // NEURAL HELIX FLAT (2026): a SEPARATE permanent per-character flat source (CharacterDef.
+  // neuralHelixStats.atk/hp/def) summed into the SAME flat bucket via `computePanel`. Gating is
+  // shared with the raw-ATK basis below via `resolveNeuralHelixFlat` (no duplicated logic).
+  const neuralHelixFlat = resolveNeuralHelixFlat(def, applyDispatchStats, overridesAuthoritative, baseStatOverrides);
+  const panel = computePanel(def, weapon, dispatchFlat, remolderFlat, neuralHelixFlat);
   const aff = resolveAffinityBonus(def, affinity?.keyId, affinity?.level, registry);
   // Common Keys (generic architecture, 2026): REUSABLE definitions resolved via the registry
   // (max 3 — "3 Common Key Slots"; fewer allowed). Stats from every selected key SUM and fold
@@ -396,9 +441,20 @@ function makeDoll(
   // STANDALONE character Affinity-LEVEL stats (2026, confirmed): Lv5 none, Lv9 ATK/HP/DEF +5% —
   // independent of the equipped Affinity Key (exact level map; absent levels grant nothing).
   const levelStat = def.affinityLevelStats?.[affinity?.level ?? 0] ?? {};
-  const atkPct = (commonStats.atkPct ?? 0) + aff.atk + (levelStat.atkPct ?? 0) + remolderPlan.selfPct.atk + remolderGrants.unityPct.atk + remolderGrants.alliedPct.atk;
-  const hpPct = aff.hp + (levelStat.hpPct ?? 0) + remolderPlan.selfPct.hp + remolderGrants.unityPct.hp + remolderGrants.alliedPct.hp;
-  const defPct = (levelStat.defPct ?? 0) + remolderPlan.selfPct.def + remolderGrants.unityPct.def + remolderGrants.alliedPct.def;
+  // NEURAL HELIX PERCENTAGE (2026): character-specific atkPct/hpPct/defPct + the UNIVERSAL
+  // NEURAL_HELIX_GLOBAL_PCT, added into the EXISTING percentage buckets (same source: every real
+  // character). Controlled fixtures exclude it exactly like the other permanent sources. Under the
+  // Debug-authoritative contract, an explicitly overridden stat is AUTHORITATIVE — its Neural Helix
+  // percentage is suppressed too (Debug ATK 1500 must stay exactly 1500, not 1500 × 1.22).
+  const nhActive = applyDispatchStats !== false;
+  const nhPct = {
+    atkPct: nhActive && !isAuthoritativelyOverridden(baseStatOverrides, "atk", overridesAuthoritative) ? (def.neuralHelixStats?.atkPct ?? 0) + NEURAL_HELIX_GLOBAL_PCT : 0,
+    hpPct: nhActive && !isAuthoritativelyOverridden(baseStatOverrides, "hp", overridesAuthoritative) ? (def.neuralHelixStats?.hpPct ?? 0) + NEURAL_HELIX_GLOBAL_PCT : 0,
+    defPct: nhActive && !isAuthoritativelyOverridden(baseStatOverrides, "def", overridesAuthoritative) ? (def.neuralHelixStats?.defPct ?? 0) + NEURAL_HELIX_GLOBAL_PCT : 0,
+  };
+  const atkPct = (commonStats.atkPct ?? 0) + aff.atk + (levelStat.atkPct ?? 0) + nhPct.atkPct + remolderPlan.selfPct.atk + remolderGrants.unityPct.atk + remolderGrants.alliedPct.atk;
+  const hpPct = aff.hp + (levelStat.hpPct ?? 0) + nhPct.hpPct + remolderPlan.selfPct.hp + remolderGrants.unityPct.hp + remolderGrants.alliedPct.hp;
+  const defPct = (levelStat.defPct ?? 0) + nhPct.defPct + remolderPlan.selfPct.def + remolderGrants.unityPct.def + remolderGrants.alliedPct.def;
   let confectance = config.confectanceStart;
   for (const k of def.fixedKeys) {
     if (keys.includes(k.id)) {
@@ -609,13 +665,16 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
     const d = m.baseStatOverrides ? { ...rd, base: { ...rd.base, ...m.baseStatOverrides } } : rd;
     // Ichor (Support 2026) also contributes flat from the INITIAL base stats for the top-ATK selection.
     const ichor = { atk: remolderPlans[i].atkPctOfBaseHp * d.base.hp, hp: remolderPlans[i].hpPctOfBaseAtk * d.base.atk, def: 0 };
+    // NEURAL HELIX flat ATK is part of the REAL panel basis, so it must also feed the raw-ATK basis
+    // used for Blossom's top-N highest-ATK selection — same gating as the panel (`resolveNeuralHelixFlat`).
+    const nhFlat = resolveNeuralHelixFlat(rd, m.applyDispatchStats, m.overridesAuthoritative, m.baseStatOverrides);
     let flat = { atk: 0, hp: 0, def: 0 };
     if (m.applyDispatchStats !== false) {
       const df = DISPATCH_STAT_BUFFS[rd.class];
       flat = {
-        atk: remolderPlans[i].flat.atk + ichor.atk + df.atk,
-        hp: remolderPlans[i].flat.hp + ichor.hp + df.hp,
-        def: remolderPlans[i].flat.def + ichor.def + df.def,
+        atk: remolderPlans[i].flat.atk + ichor.atk + df.atk + nhFlat.atk,
+        hp: remolderPlans[i].flat.hp + ichor.hp + df.hp + nhFlat.hp,
+        def: remolderPlans[i].flat.def + ichor.def + df.def + nhFlat.def,
       };
     }
     return computePanel(d, w, undefined, flat).atk;

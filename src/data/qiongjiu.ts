@@ -495,5 +495,14 @@ export const QIONGJIU: CharacterDef = {
     5: {},
     9: { atkPct: 0.05, hpPct: 0.05, defPct: 0.05 },
   },
+  // NEURAL HELIX (2026) — an INDEPENDENT system (NOT Affinity, no levels). Source material gives
+  // Qiongjiu's four displayed flat ATK nodes (37+45+53+61 = 196) and two +5.0% ATK entries
+  // (0.10 total). The universal +12% ATK%/HP%/DEF% is the GLOBAL `NEURAL_HELIX_GLOBAL_PCT`
+  // (src/data/neural-helix.ts) — never duplicated here. HP/DEF node values are NOT in the supplied
+  // source yet → intentionally omitted (no invented values); only ATK is populated.
+  neuralHelixStats: {
+    atk: 196,
+    atkPct: 0.10,
+  },
   // Common Keys are REUSABLE registry definitions (src/data/common-keys.ts) — SN lives there.
 };
