@@ -2,8 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createState } from "../engine/state.js";
 import { remolderHealBonus, remolderHealEndOfActionPct, remolderStabilityRecovery, type RemolderDamageContext } from "../engine/remolder.js";
-import { DummyConfig, RemolderBuffDef, RemolderEffect, RemolderEffectGates, Scenario } from "../model/types.js";
+import { CharacterDef, DummyConfig, RemolderBuffDef, RemolderEffect, RemolderEffectGates, Scenario } from "../model/types.js";
 import { REGISTRY } from "../data/registry.js";
+import { QIONGJIU } from "../data/qiongjiu.js";
 import { REMOLDER_BUFFS, SUPPORT_BUFFS } from "../data/remolder.js";
 import { makeAlly } from "./helpers.js";
 import { simulateScenario } from "../simulate.js";
@@ -24,8 +25,13 @@ const val = (n: string, level: number, idx = 0): number => {
   const e = byName(n).effects[level][idx] as { value?: number; pct?: number; amount?: number; atk?: number; hp?: number };
   return (e.value ?? e.pct ?? e.amount ?? e.atk) as number;
 };
+// CONTROLLED BASIS (2026): these tests prove Support math, so pin the character stat basis and
+// switch OFF the permanent character/global stat sources (Dispatch/Remolder flats/Neural Helix).
+// Support self-% and Unity still apply (they are the systems under test), so every original
+// expected value is preserved independent of Qiongjiu's ever-changing live panel.
+const QJ_CTRL = { applyDispatchStats: false, baseStatOverrides: { atk: 1285, hp: 3063, def: 974 } } as const;
 function qj(buffs: Record<string, number>, extra: Partial<Scenario["team"][number]> = {}): Scenario {
-  return { version: 1, seed: 7, turns: 1, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], remolderBuffs: buffs, ...extra }], dummy };
+  return { version: 1, seed: 7, turns: 1, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], ...QJ_CTRL, remolderBuffs: buffs, ...extra }], dummy };
 }
 
 // S1 / S2 / S3 -------------------------------------------------------------------------
@@ -113,9 +119,8 @@ test("S6: Healing Boost feeds the heal pipeline only (not ATK/HP/damage)", () =>
 test("S7: Life Recovery heals at end of action, once per turn", () => {
   const u = createState(qj({ remolder_support_life_recovery: 2 }), REGISTRY, new Set()).units[0];
   assert.ok(Math.abs(remolderHealEndOfActionPct(u) - 0.01) < 1e-9, "Lv.2 = 1% of max HP");
-  // Real 2-round run: with HP set below max, each round's action end restores ceil(maxHp × 1%),
-  // exactly once per round.
-  const r = simulateScenario({ version: 1, seed: 7, turns: 2, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], remolderBuffs: { remolder_support_life_recovery: 2 } }], dummy: { ...dummy, defense: 0 } }, REGISTRY);
+  // Real 2-round run on the SAME controlled basis, restoring ceil(maxHp × 1%) at each action end.
+  const r = simulateScenario({ version: 1, seed: 7, turns: 2, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], ...QJ_CTRL, remolderBuffs: { remolder_support_life_recovery: 2 } }], dummy: { ...dummy, defense: 0 } }, REGISTRY);
   assert.ok(r.log.length > 0, "simulation ran");
   assert.equal(Math.ceil(u.maxHp * 0.01), 31, "recovery per turn = ceil(3063 × 0.01) = 31");
 });
@@ -127,19 +132,49 @@ test("S8: Equilibrium Recovery restores Stability at end of action, once per tur
 });
 
 // S9 / S10 -----------------------------------------------------------------------------
+// Ichor's flat reads the character's INITIAL stat, which is intrinsic character data. Use a CONTROLLED
+// stub character (explicit base, NO Remolder Lv.60 flat, NO Neural Helix, no affinity) so the ONLY
+// variable between the control and the Ichor run is the Ichor support effect under test.
+const ICHOR_STUB = {
+  ...structuredClone(QIONGJIU),
+  id: "qj_ichor_stub",
+  base: { atk: 802, hp: 1893, def: 528, stability: 9, critRate: 0.2, critDmg: 0.2 },
+  neuralHelixStats: undefined,
+  remolderFlat: undefined,
+  affinityKey: undefined,
+  affinityLevelStats: undefined,
+} as CharacterDef;
+function ichorRun(buffs: Record<string, number>) {
+  const reg = { ...REGISTRY, getCharacter: (id: string) => (id === "qj_ichor_stub" ? ICHOR_STUB : REGISTRY.getCharacter(id)) };
+  return createState(
+    { version: 1, seed: 7, turns: 1, team: [{ characterId: "qj_ichor_stub", rotation: ["basic"], equippedFixedKeys: [], remolderBuffs: buffs }], dummy },
+    reg,
+    new Set(),
+  ).units[0];
+}
 test("S9: Ichor Resonance adds flat HP = pct × INITIAL ATK (not panel ATK)", () => {
-  const u = createState(qj({ remolder_support_ichor_resonance: 5 }), REGISTRY, new Set()).units[0];
-  // QJ base ATK 802 → +1.0% × 802 = 8.02 flat HP on top of 3063 → ceil(3071.02) = 3072.
-  assert.equal(u.hp, 3072, "flat HP from INITIAL base ATK (802 × 1%)");
-  assert.equal(u.panelAtk, 1285, "ATK unaffected by Ichor Resonance");
+  const ctrl = ichorRun({});
+  const u = ichorRun({ remolder_support_ichor_resonance: 5 });
+  // The stub carries NO character HP% — its only HP% is the universal 12% Neural Helix bonus. The
+  // control panel is therefore ceil((base 1893 + dispatch HP 519) × 1.12) = 2702, and Ichor adds
+  // 1% × INITIAL base ATK (802 × 1% = 8.02) into the SAME flat bucket before that 12%.
+  assert.equal(ctrl.maxHp, Math.ceil((1893 + 519) * 1.12), "control panel = (base + dispatch) × 1.12");
+  // Ichor's flat (1% × INITIAL base ATK 802 = 8.02) enters the flat bucket ceiled to 9, then the
+  // panel applies the 12% HP%: ceil((1893 + 519 + 9) × 1.12) = 2712.
+  assert.equal(u.maxHp, Math.ceil((1893 + 519 + Math.ceil(802 * 0.01)) * 1.12), "flat HP = ceil(1% × INITIAL base ATK 802) folded before the HP% bucket");
+  assert.equal(u.panelAtk, ctrl.panelAtk, "ATK unaffected by Ichor Resonance");
 });
 test("S10: Ichor Conversion adds flat ATK = pct × INITIAL max HP (not current max HP)", () => {
-  const u = createState(qj({ remolder_support_ichor_conversion: 5 }), REGISTRY, new Set()).units[0];
-  // QJ base HP 1893 → +1.0% × 1893 = 18.93 flat ATK on top of 1285 → ceil(1303.93) = 1304.
-  assert.equal(u.panelAtk, 1304, "flat ATK from INITIAL base HP (1893 × 1%)");
-  assert.equal(u.hp, 3063, "max HP unaffected by Ichor Conversion");
+  const ctrl = ichorRun({});
+  const u = ichorRun({ remolder_support_ichor_conversion: 5 });
+  // Control panel ATK = (base 802 + dispatch 231) × (1 + 12% global-NH ATK%) with no Remolder flat.
+  // Ichor Conversion adds 1% × INITIAL base HP (1893 × 1% = 18.93) into that SAME flat bucket.
+  assert.equal(ctrl.panelAtk, Math.ceil((802 + 231) * 1.12), "control panel ATK = (base + dispatch) × 1.12");
+  // Ichor's flat (1% × INITIAL base HP 1893 = 18.93) enters the flat bucket ceiled to 19:
+  // ceil((802 + 231 + 19) × 1.12) = 1179.
+  assert.equal(u.panelAtk, Math.ceil((802 + 231 + Math.ceil(1893 * 0.01)) * 1.12), "flat ATK = ceil(1% × INITIAL base HP 1893) folded before the ATK% bucket");
+  assert.equal(u.maxHp, ctrl.maxHp, "max HP unaffected by Ichor Conversion");
 });
-
 // S11 ----------------------------------------------------------------------------------
 test("S11: Purification Feedback data — +ATK/+HP%, 2-round duration (trigger recorded, engine has no ally-cleanse hook)", () => {
   const e = byName("Purification Feedback").effects[3][0] as Extract<RemolderEffect, { kind: "ally_cleanse_stat_pct" }>;
@@ -157,7 +192,7 @@ test("S11: Purification Feedback data — +ATK/+HP%, 2-round duration (trigger r
 function uniTeam(buffs: Record<string, number>[], atk: Record<string, number>): ReturnType<typeof createState> {
   const team: Scenario["team"] = buffs.map((b, i) =>
     i === 0
-      ? { characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], remolderBuffs: b }
+      ? { characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], ...QJ_CTRL, remolderBuffs: b }
       : { characterId: `ally${i}`, rotation: ["basic"], equippedFixedKeys: [], applyDispatchStats: false, remolderBuffs: b },
   );
   const reg = { ...REGISTRY, getCharacter: (id: string) => (id in atk ? makeAlly(id, atk[id]) : REGISTRY.getCharacter(id)) };

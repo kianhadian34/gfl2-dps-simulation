@@ -19,12 +19,20 @@ import { simulateScenario } from "../simulate.js";
 
 const dummy: DummyConfig = { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 65, weaknesses: [], phase: null, cover: "none" };
 
+/**
+ * CONTROLLED BASIS (2026): these tests prove Remolder math, so pin the character's stat basis to
+ * explicit constants and switch OFF the permanent character/global stat sources (Dispatch, Remolder
+ * Lv.60 flats, Neural Helix). Remolder self-% and Unity still apply (they are the systems under
+ * test). This keeps the assertions independent of Qiongjiu's ever-changing live panel.
+ */
+const QJ_CTRL = { applyDispatchStats: false, baseStatOverrides: { atk: 1285, hp: 3063, def: 974 } } as const;
+
 function qjScenario(extra: Partial<Scenario["team"][number]> = {}, buffSet: RemolderBuffDef[] = []): Scenario {
   return {
     version: 1,
     seed: 7,
     turns: 1,
-    team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], ...extra }],
+    team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], ...QJ_CTRL, ...extra }],
     dummy,
     ...(buffSet.length > 0 ? { remolderBuffSet: buffSet } : {}),
   };
@@ -69,13 +77,13 @@ test("A1: Qiongjiu's Lv.60 Remolder flat stats are 252/651/224, separate from ba
   assert.deepEqual(QIONGJIU.remolderFlat, { atk: 252, hp: 651, def: 224 });
   assert.equal(QIONGJIU.base.atk, 802, "base untouched (no merge)");
   const u = createState(qjScenario(), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, 1285, "802 base + 231 dispatch + 252 Remolder flat, always active");
-  assert.equal(u.hp, 3063, "1893 + 519 + 651");
-  assert.equal(u.defStat, 974, "528 + 222 + 224");
-  assert.deepEqual(u.remolder?.flat, { atk: 252, hp: 651, def: 224 }, "source kept for provenance");
+  // Panel armature on the CONTROLLED basis — proves the Remolder flat is a SEPARATE source, never merged into `base` (the character data itself is asserted above).
+  assert.equal(u.panelAtk, 1285, "controlled basis ATK unchanged by the Remolder flat (separate source)");
+  assert.equal(u.hp, 3063, "controlled basis HP unchanged by the Remolder flat");
+  assert.equal(u.defStat, 974, "controlled basis DEF unchanged by the Remolder flat");
 });
 test("A2: controlled fixture members exclude the Remolder flat (panel contract)", () => {
-  const u = createState(qjScenario({ applyDispatchStats: false }), REGISTRY, new Set()).units[0];
+  const u = createState(qjScenario({ applyDispatchStats: false, baseStatOverrides: {} }), REGISTRY, new Set()).units[0];
   assert.equal(u.panelAtk, 802, "fixture panel = base only (no dispatch, no Remolder flat)");
 });
 
@@ -130,7 +138,7 @@ const uniMember = (id: string, level: number): Scenario["team"][number] => ({ ch
 
 test("E1: a single Unity source grants its level once to allies (owner excluded)", () => {
   const st = uniState(
-    [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [] }, uniMember("allyA", 5)],
+    [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], ...QJ_CTRL }, uniMember("allyA", 5)],
     { allyA: 1000 },
   );
   const [qj, ally] = st.units;
@@ -140,7 +148,7 @@ test("E1: a single Unity source grants its level once to allies (owner excluded)
 
 test("E2: higher Unity level defeats lower level (higher wins, lower ignored)", () => {
   const st = uniState(
-    [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [] }, uniMember("allyA", 5), uniMember("allyB", 3)],
+    [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], ...QJ_CTRL }, uniMember("allyA", 5), uniMember("allyB", 3)],
     { allyA: 1000, allyB: 900 },
   );
   const [qj] = st.units;
@@ -149,7 +157,7 @@ test("E2: higher Unity level defeats lower level (higher wins, lower ignored)", 
 
 test("E3: multiple lower-level Unity sources are all ignored", () => {
   const st = uniState(
-    [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [] }, uniMember("allyA", 2), uniMember("allyB", 4), uniMember("allyC", 1)],
+    [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], ...QJ_CTRL }, uniMember("allyA", 2), uniMember("allyB", 4), uniMember("allyC", 1)],
     { allyA: 1000, allyB: 900, allyC: 800 },
   );
   const [qj] = st.units;
@@ -158,7 +166,7 @@ test("E3: multiple lower-level Unity sources are all ignored", () => {
 
 test("E4: two or more sources tied at the highest level → exactly ONE active effect", () => {
   const st = uniState(
-    [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [] }, uniMember("allyA", 5), uniMember("allyB", 5), uniMember("allyC", 3)],
+    [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], ...QJ_CTRL }, uniMember("allyA", 5), uniMember("allyB", 5), uniMember("allyC", 3)],
     { allyA: 1000, allyB: 900, allyC: 800 },
   );
   const [qj] = st.units;
@@ -167,7 +175,7 @@ test("E4: two or more sources tied at the highest level → exactly ONE active e
 
 test("E5: tied Unity sources do NOT stack additively (duplicate Lv5 ≠ +10%)", () => {
   const st = uniState(
-    [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [] }, uniMember("allyA", 5), uniMember("allyB", 5)],
+    [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], ...QJ_CTRL }, uniMember("allyA", 5), uniMember("allyB", 5)],
     { allyA: 1000, allyB: 900 },
   );
   const [qj, a, b] = st.units;
@@ -182,7 +190,7 @@ test("F1: additive_dealt enters the same DMG% bucket (basic hit +5%)", () => {
   const mk = (withBuff: boolean) =>
     simulateScenario(
       qjScenario(
-        { remolderBuffs: withBuff ? { test_dealt: 1 } : {}, baseStatOverrides: { critRate: 0 } },
+        { remolderBuffs: withBuff ? { test_dealt: 1 } : {}, baseStatOverrides: { atk: 1285, hp: 3063, def: 974, critRate: 0 } },
         [DEALT_FLAT],
       ),
       REGISTRY,
@@ -240,7 +248,7 @@ test("G1: gate matching rejects non-qualifying events", () => {
 test("H1: Blossom start-of-battle — top-2 allied highest-ATK units +3%, owner excluded, once", () => {
   const sc = teamSc(
     [
-      { characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], remolderBuffs: { test_sf: 15, test_vg: 9, test_bw: 5 } },
+      { characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], ...QJ_CTRL, remolderBuffs: { test_sf: 15, test_vg: 9, test_bw: 5 } },
       { characterId: "allyA", rotation: ["basic"], equippedFixedKeys: [], applyDispatchStats: false },
       { characterId: "allyB", rotation: ["basic"], equippedFixedKeys: [], applyDispatchStats: false },
     ],

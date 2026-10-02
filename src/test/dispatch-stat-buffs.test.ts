@@ -8,18 +8,47 @@ import { DISPATCH_STAT_BUFFS } from "../data/dispatch.js";
 
 /**
  * DISPATCH STAT BUFFS (2026) — the permanent GLOBAL class-stat system.
- * Real characters receive their Class's flat ATK/HP/DEF automatically (member
- * `applyDispatchStats` absent); controlled math fixtures opt out explicitly. These tests
- * validate the REAL system: a true Qiongjiu (sentinel, no fixture flag) and the 4-class table.
+ *
+ * These tests prove DISPATCH behaviour. Dispatch is delivered together with the other permanent
+ * character/global stat sources (Remolder Lv.60 flats, Neural Helix) behind ONE fixture switch, so
+ * the math/oracle tests here pin the character's stat basis explicitly (applyDispatchStats:false +
+ * explicit baseStatOverrides) to observe DISPATCH alone and stay independent of Qiongjiu's
+ * ever-changing live panel. The DEBUG-authoritative rows exercise the LIVE stack on purpose.
+ * The real-Qiongjiu "all implemented systems" panel lives in qiongjiu-integration.test.ts.
  */
 const dummy: DummyConfig = { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], phase: null, cover: "none" };
 
+/** CONTROLLED dispatch basis: the permanent character/global stat bundle is OFF, so the ONLY flat
+ *  under observation is what each test adds. Qiongjiu's Sentinel class still routes dispatch. */
+function ctrlScenario(extra: Partial<Scenario["team"][number]> = {}): Scenario {
+  return {
+    version: 1,
+    seed: 7,
+    turns: 1,
+    // applyDispatchStats AFTER the spread so a fixture basis can never accidentally re-enable it.
+    team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], ...extra, applyDispatchStats: false }],
+    dummy,
+  };
+}
+
+/** CONTROLLED basis WITH the permanent bundle LIVE (dispatch + Remolder flats + Neural Helix), with
+ *  the character's base pinned so the DISPATCH contribution is observable and Qiongjiu-independent. */
+function liveScenario(extra: Partial<Scenario["team"][number]> = {}): Scenario {
+  return {
+    version: 1,
+    seed: 7,
+    turns: 1,
+    team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], ...extra }],
+    dummy,
+  };
+}
+
+/** LIVE character run: no applyDispatchStats ⇒ the full permanent stack applies (production semantics). */
 function qjScenario(extra: Partial<Scenario["team"][number]> = {}): Scenario {
   return {
     version: 1,
     seed: 7,
     turns: 1,
-    // REAL character run: no applyDispatchStats ⇒ dispatch ALWAYS applies (production semantics).
     team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], ...extra }],
     dummy,
   };
@@ -34,58 +63,68 @@ test("dispatch_stat_buffs table: exactly the validated ATK/HP/DEF bonuses for al
   });
 });
 
-test("Qiongjiu is a Sentinel (mandatory class) and receives Sentinel dispatch", () => {
+test("Qiongjiu is a Sentinel (mandatory class) and dispatches its class flat onto base", () => {
   assert.equal(QIONGJIU.class, "sentinel");
-  const u = createState(qjScenario(), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, 1285, "base 802 + dispatch +231 + Remolder flat +252");
-  assert.equal(u.hp, 3063, "base 1893 + dispatch +519 + Remolder flat +651");
-  assert.equal(u.maxHp, 3063);
-  assert.equal(u.defStat, 974, "base 528 + dispatch +222 + Remolder flat +224");
-  assert.equal(u.stability, 9, "dispatch never touches stability");
+  // Isolate DISPATCH on a controlled basis: the Sentinel class row (+231/+519/+222) enters the
+  // flat bucket, then the live percentage buckets apply. Control (bundle OFF) vs live (bundle ON).
+  const off = createState(ctrlScenario({ baseStatOverrides: { atk: 802, hp: 1893, def: 528 } }), REGISTRY, new Set()).units[0];
+  const on = createState(liveScenario({ baseStatOverrides: { atk: 802, hp: 1893, def: 528 } }), REGISTRY, new Set()).units[0];
+  assert.equal(off.panelAtk, 802, "control run = base only (bundle OFF)");
+  assert.equal(on.panelAtk, 1807, "base 802 + dispatch 231 + Remolder 252 + NH 196, then the live 22% ATK%: ceil(1481 × 1.22)");
+  assert.equal(on.hp, 3431, "base 1893 + dispatch 519 + Remolder 651, then the live 12% HP%: ceil(3063 × 1.12)");
+  assert.equal(on.defStat, 1091, "base 528 + dispatch 222 + Remolder 224, then the live 12% DEF%: ceil(974 × 1.12)");
+  assert.equal(on.stability, 9, "dispatch never touches stability");
 });
 
-test("clean Qiongjiu panel (no weapon): ATK 1285 / HP 3063 / DEF 974 (base + dispatch + Remolder flat)", () => {
-  const u = createState(qjScenario(), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, 1285);
-  assert.equal(u.hp, 3063);
-  assert.equal(u.defStat, 974);
+test("controlled fixture basis: the permanent dispatch row is excluded (panel = base only, no weapon)", () => {
+  const u = createState(ctrlScenario({ baseStatOverrides: { atk: 802, hp: 1893, def: 528 } }), REGISTRY, new Set()).units[0];
+  assert.equal(u.panelAtk, 802, "fixture panel = base only (no dispatch/Remolder/Neural Helix)");
+  assert.equal(u.hp, 1893);
+  assert.equal(u.defStat, 528);
 });
 
-test("dispatch + weapon flat + percentage: ceil((802 + 231 + 252 + 369) × 1.15) = 1903", () => {
-  const u = createState(qjScenario({ weaponId: "jinshizou" }), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, 1903, "dispatch AND Remolder flat folded BEFORE the ATK% — one panel path");
+test("weapon flat + ATK% fold BEFORE the percentage: ceil((802 + 231 + 369) × 1.15)", () => {
+  // base 802 + Sentinel dispatch 231 + Golden Melody flat 369, then × 1.15 (weapon ATK% sub-stat).
+  // Controlled basis (bundle ON so dispatch applies) + weapon flat, then the weapon's own ATK%.
+  const u = createState(liveScenario({ baseStatOverrides: { atk: 802, hp: 1893, def: 528 }, weaponId: "jinshizou" }), REGISTRY, new Set()).units[0];
+  // computePanel: ceil((base 802 + dispatch 231 + Remolder 252 + NH 196 + weapon 369) × 1.15 weaponATK%)
+  // then the live 22% ATK% bucket: ceil(2128 × 1.22) = 2597. Flat folds BEFORE every ATK% — one panel path.
+  assert.equal(u.panelAtk, Math.ceil(Math.ceil((802 + 231 + 252 + 196 + 369) * 1.15) * 1.22), "flat (base + dispatch + Remolder + NH + weapon) folded BEFORE the ATK% — one panel path");
 });
 
-test("dispatch remains separate from baseStatOverrides: ATK 1000 override → 1000 + 231 = 1231", () => {
-  const u = createState(qjScenario({ baseStatOverrides: { atk: 1000 } }), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, 1483, "override replaces base (1000) then +dispatch 231 +Remolder 252 — independent flat sources");
+test("dispatch stays separate from a base override: ATK 1000 override → +231 dispatch", () => {
+  const u = createState(liveScenario({ baseStatOverrides: { atk: 1000, hp: 1893, def: 528 } }), REGISTRY, new Set()).units[0];
+  assert.equal(u.panelAtk, Math.ceil((1000 + 231 + 252 + 196) * 1.22), "override replaces base (1000) then +dispatch 231 +Remolder 252 +NH 196 — independent flat sources");
 });
 
-test("percentage modifiers (common keys) operate on the dispatch-inclusive panel: ceil(1033 × 1.05) = 1085", () => {
-  const u = createState(qjScenario({ commonKeyIds: ["qiongjiu_common_strategic_negotiation"] }), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, 1350, "ceil(1285 × 1.05) — dispatch + Remolder flat participate in the SAME finalStat(base + flat, pct) product");
-  assert.equal(u.hp, 3063, "no HP% → HP stays the dispatch-inclusive value");
+test("percentage modifiers operate on the dispatch-inclusive flat: ceil((802 + 231) × 1.05)", () => {
+  const u = createState(liveScenario({ baseStatOverrides: { atk: 802, hp: 1893, def: 528 }, commonKeyIds: ["qiongjiu_common_strategic_negotiation"] }), REGISTRY, new Set()).units[0];
+  // Live ATK% = NH 22% + Strategic Negotiation 5% = 27%; the common-key % rides the dispatch-inclusive flat.
+  assert.equal(u.panelAtk, Math.ceil((802 + 231 + 252 + 196) * (1 + 0.22 + 0.05)), "ceil((base + dispatch + Remolder + NH) × 1.27) — same finalStat(base + flat, pct) product");
+  assert.equal(u.hp, Math.ceil((1893 + 519 + 651) * 1.12), "HP keeps the dispatch-inclusive flat × the live 12% HP%");
 });
-test("DEBUG-authoritative overrides: ATK 1500 override suppresses Sentinel dispatch (panel stays 1500); HP/DEF still dispatch", () => {
+
+// --- DEBUG-authoritative rows: these intentionally exercise the LIVE permanent stack ------------
+test("DEBUG-authoritative overrides: ATK 1500 override suppresses every ATK source; HP/DEF keep the live stack", () => {
   const u = createState(qjScenario({ baseStatOverrides: { atk: 1500 }, overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, 1500, "overridden stat is authoritative — no +231 underneath");
-  assert.equal(u.hp, 3063, "HP not overridden — dispatch still applies (1893 + 519)");
-  assert.equal(u.defStat, 974, "DEF not overridden — dispatch still applies (528 + 222)");
+  assert.equal(u.panelAtk, 1500, "overridden stat is authoritative — no dispatch/Remolder/Neural Helix underneath");
+  assert.equal(u.hp, 3431, "HP not overridden — the live permanent flat + 12% HP% apply");
+  assert.equal(u.defStat, 1091, "DEF not overridden — the live permanent flat + 12% DEF% apply");
 });
 
-test("DEBUG-authoritative overrides: HP override suppresses dispatch HP; ATK/DEF still dispatch", () => {
+test("DEBUG-authoritative overrides: HP override suppresses every HP source; ATK/DEF keep the live stack", () => {
   const u = createState(qjScenario({ baseStatOverrides: { hp: 2000 }, overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
   assert.equal(u.hp, 2000, "HP override authoritative");
   assert.equal(u.maxHp, 2000);
-  assert.equal(u.panelAtk, 1285, "ATK still receives dispatch + Remolder flat");
-  assert.equal(u.defStat, 974, "DEF still receives dispatch + Remolder flat");
+  assert.equal(u.panelAtk, 1807, "ATK still receives dispatch + Remolder flat + Neural Helix");
+  assert.equal(u.defStat, 1091, "DEF still receives dispatch + Remolder flat + Neural Helix");
 });
 
-test("DEBUG-authoritative overrides: DEF override suppresses dispatch DEF; ATK/HP still dispatch", () => {
+test("DEBUG-authoritative overrides: DEF override suppresses every DEF source; ATK/HP keep the live stack", () => {
   const u = createState(qjScenario({ baseStatOverrides: { def: 700 }, overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
   assert.equal(u.defStat, 700, "DEF override authoritative");
-  assert.equal(u.panelAtk, 1285, "ATK still receives dispatch + Remolder flat");
-  assert.equal(u.hp, 3063, "HP still receives dispatch + Remolder flat");
+  assert.equal(u.panelAtk, 1807, "ATK still receives dispatch + Remolder flat + Neural Helix");
+  assert.equal(u.hp, 3431, "HP still receives dispatch + Remolder flat + Neural Helix");
 });
 
 test("DEBUG-authoritative overrides: all three overridden — all authoritative", () => {
@@ -95,14 +134,14 @@ test("DEBUG-authoritative overrides: all three overridden — all authoritative"
   assert.equal(u.defStat, 700);
 });
 
-test("DEBUG-authoritative flag with NO overrides — dispatch fully applies (no phantoms)", () => {
+test("DEBUG-authoritative flag with NO overrides — the live permanent stack fully applies", () => {
   const u = createState(qjScenario({ overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, 1285);
-  assert.equal(u.hp, 3063);
-  assert.equal(u.defStat, 974);
+  assert.equal(u.panelAtk, 1807);
+  assert.equal(u.hp, 3431);
+  assert.equal(u.defStat, 1091);
 });
 
-test("math fixtures WITHOUT the flag keep override + dispatch coexistence: ATK 2000 override → 2231", () => {
-  const u = createState(qjScenario({ baseStatOverrides: { atk: 2000 } }), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, 2483, "fixture override 2000 + dispatch 231 + Remolder flat 252 (established coexistence)");
+test("math fixtures WITHOUT the authoritative flag keep override + dispatch coexistence: ATK 2000 override", () => {
+  const u = createState(liveScenario({ baseStatOverrides: { atk: 2000, hp: 1893, def: 528 } }), REGISTRY, new Set()).units[0];
+  assert.equal(u.panelAtk, Math.ceil((2000 + 231 + 252 + 196) * 1.22), "override 2000 + dispatch 231 (+ the other permanent flats), then the live 22% ATK% bucket");
 });

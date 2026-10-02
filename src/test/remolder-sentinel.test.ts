@@ -27,7 +27,7 @@ function qj(buffs: Record<string, number>, extra: Partial<Scenario["team"][numbe
     version: 1,
     seed: 7,
     turns: 1,
-    team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], remolderBuffs: buffs, ...extra }],
+    team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], applyDispatchStats: false, baseStatOverrides: { atk: 1285, hp: 3063, def: 974 }, remolderBuffs: buffs, ...extra }],
     dummy,
     ...(buffSet ? { remolderBuffSet: buffSet } : {}),
   };

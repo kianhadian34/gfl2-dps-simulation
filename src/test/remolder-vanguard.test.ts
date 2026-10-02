@@ -82,7 +82,7 @@ test("V3: exact level values transcribed verbatim (Smite Boost shows ALL SEVEN a
 
 // --- 3. Clamping / level 0 ------------------------------------------------------------
 test("V4: Smite Boost Lv.8 clamps to Lv.7; level 0 inactive", () => {
-  const sc = (lvl: number): Scenario => ({ version: 1, seed: 7, turns: 1, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], remolderBuffs: { remolder_vanguard_smite_boost: lvl } }], dummy });
+  const sc = (lvl: number): Scenario => ({ version: 1, seed: 7, turns: 1, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], applyDispatchStats: false, baseStatOverrides: { atk: 1285, hp: 3063, def: 974 }, remolderBuffs: { remolder_vanguard_smite_boost: lvl } }], dummy });
   const clamped = createState(sc(8), REGISTRY, new Set()).units[0];
   assert.equal(clamped.remolder!.activeBuffs[0].level, 7, "8 → 7");
   const lvl7 = createState(sc(7), REGISTRY, new Set()).units[0];
@@ -129,7 +129,7 @@ test("V7: Bloodthirst recovers HP = pct × ATK on dealing damage (real engine, n
   const base = { version: 1 as const, seed: 7, turns: 1, dummy };
   // Qiongjiu at less-than-full HP takes a Basic Attack that deals damage → HP recovers by ceil(ATK × pct).
   const run = (buffs: Record<string, number>) => {
-    const st = createState({ ...base, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], remolderBuffs: buffs }] }, REGISTRY, new Set());
+    const st = createState({ ...base, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], applyDispatchStats: false, baseStatOverrides: { atk: 1285, hp: 3063, def: 974 }, remolderBuffs: buffs }] }, REGISTRY, new Set());
     return st.units[0];
   };
   const withBlood = run({ remolder_vanguard_bloodthirst: 3 });
@@ -143,24 +143,24 @@ test("V7: Bloodthirst recovers HP = pct × ATK on dealing damage (real engine, n
 test("V8: Bloodthirst heals on damage in a real simulation (capped at max HP)", async () => {
   const { simulateScenario } = await import("../simulate.js");
   // A damaged Qiongjiu with Bloodthirst Lv.3 recovers ceil(panelAtk × 0.06) after her Basic Attack.
-  const r = simulateScenario({ version: 1, seed: 7, turns: 1, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], remolderBuffs: { remolder_vanguard_bloodthirst: 3 } }], dummy }, REGISTRY);
+  const r = simulateScenario({ version: 1, seed: 7, turns: 1, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], applyDispatchStats: false, baseStatOverrides: { atk: 1285, hp: 3063, def: 974 }, remolderBuffs: { remolder_vanguard_bloodthirst: 3 } }], dummy }, REGISTRY);
   const ev = r.log.find((e) => e.action === "qiongjiu_basic")!;
   // The heal itself is verified through the engine helper used by the damage site.
-  const st = createState({ version: 1, seed: 7, turns: 1, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], remolderBuffs: { remolder_vanguard_bloodthirst: 3 } }], dummy }, REGISTRY, new Set());
+  const st = createState({ version: 1, seed: 7, turns: 1, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], applyDispatchStats: false, baseStatOverrides: { atk: 1285, hp: 3063, def: 974 }, remolderBuffs: { remolder_vanguard_bloodthirst: 3 } }], dummy }, REGISTRY, new Set());
   assert.ok(ev, "the attack resolved");
   assert.equal(Math.ceil(st.units[0].panelAtk * remolderHealOnAttackPct(st.units[0])), Math.ceil(1285 * 0.06), "heal = ceil(ATK × 6%) = 78");
 });
 
 // --- 7. Shock and Awe fixed Stability ------------------------------------------------
 test("V9: Shock and Awe adds a fixed Stability amount once per turn (real engine buffers)", () => {
-  const u = createState({ version: 1, seed: 7, turns: 2, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], remolderBuffs: { remolder_vanguard_shock_and_awe: 2 } }], dummy }, REGISTRY, new Set()).units[0];
+  const u = createState({ version: 1, seed: 7, turns: 2, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], applyDispatchStats: false, baseStatOverrides: { atk: 1285, hp: 3063, def: 974 }, remolderBuffs: { remolder_vanguard_shock_and_awe: 2 } }], dummy }, REGISTRY, new Set()).units[0];
   assert.equal(remolderFirstTargetStability(u), 2, "Lv.2 = +2 fixed Stability");
-  assert.equal(remolderFirstTargetStability(createState({ version: 1, seed: 7, turns: 1, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [] }], dummy }, REGISTRY, new Set()).units[0]), 0, "absent → 0");
+  assert.equal(remolderFirstTargetStability(createState({ version: 1, seed: 7, turns: 1, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], applyDispatchStats: false, baseStatOverrides: { atk: 1285, hp: 3063, def: 974 } }], dummy }, REGISTRY, new Set()).units[0]), 0, "absent → 0");
 });
 
 test("V10: real run — Shock and Awe raises the first hit's stability damage each turn", async () => {
   const { simulateScenario } = await import("../simulate.js");
-  const mk = (buffs: Record<string, number>) => simulateScenario({ version: 1, seed: 7, turns: 2, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], remolderBuffs: buffs }], dummy }, REGISTRY);
+  const mk = (buffs: Record<string, number>) => simulateScenario({ version: 1, seed: 7, turns: 2, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], applyDispatchStats: false, baseStatOverrides: { atk: 1285, hp: 3063, def: 974 }, remolderBuffs: buffs }], dummy }, REGISTRY);
   const plain = mk({});
   const awed = mk({ remolder_vanguard_shock_and_awe: 1 });
   const stabPlain = plain.log.filter((e) => e.action === "qiongjiu_basic").map((e) => e.stabilityDamage);

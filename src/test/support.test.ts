@@ -15,7 +15,7 @@ function twoDollScenario(turns: number): Scenario {
       { characterId: "test_ally", applyDispatchStats: false,
         rotation: ["basic"], equippedFixedKeys: [] },
       { characterId: "qiongjiu",
-       baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"] },
+       baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"] },
     ],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
     configOverrides: { critMultiplier: 1.5 },
@@ -30,9 +30,11 @@ test("ally single-target hit triggers Qiongjiu's support attack (90% ATK, +2 sta
   assert.equal(support[0].source, "passive");
   assert.equal(support[0].actionType, "support");
   assert.equal(support[0].stabilityDamage, 2);
-  // Support hit = 0.9 × Qiongjiu panel ATK (1831.95) × (1 + 0.1 no-cover), crit optional:
-  const min = Math.ceil(0.9 * 1831.95 * 1.1);
-  const max = Math.ceil(0.9 * 1831.95 * 1.1 * 1.5);
+  // The two-doll scenario pins Qiongjiu's base to a CONTROLLED 1224/2494/695 with the permanent
+  // character/global stat bundle OFF, so the support hit = 0.9 x panel ATK 1224 x (1 + 0.1 no-cover),
+  // crit optional (critMultiplier 1.5 in this scenario) - no dependence on Qiongjiu's live panel.
+  const min = Math.ceil(0.9 * 1224 * 1.1);
+  const max = Math.ceil(0.9 * 1224 * 1.1 * 1.5);
   assert.ok(support[0].finalDamage >= min && support[0].finalDamage <= max, `support damage ${support[0].finalDamage} in [${min}, ${max}]`);
   // 3 events: ally basic (t1), qiongjiu support (t2), qiongjiu basic (t3)
   assert.equal(r.log.length, 3);
@@ -54,7 +56,7 @@ test("a solo doll never fires support attacks (no allies)", () => {
     seed: 7,
     turns: 2,
     team: [{ characterId: "qiongjiu",
-     baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: [] }],
+     baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [] }],
     dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
   });
   assert.ok(r.log.every((e) => !e.supportAttack));
@@ -71,7 +73,7 @@ test("trigger fidelity: an ally action that deals NO damage does NOT trigger a S
       team: [
         { characterId: "test_ally", rotation: ["ultimate"], equippedFixedKeys: [] },
         { characterId: "qiongjiu",
-         baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, rotation: ["basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"] },
+         baseStatOverrides: { atk: 1224, hp: 2494, def: 695 }, applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: ["qiongjiu_fk1_concentration"] },
       ],
       dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 0, stability: 0, weaknesses: [], phase: null, cover: "none" },
       configOverrides: { confectanceStart: 6 }, // keep the 0-damage ally ultimate affordable every round (no basic fallback)

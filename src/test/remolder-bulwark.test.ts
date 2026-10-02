@@ -27,7 +27,7 @@ const val = (n: string, level: number): number => {
   return (e.value ?? e.pct ?? e.pctOfMaxHp ?? e.amount) as number;
 };
 function qj(buffs: Record<string, number>, extra: Partial<Scenario["team"][number]> = {}): Scenario {
-  return { version: 1, seed: 7, turns: 1, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], remolderBuffs: buffs, ...extra }], dummy };
+  return { version: 1, seed: 7, turns: 1, team: [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], applyDispatchStats: false, baseStatOverrides: { atk: 1285, hp: 3063, def: 974 }, remolderBuffs: buffs, ...extra }], dummy };
 }
 
 // Shared: a unit carrying one synthetic taken-side modifier (the exact shape the pipeline reads).
