@@ -5,7 +5,7 @@ import type { Registry } from "../data/registry.js";
 import { rollHit } from "./damage.js";
 import { cooldownRemaining, setCooldown, tickCooldowns } from "./cooldowns.js";
 import { gainConfectance, spendConfectance } from "./resources.js";
-import { attackHeightEffect, bossFootprintTiles, legalDestinations, moveCost, resolveCardinalRayTarget, resolveCardinalRayTargets, tileKey } from "./grid.js";
+import { attackHeightEffect, bossFootprintTiles, legalDestinations, moveCost, resolveCardinalRayTarget, resolveCardinalRayTargets, tileKey, unitDistance, type GridState } from "./grid.js";
 import {
   additiveDealtBonus,
   additiveTakenBonus,
@@ -19,6 +19,7 @@ import {
   statModifier,
   tickStatuses,
 } from "./statuses.js";
+import { remolderCritDmgBonus, remolderFirstTargetStability, remolderHealBonus, remolderHealEndOfActionPct, remolderHealOnAttackPct, remolderReactiveDamage, remolderStabilityRecovery } from "./remolder.js";
 import { applyStabilityDamage, endOfRoundStability } from "./stability.js";
 import { abilitySourceLabel, createState, DEFAULT_CONFIG, fortificationV, passiveSourceLabel, supportAttackQuota, weaponCalibration, type EffectiveStatusDef, type SimulationState, type UnitState } from "./state.js";
 import type { ActiveStatus } from "../model/runtime.js";
@@ -277,6 +278,73 @@ export function displacementImmunityActive(unit: UnitState): boolean {
   return gate.displacementImmunityWhenStatuses!.some((id) => unit.statuses.some((s) => s.statusId === id));
 }
 
+/**
+ * Attack-origin → target distance in tiles (Pattern Remolder Sentinel "Headhunter" gate, 2026).
+ * The attacker's origin is its tile; the target's origin is the boss CENTER for a 3×3 boss,
+ * else the target tile — the engine's existing `unitDistance` semantics. Returns `undefined`
+ * when the attacker has no placement (no grid / unplaced) so distance-gated effects stay OFF.
+ */
+function attackDistance(grid: GridState, attackerId: string): number | undefined {
+  const from = grid.placements.get(attackerId);
+  if (!from) return undefined;
+  return unitDistance(from.coord, grid.boss.center);
+}
+
+/**
+ * Enemy count within 3 tiles (Manhattan) of a unit (Bulwark "Breakout"/"Lone Rider" gates, 2026):
+ * the boss (center) plus every `enemyUnits` entry within 3 tiles. A unit's origin is its grid
+ * placement; the training dummy/boss has no placement — its origin is the boss center (mirroring
+ * `attackDistance`), and its own tile is excluded (a unit is not its own enemy). Returns
+ * `undefined` when no grid state is available so enemy-count-gated effects stay OFF.
+ */
+export function enemiesWithin3(grid: GridState, unitId: string): number | undefined {
+  const from = grid.placements.get(unitId);
+  const origin = from ? from.coord : grid.boss.center;
+  const coords = [grid.boss.center, ...grid.enemyUnits.map((e) => e.coord)];
+  return coords.filter((c) => !(c.x === origin.x && c.y === origin.y) && unitDistance(origin, c) <= 3).length;
+}
+
+/**
+ * Bulwark "Lex Talionis" (2026): when `victim` TAKES `damageTaken` damage, it retaliates against
+ * `attacker` with fixed damage = pct × victim max HP (capped at victim ATK). A SEPARATE reactive
+ * event — never additive/taken/ATK. Fires only when damage was actually taken. Returns the total
+ * retaliation dealt.
+ */
+export function applyReactiveDamage(state: SimulationState, victim: UnitState, attacker: UnitState, damageTaken: number): number {
+  const specs = remolderReactiveDamage(victim, damageTaken);
+  let total = 0;
+  for (const spec of specs) {
+    const raw = victim.maxHp * spec.pctOfMaxHp;
+    const capped = spec.capAtAtk ? Math.min(raw, victim.panelAtk) : raw;
+    const amount = Math.ceil(capped);
+    if (amount <= 0) continue;
+    attacker.hp = Math.max(0, attacker.hp - amount);
+    total += amount;
+    state.log.push({
+      round: state.round,
+      turn: 0,
+      unit: victim.id,
+      action: "lex_talionis",
+      actionType: "status_tick",
+      target: attacker.id,
+      source: "passive",
+      supportAttack: false,
+      weaknessExploited: [],
+      phaseMult: 1,
+      bonusBracket: 1,
+      reductionMult: 1,
+      attackerAtk: victim.panelAtk,
+      targetDef: attacker.defStat,
+      finalDamage: amount,
+      fixedDamage: amount,
+      cooldownAfter: {},
+      statusesApplied: [],
+      statusesExpired: [],
+    });
+  }
+  return total;
+}
+
 /** Damage + stability + Confectance-gain application for a single hit; fills the event's damage fields. */
 function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDefVariant, ev: LogEvent, opts?: { exposedOverride?: boolean }): number {
   const dummy = state.dummy;
@@ -285,6 +353,11 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   // Attack Boost I — targeted-only), taken reductions (Area Defense I / Targeted Attack
   // Defense I), and DEF-ignore (Domain Penetration I / Piercing I).
   const isAoE = skill.damageCategory === "aoe";
+  // PATTERN REMOLDER distance gate (2026): attack-origin → target distance, resolved ONCE per hit
+  // (undefined without a grid) and shared by the dealt / taken / crit-DMG gate evaluations.
+  const attackDist = state.grid ? attackDistance(state.grid, actor.id) : undefined;
+  // BULWARK enemy-count gate (2026): enemies within 3 tiles of the AFFECTED unit (undefined w/o grid).
+  const enemiesNear = state.grid ? enemiesWithin3(state.grid, dummy.id) : undefined;
   // GRID (2026): High Ground → Ground ADDS Exposed; otherwise the normal exposed state governs.
   const targetExposed = opts?.exposedOverride === true ? true : dummy.exposed;
   const { weaknesses, mult: weaknessMult, ammoExploited } = exploitedWeaknesses(dummy, skill);
@@ -338,7 +411,16 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
         (dummy.cover === "none" ? actor.weapon.imprint.noCoverBonus : 0)
       : 0;
   const addDealt =
-    additiveDealtBonus(actor, state.statusRegistry, skill.element, { supportAttack: ev.supportAttack, targetExposed, isAoE }) +
+    additiveDealtBonus(actor, state.statusRegistry, skill.element, {
+      supportAttack: ev.supportAttack,
+      targetExposed,
+      isAoE,
+      // Pattern Remolder gates: ability type, boss target, and attack-origin → target distance
+      // (only when a grid is present — distance gated effects never apply unconditionally).
+      skillType: skill.type,
+      isBoss: dummy.isBoss,
+      distance: attackDist,
+    }) +
     conditionalDealtBonus(actor, dummy, "target.noCover", ev.supportAttack) +
     conditionalDealtBonus(actor, dummy, "always", ev.supportAttack) +
     // OUT-OF-TURN DAMAGE (Common Key: Strategic Negotiation +7%, VALIDATED in-game 2026): a panel
@@ -351,7 +433,8 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     weaponDealtTerm +
     imprintBonus;
   const targetMods = targetPassiveTakenMods(dummy); // U5 boss/target stability-conditional passives
-  const addTaken = additiveTakenBonus(dummy, state.statusRegistry, skill.element) + targetMods.additive;
+  const addTaken =
+    additiveTakenBonus(dummy, state.statusRegistry, skill.element, { isAoE, isBoss: dummy.isBoss, distance: attackDist, enemiesWithin3: enemiesNear }) + targetMods.additive;
   // Effect provenance (2026): deduplicated, human-readable sources of the modifiers that
   // contributed to this hit's buckets — a source (ability/passive/key) and its resulting
   // effect are ONE modifier, never double-counted just because both names appear.
@@ -419,7 +502,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   }
   // Area Defense I (VALIDATED in-game tooltip 2026): target-side `damage_reduction`
   // effects gated `whenIncomingCategory: "aoe"` apply ONLY to this hit's category.
-  const { mult, red } = multiplicativeTakenMods(dummy, state.statusRegistry, isAoE);
+  const { mult, red } = multiplicativeTakenMods(dummy, state.statusRegistry, isAoE, skill.element, { isBoss: dummy.isBoss, distance: attackDist, enemiesWithin3: enemiesNear });
   // no stability-cover reduction: dummy has no cover (Cover permanently out of scope)
   // U3: NO universal Exposed damage multiplier — the reduction chain contains none.
   const reductionMult = mult * red * targetMods.multiplicative;
@@ -445,6 +528,19 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
       );
     }
   }
+  // PATTERN REMOLDER conditional Crit DMG (Vanguard Precision/Beheading/Smite family, 2026):
+  // gated percentages fold into the SAME confirmed crit multiplier (1 + Crit DMG) — evaluated
+  // against THIS hit's complete event context (element/category/boss/skill/out-of-turn/distance).
+  const remolderCrit = remolderCritDmgBonus(actor, {
+    element: skill.element,
+    supportAttack: ev.supportAttack,
+    targetExposed,
+    isAoE,
+    skillType: skill.type,
+    isBoss: dummy.isBoss,
+    distance: attackDist,
+  });
+  if (remolderCrit > 0) crit.critDmg += remolderCrit;
   const critMult = state.config.critMultiplier ?? 1 + crit.critDmg;
   const effAtk = statModifier(actor, state.statusRegistry, "atk", actor.panelAtk);
   const effDef = statModifier(dummy, state.statusRegistry, "def", dummy.defStat);
@@ -475,6 +571,9 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   const totalDamage = hit.finalDamage + hit.fixedDamage;
   const hpBefore = dummy.hp;
   dummy.hp = Math.max(0, dummy.hp - totalDamage);
+  // BULWARK "Lex Talionis" (2026): if the DAMAGED unit carries reactive modifiers, it retaliates
+  // against the attacker — a SEPARATE event, fires only when damage was actually taken.
+  if (totalDamage > 0) applyReactiveDamage(state, dummy, actor, totalDamage);
   // V1 (VALIDATED 2026): a KILLING BLOW = THIS hit reduced the target from >0 to 0 HP —
   // transition-guarded so post-death follow-up hits are never misflagged.
   if (totalDamage > 0 && hpBefore > 0 && dummy.hp === 0) ev.killingBlow = true;
@@ -483,8 +582,21 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   //   (generic across phase-less/Phase; independent of the damage multiplier; AWU untouched).
   // Stability Offensive I (VALIDATED in-game tooltip 2026): adds its flat value (+1) to the
   // attack's TOTAL stability damage dealt (attacker-side; never HP/DMG%/DEF/weakness/crit).
-  const stabAmount = (skill.stabDamage ?? 0) + 2 * weaknesses.length + stabilityDamageBonus(actor, state.statusRegistry);
+  // VANGUARD "Shock and Awe" (2026): on the FIRST enemy damaged this turn, adds its flat value
+  // to the SAME total (once per turn, tracked per unit per round).
+  const firstTargetStab = remolderFirstTargetStability(actor);
+  const applyShockAndAwe = firstTargetStab > 0 && actor.lastStabilityTurn !== state.round;
+  if (applyShockAndAwe) actor.lastStabilityTurn = state.round;
+  const stabAmount =
+    (skill.stabDamage ?? 0) + 2 * weaknesses.length + stabilityDamageBonus(actor, state.statusRegistry) + (applyShockAndAwe ? firstTargetStab : 0);
   const { broke } = applyStabilityDamage(state, dummy, stabAmount);
+  // VANGUARD "Bloodthirst" (2026): recover HP = Σ pct × the unit's panel ATK when it deals
+  // ANY damage (a recovery, NOT a stat increase), capped at max HP.
+  const healPct = remolderHealOnAttackPct(actor);
+  if (healPct > 0 && totalDamage > 0) {
+    const heal = Math.ceil(effAtk * healPct * (1 + remolderHealBonus(actor)));
+    actor.hp = Math.min(actor.maxHp, actor.hp + heal);
+  }
   // Consumption-of-use statuses (Support Boost I/II, VALIDATED 2026): a status that
   // contributed to THIS Support Action consumes exactly ONE stack and is removed at 0.
   const consumed = consumeOneOnUseStacks(state, actor, ev.supportAttack);
@@ -610,7 +722,8 @@ export function applyEndOfActionStatusEffects(state: SimulationState, unit: Unit
   // HOLDER's MAXIMUM HP (capped at max HP), at its own action end. No invented mechanics.
   for (const e of def.effects) {
     if (e.kind === "heal") {
-      const amount = Math.ceil(unit.maxHp * e.percentOfMaxHp);
+      // SUPPORT "Healing Boost" (2026): scales the healing the holder applies (heal pipeline only).
+      const amount = Math.ceil(unit.maxHp * e.percentOfMaxHp * (1 + remolderHealBonus(unit)));
       unit.hp = Math.min(unit.maxHp, unit.hp + amount);
     }
   }
@@ -978,6 +1091,20 @@ function endOfOwnTurn(state: SimulationState, unit: UnitState): void {
   // U7 CONFIRMED 2026-09-03: normal timed buffs tick at the recipient's action end.
   // onTick fires status-sourced fixed damage (Overburn, 2026) before each decrement.
   tickStatuses(state, unit, "ownActionEnd", (st, u, def, active) => applyEndOfActionStatusEffects(st, u, def, active));
+  // SUPPORT "Life Recovery" (2026): at the unit's own action end, restore pct × max HP (once/turn).
+  // "Equilibrium Recovery": restore a flat Stability amount (once/turn). Both use the EXISTING HP /
+  // Stability values; the heal bonus scales the healing the unit applies.
+  const healPct = remolderHealEndOfActionPct(unit);
+  if (healPct > 0 && unit.lastHealTurn !== state.round) {
+    unit.lastHealTurn = state.round;
+    const amount = Math.ceil(unit.maxHp * healPct * (1 + remolderHealBonus(unit)));
+    unit.hp = Math.min(unit.maxHp, unit.hp + amount);
+  }
+  const stabRec = remolderStabilityRecovery(unit);
+  if (stabRec > 0 && unit.lastStabilityRecoveryTurn !== state.round) {
+    unit.lastStabilityRecoveryTurn = state.round;
+    unit.stability = Math.min(unit.maxStability, unit.stability + stabRec);
+  }
   // Weapon Trait (VALIDATED in-game 2026): at the END of the holder's own action, if the
   // holder is at FULL HP, exactly ONE random buff from the weapon's uniform pool is granted.
   applyWeaponTrait(state, unit);
@@ -1099,6 +1226,13 @@ export function simulate(scenario: Scenario, registry: Registry): SimulationResu
   let turn = 0;
   for (let round = 1; round <= scenario.turns; round++) {
     state.round = round;
+    // Vanguard "Shock and Awe" (2026) + Support once-per-turn recovery: per-turn trackers reset
+    // each round.
+    for (const u of state.units) {
+      u.lastStabilityTurn = -1;
+      u.lastHealTurn = -1;
+      u.lastStabilityRecoveryTurn = -1;
+    }
     // PER-ROUND ACTION ORDER (2026): `roundOrder[round]` (a permutation of the team) when
     // present, else the team order. Missing/duplicate/mistyped members are a clear error —
     // no implicit skip (Pass is not a feature).

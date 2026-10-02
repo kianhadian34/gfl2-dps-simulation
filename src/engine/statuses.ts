@@ -140,7 +140,17 @@ export function additiveDealtBonus(
   unit: UnitState,
   statusRegistry: Map<string, EffectiveStatusDef>,
   element: Element | null,
-  ctx: { supportAttack: boolean; targetExposed: boolean; isAoE?: boolean },
+  ctx: {
+    supportAttack: boolean;
+    targetExposed: boolean;
+    isAoE?: boolean;
+    /** Ability type of the resolving skill (Pattern Remolder gates). */
+    skillType?: "basic" | "active" | "ultimate" | "support";
+    /** Whether the target is a boss (Pattern Remolder gates). */
+    isBoss?: boolean;
+    /** Attack-origin → target distance in tiles, when a grid is present (Pattern Remolder gates). */
+    distance?: number;
+  },
 ): number {
   let sum = 0;
   for (const s of unit.statuses) {
@@ -171,11 +181,16 @@ export function additiveDealtBonus(
     }
   }
   // PATTERN REMOLDER (2026): permanent modifiers enter the SAME additive DMG% dealt bucket.
-  return sum + remolderDealtBonus(unit, { element, supportAttack: ctx.supportAttack, targetExposed: ctx.targetExposed, isAoE: ctx.isAoE ?? false });
+  return sum + remolderDealtBonus(unit, { element, supportAttack: ctx.supportAttack, targetExposed: ctx.targetExposed, isAoE: ctx.isAoE ?? false, skillType: ctx.skillType ?? "basic", isBoss: ctx.isBoss ?? false, distance: ctx.distance });
 }
 
 /** Σ additive damage-taken bonuses from the target's own statuses (tier effects gated on the hit element). */
-export function additiveTakenBonus(unit: UnitState, statusRegistry: Map<string, EffectiveStatusDef>, element: Element | null): number {
+export function additiveTakenBonus(
+  unit: UnitState,
+  statusRegistry: Map<string, EffectiveStatusDef>,
+  element: Element | null,
+  takenCtx?: { isAoE?: boolean; isBoss?: boolean; distance?: number; enemiesWithin3?: number },
+): number {
   let sum = 0;
   for (const s of unit.statuses) {
     const def = statusRegistry.get(s.statusId);
@@ -190,8 +205,9 @@ export function additiveTakenBonus(unit: UnitState, statusRegistry: Map<string, 
       }
     }
   }
-  // PATTERN REMOLDER (2026): permanent modifiers enter the SAME additive taken bucket.
-  return sum + remolderTakenBonus(unit, element);
+  // PATTERN REMOLDER (2026): permanent modifiers enter the SAME additive taken bucket, evaluated
+  // against the ACTUAL incoming-hit context (element / category / boss / distance).
+  return sum + remolderTakenBonus(unit, { element, isAoE: takenCtx?.isAoE ?? false, isBoss: takenCtx?.isBoss ?? false, distance: takenCtx?.distance, enemiesWithin3: takenCtx?.enemiesWithin3 });
 }
 
 /**
@@ -319,6 +335,7 @@ export function multiplicativeTakenMods(
   statusRegistry: Map<string, EffectiveStatusDef>,
   incomingIsAoE = false,
   incomingElement: Element | null = null,
+  takenCtx?: { isBoss?: boolean; distance?: number; enemiesWithin3?: number },
 ): { mult: number; red: number } {
   let mult = 1;
   let red = 1;
@@ -343,8 +360,9 @@ export function multiplicativeTakenMods(
       }
     }
   }
-  // PATTERN REMOLDER (2026): permanent reductions enter the SAME multiplicative taken chain.
-  red *= 1 - remolderReductionBonus(unit, incomingElement, incomingIsAoE);
+  // PATTERN REMOLDER (2026): permanent reductions enter the SAME multiplicative taken chain,
+  // evaluated against the ACTUAL incoming-hit context (element / category / boss / distance).
+  red *= 1 - remolderReductionBonus(unit, { element: incomingElement, isAoE: incomingIsAoE, isBoss: takenCtx?.isBoss ?? false, distance: takenCtx?.distance, enemiesWithin3: takenCtx?.enemiesWithin3 });
   return { mult, red };
 }
 

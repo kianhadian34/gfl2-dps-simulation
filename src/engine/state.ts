@@ -5,6 +5,7 @@ import type { ActiveStatus, LogEvent, ResolvedConfig } from "../model/runtime.js
 import { Rng } from "./rng.js";
 import type { Registry } from "../data/registry.js";
 import { DISPATCH_STAT_BUFFS } from "../data/dispatch.js";
+import { REMOLDER_BUFFS } from "../data/remolder.js";
 import { resolveRemolderUnit, resolveRemolderTeam } from "./remolder.js";
 
 /**
@@ -47,6 +48,13 @@ export interface UnitState {
   weaknessTags: AmmoType[];
   /** Target Race/Type classification (2026, generic — e.g. ["elid"]); used by owner-gated weapon Imprints. Empty = none. */
   raceTypes: string[];
+  /** BOSS target flag (2026): true when this unit is a boss (DummyConfig.isBoss); drives boss-gated modifiers (Sentinel "Thronebreaker"). */
+  isBoss: boolean;
+  /** Per-turn tracker for Vanguard "Shock and Awe" (2026): the round in which this unit last applied its first-target Stability bonus (−1 = never). */
+  lastStabilityTurn: number;
+  /** Per-turn trackers for Support once-per-turn recovery (2026): Life Recovery / Equilibrium Recovery (−1 = never). */
+  lastHealTurn: number;
+  lastStabilityRecoveryTurn: number;
   /** MVP: cover is always "none" (handoff §4); drives conditional no-cover bonuses. */
   cover: "none";
   /** Attack element of dolls / phase category of the dummy (research §3.4). */
@@ -345,18 +353,31 @@ function makeDoll(
   // Lv.60). Debug-authoritative overrides suppress BOTH global flat sources on overridden stats.
   // Controlled math fixtures (applyDispatchStats === false) exclude BOTH permanent global,
   // character-level flat sources; Debug-authoritative overrides suppress both on overridden stats.
+  // SUPPORT ICHOR (2026): flat HP from INITIAL ATK (Ichor Resonance) and flat ATK from INITIAL
+  // max HP (Ichor Conversion) — flat contributions folded with the other Remolder flats, BEFORE
+  // percentage modifiers. "Initial" = the character's base (after any per-member base override).
+  const ichorFlat = {
+    atk: remolderPlan.atkPctOfBaseHp * def.base.hp,
+    hp: remolderPlan.hpPctOfBaseAtk * def.base.atk,
+    def: 0,
+  };
+  const remolderFlatFull = {
+    atk: remolderPlan.flat.atk + ichorFlat.atk,
+    hp: remolderPlan.flat.hp + ichorFlat.hp,
+    def: remolderPlan.flat.def + ichorFlat.def,
+  };
   const remolderFlat =
     applyDispatchStats === false
       ? { atk: 0, hp: 0, def: 0 }
       : overridesAuthoritative === true
         ? (baseStatOverrides
             ? {
-                atk: Object.prototype.hasOwnProperty.call(baseStatOverrides, "atk") ? 0 : remolderPlan.flat.atk,
-                hp: Object.prototype.hasOwnProperty.call(baseStatOverrides, "hp") ? 0 : remolderPlan.flat.hp,
-                def: Object.prototype.hasOwnProperty.call(baseStatOverrides, "def") ? 0 : remolderPlan.flat.def,
+                atk: Object.prototype.hasOwnProperty.call(baseStatOverrides, "atk") ? 0 : remolderFlatFull.atk,
+                hp: Object.prototype.hasOwnProperty.call(baseStatOverrides, "hp") ? 0 : remolderFlatFull.hp,
+                def: Object.prototype.hasOwnProperty.call(baseStatOverrides, "def") ? 0 : remolderFlatFull.def,
               }
-            : remolderPlan.flat)
-        : remolderPlan.flat;
+            : remolderFlatFull)
+        : remolderFlatFull;
   const panel = computePanel(def, weapon, dispatchFlat, remolderFlat);
   const aff = resolveAffinityBonus(def, affinity?.keyId, affinity?.level, registry);
   // Common Keys (generic architecture, 2026): REUSABLE definitions resolved via the registry
@@ -404,6 +425,10 @@ function makeDoll(
     weaknessElements: [],
     weaknessTags: [],
     raceTypes: [],
+    isBoss: false,
+    lastStabilityTurn: -1,
+    lastHealTurn: -1,
+    lastStabilityRecoveryTurn: -1,
     cover: "none",
     phase: def.phase,
     // Affinity Key (Warm as Jade, VALIDATED): own-key levels fold into the panel via the proven
@@ -422,7 +447,8 @@ function makeDoll(
       remolderPlan.activeSetBonusIds.length > 0 ||
       remolderPlan.flat.atk !== 0 ||
       remolderPlan.flat.hp !== 0 ||
-      remolderPlan.flat.def !== 0
+      remolderPlan.flat.def !== 0 ||
+      remolderPlan.modifiers.length > 0
         ? {
             flat: remolderPlan.flat,
             activeBuffs: remolderPlan.activeBuffs,
@@ -466,6 +492,10 @@ function makeDummy(d: Scenario["dummy"]): UnitState {
     weaknessElements: d.weaknesses,
     weaknessTags: d.weaknessTags ?? [],
     raceTypes: d.raceTypes ?? [],
+    isBoss: d.isBoss === true,
+    lastStabilityTurn: -1,
+    lastHealTurn: -1,
+    lastStabilityRecoveryTurn: -1,
     cover: "none",
     phase: d.phase,
     panelAtk: 0,
@@ -561,7 +591,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
   // PATTERN REMOLDER (2026): resolve every member's plan (clamp/totals/set activation) then
   // the team-level grants (Unity strongest, battle-start allied %) BEFORE makeDoll folds them
   // into the ONE panel path and the modifier buckets.
-  const remolderBuffDefs = scenario.remolderBuffSet ?? [];
+  const remolderBuffDefs = scenario.remolderBuffSet ?? REMOLDER_BUFFS;
   const remolderPlans = scenario.team.map((m) => {
     const rd = registry.getCharacter(m.characterId);
     if (!rd) throw new Error(`Unknown character: ${m.characterId}`);
@@ -577,18 +607,26 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
       w = wd;
     }
     const d = m.baseStatOverrides ? { ...rd, base: { ...rd.base, ...m.baseStatOverrides } } : rd;
+    // Ichor (Support 2026) also contributes flat from the INITIAL base stats for the top-ATK selection.
+    const ichor = { atk: remolderPlans[i].atkPctOfBaseHp * d.base.hp, hp: remolderPlans[i].hpPctOfBaseAtk * d.base.atk, def: 0 };
     let flat = { atk: 0, hp: 0, def: 0 };
     if (m.applyDispatchStats !== false) {
       const df = DISPATCH_STAT_BUFFS[rd.class];
       flat = {
-        atk: remolderPlans[i].flat.atk + df.atk,
-        hp: remolderPlans[i].flat.hp + df.hp,
-        def: remolderPlans[i].flat.def + df.def,
+        atk: remolderPlans[i].flat.atk + ichor.atk + df.atk,
+        hp: remolderPlans[i].flat.hp + ichor.hp + df.hp,
+        def: remolderPlans[i].flat.def + ichor.def + df.def,
       };
     }
     return computePanel(d, w, undefined, flat).atk;
   });
   const remolderGrants = resolveRemolderTeam(remolderPlans, remolderRawAtk);
+  // SUPPORT allied-damage Unity (2026): the winning instance is granted to the owner's allies as
+  // `additive_dealt` modifiers (source "unity") — folded into each recipient's resolved modifiers
+  // so the EXISTING dealt-bonus path consumes them (no parallel path).
+  remolderPlans.forEach((plan, i) => {
+    for (const grant of remolderGrants[i].unityDealt) plan.modifiers.push(grant);
+  });
   const units: UnitState[] = scenario.team.map((m, i) => {
     const def = registry.getCharacter(m.characterId);
     if (!def) throw new Error(`Unknown character: ${m.characterId}`);

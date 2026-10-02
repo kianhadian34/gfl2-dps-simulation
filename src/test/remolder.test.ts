@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createState } from "../engine/state.js";
-import { remolderGatesMatch } from "../engine/remolder.js";
+import { remolderGatesMatch, remolderReductionBonus, remolderTakenBonus } from "../engine/remolder.js";
 import { additiveTakenBonus, multiplicativeTakenMods } from "../engine/statuses.js";
-import { DummyConfig, RemolderEffectGates, Scenario, RemolderBuffDef } from "../model/types.js";
+import { DummyConfig, RemolderEffectGates, RemolderModifier, Scenario, RemolderBuffDef } from "../model/types.js";
 import { QIONGJIU } from "../data/qiongjiu.js";
 import { REGISTRY } from "../data/registry.js";
 import { QIONGJIU_SET_BONUSES } from "../data/remolder.js";
@@ -213,16 +213,27 @@ test("F4: QJ Set Bonuses render modifiers with source identity (provenance)", ()
 });
 
 // G) Conditional gates (unit-level) ---------------------------------------------------
+// Full damage-event context (new fields default to the common case: basic skill, no boss, no grid).
+const C = (o: Partial<Parameters<typeof remolderGatesMatch>[1]> = {}): Parameters<typeof remolderGatesMatch>[1] => ({
+  element: null,
+  supportAttack: false,
+  targetExposed: false,
+  isAoE: false,
+  skillType: "basic",
+  isBoss: false,
+  distance: undefined,
+  ...o,
+});
 test("G1: gate matching rejects non-qualifying events", () => {
   const gates: RemolderEffectGates = { actions: "support", category: "targeted", targetExposed: true, element: ["burn"], anyPhase: true };
   const g: RemolderEffectGates = { element: ["burn"] };
-  assert.equal(remolderGatesMatch(gates, { element: "burn", supportAttack: true, targetExposed: true, isAoE: false }), true, "burn support hit on exposed targeted target");
-  assert.equal(remolderGatesMatch(gates, { element: "burn", supportAttack: true, targetExposed: true, isAoE: true }), false, "AoE fails category gate");
-  assert.equal(remolderGatesMatch(gates, { element: "burn", supportAttack: true, targetExposed: false, isAoE: false }), false, "unexposed fails target gate");
-  assert.equal(remolderGatesMatch(gates, { element: "freeze", supportAttack: true, targetExposed: true, isAoE: false }), true, "anyPhase OR: a different phase element still qualifies");
-  assert.equal(remolderGatesMatch(g, { element: "burn", supportAttack: true, targetExposed: true, isAoE: false }), true, "listed element qualifies");
-  assert.equal(remolderGatesMatch(g, { element: null, supportAttack: true, targetExposed: true, isAoE: false }), false, "physical fails an element-only gate");
-  assert.equal(remolderGatesMatch(gates, { element: "burn", supportAttack: false, targetExposed: true, isAoE: false }), false, "non-support fails actions gate");
+  assert.equal(remolderGatesMatch(gates, C({ element: "burn", supportAttack: true, targetExposed: true })), true, "burn support hit on exposed targeted target");
+  assert.equal(remolderGatesMatch(gates, C({ element: "burn", supportAttack: true, targetExposed: true, isAoE: true })), false, "AoE fails category gate");
+  assert.equal(remolderGatesMatch(gates, C({ element: "burn", supportAttack: true })), false, "unexposed fails target gate");
+  assert.equal(remolderGatesMatch(gates, C({ element: "freeze", supportAttack: true, targetExposed: true })), true, "anyPhase OR: a different phase element still qualifies");
+  assert.equal(remolderGatesMatch(g, C({ element: "burn" })), true, "listed element qualifies");
+  assert.equal(remolderGatesMatch(g, C({ element: null })), false, "physical fails an element-only gate");
+  assert.equal(remolderGatesMatch(gates, C({ element: "burn", targetExposed: true })), false, "non-support fails actions gate");
 });
 
 // H) Battle-start allied % (Blossom) --------------------------------------------------
@@ -241,4 +252,87 @@ test("H1: Blossom start-of-battle — top-2 allied highest-ATK units +3%, owner 
   assert.equal(qj.panelAtk, Math.ceil(1285 * 1.08), "Bud self +8% (its own set bonus) but NOT Blossom (+3% is allied-only)");
   assert.equal(a.panelAtk, 1030, "allyA top-2 → +3% once");
   assert.equal(b.panelAtk, 927, "allyB top-2 → +3% once");
+});
+
+// I) Taken-damage shared plumbing (element / category / boss / distance) ---------------
+// These exercise the EXACT shared functions the damage pipeline calls, with the same arguments
+// `simulation.ts` now forwards for the incoming hit (element / AoE / target boss / grid distance).
+const takenUnit = (gates: RemolderEffectGates, kind: "multiplicative_taken" | "additive_taken" = "multiplicative_taken", value = 0.1) => ({
+  remolder: {
+    modifiers: [{ sourceType: "buff", sourceId: "t", level: 1, label: "t", effect: { kind, value, gates } } as RemolderModifier],
+  },
+});
+const takenCtx = (o: Partial<{ element: "burn" | "hydro" | "freeze" | "electric" | "corrosion" | null; isAoE: boolean; isBoss: boolean; distance: number | undefined }> = {}) => ({
+  element: null as "burn" | "hydro" | "freeze" | "electric" | "corrosion" | null,
+  isAoE: false,
+  isBoss: false,
+  distance: undefined as number | undefined,
+  ...o,
+});
+
+test("I1: elemental taken gate — each resistance matches only its own element; physical works; unrelated does not", () => {
+  // Physical resistance (element [null]).
+  assert.equal(remolderReductionBonus(takenUnit({ element: [null] }), takenCtx({ element: null })), 0.1, "physical resistance applies to a physical hit");
+  assert.equal(remolderReductionBonus(takenUnit({ element: [null] }), takenCtx({ element: "burn" })), 0, "...and NOT to a Burn hit");
+  // Each phase resistance matches its own element and no other.
+  for (const el of ["burn", "hydro", "electric", "freeze", "corrosion"] as const) {
+    assert.equal(remolderReductionBonus(takenUnit({ element: [el] }), takenCtx({ element: el })), 0.1, `${el} resistance applies to a ${el} hit`);
+    const other = el === "burn" ? "hydro" : "burn";
+    assert.equal(remolderReductionBonus(takenUnit({ element: [el] }), takenCtx({ element: other })), 0, `${el} resistance does NOT apply to a ${other} hit`);
+  }
+  // An UNRELATED resistance never activates against a different element.
+  assert.equal(remolderReductionBonus(takenUnit({ element: ["freeze"] }), takenCtx({ element: null })), 0, "elemental resistance does not apply to physical");
+});
+
+test("I2: boss taken gate — activates against a boss, not against a non-boss (reduction AND additive)", () => {
+  assert.equal(remolderReductionBonus(takenUnit({ bossTarget: true }), takenCtx({ isBoss: true })), 0.1, "reduction vs boss");
+  assert.equal(remolderReductionBonus(takenUnit({ bossTarget: true }), takenCtx({ isBoss: false })), 0, "reduction vs non-boss");
+  assert.equal(remolderTakenBonus(takenUnit({ bossTarget: true }, "additive_taken"), takenCtx({ isBoss: true })), 0.1, "additive vs boss");
+  assert.equal(remolderTakenBonus(takenUnit({ bossTarget: true }, "additive_taken"), takenCtx({ isBoss: false })), 0, "additive vs non-boss");
+});
+
+test("I3: distance taken gate — in-range activates, out-of-range does not, no-grid stays inactive", () => {
+  const near = takenUnit({ maxDistance: 3 });
+  const far = takenUnit({ minDistance: 6 });
+  assert.equal(remolderReductionBonus(near, takenCtx({ distance: 2 })), 0.1, "within 3 tiles → applies");
+  assert.equal(remolderReductionBonus(near, takenCtx({ distance: 5 })), 0, "outside 3 tiles → no");
+  assert.equal(remolderReductionBonus(far, takenCtx({ distance: 7 })), 0.1, "more than 6 tiles → applies");
+  assert.equal(remolderReductionBonus(far, takenCtx({ distance: 4 })), 0, "not more than 6 tiles → no");
+  assert.equal(remolderReductionBonus(near, takenCtx({ distance: undefined })), 0, "no grid → inactive (never unconditional)");
+  assert.equal(remolderReductionBonus(far, takenCtx({ distance: undefined })), 0, "no grid → inactive (min-distance)");
+});
+
+test("I4: multiplicativeTakenMods forwards element / boss / distance into the Remolder evaluation", () => {
+  const st = createState(qjScenario(), REGISTRY, new Set());
+  const u = st.units[0];
+  // Attach a synthetic burn-resistance reduction to a real doll UnitState (the exact shape the pipeline reads).
+  u.remolder = {
+    flat: { atk: 0, hp: 0, def: 0 },
+    activeBuffs: [],
+    categoryTotals: { bulwark: 0, vanguard: 0, support: 0, sentinel: 0 },
+    activeSetBonusIds: [],
+    modifiers: [{ sourceType: "buff", sourceId: "x", level: 1, label: "x", effect: { kind: "multiplicative_taken", value: 0.2, gates: { element: ["burn"], bossTarget: true } } }],
+    unityPct: { atk: 0, hp: 0, def: 0 },
+    alliedPct: { atk: 0, hp: 0, def: 0 },
+  };
+  const at = (element: "burn" | "hydro" | null, isBoss: boolean) => multiplicativeTakenMods(u, st.statusRegistry, false, element, { isBoss, distance: undefined }).red;
+  assert.ok(Math.abs(at("burn", true) - 0.8) < 1e-9, "Burn + boss → ×0.8 (0.2 reduction applied)");
+  assert.equal(at("hydro", true), 1, "Hydro + boss → no reduction (element mismatch)");
+  assert.equal(at("burn", false), 1, "Burn + non-boss → no reduction (boss mismatch)");
+});
+
+test("I5: additiveTakenBonus forwards the same taken context (element / boss / distance)", () => {
+  const st = createState(qjScenario(), REGISTRY, new Set());
+  const u = st.units[0];
+  u.remolder = {
+    flat: { atk: 0, hp: 0, def: 0 },
+    activeBuffs: [],
+    categoryTotals: { bulwark: 0, vanguard: 0, support: 0, sentinel: 0 },
+    activeSetBonusIds: [],
+    modifiers: [{ sourceType: "buff", sourceId: "x", level: 1, label: "x", effect: { kind: "additive_taken", value: 0.15, gates: { element: ["freeze"] } } }],
+    unityPct: { atk: 0, hp: 0, def: 0 },
+    alliedPct: { atk: 0, hp: 0, def: 0 },
+  };
+  assert.ok(Math.abs(additiveTakenBonus(u, st.statusRegistry, "freeze") - 0.15) < 1e-9, "Freeze hit → +15% taken");
+  assert.equal(additiveTakenBonus(u, st.statusRegistry, "burn"), 0, "Burn hit → no additive taken bonus");
 });

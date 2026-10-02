@@ -590,6 +590,30 @@ export interface RemolderEffectGates {
   anyPhase?: boolean;
   /** Restrict to out-of-turn events (in the MVP, Support Actions — the only out-of-turn attacker). */
   outOfTurn?: boolean;
+  /** Restrict to specific ability types (Sentinel "Onslaught Stance": damage dealt by active skills). */
+  skillTypes?: ("basic" | "active" | "ultimate" | "support")[];
+  /** Restrict to hits on a BOSS target (`DummyConfig.isBoss`; Sentinel "Thronebreaker"). */
+  bossTarget?: boolean;
+  /**
+   * Restrict to hits whose attack-origin distance to the target is STRICTLY GREATER than this
+   * many tiles (Sentinel "Headhunter": more than 6 tiles away). Requires a grid with a resolvable
+   * distance; when the distance cannot be determined the gate does NOT match (never applied as an
+   * unconditional bonus — no fake mechanics).
+   */
+  minDistance?: number;
+  /**
+   * Restrict to hits whose attack-origin distance to the target is AT MOST this many tiles
+   * (Vanguard "CQC Elite": within 3 tiles). Requires a grid with a resolvable distance; when the
+   * distance cannot be determined the gate does NOT match (never applied as an unconditional bonus).
+   */
+  maxDistance?: number;
+  /**
+   * Restrict by the number of ENEMY units within 3 tiles (Manhattan) of the AFFECTED unit
+   * (Bulwark "Breakout Countermeasures" ≥ 2; "Lone Rider Countermeasures" exactly 1). Requires a
+   * grid with a resolvable placement; with no grid / no count the gate does NOT match (never
+   * treated as satisfying the condition).
+   */
+  enemiesWithin3?: { atLeast?: number; atMost?: number };
 }
 
 /**
@@ -605,6 +629,116 @@ export type RemolderEffect =
   | { kind: "stat_pct"; stat: "atk" | "hp" | "def"; value: number }
   | { kind: "crit_rate"; value: number }
   | { kind: "crit_dmg"; value: number }
+  | {
+      /**
+       * CONDITIONAL Crit-DMG (2026, Vanguard): adds `value` to the effective Crit DMG for the hit
+       * ONLY when the gates match (targeted / AoE / boss / element / active-skill / out-of-turn /
+       * distance). Enters the SAME confirmed crit multiplier (1 + Crit DMG) — no second crit path.
+       */
+      kind: "crit_dmg_gated";
+      value: number;
+      gates?: RemolderEffectGates;
+    }
+  | {
+      /**
+       * HP RECOVERY ON ATTACK (2026, Vanguard "Bloodthirst"): when the unit deals damage, it
+       * recovers `pct` × the unit's effect-applier ATK (panel ATK), capped at max HP. A recovery
+       * effect — NEVER a permanent stat increase. `Math.ceil` matches the engine's heal convention.
+       */
+      kind: "heal_on_attack";
+      pct: number;
+    }
+  | {
+      /**
+       * FIRST DAMAGED TARGET PER TURN — fixed STABILITY damage (2026, Vanguard "Shock and Awe"):
+       * the FIRST enemy unit the holder damages each round takes `amount` extra FIXED Stability
+       * damage (once per turn). Stability only — never HP damage / DMG% / DEF / weakness / crit.
+       */
+      kind: "first_target_stability";
+      amount: number;
+    }
+  | {
+      /**
+       * END-OF-ACTION HP RECOVERY (2026, Support "Life Recovery"): at the holder's own action end
+       * (the existing `ownActionEnd` timing), restores `pct` × max HP, capped at max HP. Triggers
+       * ONCE per turn. A recovery — never a max-HP / ATK stat increase.
+       */
+      kind: "heal_end_of_action";
+      pct: number;
+    }
+  | {
+      /**
+       * END-OF-ACTION STABILITY RECOVERY (2026, Support "Equilibrium Recovery"): at the holder's
+       * own action end, restores `amount` Stability, capped at max Stability. Triggers ONCE per
+       * turn. Uses the EXISTING Stability value (no parallel Stability system).
+       */
+      kind: "stability_recovery";
+      amount: number;
+    }
+  | {
+      /**
+       * FLAT HP FROM INITIAL ATK (2026, Support "Ichor Resonance"): adds `pct` × the character's
+       * INITIAL ATTACK (`CharacterDef.base.atk`, before weapon/dispatch/Remolder/modifiers) as a
+       * FLAT HP contribution to the panel. Initial Attack ≠ current panel Attack.
+       */
+      kind: "flat_hp_from_base_atk";
+      pct: number;
+    }
+  | {
+      /**
+       * FLAT ATK FROM INITIAL MAX HP (2026, Support "Ichor Conversion"): adds `pct` × the
+       * character's INITIAL max HP (`CharacterDef.base.hp`, before modifiers) as a FLAT ATK
+       * contribution to the panel. Initial max HP ≠ current max HP.
+       */
+      kind: "flat_atk_from_base_hp";
+      pct: number;
+    }
+  | {
+      /**
+       * HEALING/SHIELD BONUS (2026, Support "Healing Boost"): increases the healing the holder
+       * APPLIES by `value` (multiplicative on the heal amount). Enters the heal pipeline ONLY —
+       * never a damage / ATK / stat bucket. (Shields and healing of OTHER units are not modeled
+       * by the engine — see the Support report.)
+       */
+      kind: "heal_bonus";
+      value: number;
+    }
+  | {
+      /**
+       * UNITY — ALLIED DAMAGE (2026, Support physical/elemental Unity): the winner of the team
+       * Unity resolution grants all allies `additive_dealt` for hits matching `gates` (element).
+       * "Does not stack": strongest active level wins, ties → one instance (see resolveRemolderTeam).
+       * Strength comes from the SAME level's `additive_dealt` (the level's value marker).
+       */
+      kind: "unity_dealt";
+      label: string;
+      gates?: RemolderEffectGates;
+      target: "all_allies";
+    }
+  | {
+      /**
+       * ON-ALLY-CLEANSE STAT PCT (2026, Support "Purification Feedback"): after cleansing an
+       * ALLIED unit's debuffs, the holder's ATK and max HP increase for `durationRounds`. The
+       * engine has NO ally-debuff/cleanse-trigger model in the MVP (the generic cleanse targets
+       * the dummy), so this effect is RECORDED but has no engine consumer (reported, not faked).
+       */
+      kind: "ally_cleanse_stat_pct";
+      atk: number;
+      hp: number;
+      durationRounds: number;
+    }
+  | {
+      /**
+       * REACTIVE DAMAGE (2026, Bulwark "Lex Talionis"): when the holder TAKES damage, deals fixed
+       * damage back to the attacker = `pctOfMaxHp` × the holder's max HP, capped at 100% of the
+       * holder's ATK when `capAtAtk` (the source's cap: "cannot exceed 100% of this unit's
+       * attack"). A SEPARATE reactive event — never additive damage, a taken modifier, or an ATK
+       * buff. Fires only when the holder actually takes damage.
+       */
+      kind: "reactive_damage";
+      pctOfMaxHp: number;
+      capAtAtk: boolean;
+    }
   | { kind: "out_of_turn_dmg"; value: number }
   | {
       /**
@@ -638,6 +772,13 @@ export interface RemolderBuffDef {
   id: string;
   name: string;
   category: RemolderCategory;
+  /**
+   * Optional SOURCE NAME captured from the authoritative source (e.g. Sentinel "Attack Boost"
+   * comes from heaven Blossom). Recorded data only — never consumed by the engine, never
+   * invented (buff effects that have no known source name leave this absent; the source name is
+   * NOT the buff's in-game name).
+   */
+  source?: string;
   /** Buffs are invalid above this level; supplied levels clamp to it. */
   maxLevel: number;
   /** Level → effects (exact table values from source material; only levels present are defined). */
@@ -661,7 +802,7 @@ export interface RemolderSetBonusDef {
  * and the future UI can explain where it came from.
  */
 export interface RemolderModifier {
-  sourceType: "buff" | "set_bonus";
+  sourceType: "buff" | "set_bonus" | "unity";
   sourceId: string;
   level: number;
   label: string;
@@ -843,6 +984,12 @@ export interface DummyConfig {
    * Imprints (`WeaponDef.imprint.targetType`). Absent = no race/type classification.
    */
   raceTypes?: string[];
+  /**
+   * BOSS target flag (2026): the target is a boss unit. Data-driven target property (like
+   * `raceTypes`) used by boss-gated modifiers (Pattern Remolder Sentinel "Thronebreaker").
+   * Absent/false = ordinary target. Only set from authoritative evidence.
+   */
+  isBoss?: boolean;
   phase: Element | null;
   /** MVP: always "none" (handoff §4); also drives conditional no-cover bonuses. */
   cover: "none";

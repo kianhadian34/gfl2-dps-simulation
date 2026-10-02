@@ -38,17 +38,36 @@ export interface RemolderUnitPlan {
   /** Self/conditional modifiers from buffs AND set bonuses (gates intact). */
   modifiers: RemolderModifier[];
   unityClaims: UnityClaim[];
+  /** Support allied DAMAGE unity claims (physical/elemental Unity; strength = the level's additive_dealt). */
+  unityDealtClaims: UnityDealtClaim[];
   alliedPctClaims: AlliedPctClaim[];
   /** Self percentage-stat sums from buffs + set bonuses (existing panel chain). */
   selfPct: { atk: number; hp: number; def: number };
   critRate: number;
   critDmg: number;
   outOfTurnDmg: number;
+  /** SUPPORT (2026): accumulated end-of-action recovery / heal-bonus, and Ichor flat-from-base fractions. */
+  healEndOfActionPct: number;
+  stabilityRecovery: number;
+  healBonus: number;
+  /** Flat HP gained as `pct` × INITIAL ATK (Ichor Resonance) and flat ATK as `pct` × INITIAL max HP (Ichor Conversion). */
+  hpPctOfBaseAtk: number;
+  atkPctOfBaseHp: number;
+}
+
+/** Support allied-damage Unity claim (strength = the same level's `additive_dealt` value). */
+export interface UnityDealtClaim {
+  label: string;
+  value: number;
+  level: number;
+  gates?: RemolderEffectGates;
 }
 
 export interface RemolderTeamGrants {
   /** Strongest Unity % granted TO this unit by allies (per stat). */
   unityPct: { atk: number; hp: number; def: number };
+  /** Strongest allied-damage Unity granted TO this unit (as dealt modifiers with source "unity"). */
+  unityDealt: RemolderModifier[];
   /** Start-of-battle allied % granted TO this unit (strongest value, once). */
   alliedPct: { atk: number; hp: number; def: number };
 }
@@ -61,11 +80,17 @@ export function emptyRemolderPlan(): RemolderUnitPlan {
     activeSetBonusIds: [],
     modifiers: [],
     unityClaims: [],
+    unityDealtClaims: [],
     alliedPctClaims: [],
     selfPct: { atk: 0, hp: 0, def: 0 },
     critRate: 0,
     critDmg: 0,
     outOfTurnDmg: 0,
+    healEndOfActionPct: 0,
+    stabilityRecovery: 0,
+    healBonus: 0,
+    hpPctOfBaseAtk: 0,
+    atkPctOfBaseHp: 0,
   };
 }
 
@@ -94,14 +119,23 @@ export function resolveRemolderUnit(
     plan.activeBuffs.push({ buffId, level, category: def.category });
     totals[def.category] += level;
     const unityLevel = levelEffects.some((e) => e.kind === "unity");
+    const unityDealtLevel = levelEffects.some((e) => e.kind === "unity_dealt");
     for (const effect of levelEffects) {
-      // Unity strength marker (same-level stat_pct) is NOT a self-buff — it feeds the team grant.
+      // Unity strength markers are NOT self-buffs — they feed the team grant:
+      //  - stat Unity: the level's stat_pct;
+      //  - damage Unity: the level's additive_dealt.
       if (unityLevel && effect.kind === "stat_pct") continue;
-      // Unity strength comes from the same level's stat_pct for the unity's stat.
+      if (unityDealtLevel && effect.kind === "additive_dealt") continue;
       if (effect.kind === "unity") {
         const self = levelEffects.find((e): e is Extract<RemolderEffect, { kind: "stat_pct" }> => e.kind === "stat_pct" && e.stat === effect.stat);
         if (!self) throw new Error(`Pattern Remolder: unity "${effect.label}" level ${level} requires a same-level stat_pct for "${effect.stat}"`);
         plan.unityClaims.push({ label: effect.label, stat: effect.stat, value: self.value, level });
+        continue;
+      }
+      if (effect.kind === "unity_dealt") {
+        const self = levelEffects.find((e): e is Extract<RemolderEffect, { kind: "additive_dealt" }> => e.kind === "additive_dealt");
+        if (!self) throw new Error(`Pattern Remolder: unity_dealt "${effect.label}" level ${level} requires a same-level additive_dealt`);
+        plan.unityDealtClaims.push({ label: effect.label, value: self.value, level, gates: effect.gates ?? self.gates });
         continue;
       }
       pushEffect(plan, "buff", def.id, def.name, level, effect);
@@ -120,11 +154,25 @@ export function resolveRemolderUnit(
   return plan;
 }
 
-function pushEffect(plan: RemolderUnitPlan, sourceType: "buff" | "set_bonus", sourceId: string, name: string, level: number, effect: RemolderEffect): void {
+function pushEffect(plan: RemolderUnitPlan, sourceType: "buff" | "set_bonus" | "unity", sourceId: string, name: string, level: number, effect: RemolderEffect): void {
   switch (effect.kind) {
     case "additive_dealt":
     case "additive_taken":
     case "multiplicative_taken":
+    // VANGUARD conditional effects (2026): gated Crit DMG / HP-recovery-on-attack / first-target
+    // Stability — all consume their own aggregators but keep full source identity here.
+    case "crit_dmg_gated":
+    case "heal_on_attack":
+    case "first_target_stability":
+    // SUPPORT conditional/recording effects (2026): end-of-action recovery + heal bonus + the
+    // deferred on-ally-cleanse effect — each keeps full source identity (consumed by its own
+    // aggregator, or recorded-only for the unsupported cleanse trigger).
+    case "heal_end_of_action":
+    case "stability_recovery":
+    case "heal_bonus":
+    case "ally_cleanse_stat_pct":
+    // BULWARK reactive damage (2026): a separate reactive event consumed by remolderReactiveDamage.
+    case "reactive_damage":
       plan.modifiers.push({ sourceType, sourceId, level, label: name, effect });
       return;
     case "stat_pct":
@@ -139,9 +187,19 @@ function pushEffect(plan: RemolderUnitPlan, sourceType: "buff" | "set_bonus", so
     case "out_of_turn_dmg":
       plan.outOfTurnDmg += effect.value;
       return;
+    case "flat_hp_from_base_atk":
+      plan.hpPctOfBaseAtk += effect.pct;
+      return;
+    case "flat_atk_from_base_hp":
+      plan.atkPctOfBaseHp += effect.pct;
+      return;
     case "allied_stat_pct_battle_start":
       plan.alliedPctClaims.push({ stat: effect.stat, value: effect.value, count: effect.count });
       return;
+    case "unity_dealt":
+      // Handled during the buff scan (needs the same-level additive_dealt); a set bonus with
+      // unity_dealt is not part of the current source material.
+      throw new Error(`Pattern Remolder: unity_dealt "${effect.label}" must come from a buff level, not ${sourceType} "${sourceId}"`);
     case "unity":
       // Handled during the buff scan (needs the same-level stat_pct); a set bonus with unity
       // is not part of the current source material.
@@ -164,7 +222,7 @@ function pushEffect(plan: RemolderUnitPlan, sourceType: "buff" | "set_bonus", so
  */
 export function resolveRemolderTeam(plans: RemolderUnitPlan[], rawAtk: number[]): RemolderTeamGrants[] {
   const n = plans.length;
-  const grants: RemolderTeamGrants[] = plans.map(() => ({ unityPct: { atk: 0, hp: 0, def: 0 }, alliedPct: { atk: 0, hp: 0, def: 0 } }));
+  const grants: RemolderTeamGrants[] = plans.map(() => ({ unityPct: { atk: 0, hp: 0, def: 0 }, unityDealt: [], alliedPct: { atk: 0, hp: 0, def: 0 } }));
 
   // CONFIRMED RULE: the HIGHEST active unity LEVEL wins; ties resolve to exactly ONE instance;
   // lower levels are ignored and NEVER combine. Compared by level; the single winner is granted
@@ -183,6 +241,30 @@ export function resolveRemolderTeam(plans: RemolderUnitPlan[], rawAtk: number[])
     for (let i = 0; i < n; i++) {
       if (winners.has(i)) continue;
       grants[i].unityPct[win.stat] = Math.max(grants[i].unityPct[win.stat], win.value);
+    }
+  }
+
+  // SUPPORT allied-DAMAGE Unity (2026): same confirmed strongest-level-wins rule, but the grant
+  // is an `additive_dealt` modifier (element-gated) granted to the winners' allies.
+  const strongestDealt = new Map<string, UnityDealtClaim>();
+  for (const claim of plans.flatMap((p) => p.unityDealtClaims)) {
+    const cur = strongestDealt.get(claim.label);
+    if (cur === undefined || claim.level > cur.level) strongestDealt.set(claim.label, claim);
+  }
+  for (const [label, win] of strongestDealt) {
+    const winners = new Set<number>();
+    plans.forEach((p, i) => {
+      if (p.unityDealtClaims.some((c) => c.label === label && c.level === win.level)) winners.add(i);
+    });
+    for (let i = 0; i < n; i++) {
+      if (winners.has(i)) continue;
+      grants[i].unityDealt.push({
+        sourceType: "unity",
+        sourceId: label,
+        level: win.level,
+        label,
+        effect: { kind: "additive_dealt", value: win.value, ...(win.gates ? { gates: win.gates } : {}) },
+      });
     }
   }
 
@@ -210,7 +292,7 @@ export function resolveRemolderTeam(plans: RemolderUnitPlan[], rawAtk: number[])
 /** Gate matching for a damage event (existing engine vocabulary). */
 export function remolderGatesMatch(
   gates: RemolderEffectGates | undefined,
-  ctx: { element: Element | null; supportAttack: boolean; targetExposed: boolean; isAoE: boolean },
+  ctx: { element: Element | null; supportAttack: boolean; targetExposed: boolean; isAoE: boolean; skillType: "basic" | "active" | "ultimate" | "support"; isBoss: boolean; distance: number | undefined; enemiesWithin3?: number | undefined },
 ): boolean {
   if (!gates) return true;
   if (gates.actions === "support" && !ctx.supportAttack) return false;
@@ -219,6 +301,19 @@ export function remolderGatesMatch(
     if (!matches) return false;
   }
   if (gates.targetExposed === true && !ctx.targetExposed) return false;
+  if (gates.skillTypes !== undefined && !gates.skillTypes.includes(ctx.skillType)) return false;
+  if (gates.bossTarget === true && !ctx.isBoss) return false;
+  // Distance gates: apply ONLY when a distance is known (grid); otherwise they do not match.
+  if (gates.minDistance !== undefined && (ctx.distance === undefined || ctx.distance <= gates.minDistance)) return false;
+  if (gates.maxDistance !== undefined && (ctx.distance === undefined || ctx.distance > gates.maxDistance)) return false;
+  // Enemy-count gate (Bulwark): applies ONLY when a count is known (grid); otherwise no match.
+  if (gates.enemiesWithin3 !== undefined) {
+    if (ctx.enemiesWithin3 === undefined) return false;
+    const min = gates.enemiesWithin3.atLeast;
+    const max = gates.enemiesWithin3.atMost;
+    if (min !== undefined && ctx.enemiesWithin3 < min) return false;
+    if (max !== undefined && ctx.enemiesWithin3 > max) return false;
+  }
   // Element dimension = OR: hit matches the element list OR is any-phase (Seedling:
   // "physical AND phase" = physical (element null) hits AND phase hits are both covered).
   if (gates.element !== undefined || gates.anyPhase === true) {
@@ -234,11 +329,20 @@ interface RemolderUnitLike {
   remolder?: { modifiers: RemolderModifier[] };
 }
 
+export interface RemolderDamageContext {
+  element: Element | null;
+  supportAttack: boolean;
+  targetExposed: boolean;
+  isAoE: boolean;
+  skillType: "basic" | "active" | "ultimate" | "support";
+  isBoss: boolean;
+  distance: number | undefined;
+  /** Enemy count within 3 tiles of the affected unit (Bulwark gates); undefined = no grid. */
+  enemiesWithin3?: number | undefined;
+}
+
 /** Σ additive dealt from a unit's Remolder modifiers (existing additive DMG% bucket). */
-export function remolderDealtBonus(
-  unit: RemolderUnitLike,
-  ctx: { element: Element | null; supportAttack: boolean; targetExposed: boolean; isAoE: boolean },
-): number {
+export function remolderDealtBonus(unit: RemolderUnitLike, ctx: RemolderDamageContext): number {
   let sum = 0;
   for (const mod of unit.remolder?.modifiers ?? []) {
     if (mod.effect.kind === "additive_dealt" && remolderGatesMatch(mod.effect.gates, ctx)) sum += mod.effect.value;
@@ -246,24 +350,108 @@ export function remolderDealtBonus(
   return sum;
 }
 
-/** Σ additive taken from a unit's Remolder modifiers (existing additive taken bucket). */
-export function remolderTakenBonus(unit: RemolderUnitLike, element: Element | null): number {
+/** Σ conditional Crit-DMG from a unit's Remolder modifiers (gated; Vanguard Precision/Beheading/Smite family). */
+export function remolderCritDmgBonus(unit: RemolderUnitLike, ctx: RemolderDamageContext): number {
   let sum = 0;
   for (const mod of unit.remolder?.modifiers ?? []) {
-    if (mod.effect.kind === "additive_taken") {
-      // additive_taken gates currently inspect element-level restrictions only (resistances are
-      // implemented via multiplicative_taken); keep the same gate matcher for consistency.
-      if (remolderGatesMatch(mod.effect.gates, { element, supportAttack: false, targetExposed: false, isAoE: false })) sum += mod.effect.value;
-    }
+    if (mod.effect.kind === "crit_dmg_gated" && remolderGatesMatch(mod.effect.gates, ctx)) sum += mod.effect.value;
   }
   return sum;
 }
 
-/** Σ multiplicative damage-taken REDUCTION from a unit's Remolder modifiers (incoming category + element gated). */
-export function remolderReductionBonus(unit: RemolderUnitLike, element: Element | null, isAoE: boolean): number {
+/** Σ HP-recovery-on-attack fractions (Vanguard "Bloodthirst"); applied to the applier's panel ATK. */
+export function remolderHealOnAttackPct(unit: RemolderUnitLike): number {
   let sum = 0;
   for (const mod of unit.remolder?.modifiers ?? []) {
-    if (mod.effect.kind === "multiplicative_taken" && remolderGatesMatch(mod.effect.gates, { element, supportAttack: false, targetExposed: false, isAoE })) sum += mod.effect.value;
+    if (mod.effect.kind === "heal_on_attack") sum += mod.effect.pct;
+  }
+  return sum;
+}
+
+/** Σ first-target-per-turn fixed Stability damage (Vanguard "Shock and Awe"). */
+export function remolderFirstTargetStability(unit: RemolderUnitLike): number {
+  let sum = 0;
+  for (const mod of unit.remolder?.modifiers ?? []) {
+    if (mod.effect.kind === "first_target_stability") sum += mod.effect.amount;
+  }
+  return sum;
+}
+
+/** Σ end-of-action HP-recovery fractions (Support "Life Recovery"); applied to the holder's max HP. */
+export function remolderHealEndOfActionPct(unit: RemolderUnitLike): number {
+  let sum = 0;
+  for (const mod of unit.remolder?.modifiers ?? []) {
+    if (mod.effect.kind === "heal_end_of_action") sum += mod.effect.pct;
+  }
+  return sum;
+}
+
+/** Σ end-of-action Stability recovery points (Support "Equilibrium Recovery"). */
+export function remolderStabilityRecovery(unit: RemolderUnitLike): number {
+  let sum = 0;
+  for (const mod of unit.remolder?.modifiers ?? []) {
+    if (mod.effect.kind === "stability_recovery") sum += mod.effect.amount;
+  }
+  return sum;
+}
+
+/** Σ healing/shield bonus fractions (Support "Healing Boost"); scales the healing the holder applies. */
+export function remolderHealBonus(unit: RemolderUnitLike): number {
+  let sum = 0;
+  for (const mod of unit.remolder?.modifiers ?? []) {
+    if (mod.effect.kind === "heal_bonus") sum += mod.effect.value;
+  }
+  return sum;
+}
+
+/**
+ * TAKEN-DAMAGE CONTEXT (2026, shared plumbing): the actual incoming-hit context for Remolder
+ * taken-side effects (resistances / damage-taken reductions). Reuses ONE gate matcher — no
+ * duplicated gate logic. `distance` stays `undefined` when no grid is present, so distance-gated
+ * taken effects remain safely inactive (never unconditional).
+ */
+export interface RemolderTakenContext {
+  element: Element | null;
+  isAoE: boolean;
+  isBoss: boolean;
+  distance: number | undefined;
+  /** Enemy count within 3 tiles of the affected unit (Bulwark gates); undefined = no grid. */
+  enemiesWithin3?: number | undefined;
+}
+
+/** Shared taken-side gate context (supportAttack/targetExposed are dealt-side concerns → false here). */
+function takenGateContext(ctx: RemolderTakenContext): Parameters<typeof remolderGatesMatch>[1] {
+  return { element: ctx.element, supportAttack: false, targetExposed: false, isAoE: ctx.isAoE, skillType: "basic", isBoss: ctx.isBoss, distance: ctx.distance, enemiesWithin3: ctx.enemiesWithin3 };
+}
+
+/**
+ * REACTIVE DAMAGE (2026, Bulwark "Lex Talionis"): the retaliation specs that fire when the holder
+ * TAKES damage. Each spec's damage = `pctOfMaxHp` × holder max HP, capped at 100% of holder ATK
+ * when `capAtAtk`. Returns `[]` when the holder took no damage (never fires without damage).
+ */
+export function remolderReactiveDamage(unit: RemolderUnitLike, damageTaken: number): { pctOfMaxHp: number; capAtAtk: boolean; modifier: RemolderModifier }[] {
+  if (damageTaken <= 0) return [];
+  const out: { pctOfMaxHp: number; capAtAtk: boolean; modifier: RemolderModifier }[] = [];
+  for (const mod of unit.remolder?.modifiers ?? []) {
+    if (mod.effect.kind === "reactive_damage") out.push({ pctOfMaxHp: mod.effect.pctOfMaxHp, capAtAtk: mod.effect.capAtAtk, modifier: mod });
+  }
+  return out;
+}
+
+/** Σ additive taken from a unit's Remolder modifiers (existing additive taken bucket). */
+export function remolderTakenBonus(unit: RemolderUnitLike, ctx: RemolderTakenContext): number {
+  let sum = 0;
+  for (const mod of unit.remolder?.modifiers ?? []) {
+    if (mod.effect.kind === "additive_taken" && remolderGatesMatch(mod.effect.gates, takenGateContext(ctx))) sum += mod.effect.value;
+  }
+  return sum;
+}
+
+/** Σ multiplicative damage-taken REDUCTION from a unit's Remolder modifiers (incoming element/category/boss/distance gated). */
+export function remolderReductionBonus(unit: RemolderUnitLike, ctx: RemolderTakenContext): number {
+  let sum = 0;
+  for (const mod of unit.remolder?.modifiers ?? []) {
+    if (mod.effect.kind === "multiplicative_taken" && remolderGatesMatch(mod.effect.gates, takenGateContext(ctx))) sum += mod.effect.value;
   }
   return sum;
 }
