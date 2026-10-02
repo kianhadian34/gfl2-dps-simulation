@@ -18,6 +18,8 @@ export interface UnityClaim {
   label: string; // unity identity (buff id) — per buff, not per character
   stat: "atk" | "hp" | "def";
   value: number;
+  /** The buff level that produced this claim — Unity resolves on the HIGHEST active LEVEL. */
+  level: number;
 }
 
 export interface AlliedPctClaim {
@@ -93,13 +95,13 @@ export function resolveRemolderUnit(
     totals[def.category] += level;
     const unityLevel = levelEffects.some((e) => e.kind === "unity");
     for (const effect of levelEffects) {
-      // Unity strength marker (same-level stat_pct) is NOT a self-buff ? it feeds the team grant.
+      // Unity strength marker (same-level stat_pct) is NOT a self-buff — it feeds the team grant.
       if (unityLevel && effect.kind === "stat_pct") continue;
       // Unity strength comes from the same level's stat_pct for the unity's stat.
       if (effect.kind === "unity") {
         const self = levelEffects.find((e): e is Extract<RemolderEffect, { kind: "stat_pct" }> => e.kind === "stat_pct" && e.stat === effect.stat);
         if (!self) throw new Error(`Pattern Remolder: unity "${effect.label}" level ${level} requires a same-level stat_pct for "${effect.stat}"`);
-        plan.unityClaims.push({ label: effect.label, stat: effect.stat, value: self.value });
+        plan.unityClaims.push({ label: effect.label, stat: effect.stat, value: self.value, level });
         continue;
       }
       pushEffect(plan, "buff", def.id, def.name, level, effect);
@@ -148,10 +150,15 @@ function pushEffect(plan: RemolderUnitPlan, sourceType: "buff" | "set_bonus", so
 }
 
 /**
- * TEAM-LEVEL resolution (2026). Unity "Does not stack": for each unity identity only the
- * STRONGEST active level applies, granted to everyone who does NOT themselves claim that
- * unity (the owner's allies). Start-of-battle allied % claims (e.g. Blossom: top-`count`
- * allied highest-ATK units) resolve per owner; strongest value wins per target stat.
+ * TEAM-LEVEL resolution (2026). UNITY — CONFIRMED in-game (not an assumption):
+ *  - Unity buffs do NOT stack; every active instance of the same unity COMPETES.
+ *  - The HIGHEST active level takes effect; every lower level is ignored.
+ *  - If two or more characters hold the SAME highest level, exactly ONE instance takes effect
+ *    (tied instances never combine) ⇒ exactly one active instance per unity type.
+ *  - That single winning instance is granted to every unit that does NOT itself hold a winning
+ *    instance (the strongest owner's allies; weaker claimers are recipients).
+ * Start-of-battle allied % claims (e.g. Blossom: top-`count` allied highest-ATK units) resolve
+ * per owner; strongest value wins per target stat.
  * `rawAtk` = each unit's pre-affinity/common panel ATK (base + dispatch + remolder flat +
  * weapon flat+pct) — used only for the "highest attack" selection.
  */
@@ -159,18 +166,19 @@ export function resolveRemolderTeam(plans: RemolderUnitPlan[], rawAtk: number[])
   const n = plans.length;
   const grants: RemolderTeamGrants[] = plans.map(() => ({ unityPct: { atk: 0, hp: 0, def: 0 }, alliedPct: { atk: 0, hp: 0, def: 0 } }));
 
-  // Strongest unity per label.
-  const strongest = new Map<string, { stat: "atk" | "hp" | "def"; value: number }>();
+  // CONFIRMED RULE: the HIGHEST active unity LEVEL wins; ties resolve to exactly ONE instance;
+  // lower levels are ignored and NEVER combine. Compared by level; the single winner is granted
+  // to every unit that does NOT itself hold the winning level (Math.max = idempotent, no stacking).
+  const strongest = new Map<string, { stat: "atk" | "hp" | "def"; value: number; level: number }>();
   for (const claim of plans.flatMap((p) => p.unityClaims)) {
     const cur = strongest.get(claim.label);
-    if (!cur || claim.value > cur.value) strongest.set(claim.label, { stat: claim.stat, value: claim.value });
+    if (cur === undefined || claim.level > cur.level) strongest.set(claim.label, { stat: claim.stat, value: claim.value, level: claim.level });
   }
-  // Unity "Does not stack": the STRONGEST source wins; it is granted to everyone who does
-  // NOT hold the winning level (the strongest owner's allies ? weaker claimers still benefit).
   for (const [label, win] of strongest) {
+    // Every unit holding the WINNING LEVEL is a claimer (tied instances grant nothing extra).
     const winners = new Set<number>();
     plans.forEach((p, i) => {
-      if (p.unityClaims.some((c) => c.label === label && c.value === win.value)) winners.add(i);
+      if (p.unityClaims.some((c) => c.label === label && c.level === win.level)) winners.add(i);
     });
     for (let i = 0; i < n; i++) {
       if (winners.has(i)) continue;

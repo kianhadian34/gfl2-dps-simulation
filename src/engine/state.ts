@@ -61,9 +61,9 @@ export interface UnitState {
   /** Out-of-Turn Damage: additive % applied to damage dealt OUTSIDE the unit's own turn (in the MVP, Support Actions). Sits in the same additive bracket as the passive 10% (QJ) — Strategic Negotiation +7% → 1.17 validated. */
   outOfTurnDmg: number;
   /**
-   * PATTERN REMOLDER (2026): resolved per-unit state ? flat source, active (clamped) buffs,
+   * PATTERN REMOLDER (2026): resolved per-unit state — flat source, active (clamped) buffs,
    * category totals, active Set Bonuses, resolved modifiers (existing buckets) and the
-   * team-granted Unity / battle-start allied percentages ? kept for provenance and the
+   * team-granted Unity / battle-start allied percentages — kept for provenance and the
    * future stat-source UI. Absent field = no Remolder configured.
    */
   remolder?: {

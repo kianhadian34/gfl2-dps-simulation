@@ -586,16 +586,16 @@ export interface RemolderEffectGates {
   targetExposed?: boolean;
   /** Restrict to hits with ANY of these attack elements (null = phase-less/physical). */
   element?: (Element | null)[];
-  /** Restrict to hits with ANY phase element (element !== null) ? used with `element` for OR-combined gates (e.g. Seedling: physical AND phase). */
+  /** Restrict to hits with ANY phase element (element !== null) — used with `element` for OR-combined gates (e.g. Seedling: physical AND phase). */
   anyPhase?: boolean;
-  /** Restrict to out-of-turn events (in the MVP, Support Actions ? the only out-of-turn attacker). */
+  /** Restrict to out-of-turn events (in the MVP, Support Actions — the only out-of-turn attacker). */
   outOfTurn?: boolean;
 }
 
 /**
  * PATTERN REMOLDER EFFECT (2026): expressed in the EXISTING engine vocabulary so effects enter
  * the existing buckets (additive DMG% dealt/taken, multiplicative damage taken, panel stat
- * percentages, crit, out-of-turn damage) ? never a parallel stat/damage formula. Each effect
+ * percentages, crit, out-of-turn damage) — never a parallel stat/damage formula. Each effect
  * carries optional gates (above) and a source identity for future stat-source UI.
  */
 export type RemolderEffect =
@@ -620,10 +620,12 @@ export type RemolderEffect =
     }
   | {
       /**
-       * UNITY (2026): a global ALLIED effect supplied by this buff's level. "Does not stack":
-       * across the team only the STRONGEST active level applies, applied at most once per unity.
-       * `target: "all_allies"` applies to the owner's TEAMMATES (excludes the owner itself ?
-       * the established reading: a bond shared with allies).
+       * UNITY (2026) — CONFIRMED in-game (not an assumption): a global ALLIED effect supplied by
+       * this buff's level. "Does not stack": every active instance of the same unity competes and
+       * only the HIGHEST active LEVEL takes effect (lower levels are ignored). Equal-highest ties
+       * resolve to exactly ONE instance (never combined) ⇒ one active instance per unity type.
+       * `target: "all_allies"` grants that single winning instance to units that do NOT themselves
+       * hold a winning instance (the strongest owner's teammates — a bond shared with allies).
        */
       kind: "unity";
       label: string;
@@ -638,7 +640,7 @@ export interface RemolderBuffDef {
   category: RemolderCategory;
   /** Buffs are invalid above this level; supplied levels clamp to it. */
   maxLevel: number;
-  /** Level ? effects (exact table values from source material; only levels present are defined). */
+  /** Level → effects (exact table values from source material; only levels present are defined). */
   effects: Record<number, RemolderEffect[]>;
 }
 
@@ -646,7 +648,7 @@ export interface RemolderBuffDef {
 export interface RemolderSetBonusDef {
   id: string;
   name: string;
-  /** Remolder tier (1/10/20/30/45/60 ? engine always assumes level 60, so all are eligible). */
+  /** Remolder tier (1/10/20/30/45/60 — engine always assumes level 60, so all are eligible). */
   remolderLevel: number;
   requires: { bulwark: number; vanguard: number; support: number; sentinel: number };
   /** Self-targeting or team-targeting per effect (see RemolderEffect gates/target). */

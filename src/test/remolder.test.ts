@@ -114,36 +114,66 @@ test("D2: partial requirements activate only qualifying bonuses (Embryo alone)",
 });
 
 // E) Unity strongest-level resolution ------------------------------------------------
+// E) Unity strongest-level resolution (CONFIRMED in-game 2026) -----------------------
 function teamSc(team: Scenario["team"], buffSet: RemolderBuffDef[]): Scenario {
   return { version: 1, seed: 7, turns: 1, team, dummy, remolderBuffSet: buffSet };
 }
-test("E1: Unity does not stack — only the strongest active level applies", () => {
-  const sc = teamSc(
-    [
-      { characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [], remolderBuffs: { test_uni: 5 } },
-      { characterId: "allyA", rotation: ["basic"], equippedFixedKeys: [], applyDispatchStats: false, remolderBuffs: { test_uni: 3 } },
-    ],
-    [UNI],
+// Helper: build a state with per-id ally base ATK for the "highest attack" selection.
+function uniState(team: Scenario["team"], atkById: Record<string, number>) {
+  return createState(
+    teamSc(team, [UNI]),
+    { ...REGISTRY, getCharacter: (id: string) => (id in atkById ? makeAlly(id, atkById[id]) : REGISTRY.getCharacter(id)) },
+    new Set(),
   );
-  const st = createState(sc, { ...REGISTRY, getCharacter: (id: string) => (id === "allyA" ? makeAlly("allyA", 1000) : REGISTRY.getCharacter(id)) }, new Set());
+}
+const uniMember = (id: string, level: number): Scenario["team"][number] => ({ characterId: id, rotation: ["basic"], equippedFixedKeys: [], applyDispatchStats: false, remolderBuffs: { test_uni: level } });
+
+test("E1: a single Unity source grants its level once to allies (owner excluded)", () => {
+  const st = uniState(
+    [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [] }, uniMember("allyA", 5)],
+    { allyA: 1000 },
+  );
   const [qj, ally] = st.units;
-  assert.equal(qj.panelAtk, 1285, "QJ claims Lv5 — its OWN unity does not buff itself");
-  assert.equal(ally.panelAtk, 1050, "ally receives the STRONGEST unity (Lv5 = +5%), not Lv3, not the sum (+8%)");
+  assert.equal(ally.panelAtk, 1000, "owner is not self-buffed");
+  assert.equal(qj.panelAtk, 1350, "ally's Lv5 Unity (+5%) reaches Qiongjiu exactly once: ceil(1285×1.05)");
 });
-test("E2: two allies with the same unity → target still gets the strongest value exactly once", () => {
-  const sc = teamSc(
-    [
-      { characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [] },
-      { characterId: "allyA", rotation: ["basic"], equippedFixedKeys: [], applyDispatchStats: false, remolderBuffs: { test_uni: 4 } },
-      { characterId: "allyB", rotation: ["basic"], equippedFixedKeys: [], applyDispatchStats: false, remolderBuffs: { test_uni: 4 } },
-    ],
-    [UNI],
+
+test("E2: higher Unity level defeats lower level (higher wins, lower ignored)", () => {
+  const st = uniState(
+    [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [] }, uniMember("allyA", 5), uniMember("allyB", 3)],
+    { allyA: 1000, allyB: 900 },
   );
-  const st = createState(sc, { ...REGISTRY, getCharacter: (id: string) => (id === "allyA" ? makeAlly("allyA", 1000) : id === "allyB" ? makeAlly("allyB", 900) : REGISTRY.getCharacter(id)) }, new Set());
+  const [qj] = st.units;
+  assert.equal(qj.panelAtk, 1350, "receives Lv5 (+5%), NOT Lv3 (+3%), NOT the sum (+8%): ceil(1285×1.05)");
+});
+
+test("E3: multiple lower-level Unity sources are all ignored", () => {
+  const st = uniState(
+    [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [] }, uniMember("allyA", 2), uniMember("allyB", 4), uniMember("allyC", 1)],
+    { allyA: 1000, allyB: 900, allyC: 800 },
+  );
+  const [qj] = st.units;
+  assert.equal(qj.panelAtk, 1337, "only the highest (Lv4 = +4%) applies: ceil(1285×1.04) — the Lv2/Lv1 sources are ignored");
+});
+
+test("E4: two or more sources tied at the highest level → exactly ONE active effect", () => {
+  const st = uniState(
+    [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [] }, uniMember("allyA", 5), uniMember("allyB", 5), uniMember("allyC", 3)],
+    { allyA: 1000, allyB: 900, allyC: 800 },
+  );
+  const [qj] = st.units;
+  assert.equal(qj.panelAtk, 1350, "the single winning Lv5 instance applies once: ceil(1285×1.05)");
+});
+
+test("E5: tied Unity sources do NOT stack additively (duplicate Lv5 ≠ +10%)", () => {
+  const st = uniState(
+    [{ characterId: "qiongjiu", rotation: ["basic"], equippedFixedKeys: [] }, uniMember("allyA", 5), uniMember("allyB", 5)],
+    { allyA: 1000, allyB: 900 },
+  );
   const [qj, a, b] = st.units;
-  assert.equal(qj.panelAtk, 1337, "QJ receives the strongest unity once (+3%, ceil(1285×1.03)) — NOT +8% stacking");
-  assert.equal(a.panelAtk, 1000, "allies are claimers → not self-buffed");
-  void b;
+  assert.equal(qj.panelAtk, 1350, "NOT 1285×1.10=1414: duplicate Lv5 instances do not combine");
+  assert.equal(a.panelAtk, 1000, "tied Lv5 owner is a claimer → not self-buffed");
+  assert.equal(b.panelAtk, 900, "the other tied Lv5 owner is also a claimer → not self-buffed");
 });
 
 // F) Modifier integration into EXISTING buckets ---------------------------------------
@@ -172,7 +202,7 @@ test("F2: multiplicative_taken enters the existing reduction chain (phys+phase �
 });
 test("F3: crit-rate buff folds through the existing crit system", () => {
   const u = createState(qjScenario({ remolderBuffs: { test_sent_crit: 2 } }, [SENT_CRIT]), REGISTRY, new Set()).units[0];
-  assert.ok(Math.abs(u.critRate - 0.3) < 1e-9, "0.2 base + 0.1 Remolder crit-rate (existing crit system) ? got " + u.critRate);
+  assert.ok(Math.abs(u.critRate - 0.3) < 1e-9, "0.2 base + 0.1 Remolder crit-rate (existing crit system) — got " + u.critRate);
 });
 test("F4: QJ Set Bonuses render modifiers with source identity (provenance)", () => {
   const sc = qjScenario({ remolderBuffs: { test_sf: 15, test_vg: 9, test_bw: 5 } }, [SENT_ATK_BOOST, SF, VG, BW]);
