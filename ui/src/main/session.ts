@@ -172,6 +172,7 @@ export function registerSimHandlers(): void {
                   }
                 : {}),
               ...(def && def.affinityLevelStats ? { affinityLevelStats: def.affinityLevelStats } : {}),
+              ...(def && def.affinityFlatStats ? { affinityFlatStats: def.affinityFlatStats } : {}),
               ...(def && def.skills
                 ? {
                     skills: {

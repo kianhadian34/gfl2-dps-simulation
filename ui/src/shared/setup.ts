@@ -223,6 +223,14 @@ export const MAX_EXPANSION_KEYS = 1;
 export const MAX_CALIBRATION_LEVEL = 6;
 export const MIN_CALIBRATION_LEVEL = 1;
 
+/**
+ * CHARACTER Affinity Level default (mirrors the engine `DEFAULT_AFFINITY_LEVEL`; in-game 2026). Every
+ * character sits at Lv.5 unless the user picks another recorded level. This is a DISPLAY default only:
+ * the stored `affinityLevel` is written solely when a pill is clicked, and the engine applies its own
+ * default when the scenario supplies none.
+ */
+export const DEFAULT_AFFINITY_LEVEL = 5;
+
 export function equipmentOf(c: SetupCharacter): SetupEquipment {
   return c.equipment ?? {};
 }

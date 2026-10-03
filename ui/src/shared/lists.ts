@@ -57,6 +57,9 @@ export interface CharacterMetaSource {
     genericBonus?: { atk?: number; hp?: number };
   };
   affinityLevelStats?: Record<number, { atkPct?: number; hpPct?: number; defPct?: number }>;
+  /** STANDALONE character Affinity-LEVEL FLAT stats (engine `CharacterDef.affinityFlatStats`) — each
+   *  level's PER-LEVEL increase; the contribution at level N is the cumulative sum of entries 1..N. */
+  affinityFlatStats?: Record<number, { atk?: number; hp?: number; def?: number }>;
   skills?: { basic?: { id: string; name: string; description?: string; descriptions?: Record<number, string> }; active1?: { id: string; name: string; description?: string; descriptions?: Record<number, string> }; active2?: { id: string; name: string; description?: string; descriptions?: Record<number, string> }; ultimate?: { id: string; name: string; description?: string; descriptions?: Record<number, string> } };
   fortificationMap?: Array<{ v: number; ability: string; toLevel: number }>;
   passive?: { playerDescription?: string; levelDescriptions?: Record<number, string> };
@@ -222,6 +225,13 @@ export function buildCharacterMetaView(def: CharacterMetaSource): CharacterMetaV
           ),
         }
       : {}),
+    ...(def.affinityFlatStats !== undefined
+      ? {
+          affinityFlatStats: Object.fromEntries(
+            Object.entries(def.affinityFlatStats).map(([lv, s]) => [Number(lv), { ...s }]),
+          ),
+        }
+      : {}),
     ...(def.skills
       ? {
           skills: {
@@ -286,6 +296,37 @@ export function affinityLevelStatLines(v: CharacterMetaView, level: number | und
   if (stats.atkPct !== undefined) lines.push(`ATK +${pct1(stats.atkPct)}`);
   if (stats.hpPct !== undefined) lines.push(`HP +${pct1(stats.hpPct)}`);
   if (stats.defPct !== undefined) lines.push(`DEF +${pct1(stats.defPct)}`);
+  return lines;
+}
+
+/** The CHARACTER's recorded Affinity Levels (engine `CharacterDef.affinityLevelStats` keys — e.g.
+ *  Qiongjiu {5, 9}), ascending. Data-driven: no levels are invented or interpolated, and the set is
+ *  the character's OWN (independent of the equipped Affinity Key). Empty when the character records
+ *  none. */
+export function affinityLevels(v: CharacterMetaView | undefined): number[] {
+  const stats = v?.affinityLevelStats;
+  return stats ? Object.keys(stats).map(Number).sort((a, b) => a - b) : [];
+}
+
+/** STANDALONE character Affinity-LEVEL FLAT lines at `level` — the CUMULATIVE flat ATK/HP/DEF granted
+ *  through that level (engine `CharacterDef.affinityFlatStats`: each entry is a PER-LEVEL increase, so
+ *  the totals sum entries 1..N — e.g. Qiongjiu Lv.5 → ATK +115 / HP +292 / DEF +108). Data-driven:
+ *  absent levels contribute nothing (no interpolation) and absent stats emit no line. Independent of
+ *  the equipped Affinity Key. */
+export function affinityLevelFlatLines(v: CharacterMetaView, level: number | undefined): string[] {
+  if (level === undefined) return [];
+  const totals = { atk: 0, hp: 0, def: 0 };
+  for (let lv = 1; lv <= level; lv++) {
+    const entry = v.affinityFlatStats?.[lv];
+    if (!entry) continue;
+    totals.atk += entry.atk ?? 0;
+    totals.hp += entry.hp ?? 0;
+    totals.def += entry.def ?? 0;
+  }
+  const lines: string[] = [];
+  if (totals.atk !== 0) lines.push(`ATK +${totals.atk}`);
+  if (totals.hp !== 0) lines.push(`HP +${totals.hp}`);
+  if (totals.def !== 0) lines.push(`DEF +${totals.def}`);
   return lines;
 }
 

@@ -22,11 +22,12 @@ import {
   MAX_FIXED_KEYS,
   MAX_COMMON_KEYS_UI,
   DEBUG_STAT_KEYS,
+  DEFAULT_AFFINITY_LEVEL,
   type RotationSlot,
   type SetupState,
 } from "../../../shared/setup.js";
 import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CharacterMetaView, AffinityKeyView, ExpansionKeyView } from "../../../shared/engine-types.js";
-import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, expansionKeyEffectLine, affinityLevelStatLines, rotationAbilityDescription } from "../../../shared/lists.js";
+import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, affinityLevels, affinityLevelFlatLines, expansionKeyEffectLine, affinityLevelStatLines, rotationAbilityDescription } from "../../../shared/lists.js";
 import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset, skillAsset } from "../../../shared/assets.js";
 import { AssetThumb } from "./AssetThumb.js";
 
@@ -678,6 +679,28 @@ export function SetupScreen(props: {
                         <legend>
                           Affinity Key <span className="muted">(exactly 1 — engine `affinityKeyId`)</span>
                         </legend>
+                        {affinityLevels(m).length > 0 ? (
+                          <div className="affinity-levels">
+                            <span className="affinity-levels-label">Affinity Level</span>
+                            {affinityLevels(m).map((lv) => (
+                              <span
+                                key={lv}
+                                role="button"
+                                tabIndex={0}
+                                className={`affinity-level-pill${(equ.affinityLevel ?? DEFAULT_AFFINITY_LEVEL) === lv ? " is-selected" : ""}`}
+                                onClick={() => props.onChange(setAffinityLevel(props.setup, c.id, lv))}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    props.onChange(setAffinityLevel(props.setup, c.id, lv));
+                                  }
+                                }}
+                              >
+                                Level {lv}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
                         {affinityKey ? (
                           <>
                             <div className="common-key-slots is-single">
@@ -687,44 +710,19 @@ export function SetupScreen(props: {
                                 onClick={() => setAffinityPickerFor(c.id)}
                               >
                                 {equ.affinityKeyId ? (
-                                  <>
-                                    <AffinityKeyBadge k={affinityKey} size={64} level={equ.affinityLevel} />
-                                    {equ.affinityKeyId === affinityKey.id ? (
-                                      <span className="affinity-levels" onClick={(e) => e.stopPropagation()}>
-                                        <span className="affinity-levels-label">Affinity Level</span>
-                                        {(affinityKey.levels ? Object.keys(affinityKey.levels).map(Number).sort((a, b) => a - b) : []).map((lv) => (
-                                          <span
-                                            key={lv}
-                                            role="button"
-                                            tabIndex={0}
-                                            className={`affinity-level-pill${equ.affinityLevel === lv ? " is-selected" : ""}`}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              props.onChange(setAffinityLevel(props.setup, c.id, lv));
-                                            }}
-                                            onKeyDown={(e) => {
-                                              if (e.key === "Enter" || e.key === " ") {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                props.onChange(setAffinityLevel(props.setup, c.id, lv));
-                                              }
-                                            }}
-                                          >
-                                            Level {lv}
-                                          </span>
-                                        ))}
-                                      </span>
-                                    ) : null}
-                                  </>
+                                  <AffinityKeyBadge k={affinityKey} size={64} level={equ.affinityLevel} />
                                 ) : (
                                   <span className="common-key-slot-plus">+</span>
                                 )}
                               </button>
                             </div>
-                            {affinityLevelStatLines(m, equ.affinityLevel).length > 0 ? (
+                            {affinityLevelStatLines(m, equ.affinityLevel ?? DEFAULT_AFFINITY_LEVEL).length + affinityLevelFlatLines(m, equ.affinityLevel ?? DEFAULT_AFFINITY_LEVEL).length > 0 ? (
                               <div className="affinity-level-bonus">
                                 <span className="affinity-level-bonus-label">Character Affinity</span>
-                                {affinityLevelStatLines(m, equ.affinityLevel).map((ln) => (
+                                {[
+                                  ...affinityLevelStatLines(m, equ.affinityLevel ?? DEFAULT_AFFINITY_LEVEL),
+                                  ...affinityLevelFlatLines(m, equ.affinityLevel ?? DEFAULT_AFFINITY_LEVEL),
+                                ].map((ln) => (
                                   <span key={ln} className="affinity-level-bonus-stat">
                                     {ln}
                                   </span>
@@ -755,22 +753,7 @@ export function SetupScreen(props: {
                                   >
                                     <AffinityKeyBadge k={affinityKey} size={56} />
                                   </button>
-                                {equ.affinityKeyId === affinityKey.id ? (
-                                <div className="affinity-levels">
-                                  <span className="affinity-levels-label">Affinity Level</span>
-                                  {(affinityKey.levels ? Object.keys(affinityKey.levels).map(Number).sort((a, b) => a - b) : []).map((lv) => (
-                                    <button
-                                      key={lv}
-                                      type="button"
-                                      className={`affinity-level-pill${equ.affinityLevel === lv ? " is-selected" : ""}`}
-                                      onClick={() => props.onChange(setAffinityLevel(props.setup, c.id, lv))}
-                                    >
-                                      Level {lv}
-                                    </button>
-                                  ))}
                                 </div>
-                              ) : null}
-                              </div>
                                 <button type="button" className="common-key-picker-close" onClick={() => setAffinityPickerFor(null)}>
                                   Close
                                 </button>

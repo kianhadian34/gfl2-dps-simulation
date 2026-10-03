@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, expansionKeyEffectLine, affinityLevelStatLines } from "../src/shared/lists.js";
+import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, expansionKeyEffectLine, affinityLevelStatLines, affinityLevels, affinityLevelFlatLines } from "../src/shared/lists.js";
 
 /**
  * ENGINE-SOURCED LIST CONTRACT (2026 — plumbing; no UI controls yet).
@@ -69,6 +69,32 @@ test("unit: affinityLevelStatLines — Lv9 data-driven lines, Lv5/none-empty (in
   assert.deepEqual(affinityLevelStatLines(meta, 4), [], "unrecorded level → nothing (no interpolation)");
   assert.deepEqual(affinityLevelStatLines({ id: "x", name: "X" }, 9), [], "no affinityLevelStats → no lines");
   assert.deepEqual(affinityLevelStatLines(meta, undefined), [], "no level → no lines");
+});
+
+test("unit: affinityLevels — the CHARACTER's recorded levels, ascending, data-driven (no key, no invention)", () => {
+  const meta = buildCharacterMetaView({
+    id: "qiongjiu",
+    name: "Qiongjiu",
+    affinityLevelStats: { 9: { atkPct: 0.05, hpPct: 0.05, defPct: 0.05 }, 5: {} },
+  });
+  assert.deepEqual(affinityLevels(meta), [5, 9], "ascending recorded levels (independent of the Affinity Key)");
+  assert.deepEqual(affinityLevels({ id: "x", name: "X" }), [], "no affinity data → no levels (no invented ladder)");
+  assert.deepEqual(affinityLevels(undefined), [], "no character → no levels");
+});
+
+test("unit: affinityLevelFlatLines — CUMULATIVE flat totals through the level (Lv5 → +115/+292/+108), nothing when unrecorded", () => {
+  const meta = buildCharacterMetaView({
+    id: "qiongjiu",
+    name: "Qiongjiu",
+    affinityFlatStats: { 2: { atk: 23, hp: 82 }, 3: { hp: 93, def: 32 }, 4: { atk: 40, def: 76 }, 5: { atk: 52, hp: 117 } },
+  });
+  assert.deepEqual(affinityLevelFlatLines(meta, 5), ["ATK +115", "HP +292", "DEF +108"], "Lv5 sums entries 1..5 (the engine's cumulative totals)");
+  assert.deepEqual(affinityLevelFlatLines(meta, 2), ["ATK +23", "HP +82"], "Lv2 → only that level's recorded stats (DEF absent → no line)");
+  assert.deepEqual(affinityLevelFlatLines(meta, 4), ["ATK +63", "HP +175", "DEF +108"], "Lv4 cumulative");
+  assert.deepEqual(affinityLevelFlatLines(meta, 1), [], "Lv1 → nothing recorded");
+  assert.deepEqual(affinityLevelFlatLines(meta, 9), ["ATK +115", "HP +292", "DEF +108"], "Lv6–9 add nothing → same as Lv5");
+  assert.deepEqual(affinityLevelFlatLines({ id: "x", name: "X" }, 5), [], "no affinity flat data → no lines");
+  assert.deepEqual(affinityLevelFlatLines(meta, undefined), [], "no level → no lines");
 });
 
 test("unit: affinity/expansion key lines come from the engine data (never invented)", () => {

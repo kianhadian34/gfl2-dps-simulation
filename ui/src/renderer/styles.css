@@ -310,10 +310,12 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .affinity-level-bonus-label { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
 .affinity-level-bonus-stat { font-size: 11px; color: var(--buff); font-weight: 600; }
 
-/* --- affinity level selection (2026): exact levels only (engine `levels` keys) --- */
+/* --- affinity level selection (2026): the CHARACTER's affinity level, its own row ABOVE the key
+       slot (exact levels only, engine `affinityLevelStats` keys). Spaced clear of the legend above
+       and the key slot below; no divider line. --- */
 .affinity-levels {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px;
-  padding-top: 8px; border-top: 1px solid var(--border);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin: 6px 0 12px;
 }
 .affinity-levels-label { font-size: 11px; color: var(--muted); margin-right: 2px; }
 .affinity-level-pill {

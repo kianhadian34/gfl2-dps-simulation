@@ -161,6 +161,10 @@ export interface CharacterMetaView {
   /** STANDALONE character Affinity-LEVEL stat bonuses (engine `CharacterDef.affinityLevelStats` — exact
    *  level map; Lv5 = none, Lv9 = ATK/HP/DEF +5%). Independent of the equipped Affinity Key. */
   affinityLevelStats?: Record<number, { atkPct?: number; hpPct?: number; defPct?: number }>;
+  /** STANDALONE character Affinity-LEVEL FLAT stats (engine `CharacterDef.affinityFlatStats`) — each
+   *  level's PER-LEVEL flat ATK/HP/DEF increase; the contribution at level N is the cumulative sum of
+   *  entries 1..N. Independent of the equipped Affinity Key. */
+  affinityFlatStats?: Record<number, { atk?: number; hp?: number; def?: number }>;
   /** Rotation abilities (engine `CharacterDef.skills` — basic/active1/active2/ultimate), used to show
    *  each ability's artwork + name in the Rotation builder. */
   skills?: { basic?: RotationSkillView; active1?: RotationSkillView; active2?: RotationSkillView; ultimate?: RotationSkillView };

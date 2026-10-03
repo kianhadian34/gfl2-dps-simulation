@@ -29,18 +29,20 @@ test("affinity key: badge slot + picker reuse the common-key card pattern and se
   assert.ok(!s.includes("e.target.value === \"\" ? undefined : e.target.value"), "legacy select forms removed");
 });
 
-test("affinity level: picker offers the exact recorded levels (data-driven), the badge filters to the chosen level, and the slot shows inline pills for the SIGNATURE key", () => {
+test("affinity level: a CHARACTER-scoped selector (separate from the key) offers the recorded levels (data-driven), defaults to Lv5, and the badge filters to the chosen level", () => {
   const s = readFileSync(srcFile("../../src/renderer/app/setup/SetupScreen.tsx"), "utf8");
   assert.ok(s.includes("affinity-level-pill"), "affinity level pills exist");
-  assert.ok(s.includes("Object.keys(affinityKey.levels)"), "levels come from the engine data (never hardcoded)");
+  // Levels come from the CHARACTER's affinity data — independent of the equipped Affinity Key.
+  assert.ok(s.includes("affinityLevels(m)"), "levels come from the character-data helper (never hardcoded)");
+  assert.ok(!s.includes("Object.keys(affinityKey.levels)"), "levels no longer derive from the Affinity Key's levels");
   assert.ok(s.includes("setAffinityLevel(props.setup, c.id, lv)"), "level selection flows through setAffinityLevel");
   assert.ok(s.includes("Level {lv}"), "pills label the level data-driven");
   assert.ok(s.includes("level={equ.affinityLevel}") && s.includes("affinityKeyStatLines(k, level)"), "badge/tooltip show ONLY the chosen level's stats");
-  assert.ok(s.includes("equ.affinityLevel === lv ? \" is-selected\""), "chosen level highlighted");
-  assert.ok(s.includes('className="affinity-levels" onClick={(e) => e.stopPropagation()}'), "level pills are ALSO rendered next to the selected key in the slot (quick change)");
-  assert.ok(s.includes('role="button"') && s.includes("onKeyDown"), "slot pills are accessible inside the slot button");
-  const sig = s.match(/equ\.affinityKeyId === affinityKey\.id/g) ?? [];
-  assert.ok(sig.length >= 2, "the level selector appears ONLY when the signature affinity key is equipped (slot + picker)");
+  // Default Lv.5 shows selected when nothing is stored (engine default), and the row lives on its own,
+  // above the key slot — NOT gated on the signature key any more.
+  assert.ok(s.includes('(equ.affinityLevel ?? DEFAULT_AFFINITY_LEVEL) === lv ? " is-selected"'), "chosen level highlighted (defaults to Lv5)");
+  assert.ok(s.includes('className="affinity-levels"') && s.includes("affinityLevels(m).length > 0"), "a dedicated affinity-levels row renders from character data");
+  assert.ok(s.includes('role="button"') && s.includes("onKeyDown"), "level pills are accessible");
 });
 
 test("affinity/expansion data actually reaches the UI: session.ts IPC passes description/levels/genericBonus/affinityLevelStats", () => {
@@ -48,14 +50,20 @@ test("affinity/expansion data actually reaches the UI: session.ts IPC passes des
   assert.ok(s.includes("description: def.expansionKey.description"), "expansion description is forwarded to the renderer");
   assert.ok(s.includes("levels: def.affinityKey.levels") && s.includes("genericBonus: def.affinityKey.genericBonus"), "affinity levels + generic bonus are forwarded to the renderer");
   assert.ok(s.includes("affinityLevelStats: def.affinityLevelStats"), "standalone character affinity-level stats are forwarded to the renderer");
+  assert.ok(s.includes("affinityFlatStats: def.affinityFlatStats"), "standalone character affinity-level FLAT stats are forwarded to the renderer");
 });
 
-test("affinity section shows the standalone CHARACTER Affinity row at Lv9 (data-driven), never at Lv5", () => {
+test("affinity section shows the standalone CHARACTER Affinity row at every recorded level (data-driven): Lv5 → cumulative FLAT lines, Lv9 → +5% lines AND the flats", () => {
   const s = readFileSync(srcFile("../../src/renderer/app/setup/SetupScreen.tsx"), "utf8");
-  assert.ok(s.includes("affinityLevelStatLines(m, equ.affinityLevel)"), "character-level bonus lines come from the data helper");
+  assert.ok(s.includes("affinityLevelStatLines(m, equ.affinityLevel ?? DEFAULT_AFFINITY_LEVEL)"), "character-level % lines come from the data helper at the effective level (default Lv5)");
+  assert.ok(s.includes("affinityLevelFlatLines(m, equ.affinityLevel ?? DEFAULT_AFFINITY_LEVEL)"), "character-level FLAT lines come from the data helper (cumulative through the level)");
   assert.ok(s.includes("Character Affinity"), "row is labeled as character-level (not the key)");
   assert.ok(s.includes("affinity-level-bonus"), "separate row structure (distinct from key stats)");
-  assert.ok(s.includes("affinityLevelStatLines(m, equ.affinityLevel).length > 0"), "row renders only when the level has standalone stats (Lv9; Lv5 → empty → hidden)");
+  // The row renders whenever the level HAS a contribution — Lv5 now qualifies via its flat totals.
+  assert.ok(
+    s.includes("affinityLevelStatLines(m, equ.affinityLevel ?? DEFAULT_AFFINITY_LEVEL).length + affinityLevelFlatLines(m, equ.affinityLevel ?? DEFAULT_AFFINITY_LEVEL).length > 0"),
+    "row renders whenever the level grants a % or flat contribution (Lv5 flats included)",
+  );
   // Existing key display untouched: badge + key stats still render as before.
   assert.ok(s.includes("<AffinityKeyBadge k={affinityKey} size={64} level={equ.affinityLevel} />"), "affinity key badge unchanged");
 });
