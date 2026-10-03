@@ -143,6 +143,7 @@ const ICHOR_STUB = {
   remolderFlat: undefined,
   affinityKey: undefined,
   affinityLevelStats: undefined,
+  affinityFlatStats: undefined,
 } as CharacterDef;
 function ichorRun(buffs: Record<string, number>) {
   const reg = { ...REGISTRY, getCharacter: (id: string) => (id === "qj_ichor_stub" ? ICHOR_STUB : REGISTRY.getCharacter(id)) };

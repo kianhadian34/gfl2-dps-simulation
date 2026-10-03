@@ -102,6 +102,6 @@ test("Debug-authoritative override suppresses Neural Helix only for the overridd
     new Set(),
   );
   assert.equal(st.units[0].hp, 3000, "overridden HP stays exactly 3000 (NH HP% suppressed)");
-  assert.equal(st.units[0].panelAtk, 1799, "non-overridden ATK keeps Neural Helix (panel 1799)");
+  assert.equal(st.units[0].panelAtk, 1939, "non-overridden ATK keeps Neural Helix + default affinity Lv5 (panel 1939)");
 });
 

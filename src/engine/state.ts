@@ -22,6 +22,17 @@ export const MAX_TURNS = 7;
  */
 export const MAX_COMMON_KEYS = 3;
 
+/**
+ * DEFAULT AFFINITY LEVEL (2026): every character sits at Affinity Level 5 unless the scenario
+ * member supplies an EXPLICIT `affinityLevel` (an explicit value always wins — never overridden).
+ * Level 5 is the game's standard default (in-game 2026), so characters automatically receive their
+ * cumulative Lv.1–5 Affinity contributions (for Qiongjiu: +115 ATK / +292 HP / +108 DEF flat). This
+ * is a GENERIC engine default — no character-specific logic; characters with no Affinity data are
+ * unaffected. Applied at the ONE place the level is resolved (see `createState`), so the panel path
+ * and the Blossom raw-ATK basis can never diverge.
+ */
+export const DEFAULT_AFFINITY_LEVEL = 5;
+
 /** Effective status definition: registry entry after config.statusOverrides are applied. */
 export type EffectiveStatusDef = StatusDef & { effectiveDurationRounds?: number };
 
@@ -711,7 +722,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
     // used for Blossom's top-N highest-ATK selection — same gating as the panel (`resolveNeuralHelixFlat`).
     const nhFlat = resolveNeuralHelixFlat(rd, m.applyDispatchStats, m.overridesAuthoritative, m.baseStatOverrides);
     // AFFINITY-LEVEL flat (2026) is likewise part of the real panel basis — same gating (`resolveAffinityFlat`).
-    const affFlat = resolveAffinityFlat(rd, m.affinityLevel, m.applyDispatchStats, m.overridesAuthoritative, m.baseStatOverrides);
+    const affFlat = resolveAffinityFlat(rd, m.affinityLevel ?? DEFAULT_AFFINITY_LEVEL, m.applyDispatchStats, m.overridesAuthoritative, m.baseStatOverrides);
     let flat = { atk: 0, hp: 0, def: 0 };
     if (m.applyDispatchStats !== false) {
       const df = DISPATCH_STAT_BUFFS[rd.class];
@@ -754,7 +765,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
       }
     }
     const weaponCalibrationLevel = m.calibrationLevel ?? weapon?.calibrationLevel;
-    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, weaponCalibrationLevel, m.baseStatOverrides, m.applyDispatchStats, m.overridesAuthoritative, remolderPlans[i], remolderGrants[i], config, registry);
+    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel ?? DEFAULT_AFFINITY_LEVEL }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, weaponCalibrationLevel, m.baseStatOverrides, m.applyDispatchStats, m.overridesAuthoritative, remolderPlans[i], remolderGrants[i], config, registry);
   });
   const dummy = makeDummy(scenario.dummy);
   return {
