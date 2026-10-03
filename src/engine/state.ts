@@ -165,13 +165,14 @@ export function weaponCalibration(weapon: WeaponDef | null, selectedLevel?: numb
   return weapon.calibrations[level];
 }
 
-/** Panel formula: Final Stat = ceil((Initial + Flat) × (1 + Stat%)) — formula Mathematically Proven; integer DISPLAY Validated; exact hidden rounding method Not Tested (stats.ts). `weapon` is the scenario-EQUIPPED weapon (null = none). `dispatchFlat` is the permanent global `dispatch_stat_buffs` by Class (src/data/dispatch.ts) — a SEPARATE flat source folded here BEFORE percentage modifiers; absent = no dispatch (two-arg callers unchanged, e.g. direct formula tests). `remolderFlat`/`neuralHelixFlat` are further SEPARATE flat sources (Pattern Remolder Lv.60 flats; Neural Helix), all summed into the SAME flat bucket. */
+/** Panel formula: Final Stat = ceil((Initial + Flat) × (1 + Stat%)) — formula Mathematically Proven; integer DISPLAY Validated; exact hidden rounding method Not Tested (stats.ts). `weapon` is the scenario-EQUIPPED weapon (null = none). `dispatchFlat` is the permanent global `dispatch_stat_buffs` by Class (src/data/dispatch.ts) — a SEPARATE flat source folded here BEFORE percentage modifiers; absent = no dispatch (two-arg callers unchanged, e.g. direct formula tests). `remolderFlat`/`neuralHelixFlat` are further SEPARATE flat sources (Pattern Remolder Lv.60 flats; Neural Helix), all summed into the SAME flat bucket. `affinityFlat` is the standalone Affinity-Level flat source (CharacterDef.affinityFlatStats), summed into that same bucket. */
 export function computePanel(
   def: CharacterDef,
   weapon: WeaponDef | null,
   dispatchFlat?: { atk?: number; hp?: number; def?: number },
   remolderFlat?: { atk?: number; hp?: number; def?: number },
   neuralHelixFlat?: { atk?: number; hp?: number; def?: number },
+  affinityFlat?: { atk?: number; hp?: number; def?: number },
 ): { atk: number; hp: number; def: number } {
   const weaponAtkBonus = weaponAtk(weapon);
   const pctAtk = (weapon?.subStats ?? []).filter((s) => s.stat === "pctAtk").reduce((a, s) => a + s.value, 0);
@@ -180,9 +181,9 @@ export function computePanel(
   // Game-authoritative FINAL STAT rounding: the integer results feed every downstream consumer
   // (damage ATK/DEF, applier-ATK fixed damage, HP pools).
   return {
-    atk: finalStat(def.base.atk, weaponAtkBonus + (dispatchFlat?.atk ?? 0) + (remolderFlat?.atk ?? 0) + (neuralHelixFlat?.atk ?? 0), pctAtk),
-    hp: finalStat(def.base.hp, (dispatchFlat?.hp ?? 0) + (remolderFlat?.hp ?? 0) + (neuralHelixFlat?.hp ?? 0), pctHp),
-    def: finalStat(def.base.def, (dispatchFlat?.def ?? 0) + (remolderFlat?.def ?? 0) + (neuralHelixFlat?.def ?? 0), pctDef),
+    atk: finalStat(def.base.atk, weaponAtkBonus + (dispatchFlat?.atk ?? 0) + (remolderFlat?.atk ?? 0) + (neuralHelixFlat?.atk ?? 0) + (affinityFlat?.atk ?? 0), pctAtk),
+    hp: finalStat(def.base.hp, (dispatchFlat?.hp ?? 0) + (remolderFlat?.hp ?? 0) + (neuralHelixFlat?.hp ?? 0) + (affinityFlat?.hp ?? 0), pctHp),
+    def: finalStat(def.base.def, (dispatchFlat?.def ?? 0) + (remolderFlat?.def ?? 0) + (neuralHelixFlat?.def ?? 0) + (affinityFlat?.def ?? 0), pctDef),
   };
 }
 
@@ -223,6 +224,43 @@ function isAuthoritativelyOverridden(
   overridesAuthoritative: boolean | undefined,
 ): boolean {
   return overridesAuthoritative === true && baseStatOverrides !== undefined && Object.prototype.hasOwnProperty.call(baseStatOverrides, stat);
+}
+
+/**
+ * AFFINITY-LEVEL FLAT (2026): the character's standalone Affinity-Level flat ATK/HP/DEF
+ * (CharacterDef.affinityFlatStats), accumulated CUMULATIVELY through the active level (each
+ * present entry is that level's PER-LEVEL increase; absent levels add nothing — no
+ * interpolation). Gated EXACTLY like the other flat-bucket sources (Dispatch / Remolder flats /
+ * Neural Helix): controlled math fixtures (`applyDispatchStats === false`) exclude it, and
+ * Debug-authoritative overrides suppress it on overridden stats. Extracted so the panel path and
+ * the raw-ATK basis (Blossom top-N) share ONE implementation and can never diverge.
+ */
+function resolveAffinityFlat(
+  def: CharacterDef,
+  level: number | undefined,
+  applyDispatchStats: boolean | undefined,
+  overridesAuthoritative: boolean | undefined,
+  baseStatOverrides: { atk?: number; hp?: number; def?: number; stability?: number; critRate?: number; critDmg?: number } | undefined,
+): { atk: number; hp: number; def: number } {
+  const base = { atk: 0, hp: 0, def: 0 };
+  if (level !== undefined) {
+    for (let lv = 1; lv <= level; lv++) {
+      const entry = def.affinityFlatStats?.[lv];
+      if (!entry) continue;
+      base.atk += entry.atk ?? 0;
+      base.hp += entry.hp ?? 0;
+      base.def += entry.def ?? 0;
+    }
+  }
+  if (applyDispatchStats === false) return { atk: 0, hp: 0, def: 0 };
+  if (overridesAuthoritative === true && baseStatOverrides) {
+    return {
+      atk: Object.prototype.hasOwnProperty.call(baseStatOverrides, "atk") ? 0 : base.atk,
+      hp: Object.prototype.hasOwnProperty.call(baseStatOverrides, "hp") ? 0 : base.hp,
+      def: Object.prototype.hasOwnProperty.call(baseStatOverrides, "def") ? 0 : base.def,
+    };
+  }
+  return base;
 }
 
 export function resolveConfig(overrides: ConfigOverrides | undefined): ResolvedConfig {
@@ -423,7 +461,11 @@ function makeDoll(
   // neuralHelixStats.atk/hp/def) summed into the SAME flat bucket via `computePanel`. Gating is
   // shared with the raw-ATK basis below via `resolveNeuralHelixFlat` (no duplicated logic).
   const neuralHelixFlat = resolveNeuralHelixFlat(def, applyDispatchStats, overridesAuthoritative, baseStatOverrides);
-  const panel = computePanel(def, weapon, dispatchFlat, remolderFlat, neuralHelixFlat);
+  // AFFINITY-LEVEL FLAT (2026): a SEPARATE per-character flat source (CharacterDef.
+  // affinityFlatStats), accumulated cumulatively through the active Affinity Level and summed into
+  // the SAME flat bucket. Same gating as the other flat sources (shared helper with the raw-ATK basis).
+  const affinityFlat = resolveAffinityFlat(def, affinity?.level, applyDispatchStats, overridesAuthoritative, baseStatOverrides);
+  const panel = computePanel(def, weapon, dispatchFlat, remolderFlat, neuralHelixFlat, affinityFlat);
   const aff = resolveAffinityBonus(def, affinity?.keyId, affinity?.level, registry);
   // Common Keys (generic architecture, 2026): REUSABLE definitions resolved via the registry
   // (max 3 — "3 Common Key Slots"; fewer allowed). Stats from every selected key SUM and fold
@@ -668,13 +710,15 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
     // NEURAL HELIX flat ATK is part of the REAL panel basis, so it must also feed the raw-ATK basis
     // used for Blossom's top-N highest-ATK selection — same gating as the panel (`resolveNeuralHelixFlat`).
     const nhFlat = resolveNeuralHelixFlat(rd, m.applyDispatchStats, m.overridesAuthoritative, m.baseStatOverrides);
+    // AFFINITY-LEVEL flat (2026) is likewise part of the real panel basis — same gating (`resolveAffinityFlat`).
+    const affFlat = resolveAffinityFlat(rd, m.affinityLevel, m.applyDispatchStats, m.overridesAuthoritative, m.baseStatOverrides);
     let flat = { atk: 0, hp: 0, def: 0 };
     if (m.applyDispatchStats !== false) {
       const df = DISPATCH_STAT_BUFFS[rd.class];
       flat = {
-        atk: remolderPlans[i].flat.atk + ichor.atk + df.atk + nhFlat.atk,
-        hp: remolderPlans[i].flat.hp + ichor.hp + df.hp + nhFlat.hp,
-        def: remolderPlans[i].flat.def + ichor.def + df.def + nhFlat.def,
+        atk: remolderPlans[i].flat.atk + ichor.atk + df.atk + nhFlat.atk + affFlat.atk,
+        hp: remolderPlans[i].flat.hp + ichor.hp + df.hp + nhFlat.hp + affFlat.hp,
+        def: remolderPlans[i].flat.def + ichor.def + df.def + nhFlat.def + affFlat.def,
       };
     }
     return computePanel(d, w, undefined, flat).atk;

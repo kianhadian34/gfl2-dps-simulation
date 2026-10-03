@@ -436,6 +436,20 @@ export interface AffinityLevelStats {
   hpPct?: number;
   defPct?: number;
 }
+/**
+ * STANDALONE character Affinity-LEVEL FLAT stats (2026, confirmed) — a SEPARATE affinity flat
+ * source, distinct from the Affinity percentage map (`AffinityLevelStats`) and from the equipped
+ * Affinity Key. Keyed by Affinity Level, each present entry holds that level's PER-LEVEL
+ * INCREASE for flat ATK/HP/DEF; the character's contribution at level N is the SUM of entries
+ * 1..N ("apply the entries through that level" — cumulative). Absent levels add nothing (no
+ * interpolation). The totals enter the SAME panel flat bucket as Dispatch / Remolder flats /
+ * Neural Helix via the ONE panel path `finalStat(base + flat, pct)`.
+ */
+export interface AffinityFlatStats {
+  atk?: number;
+  hp?: number;
+  def?: number;
+}
 
 
 /**
@@ -543,6 +557,13 @@ export interface CharacterDef {
    * equipped Affinity Key; exact-level map, absent levels grant nothing.
    */
   affinityLevelStats?: Record<number, AffinityLevelStats>;
+  /**
+   * STANDALONE character Affinity-LEVEL FLAT stats (2026, confirmed) — a SEPARATE affinity FLAT
+   * source, keyed by Affinity Level, each entry holding that level's PER-LEVEL flat ATK/HP/DEF
+   * increase; the contribution at level N is the cumulative sum of entries 1..N. Enters the
+   * shared panel flat bucket (same as Dispatch / Remolder flats / Neural Helix). Absent = none.
+   */
+  affinityFlatStats?: Record<number, AffinityFlatStats>;
   /** Affinity Key (bond) — recorded data; engine consumption deferred. */
   affinityKey?: AffinityKeyDef;
   // Common Keys are REUSABLE definitions — they live in the Common Key registry

@@ -495,6 +495,17 @@ export const QIONGJIU: CharacterDef = {
     5: {},
     9: { atkPct: 0.05, hpPct: 0.05, defPct: 0.05 },
   },
+  // STANDALONE character Affinity-LEVEL FLAT stats (2026, CONFIRMED) — a SEPARATE affinity flat
+  // source (independent of the Affinity % map above and of the Affinity Key). Each entry holds
+  // that level's PER-LEVEL increase; the contribution at level N is the cumulative sum 1..N.
+  // Cumulative totals: Lv2 +23 ATK/+82 HP · Lv3 +23 ATK/+175 HP/+32 DEF · Lv4 +63 ATK/+175 HP/+108 DEF
+  // · Lv5 +115 ATK/+292 HP/+108 DEF. Lv1 and Lv6–9 add nothing (absent entries, no interpolation).
+  affinityFlatStats: {
+    2: { atk: 23, hp: 82 },
+    3: { hp: 93, def: 32 },
+    4: { atk: 40, def: 76 },
+    5: { atk: 52, hp: 117 },
+  },
   // NEURAL HELIX (2026) — an INDEPENDENT system (NOT Affinity, no levels). COMPLETE Qiongjiu data:
   // flat ATK 196 (four displayed nodes 37+45+53+61), flat HP 333, flat DEF 92, and two +5.0% ATK
   // entries (0.10 total). The universal +12% ATK%/HP%/DEF% is the GLOBAL `NEURAL_HELIX_GLOBAL_PCT`

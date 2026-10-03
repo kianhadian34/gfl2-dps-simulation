@@ -17,6 +17,19 @@ test("Qiongjiu authoritative Neural Helix data (VALIDATED in-game 2026): 196 fla
   );
 });
 
+test("Qiongjiu authoritative Affinity-level FLAT data (VALIDATED in-game 2026): per-level ATK/HP/DEF increments", () => {
+  assert.deepEqual(
+    QIONGJIU.affinityFlatStats,
+    {
+      2: { atk: 23, hp: 82 },
+      3: { hp: 93, def: 32 },
+      4: { atk: 40, def: 76 },
+      5: { atk: 52, hp: 117 },
+    },
+    "per-level increments; Lv1/Lv6–9 have no entries; cumulative Lv5 = +115 ATK / +292 HP / +108 DEF",
+  );
+});
+
 const FIXED_IDS = [
   "qiongjiu_fk1_concentration",
   "qiongjiu_fk2_efficient_planning",
