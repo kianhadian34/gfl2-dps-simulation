@@ -576,7 +576,7 @@ export interface CharacterDef {
   /**
    * PATTERN REMOLDER (2026, flower system): character-specific Lv.60 REMOLDER FLAT stats ?
    * a SEPARATE permanent flat source (ATK/HP/DEF), like dispatch_stat_buffs but per-character
-   * (Qiongjiu: ATK +252 / HP +651 / DEF +224). NEVER merged into `base`. Absent = 0.
+   * (Qiongjiu: ATK +245 / HP +651 / DEF +224). NEVER merged into `base`. Absent = 0.
    * Always active; enters the ONE panel path: finalStat(base + flat, pct).
    */
   remolderFlat?: { atk?: number; hp?: number; def?: number };

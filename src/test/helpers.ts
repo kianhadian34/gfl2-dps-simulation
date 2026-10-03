@@ -88,6 +88,19 @@ export const TEST_WEAPONS: Record<string, WeaponDef> = {
     level: 60,
     subStats: [{ stat: "pctAtk", value: 0.15 }],
   },
+  // Minimal flat-ATK fixture (test-only, NOT a game weapon, NOT in `src/data/weapons.ts`): a
+  // non-signature weapon worth exactly +22 flat ATK with NO substats / owner / Imprint /
+  // calibrations. Used to observe a single small weapon flat in the panel without any ATK% side
+  // effect (e.g. the Affinity-Lv.5 stat sanity check in affinity-flat.test.ts).
+  weapon_flat22_test: {
+    id: "weapon_flat22_test",
+    name: "Flat +22 Rifle (test)",
+    rarity: "standard",
+    atkLvl1: 22,
+    atkLvl60: 22,
+    level: 60,
+    subStats: [],
+  },
 };
 
 /** Wrap a flat per-slot skill object into the level-based AbilityDef shape (all at level 1, test default). */

@@ -70,7 +70,7 @@ test("Qiongjiu is a Sentinel (mandatory class) and dispatches its class flat ont
   const off = createState(ctrlScenario({ baseStatOverrides: { atk: 802, hp: 1893, def: 528 } }), REGISTRY, new Set()).units[0];
   const on = createState(liveScenario({ baseStatOverrides: { atk: 802, hp: 1893, def: 528 } }), REGISTRY, new Set()).units[0];
   assert.equal(off.panelAtk, 802, "control run = base only (bundle OFF)");
-  assert.equal(on.panelAtk, 1807, "base 802 + dispatch 231 + Remolder 252 + NH 196, then the live 22% ATK%: ceil(1481 × 1.22)");
+  assert.equal(on.panelAtk, 1799, "base 802 + dispatch 231 + Remolder 245 + NH 196, then the live 22% ATK%: ceil(1474 × 1.22)");
   assert.equal(on.hp, 3804, "base 1893 + dispatch 519 + Remolder 651 + NH 333, then the live 12% HP%: ceil(3396 × 1.12)");
   assert.equal(on.defStat, 1194, "base 528 + dispatch 222 + Remolder 224 + NH 92, then the live 12% DEF%: ceil(1066 × 1.12)");
   assert.equal(on.stability, 9, "dispatch never touches stability");
@@ -87,20 +87,20 @@ test("weapon flat + ATK% fold BEFORE the percentage: ceil((802 + 231 + 369) × 1
   // base 802 + Sentinel dispatch 231 + Golden Melody flat 369, then × 1.15 (weapon ATK% sub-stat).
   // Controlled basis (bundle ON so dispatch applies) + weapon flat, then the weapon's own ATK%.
   const u = createState(liveScenario({ baseStatOverrides: { atk: 802, hp: 1893, def: 528 }, weaponId: "jinshizou" }), REGISTRY, new Set()).units[0];
-  // computePanel: ceil((base 802 + dispatch 231 + Remolder 252 + NH 196 + weapon 369) × 1.15 weaponATK%)
-  // then the live 22% ATK% bucket: ceil(2128 × 1.22) = 2597. Flat folds BEFORE every ATK% — one panel path.
-  assert.equal(u.panelAtk, Math.ceil(Math.ceil((802 + 231 + 252 + 196 + 369) * 1.15) * 1.22), "flat (base + dispatch + Remolder + NH + weapon) folded BEFORE the ATK% — one panel path");
+  // computePanel: ceil((base 802 + dispatch 231 + Remolder 245 + NH 196 + weapon 369) × 1.15 weaponATK%)
+  // then the live 22% ATK% bucket: ceil(2119 × 1.22) = 2587. Flat folds BEFORE every ATK% — one panel path.
+  assert.equal(u.panelAtk, Math.ceil(Math.ceil((802 + 231 + 245 + 196 + 369) * 1.15) * 1.22), "flat (base + dispatch + Remolder + NH + weapon) folded BEFORE the ATK% — one panel path");
 });
 
 test("dispatch stays separate from a base override: ATK 1000 override → +231 dispatch", () => {
   const u = createState(liveScenario({ baseStatOverrides: { atk: 1000, hp: 1893, def: 528 } }), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, Math.ceil((1000 + 231 + 252 + 196) * 1.22), "override replaces base (1000) then +dispatch 231 +Remolder 252 +NH 196 — independent flat sources");
+  assert.equal(u.panelAtk, Math.ceil((1000 + 231 + 245 + 196) * 1.22), "override replaces base (1000) then +dispatch 231 +Remolder 245 +NH 196 — independent flat sources");
 });
 
 test("percentage modifiers operate on the dispatch-inclusive flat: ceil((802 + 231) × 1.05)", () => {
   const u = createState(liveScenario({ baseStatOverrides: { atk: 802, hp: 1893, def: 528 }, commonKeyIds: ["qiongjiu_common_strategic_negotiation"] }), REGISTRY, new Set()).units[0];
   // Live ATK% = NH 22% + Strategic Negotiation 5% = 27%; the common-key % rides the dispatch-inclusive flat.
-  assert.equal(u.panelAtk, Math.ceil((802 + 231 + 252 + 196) * (1 + 0.22 + 0.05)), "ceil((base + dispatch + Remolder + NH) × 1.27) — same finalStat(base + flat, pct) product");
+  assert.equal(u.panelAtk, Math.ceil((802 + 231 + 245 + 196) * (1 + 0.22 + 0.05)), "ceil((base + dispatch + Remolder + NH) × 1.27) — same finalStat(base + flat, pct) product");
   assert.equal(u.hp, Math.ceil((1893 + 519 + 651 + 333) * 1.12), "HP keeps the dispatch-inclusive flat × the live 12% HP%");
 });
 
@@ -116,14 +116,14 @@ test("DEBUG-authoritative overrides: HP override suppresses every HP source; ATK
   const u = createState(qjScenario({ baseStatOverrides: { hp: 2000 }, overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
   assert.equal(u.hp, 2000, "HP override authoritative");
   assert.equal(u.maxHp, 2000);
-  assert.equal(u.panelAtk, 1807, "ATK still receives dispatch + Remolder flat + Neural Helix");
+  assert.equal(u.panelAtk, 1799, "ATK still receives dispatch + Remolder flat + Neural Helix");
   assert.equal(u.defStat, 1194, "DEF still receives dispatch + Remolder flat + Neural Helix");
 });
 
 test("DEBUG-authoritative overrides: DEF override suppresses every DEF source; ATK/HP keep the live stack", () => {
   const u = createState(qjScenario({ baseStatOverrides: { def: 700 }, overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
   assert.equal(u.defStat, 700, "DEF override authoritative");
-  assert.equal(u.panelAtk, 1807, "ATK still receives dispatch + Remolder flat + Neural Helix");
+  assert.equal(u.panelAtk, 1799, "ATK still receives dispatch + Remolder flat + Neural Helix");
   assert.equal(u.hp, 3804, "HP still receives dispatch + Remolder flat + Neural Helix");
 });
 
@@ -136,12 +136,12 @@ test("DEBUG-authoritative overrides: all three overridden — all authoritative"
 
 test("DEBUG-authoritative flag with NO overrides — the live permanent stack fully applies", () => {
   const u = createState(qjScenario({ overridesAuthoritative: true }), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, 1807);
+  assert.equal(u.panelAtk, 1799);
   assert.equal(u.hp, 3804);
   assert.equal(u.defStat, 1194);
 });
 
 test("math fixtures WITHOUT the authoritative flag keep override + dispatch coexistence: ATK 2000 override", () => {
   const u = createState(liveScenario({ baseStatOverrides: { atk: 2000, hp: 1893, def: 528 } }), REGISTRY, new Set()).units[0];
-  assert.equal(u.panelAtk, Math.ceil((2000 + 231 + 252 + 196) * 1.22), "override 2000 + dispatch 231 (+ the other permanent flats), then the live 22% ATK% bucket");
+  assert.equal(u.panelAtk, Math.ceil((2000 + 231 + 245 + 196) * 1.22), "override 2000 + dispatch 231 (+ the other permanent flats), then the live 22% ATK% bucket");
 });

@@ -21,7 +21,7 @@ export const QIONGJIU: CharacterDef = {
   // field (grid movement budget); Qiongjiu previously left it unset.
   mobility: 5,
   // PATTERN REMOLDER (2026): character-specific Lv.60 Remolder FLAT stats (separate source).
-  remolderFlat: { atk: 252, hp: 651, def: 224 },
+  remolderFlat: { atk: 245, hp: 651, def: 224 },
   remolderSetBonuses: QIONGJIU_SET_BONUSES,
   // NOTE (2026): the unit's weapon is NO LONGER permanent character data — Golden Melody
   // (金石奏 / jinshizou) is a REUSABLE weapon definition in src/data/weapons.ts, equipped via
