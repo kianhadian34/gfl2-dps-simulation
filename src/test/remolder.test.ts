@@ -73,8 +73,8 @@ const UNI = BUFF("test_uni", "Attack Unity (test)", "support", 5, Object.fromEnt
 ) as Record<number, any[]>);
 
 // A) Qiongjiu Remolder flat stats ----------------------------------------------
-test("A1: Qiongjiu's Lv.60 Remolder flat stats are 245/651/224, separate from base", () => {
-  assert.deepEqual(QIONGJIU.remolderFlat, { atk: 245, hp: 651, def: 224 });
+test("A1: Qiongjiu's Lv.60 Remolder flat stats are 245/679/224, separate from base", () => {
+  assert.deepEqual(QIONGJIU.remolderFlat, { atk: 245, hp: 679, def: 224 });
   assert.equal(QIONGJIU.base.atk, 802, "base untouched (no merge)");
   const u = createState(qjScenario(), REGISTRY, new Set()).units[0];
   // Panel armature on the CONTROLLED basis — proves the Remolder flat is a SEPARATE source, never merged into `base` (the character data itself is asserted above).

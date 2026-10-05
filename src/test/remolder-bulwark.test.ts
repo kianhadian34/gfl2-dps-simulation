@@ -108,7 +108,8 @@ test("B6: level clamping (Lex Lv.4 → Lv.3; Annular Lv.7 → Lv.6) and level 0 
 // B7 / B8 -------------------------------------------------------------------------------
 test("B7: HP Boost integrates into max HP (existing stat pipeline)", () => {
   const u = createState(qj({ remolder_bulwark_hp_boost: 6 }), REGISTRY, new Set()).units[0];
-  // Clean panel HP = 3063 (base 1893 + dispatch 519 + Remolder flat 651); +3.6% → ceil(3063×1.036).
+  // Controlled basis: baseStatOverrides pin HP = 3063 (bundle OFF — no dispatch/Remolder/NH/affinity);
+  // +3.6% → ceil(3063×1.036).
   assert.equal(u.maxHp, Math.ceil(3063 * 1.036), "max HP scaled by +3.6%");
   assert.equal(u.hp, u.maxHp);
   assert.equal(u.panelAtk, 1285, "HP Boost does not change ATK");
