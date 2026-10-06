@@ -13,8 +13,10 @@ import { simulateScenario } from "../../../src/simulate.ts";
 import { REGISTRY } from "../../../src/data/registry.ts";
 import { WEAPONS } from "../../../src/data/weapons.ts";
 import { COMMON_KEYS } from "../../../src/data/common-keys.ts";
+import { ATTACHMENT_SETS } from "../../../src/data/attachment-sets.ts";
+import { ATTACHMENT_SLOTS, ATTACHMENT_SLOT_MAX_STATS, ATTACHMENT_STAT_DEFS, attachmentStatsForSlot } from "../../../src/data/attachments.ts";
 import { MAX_COMMON_KEYS } from "../../../src/engine/state.ts";
-import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView } from "../shared/lists.js";
+import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView, buildAttachmentCatalog } from "../shared/lists.js";
 import { buildGrid, moveCost, tileHeightAt, tileKey, bossFootprintTiles } from "../../../src/engine/grid.ts";
 import type { ScenarioView, SessionView, MovementFactView, GridCellFactsView, EffectSourceInfoView } from "../shared/engine-types.js";
 
@@ -198,6 +200,17 @@ export function registerSimHandlers(): void {
 
   /** Common Keys available from the engine data (+ the engine-enforced 3-slot maximum). */
   ipcMain.handle("sim:listCommonKeys", () => buildCommonKeyViews(COMMON_KEYS, MAX_COMMON_KEYS));
+
+  /** Attachment catalog (2026): slots + per-slot rules + stat defs + the IMPLEMENTED sets only. */
+  ipcMain.handle("sim:listAttachments", () =>
+    buildAttachmentCatalog({
+      slots: ATTACHMENT_SLOTS,
+      slotMaxStats: ATTACHMENT_SLOT_MAX_STATS,
+      slotAllowedStats: Object.fromEntries(ATTACHMENT_SLOTS.map((s) => [s, attachmentStatsForSlot(s)])),
+      statDefs: ATTACHMENT_STAT_DEFS,
+      sets: ATTACHMENT_SETS,
+    }),
+  );
 
   ipcMain.handle("sim:run", (_event, scenario: unknown) => {
     if (typeof scenario !== "object" || scenario === null) throw new Error("sim:run expects a scenario object");

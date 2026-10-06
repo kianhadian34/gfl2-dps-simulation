@@ -29,16 +29,18 @@ const SET_SLOTS: AttachmentSetSlot[] = ["sight", "foregrip", "underbarrel"];
 export const ATTACHMENT_SETS: AttachmentSetDef[] = [
   {
     id: "attachment_set_phase_strike",
+    implemented: true,
     name: "Phase Strike",
     slots: SET_SLOTS,
     pieces: 3,
     // 3-piece: character deals 15% increased damage to targets with Phase attribute debuffs.
-    // The target-phase-debuff condition is NOT evaluable by the current engine (no target-status/
-    // phase gate, and StatusDef carries no element) — recorded DATA ONLY, engine consumption DEFERRED.
+    // CONSUMED + VALIDATED in-game 2026: the `targetPhaseDebuff` gate matches when the target
+    // carries a status whose `StatusDef.phase` is non-null (only `overburn` → Burn is populated).
     bonuses: [{ kind: "additive_dealt", value: 0.15, gates: { targetPhaseDebuff: true } }],
   },
   {
     id: "attachment_set_freeze_boost",
+    implemented: true,
     name: "Freeze Boost",
     slots: SET_SLOTS,
     pieces: 3,
@@ -47,6 +49,7 @@ export const ATTACHMENT_SETS: AttachmentSetDef[] = [
   },
   {
     id: "attachment_set_burn_boost",
+    implemented: true,
     name: "Burn Boost",
     slots: SET_SLOTS,
     pieces: 3,
@@ -55,6 +58,7 @@ export const ATTACHMENT_SETS: AttachmentSetDef[] = [
   },
   {
     id: "attachment_set_hydro_boost",
+    implemented: true,
     name: "Hydro Boost",
     slots: SET_SLOTS,
     pieces: 3,
@@ -63,6 +67,7 @@ export const ATTACHMENT_SETS: AttachmentSetDef[] = [
   },
   {
     id: "attachment_set_corrosion_boost",
+    implemented: true,
     name: "Corrosion Boost",
     slots: SET_SLOTS,
     pieces: 3,
@@ -71,6 +76,7 @@ export const ATTACHMENT_SETS: AttachmentSetDef[] = [
   },
   {
     id: "attachment_set_summon_boost",
+    implemented: false,
     name: "Summon Boost",
     slots: SET_SLOTS,
     pieces: 3,
@@ -83,6 +89,7 @@ export const ATTACHMENT_SETS: AttachmentSetDef[] = [
   },
   {
     id: "attachment_set_physical_boost",
+    implemented: true,
     name: "Physical Boost",
     slots: SET_SLOTS,
     pieces: 3,
@@ -92,6 +99,7 @@ export const ATTACHMENT_SETS: AttachmentSetDef[] = [
   },
   {
     id: "attachment_set_tactical_calculus",
+    implemented: true,
     name: "Tactical Calculus",
     slots: SET_SLOTS,
     pieces: 3,
@@ -102,6 +110,7 @@ export const ATTACHMENT_SETS: AttachmentSetDef[] = [
   },
   {
     id: "attachment_set_close_assault",
+    implemented: true,
     name: "Close Assault",
     slots: SET_SLOTS,
     pieces: 3,
@@ -115,6 +124,7 @@ export const ATTACHMENT_SETS: AttachmentSetDef[] = [
   },
   {
     id: "attachment_set_ultimate_pursuit",
+    implemented: false,
     name: "Ultimate Pursuit",
     slots: SET_SLOTS,
     pieces: 3,
@@ -131,6 +141,7 @@ export const ATTACHMENT_SETS: AttachmentSetDef[] = [
   },
   {
     id: "attachment_set_double_strategy",
+    implemented: false,
     name: "Double Strategy",
     slots: SET_SLOTS,
     pieces: 3,
@@ -144,6 +155,7 @@ export const ATTACHMENT_SETS: AttachmentSetDef[] = [
   },
   {
     id: "attachment_set_phase_resonance",
+    implemented: false,
     name: "Phase Resonance",
     slots: SET_SLOTS,
     pieces: 3,
@@ -165,6 +177,7 @@ export const ATTACHMENT_SETS: AttachmentSetDef[] = [
   },
   {
     id: "attachment_set_emergency_repair",
+    implemented: false,
     name: "Emergency Repair",
     slots: SET_SLOTS,
     pieces: 3,
@@ -177,6 +190,7 @@ export const ATTACHMENT_SETS: AttachmentSetDef[] = [
   },
   {
     id: "attachment_set_ally_support",
+    implemented: false,
     name: "Ally Support",
     slots: SET_SLOTS,
     pieces: 3,
@@ -190,6 +204,7 @@ export const ATTACHMENT_SETS: AttachmentSetDef[] = [
   },
   {
     id: "attachment_set_shielded_recovery",
+    implemented: false,
     name: "Shielded Recovery",
     slots: SET_SLOTS,
     pieces: 3,

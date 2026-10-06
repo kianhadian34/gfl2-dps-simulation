@@ -1001,6 +1001,13 @@ export interface AttachmentSetDef {
   /** The 3-piece bonus effects (damage terms use the ONE additive DMG% bucket; non-damage effects
    *  use their own dedicated kinds — never silently converted to DMG%). */
   bonuses: AttachmentSetEffect[];
+  /**
+   * CONSUMPTION AVAILABILITY (2026): `true` when the engine actually consumes this set's bonuses
+   * (every gate is engine-evaluable). `false` = the set is defined data but INERT (one or more
+   * gates are not engine-evaluable). The UI derives its selectable set list from this flag — it
+   * never hard-codes set ids.
+   */
+  implemented: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------

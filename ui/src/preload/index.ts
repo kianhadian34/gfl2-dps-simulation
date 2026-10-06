@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { ScenarioView, SessionView, WeaponView, CommonKeyListResult, CharacterMetaView } from "../shared/engine-types.js";
+import type { ScenarioView, SessionView, WeaponView, CommonKeyListResult, CharacterMetaView, AttachmentCatalogView } from "../shared/engine-types.js";
 
 /**
  * Narrow, typed preload API exposed as window.sim.
@@ -12,6 +12,8 @@ const api = {
   listWeapons: (): Promise<WeaponView[]> => ipcRenderer.invoke("sim:listWeapons"),
   /** Engine-sourced Common Key list + the engine-enforced 3-slot maximum. */
   listCommonKeys: (): Promise<CommonKeyListResult> => ipcRenderer.invoke("sim:listCommonKeys"),
+  /** Engine-sourced attachment catalog (slots/rules/stat defs + the IMPLEMENTED sets only). */
+  listAttachments: (): Promise<AttachmentCatalogView> => ipcRenderer.invoke("sim:listAttachments"),
   run: (scenario: ScenarioView): Promise<SessionView> => ipcRenderer.invoke("sim:run", scenario),
   openScenario: (): Promise<SessionView | null> => ipcRenderer.invoke("dialog:openScenario"),
   onSessionUpdate: (cb: (session: SessionView) => void): void => {

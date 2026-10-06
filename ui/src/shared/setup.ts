@@ -13,7 +13,7 @@
  * the project taxonomy. Ammo weaknesses map 1:1 onto the engine `AmmoType` union and flow
  * through `dummy.weaknessTags`. Phase and Ammo are separate dimensions.
  */
-import type { ScenarioView } from "./engine-types.js";
+import type { ScenarioView, AttachmentConfigView, AttachmentSlotView, AttachmentStatView } from "./engine-types.js";
 import { sampleScenario } from "./sample-scenario.js";
 
 export type RotationSlot = "basic" | "active1" | "active2" | "ultimate";
@@ -72,6 +72,10 @@ export interface SetupEquipment {
   affinityKeyId?: string;
   /** Affinity Level with the equipped key (exact levels only; engine-defined). */
   affinityLevel?: number;
+  /** WEAPON ATTACHMENTS (2026): per-slot selected stat kinds (engine-validated). */
+  attachments?: AttachmentConfigView;
+  /** WEAPON ATTACHMENTS (2026): the ACTIVE loadout-level Attachment Set id (engine-validated). */
+  activeAttachmentSet?: string;
 }
 
 /** Fresh engine character rows (sim:listCharacters) vs the user's CURRENT setup: KEEP the user's
@@ -357,6 +361,47 @@ export function setAffinityLevel(state: SetupState, charId: string, level: numbe
   });
 }
 
+/**
+ * WEAPON ATTACHMENTS (2026): toggle a stat kind in one attachment slot. Adds the stat when absent,
+ * removes it when present. The UI supplies `maxStats` (per-slot limit) so a full slot is a no-op
+ * (never silently drops an existing stat); duplicates are impossible by construction (toggle). The
+ * ENGINE remains the authoritative validator (validateAttachmentConfig) — this only shapes state.
+ */
+export function toggleAttachmentStat(
+  state: SetupState,
+  charId: string,
+  slot: AttachmentSlotView,
+  kind: AttachmentStatView,
+  maxStats: number,
+): SetupState {
+  return updateEquipment(state, charId, (e) => {
+    const attachments: AttachmentConfigView = { ...(e.attachments ?? {}) };
+    const cur = attachments[slot] ?? [];
+    if (cur.includes(kind)) {
+      const next = cur.filter((k) => k !== kind);
+      if (next.length === 0) delete attachments[slot];
+      else attachments[slot] = next;
+    } else {
+      if (cur.length >= maxStats) return e; // per-slot cap: no-op, never drop an existing stat
+      attachments[slot] = [...cur, kind];
+    }
+    const next: SetupEquipment = { ...e };
+    if (Object.keys(attachments).length === 0) delete next.attachments;
+    else next.attachments = attachments;
+    return next;
+  });
+}
+
+/** WEAPON ATTACHMENTS (2026): set (or clear) the ACTIVE loadout-level Attachment Set id. Independent
+ *  of the per-slot stats; only ONE active set (engine-validated; the UI only offers `implemented` sets). */
+export function setActiveAttachmentSet(state: SetupState, charId: string, setId: string | undefined): SetupState {
+  return updateEquipment(state, charId, (e) => {
+    const next: SetupEquipment = { ...e, ...(setId === undefined ? {} : { activeAttachmentSet: setId }) };
+    if (setId === undefined) delete next.activeAttachmentSet;
+    return next;
+  });
+}
+
 /** Set (or clear) the single Expansion Key (engine contract: one `expansionKeyId`). */
 export function setExpansionKey(state: SetupState, charId: string, keyId: string | undefined): SetupState {
   return updateEquipment(state, charId, (e) => {
@@ -462,6 +507,8 @@ export function buildScenario(setup: SetupState): ScenarioView {
         ...(equ.weaponId !== undefined ? { weaponId: equ.weaponId } : {}),
         ...(equ.calibrationLevel !== undefined ? { calibrationLevel: equ.calibrationLevel } : {}),
         ...(equ.expansionKeyId !== undefined ? { expansionKeyId: equ.expansionKeyId } : {}),
+        ...(equ.attachments !== undefined ? { attachments: equ.attachments } : {}),
+        ...(equ.activeAttachmentSet !== undefined ? { activeAttachmentSet: equ.activeAttachmentSet } : {}),
         ...(Object.keys(debugOv).length > 0
           ? { baseStatOverrides: debugOv, overridesAuthoritative: true } // DEBUG-MODE AUTHORITATIVE: overridden stats suppress dispatch (e.g. ATK 1500 stays 1500, no +231)
           : {}),

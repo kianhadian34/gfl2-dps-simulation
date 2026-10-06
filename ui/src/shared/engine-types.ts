@@ -48,6 +48,14 @@ export interface ScenarioTeamMemberView {
   calibrationLevel?: number;
   /** Equipped Expansion Key id (e.g. Qiongjiu's Ruined Gem). */
   expansionKeyId?: string;
+  /**
+   * WEAPON ATTACHMENTS (2026): per-slot selected stat kinds (muzzle/sight/foregrip/underbarrel).
+   * Carried VERBATIM to the engine (`ScenarioTeamMember.attachments`); the engine validates.
+   */
+  attachments?: AttachmentConfigView;
+  /** WEAPON ATTACHMENTS (2026): the ACTIVE loadout-level Attachment Set id (independent of the
+   *  per-slot stats). Carried VERBATIM to the engine (`ScenarioTeamMember.activeAttachmentSet`). */
+  activeAttachmentSet?: string;
   /** DEBUG/controlled-testing (2026): per-member replacement of the character's OWN base stats
    *  (applied BEFORE weapon/equipment/stat-modifier calculation; engine-validated, never clamped). */
   baseStatOverrides?: {
@@ -144,6 +152,55 @@ export interface ExpansionKeyView {
   name: string;
   /** Authoritative in-game description (engine `KeyDef.description`); absent when the key has none. */
   description?: string;
+}
+
+// ---------------------------------------------------------------------------------------------
+// WEAPON ATTACHMENTS (2026) — UI view types (engine-sourced; the UI never duplicates stat values).
+// ---------------------------------------------------------------------------------------------
+
+/** The confirmed 4 attachment slots. */
+export type AttachmentSlotView = "muzzle" | "sight" | "foregrip" | "underbarrel";
+
+/** A selectable attachment stat kind (id only — the value/bucket come from the engine data). */
+export type AttachmentStatView = string;
+
+/** Per-slot selected stat kinds (absent/empty slot = no stats). Mirrors the engine `AttachmentConfig`. */
+export interface AttachmentConfigView {
+  muzzle?: AttachmentStatView[];
+  sight?: AttachmentStatView[];
+  foregrip?: AttachmentStatView[];
+  underbarrel?: AttachmentStatView[];
+}
+
+/** One attachment stat kind + its fixed max-stat value (from `ATTACHMENT_STAT_DEFS`). */
+export interface AttachmentStatDefView {
+  kind: AttachmentStatView;
+  /** Fixed max value (fraction for percentages, e.g. 0.114 = 11.4%). */
+  value: number;
+  /** True for percentage values (display as `+11.4%`); false for flat (display as `+72`). */
+  isPct: boolean;
+  /** Display label (engine-sourced name). */
+  label: string;
+}
+
+/** One slot's rules: max unique stats + the allowed stat kinds (Muzzle adds Crit Damage). */
+export interface AttachmentSlotRulesView {
+  slot: AttachmentSlotView;
+  label: string;
+  maxStats: number;
+  allowedStats: AttachmentStatDefView[];
+}
+
+/** One selectable Attachment Set (only `implemented` sets are surfaced to the UI). */
+export interface AttachmentSetView {
+  id: string;
+  name: string;
+}
+
+/** The full attachment catalog for the UI (engine-sourced). */
+export interface AttachmentCatalogView {
+  slots: AttachmentSlotRulesView[];
+  sets: AttachmentSetView[];
 }
 
 export interface CharacterMetaView {

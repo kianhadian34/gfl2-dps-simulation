@@ -19,6 +19,13 @@ import type {
   WeaponCalibrationEffectView,
   AffinityKeyView,
   ExpansionKeyView,
+  AttachmentCatalogView,
+  AttachmentSlotView,
+  AttachmentStatDefView,
+  AttachmentStatView,
+  AttachmentConfigView,
+  AttachmentSlotRulesView,
+  AttachmentSetView,
 } from "./engine-types.js";
 
 /** Structural engine weapon shape (satisfied by engine `WeaponDef`). */
@@ -148,6 +155,78 @@ export function buildCommonKeyViews(keys: CommonKeySource[], maxCommonKeys: numb
 }
 
 const pct1 = (n: number) => `${(n * 100).toFixed(1)}%`;
+
+/** Structural engine attachment shapes (satisfied by `src/data/attachments.ts` / `attachment-sets.ts`). */
+export interface AttachmentStatDefSource {
+  kind: string;
+  value: number;
+  bucket: string;
+}
+export interface AttachmentSetSource {
+  id: string;
+  name: string;
+  implemented: boolean;
+}
+export interface AttachmentCatalogSource {
+  /** Slot ids in display order (engine `ATTACHMENT_SLOTS`). */
+  slots: string[];
+  /** Per-slot max unique stats (engine `ATTACHMENT_SLOT_MAX_STATS`). */
+  slotMaxStats: Record<string, number>;
+  /** Allowed stat kinds per slot (engine `attachmentStatsForSlot`). */
+  slotAllowedStats: Record<string, string[]>;
+  /** The stat definitions (engine `ATTACHMENT_STAT_DEFS`). */
+  statDefs: Record<string, AttachmentStatDefSource>;
+  /** The sets (engine `ATTACHMENT_SETS`); only `implemented === true` are surfaced. */
+  sets: AttachmentSetSource[];
+}
+
+/** Human labels for the attachment slots + stat kinds (DISPLAY ONLY — values come from engine data). */
+const ATTACHMENT_SLOT_LABELS: Record<string, string> = {
+  muzzle: "Muzzle",
+  sight: "Sight",
+  foregrip: "Foregrip",
+  underbarrel: "Underbarrel",
+};
+const ATTACHMENT_STAT_LABELS: Record<string, string> = {
+  attack: "Attack",
+  attackBoost: "Attack Boost",
+  health: "Health",
+  healthBoost: "Health Boost",
+  defense: "Defense",
+  defenseBoost: "Defense Boost",
+  critRate: "Crit Rate",
+  critDamage: "Crit Damage",
+};
+
+/**
+ * Build the UI attachment catalog from engine data (2026). Non-authoritative display shaping: slot
+ * labels, per-slot maxima, allowed stat kinds, the stat defs (with `isPct` derived from the engine
+ * `bucket`), and ONLY the `implemented === true` sets as selectable. No stat value/rule is invented
+ * here — everything comes from the engine source.
+ */
+export function buildAttachmentCatalog(src: AttachmentCatalogSource): AttachmentCatalogView {
+  const statDef = (kind: string): AttachmentStatDefView => {
+    const d = src.statDefs[kind];
+    // Flat buckets end in "Flat" (atkFlat/hpFlat/defFlat); everything else (atkPct/hpPct/defPct/
+    // critRate/critDmg) is a fraction → display as a percentage.
+    const isPct = d !== undefined && !/Flat$/.test(d.bucket);
+    return {
+      kind,
+      value: d?.value ?? 0,
+      isPct,
+      label: ATTACHMENT_STAT_LABELS[kind] ?? kind,
+    };
+  };
+  return {
+    slots: src.slots.map((slot) => ({
+      slot: slot as AttachmentSlotView,
+      label: ATTACHMENT_SLOT_LABELS[slot] ?? slot,
+      maxStats: src.slotMaxStats[slot] ?? 0,
+      allowedStats: (src.slotAllowedStats[slot] ?? []).map(statDef),
+    })),
+    sets: src.sets.filter((s) => s.implemented).map((s) => ({ id: s.id, name: s.name })),
+  };
+}
 
 /** Player-facing stat lines a Common Key grants (data-driven label map over `stats`; never invented). */
 export function commonKeyStatLines(k: CommonKeyView): string[] {
@@ -365,4 +444,4 @@ export function expansionKeyEffectLine(e: ExpansionKeyView | undefined): string 
 }
 
 /** Convenience re-export for callers that only need the view types. */
-export type { WeaponView, CommonKeyListResult, CommonKeyView, CharacterMetaView, AffinityKeyView, ExpansionKeyView };
+export type { WeaponView, CommonKeyListResult, CommonKeyView, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, AttachmentSlotView, AttachmentStatView, AttachmentConfigView, AttachmentStatDefView, AttachmentSlotRulesView, AttachmentSetView };

@@ -60,13 +60,17 @@ test("member view field set mirrors the engine ScenarioTeamMember contract exact
       affinityKeyId: "k",
       affinityLevel: 5,
       expansionKeyId: "e",
+      attachments: { muzzle: ["critDamage", "attack"] },
+      activeAttachmentSet: "attachment_set_burn_boost",
     }),
   );
   const emitted = Object.keys(sc.team[0]).sort();
   // Canonical engine member surface — src/model/types.ts:739-770 (pinned, not inferred).
   const expected = [
+    "activeAttachmentSet",
     "affinityKeyId",
     "affinityLevel",
+    "attachments",
     "calibrationLevel",
     "characterId",
     "commonKeyIds",

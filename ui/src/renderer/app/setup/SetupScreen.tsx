@@ -16,6 +16,8 @@ import {
   setAffinityLevel,
   setRoundOrder,
   toggleFixedKey,
+  toggleAttachmentStat,
+  setActiveAttachmentSet,
   PHASE_WEAKNESSES,
   AMMO_WEAKNESSES,
   ROTATION_SLOTS,
@@ -26,7 +28,7 @@ import {
   type RotationSlot,
   type SetupState,
 } from "../../../shared/setup.js";
-import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CharacterMetaView, AffinityKeyView, ExpansionKeyView } from "../../../shared/engine-types.js";
+import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView } from "../../../shared/engine-types.js";
 import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, affinityLevels, affinityLevelFlatLines, expansionKeyEffectLine, affinityLevelStatLines, rotationAbilityDescription } from "../../../shared/lists.js";
 import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset, skillAsset } from "../../../shared/assets.js";
 import { AssetThumb } from "./AssetThumb.js";
@@ -118,13 +120,14 @@ export function SetupScreen(props: {
   onStart: (scenario: ScenarioView) => Promise<void>;
   onOpenScenario: () => Promise<void>;
 }): JSX.Element {
-  const { listCharacters, listWeapons, listCommonKeys } = useSession();
+  const { listCharacters, listWeapons, listCommonKeys, listAttachments } = useSession();
   const [charsLoaded, setCharsLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   // Engine-sourced equipment option lists (IPC — never duplicated in the renderer).
   const [weapons, setWeapons] = useState<WeaponView[]>([]);
   const [commonKeys, setCommonKeys] = useState<CommonKeyListResult | null>(null);
+  const [attachments, setAttachments] = useState<AttachmentCatalogView | null>(null);
   const [commonKeySlot, setCommonKeySlot] = useState<number | null>(null);
   const [affinityPickerFor, setAffinityPickerFor] = useState<string | null>(null);
   const [expansionPickerFor, setExpansionPickerFor] = useState<string | null>(null);
@@ -134,10 +137,11 @@ export function SetupScreen(props: {
 
   useEffect(() => {
     if (charsLoaded) return;
-    Promise.all([listCharacters(), listWeapons(), listCommonKeys()])
-      .then(([chars, wl, ckl]) => {
+    Promise.all([listCharacters(), listWeapons(), listCommonKeys(), listAttachments()])
+      .then(([chars, wl, ckl, atc]) => {
         setWeapons(wl);
         setCommonKeys(ckl);
+        setAttachments(atc);
         setMeta(Object.fromEntries(chars.map((c) => [c.id, c])));
         // Seed DEBUG MODE base stats from the characters' REAL CharacterDef.base (engine-sourced).
         const baseById: Record<string, { atk: number; hp: number; def: number; stability: number; critRate: number; critDmg: number }> = {};
@@ -152,7 +156,7 @@ export function SetupScreen(props: {
       })
       .catch((e: unknown) => setFormError(String(e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [charsLoaded, listCharacters, listWeapons, listCommonKeys]);
+  }, [charsLoaded, listCharacters, listWeapons, listCommonKeys, listAttachments]);
 
   const set = (patch: Partial<SetupState>): void => props.onChange({ ...props.setup, ...patch });
 
@@ -762,6 +766,67 @@ export function SetupScreen(props: {
                           </>
                         ) : (
                           <span className="muted">no Affinity Key defined for this character</span>
+                        )}
+                      </fieldset>
+
+                      <fieldset>
+                        <legend>
+                          Attachments <span className="muted">(weapon slots — engine-validated, max-stat)</span>
+                        </legend>
+                        {attachments ? (
+                          <>
+                            {attachments.slots.map((slot) => {
+                              const selected = equ.attachments?.[slot.slot] ?? [];
+                              return (
+                                <div key={slot.slot} className="attachment-slot-row">
+                                  <span className="attachment-slot-label">
+                                    {slot.label} <span className="muted">({selected.length}/{slot.maxStats})</span>
+                                  </span>
+                                  <span className="affinity-levels attachment-stat-pills">
+                                    {slot.allowedStats.map((stat) => {
+                                      const on = selected.includes(stat.kind);
+                                      return (
+                                        <span
+                                          key={stat.kind}
+                                          role="button"
+                                          tabIndex={0}
+                                          className={`affinity-level-pill${on ? " is-selected" : ""}`}
+                                          title={`+${stat.isPct ? `${(stat.value * 100).toFixed(1)}%` : stat.value} ${stat.label}`}
+                                          onClick={() => props.onChange(toggleAttachmentStat(props.setup, c.id, slot.slot, stat.kind, slot.maxStats))}
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter" || e.key === " ") {
+                                              e.preventDefault();
+                                              props.onChange(toggleAttachmentStat(props.setup, c.id, slot.slot, stat.kind, slot.maxStats));
+                                            }
+                                          }}
+                                        >
+                                          {stat.label} <span className="muted">{stat.isPct ? `${(stat.value * 100).toFixed(1)}%` : `+${stat.value}`}</span>
+                                        </span>
+                                      );
+                                    })}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                            <div className="attachment-set-row">
+                              <span className="attachment-slot-label">Active Attachment Set</span>
+                              <select
+                                className="attachment-set-select"
+                                value={equ.activeAttachmentSet ?? ""}
+                                onChange={(e) => props.onChange(setActiveAttachmentSet(props.setup, c.id, e.target.value || undefined))}
+                              >
+                                <option value="">— none —</option>
+                                {attachments.sets.map((s) => (
+                                  <option key={s.id} value={s.id}>
+                                    {s.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <span className="muted">separate from the slot stats above</span>
+                            </div>
+                          </>
+                        ) : (
+                          <span className="muted">loading attachments…</span>
                         )}
                       </fieldset>
 

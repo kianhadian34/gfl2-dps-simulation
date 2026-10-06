@@ -57,6 +57,22 @@ test("attachment sets: exactly the 15 confirmed sets, each a 3-piece bonus on th
   }
 });
 
+test("attachment sets: exactly 8 sets are marked implemented (consumed + validated); the other 7 are inert", () => {
+  const implemented = ATTACHMENT_SETS.filter((s) => s.implemented).map((s) => s.name).sort();
+  assert.deepEqual(
+    implemented,
+    ["Burn Boost", "Close Assault", "Corrosion Boost", "Freeze Boost", "Hydro Boost", "Phase Strike", "Physical Boost", "Tactical Calculus"].sort(),
+    "the 8 consumed + in-game validated sets",
+  );
+  const inert = ATTACHMENT_SETS.filter((s) => !s.implemented).map((s) => s.name).sort();
+  assert.deepEqual(
+    inert,
+    ["Ally Support", "Double Strategy", "Emergency Repair", "Phase Resonance", "Shielded Recovery", "Summon Boost", "Ultimate Pursuit"].sort(),
+    "the 7 inert/deferred sets",
+  );
+  for (const s of ATTACHMENT_SETS) assert.equal(typeof s.implemented, "boolean", `${s.name}: implemented flag is a boolean`);
+});
+
 test("attachment sets: the 4 element boosts are +20% additive DMG%, gated to their own element", () => {
   const expected: Record<string, "freeze" | "burn" | "hydro" | "corrosion"> = {
     "Freeze Boost": "freeze",
@@ -201,7 +217,7 @@ test("attachment sets: no muzzle participation, no invented fields, unique ids",
   assert.equal(new Set(ids).size, ids.length, "ids are unique");
   for (const s of ATTACHMENT_SETS) {
     assert.ok(!s.slots.includes("muzzle" as never), `${s.name}: Muzzle is NOT a set slot (unconfirmed)`);
-    assert.deepEqual(Object.keys(s).sort(), ["bonuses", "id", "name", "pieces", "slots"], `${s.name}: exactly the confirmed fields`);
+    assert.deepEqual(Object.keys(s).sort(), ["bonuses", "id", "implemented", "name", "pieces", "slots"], `${s.name}: exactly the confirmed fields`);
     for (const b of s.bonuses) {
       assert.ok(typeof b.kind === "string" && b.kind.length > 0, `${s.name}: effect has a kind`);
       assert.ok("value" in b || b.kind === "grant_status" || b.kind === "restore_stability", `${s.name}: effect carries its payload`);

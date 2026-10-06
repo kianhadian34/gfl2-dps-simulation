@@ -332,6 +332,19 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .pills-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 12px 0 14px; }
 .pills-label { font-size: 11px; color: var(--muted); margin-right: 2px; }
 
+/* --- weapon attachments (2026) --- */
+.attachment-slot-row,
+.attachment-set-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; }
+.attachment-slot-label { font-size: 11px; color: var(--muted); min-width: 108px; }
+.attachment-stat-pills { margin: 0; }
+.attachment-set-row {
+  margin-top: 12px; padding-top: 8px; border-top: 1px dashed var(--border);
+}
+.attachment-set-select {
+  border: 1px solid var(--accent); border-radius: 4px; background: var(--bg-2);
+  color: var(--text); font-size: 12px; padding: 3px 8px;
+}
+
 /* --- per-round action order editor (2026) --- */
 .round-orders { margin: 10px 0 4px; padding-top: 6px; border-top: 1px dashed var(--border); }
 .round-order-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 4px 0; }
