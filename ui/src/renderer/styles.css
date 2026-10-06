@@ -332,7 +332,14 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .pills-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 12px 0 14px; }
 .pills-label { font-size: 11px; color: var(--muted); margin-right: 2px; }
 
-/* --- weapon attachments (2026) --- */
+/* --- weapon attachments (2026) — shown inside the Weapon section, under the selected weapon --- */
+.attachment-section {
+  margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border);
+}
+.attachment-section-title {
+  margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted); font-weight: 600;
+}
 .attachment-slot-row,
 .attachment-set-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; }
 .attachment-slot-label { font-size: 11px; color: var(--muted); min-width: 108px; }

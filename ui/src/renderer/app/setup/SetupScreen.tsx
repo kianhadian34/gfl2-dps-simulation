@@ -569,6 +569,67 @@ export function SetupScreen(props: {
                           </div>
                         )}
                         </div>
+
+                        <div className="attachment-section">
+                          <h4 className="attachment-section-title">
+                            Attachments <span className="muted">(weapon slots — engine-validated, max-stat)</span>
+                          </h4>
+                          {attachments ? (
+                            <>
+                              {attachments.slots.map((slot) => {
+                                const selected = equ.attachments?.[slot.slot] ?? [];
+                                return (
+                                  <div key={slot.slot} className="attachment-slot-row">
+                                    <span className="attachment-slot-label">
+                                      {slot.label} <span className="muted">({selected.length}/{slot.maxStats})</span>
+                                    </span>
+                                    <span className="affinity-levels attachment-stat-pills">
+                                      {slot.allowedStats.map((stat) => {
+                                        const on = selected.includes(stat.kind);
+                                        return (
+                                          <span
+                                            key={stat.kind}
+                                            role="button"
+                                            tabIndex={0}
+                                            className={`affinity-level-pill${on ? " is-selected" : ""}`}
+                                            title={`+${stat.isPct ? `${(stat.value * 100).toFixed(1)}%` : stat.value} ${stat.label}`}
+                                            onClick={() => props.onChange(toggleAttachmentStat(props.setup, c.id, slot.slot, stat.kind, slot.maxStats))}
+                                            onKeyDown={(e) => {
+                                              if (e.key === "Enter" || e.key === " ") {
+                                                e.preventDefault();
+                                                props.onChange(toggleAttachmentStat(props.setup, c.id, slot.slot, stat.kind, slot.maxStats));
+                                              }
+                                            }}
+                                          >
+                                            {stat.label} <span className="muted">{stat.isPct ? `${(stat.value * 100).toFixed(1)}%` : `+${stat.value}`}</span>
+                                          </span>
+                                        );
+                                      })}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                              <div className="attachment-set-row">
+                                <span className="attachment-slot-label">Active Attachment Set</span>
+                                <select
+                                  className="attachment-set-select"
+                                  value={equ.activeAttachmentSet ?? ""}
+                                  onChange={(e) => props.onChange(setActiveAttachmentSet(props.setup, c.id, e.target.value || undefined))}
+                                >
+                                  <option value="">— none —</option>
+                                  {attachments.sets.map((s) => (
+                                    <option key={s.id} value={s.id}>
+                                      {s.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                <span className="muted">separate from the slot stats above</span>
+                              </div>
+                            </>
+                          ) : (
+                            <span className="muted">loading attachments…</span>
+                          )}
+                        </div>
                       </fieldset>
 
                       <fieldset>
@@ -766,67 +827,6 @@ export function SetupScreen(props: {
                           </>
                         ) : (
                           <span className="muted">no Affinity Key defined for this character</span>
-                        )}
-                      </fieldset>
-
-                      <fieldset>
-                        <legend>
-                          Attachments <span className="muted">(weapon slots — engine-validated, max-stat)</span>
-                        </legend>
-                        {attachments ? (
-                          <>
-                            {attachments.slots.map((slot) => {
-                              const selected = equ.attachments?.[slot.slot] ?? [];
-                              return (
-                                <div key={slot.slot} className="attachment-slot-row">
-                                  <span className="attachment-slot-label">
-                                    {slot.label} <span className="muted">({selected.length}/{slot.maxStats})</span>
-                                  </span>
-                                  <span className="affinity-levels attachment-stat-pills">
-                                    {slot.allowedStats.map((stat) => {
-                                      const on = selected.includes(stat.kind);
-                                      return (
-                                        <span
-                                          key={stat.kind}
-                                          role="button"
-                                          tabIndex={0}
-                                          className={`affinity-level-pill${on ? " is-selected" : ""}`}
-                                          title={`+${stat.isPct ? `${(stat.value * 100).toFixed(1)}%` : stat.value} ${stat.label}`}
-                                          onClick={() => props.onChange(toggleAttachmentStat(props.setup, c.id, slot.slot, stat.kind, slot.maxStats))}
-                                          onKeyDown={(e) => {
-                                            if (e.key === "Enter" || e.key === " ") {
-                                              e.preventDefault();
-                                              props.onChange(toggleAttachmentStat(props.setup, c.id, slot.slot, stat.kind, slot.maxStats));
-                                            }
-                                          }}
-                                        >
-                                          {stat.label} <span className="muted">{stat.isPct ? `${(stat.value * 100).toFixed(1)}%` : `+${stat.value}`}</span>
-                                        </span>
-                                      );
-                                    })}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                            <div className="attachment-set-row">
-                              <span className="attachment-slot-label">Active Attachment Set</span>
-                              <select
-                                className="attachment-set-select"
-                                value={equ.activeAttachmentSet ?? ""}
-                                onChange={(e) => props.onChange(setActiveAttachmentSet(props.setup, c.id, e.target.value || undefined))}
-                              >
-                                <option value="">— none —</option>
-                                {attachments.sets.map((s) => (
-                                  <option key={s.id} value={s.id}>
-                                    {s.name}
-                                  </option>
-                                ))}
-                              </select>
-                              <span className="muted">separate from the slot stats above</span>
-                            </div>
-                          </>
-                        ) : (
-                          <span className="muted">loading attachments…</span>
                         )}
                       </fieldset>
 

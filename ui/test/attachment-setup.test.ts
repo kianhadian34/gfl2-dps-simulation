@@ -221,16 +221,28 @@ test("catalog: stat defs expose the engine max values (never invented in the UI)
 // RENDERER — the Setup screen exposes the controls (presentation contract)
 // ---------------------------------------------------------------------------
 
-test("setup screen: an Attachments fieldset with the 4 slot rows and a distinct Active Attachment Set selector", async () => {
+test("setup screen: the Attachments controls live INSIDE the Weapon section, under the selected weapon", async () => {
   const { readFileSync } = await import("node:fs");
   const { fileURLToPath } = await import("node:url");
   const { dirname, join } = await import("node:path");
   const s = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../src/renderer/app/setup/SetupScreen.tsx"), "utf8");
-  assert.ok(s.includes("Attachments <span"), "Attachments fieldset present");
+  assert.ok(s.includes("Attachments <span"), "Attachments heading present");
+  assert.ok(s.includes("attachment-section"), "attachments render as a subsection block");
   assert.ok(s.includes("attachments.slots.map"), "the four slot rows are derived from the engine catalog (not hard-coded)");
   assert.ok(s.includes("toggleAttachmentStat("), "slot pills toggle through the shared helper");
   assert.ok(s.includes("Active Attachment Set"), "the set selector is labelled separately from the slots");
   assert.ok(s.includes("attachment-set-select") && s.includes("attachments.sets.map"), "the set <select> is populated from the implemented sets");
   assert.ok(s.includes("setActiveAttachmentSet("), "set selection flows through the shared helper");
+
+  // Location: the attachment block sits AFTER the Weapon legend and BEFORE the Common Keys legend —
+  // i.e. inside the Weapon fieldset, directly under the selected weapon.
+  const weaponLegend = s.indexOf("Weapon <span");
+  const attachmentBlock = s.indexOf("attachment-section");
+  const commonKeysLegend = s.indexOf("Common Keys ({equ.commonKeyIds");
+  assert.ok(weaponLegend >= 0 && attachmentBlock > weaponLegend, "attachments come after the Weapon section heading");
+  assert.ok(commonKeysLegend > attachmentBlock, "attachments come before the Common Keys section (still inside the Weapon section)");
+  // The old standalone Attachments fieldset legend is gone — the heading is now an h4 subsection.
+  assert.ok(s.includes("<h4 className=\"attachment-section-title\">"), "attachments use an h4 subsection heading");
+  assert.ok(!/<legend>\s*Attachments/.test(s), "no Attachments <legend> (the standalone fieldset was removed)");
   assert.ok(!s.includes("attachment-set-multi") && !s.includes("attachment-sets.map"), "no multi-set controls (a single set <select>, not a multi-select)");
 });
