@@ -20,6 +20,7 @@ import {
   tickStatuses,
 } from "./statuses.js";
 import { remolderCritDmgBonus, remolderFirstTargetStability, remolderHealBonus, remolderHealEndOfActionPct, remolderHealOnAttackPct, remolderReactiveDamage, remolderStabilityRecovery } from "./remolder.js";
+import { attachmentSetDealtBonus } from "./attachment-sets.js";
 import { applyStabilityDamage, endOfRoundStability } from "./stability.js";
 import { abilitySourceLabel, createState, DEFAULT_CONFIG, fortificationV, passiveSourceLabel, supportAttackQuota, weaponCalibration, type EffectiveStatusDef, type SimulationState, type UnitState } from "./state.js";
 import type { ActiveStatus } from "../model/runtime.js";
@@ -429,6 +430,17 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     // is the generic off-turn signal; any future out-of-turn event reuses it. It lands in the SAME
     // additive bracket as QJ's passive 10% Out-of-Turn Damage (validated 1.10 → 1.17 with the key).
     (ev.supportAttack ? actor.outOfTurnDmg : 0) +
+    // WEAPON ATTACHMENT SET (2026): the ACTIVE loadout-level set's `additive_dealt` bonuses enter the
+    // SAME additive DMG% bucket (no separate bucket/multiplier). Values come from the set DATA; only
+    // engine-evaluable gates are consumed (unmodeled gates keep their sets inert). MVP: the
+    // out-of-turn gate = Support Actions only.
+    attachmentSetDealtBonus(actor.activeAttachmentSet, {
+      element: skill.element,
+      ammoType: skill.ammoType,
+      supportAttack: ev.supportAttack,
+      isAoE,
+      skillType: skill.type,
+    }) +
     expBonusTerm +
     weaponDealtTerm +
     imprintBonus;

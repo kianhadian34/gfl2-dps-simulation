@@ -98,6 +98,11 @@ export interface UnitState {
   };
   /** Equipped Expansion Key id (Ruined Gem): drives the Support Action element override and the target-status dealt bonus. */
   expansionKeyId?: string;
+  /**
+   * WEAPON ATTACHMENTS (2026): the ACTIVE Attachment Set id (loadout-level selection). Consumed by
+   * `attachmentSetDealtBonus` in the existing additive DMG% dealt bucket. Absent = no set bonus.
+   */
+  activeAttachmentSet?: string;
   /** Weapon-effect charge counter (Golden Melody Charging, VALIDATED 2026): +1 per buff GAINED (capped by the calibration's maxStacks); 1 consumed per Support Action; persists when unused; inherently un-cleansable (weapon state, not a status). 0 = none. */
   weaponCharges: number;
   /** The scenario-EQUIPPED weapon (resolved from `ScenarioTeamMember.weaponId` via the registry; null = no weapon equipped). Never inherited from the character. */
@@ -410,6 +415,7 @@ function makeDoll(
   weapon: WeaponDef | null,
   weaponCalibrationLevel: number | undefined,
   attachments: AttachmentConfig | undefined,
+  activeAttachmentSet: string | undefined,
   baseStatOverrides: { atk?: number; hp?: number; def?: number; stability?: number; critRate?: number; critDmg?: number } | undefined,
   applyDispatchStats: boolean | undefined,
   overridesAuthoritative: boolean | undefined,
@@ -553,6 +559,7 @@ function makeDoll(
     skills,
     passives: passiveEffectsList,
     equippedKeys: keys.filter((k) => def.fixedKeys.some((f) => f.id === k)),
+    activeAttachmentSet,
     weaknessElements: [],
     weaknessTags: [],
     raceTypes: [],
@@ -807,7 +814,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
       }
     }
     const weaponCalibrationLevel = m.calibrationLevel ?? weapon?.calibrationLevel;
-    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel ?? DEFAULT_AFFINITY_LEVEL }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, weaponCalibrationLevel, m.attachments, m.baseStatOverrides, m.applyDispatchStats, m.overridesAuthoritative, remolderPlans[i], remolderGrants[i], config, registry);
+    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel ?? DEFAULT_AFFINITY_LEVEL }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, weaponCalibrationLevel, m.attachments, m.activeAttachmentSet, m.baseStatOverrides, m.applyDispatchStats, m.overridesAuthoritative, remolderPlans[i], remolderGrants[i], config, registry);
   });
   const dummy = makeDummy(scenario.dummy);
   return {
