@@ -1306,6 +1306,21 @@ export interface ScenarioTeamMember {
    * calibration without a `weaponId` are rejected with a clear error.
    */
   calibrationLevel?: number;
+  /**
+   * WEAPON ATTACHMENTS (2026): per-slot selected stat kinds for the equipped weapon's 4 attachment
+   * slots. Absent/empty = no attachment stats. Values are the FIXED max-stat constants
+   * (src/data/attachments.ts); the contract (per-slot maxima, uniqueness, Muzzle-only Crit Damage)
+   * is enforced by `validateAttachmentConfig`. Folded into the EXISTING panel buckets — no new
+   * damage formula/bucket. The active Attachment Set is a SEPARATE field (below); set EFFECTS are
+   * not implemented yet.
+   */
+  attachments?: AttachmentConfig;
+  /**
+   * WEAPON ATTACHMENTS (2026): the selected ACTIVE Attachment Set id — a LOADOUT-LEVEL selection,
+   * independent of the per-slot stats (no per-slot set identity; membership is never inferred from
+   * stats). Recorded here for the future set-effect implementation; NOT consumed yet.
+   */
+  activeAttachmentSet?: string;
   /** Equipped Expansion Key id (e.g. Qiongjiu's Ruined Gem). Absent = no expansion-key behavior. */
   expansionKeyId?: string;
   /**

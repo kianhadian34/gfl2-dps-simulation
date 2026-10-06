@@ -1,4 +1,4 @@
-import type { AbilityDef, AbilitySlot, ActionSlot, AmmoType, CharacterDef, CommonKeyStat, ConfigOverrides, Element, PassiveEffect, Scenario, SkillDefVariant, SourceKind, StatusDef, StatusOverride, WeaponCalibrationDef, WeaponDef } from "../model/types.js";
+import type { AbilityDef, AbilitySlot, ActionSlot, AmmoType, AttachmentConfig, CharacterDef, CommonKeyStat, ConfigOverrides, Element, PassiveEffect, Scenario, SkillDefVariant, SourceKind, StatusDef, StatusOverride, WeaponCalibrationDef, WeaponDef } from "../model/types.js";
 import { buildGrid, type GridState } from "./grid.js";
 import { finalStat } from "./stats.js";
 import type { ActiveStatus, LogEvent, ResolvedConfig } from "../model/runtime.js";
@@ -7,6 +7,7 @@ import type { Registry } from "../data/registry.js";
 import { DISPATCH_STAT_BUFFS } from "../data/dispatch.js";
 import { REMOLDER_BUFFS } from "../data/remolder.js";
 import { NEURAL_HELIX_GLOBAL_PCT } from "../data/neural-helix.js";
+import { resolveAttachmentStats, validateAttachmentConfig } from "../data/attachments.js";
 import { resolveRemolderUnit, resolveRemolderTeam } from "./remolder.js";
 
 /**
@@ -184,6 +185,7 @@ export function computePanel(
   remolderFlat?: { atk?: number; hp?: number; def?: number },
   neuralHelixFlat?: { atk?: number; hp?: number; def?: number },
   affinityFlat?: { atk?: number; hp?: number; def?: number },
+  attachmentFlat?: { atk?: number; hp?: number; def?: number },
 ): { atk: number; hp: number; def: number } {
   const weaponAtkBonus = weaponAtk(weapon);
   const pctAtk = (weapon?.subStats ?? []).filter((s) => s.stat === "pctAtk").reduce((a, s) => a + s.value, 0);
@@ -192,9 +194,9 @@ export function computePanel(
   // Game-authoritative FINAL STAT rounding: the integer results feed every downstream consumer
   // (damage ATK/DEF, applier-ATK fixed damage, HP pools).
   return {
-    atk: finalStat(def.base.atk, weaponAtkBonus + (dispatchFlat?.atk ?? 0) + (remolderFlat?.atk ?? 0) + (neuralHelixFlat?.atk ?? 0) + (affinityFlat?.atk ?? 0), pctAtk),
-    hp: finalStat(def.base.hp, (dispatchFlat?.hp ?? 0) + (remolderFlat?.hp ?? 0) + (neuralHelixFlat?.hp ?? 0) + (affinityFlat?.hp ?? 0), pctHp),
-    def: finalStat(def.base.def, (dispatchFlat?.def ?? 0) + (remolderFlat?.def ?? 0) + (neuralHelixFlat?.def ?? 0) + (affinityFlat?.def ?? 0), pctDef),
+    atk: finalStat(def.base.atk, weaponAtkBonus + (dispatchFlat?.atk ?? 0) + (remolderFlat?.atk ?? 0) + (neuralHelixFlat?.atk ?? 0) + (affinityFlat?.atk ?? 0) + (attachmentFlat?.atk ?? 0), pctAtk),
+    hp: finalStat(def.base.hp, (dispatchFlat?.hp ?? 0) + (remolderFlat?.hp ?? 0) + (neuralHelixFlat?.hp ?? 0) + (affinityFlat?.hp ?? 0) + (attachmentFlat?.hp ?? 0), pctHp),
+    def: finalStat(def.base.def, (dispatchFlat?.def ?? 0) + (remolderFlat?.def ?? 0) + (neuralHelixFlat?.def ?? 0) + (affinityFlat?.def ?? 0) + (attachmentFlat?.def ?? 0), pctDef),
   };
 }
 
@@ -407,6 +409,7 @@ function makeDoll(
   expansionKeyId: string | undefined,
   weapon: WeaponDef | null,
   weaponCalibrationLevel: number | undefined,
+  attachments: AttachmentConfig | undefined,
   baseStatOverrides: { atk?: number; hp?: number; def?: number; stability?: number; critRate?: number; critDmg?: number } | undefined,
   applyDispatchStats: boolean | undefined,
   overridesAuthoritative: boolean | undefined,
@@ -476,7 +479,26 @@ function makeDoll(
   // affinityFlatStats), accumulated cumulatively through the active Affinity Level and summed into
   // the SAME flat bucket. Same gating as the other flat sources (shared helper with the raw-ATK basis).
   const affinityFlat = resolveAffinityFlat(def, affinity?.level, applyDispatchStats, overridesAuthoritative, baseStatOverrides);
-  const panel = computePanel(def, weapon, dispatchFlat, remolderFlat, neuralHelixFlat, affinityFlat);
+  // WEAPON ATTACHMENTS (2026): user-selected per-slot max-stat configuration folded into the SAME
+  // existing buckets as every other stat source — flat → the flat bucket; % → the percentage
+  // buckets; Crit Rate / Crit DMG → the existing panel crit stats. NO new bucket, NO damage-formula
+  // change. (Set EFFECTS are NOT implemented here.) Attachments are EXPLICIT EQUIPMENT (like
+  // `weaponId`/`commonKeyIds`) — absent = 0, so controlled math fixtures are unaffected; a fixture
+  // that DOES set `attachments` observes them. Debug-authoritative overrides still suppress them on
+  // overridden stats (an authoritative Debug ATK must not gain attachment ATK underneath it).
+  const attach = resolveAttachmentStats(attachments);
+  const attachFlat = {
+    atk: isAuthoritativelyOverridden(baseStatOverrides, "atk", overridesAuthoritative) ? 0 : attach.flat.atk,
+    hp: isAuthoritativelyOverridden(baseStatOverrides, "hp", overridesAuthoritative) ? 0 : attach.flat.hp,
+    def: isAuthoritativelyOverridden(baseStatOverrides, "def", overridesAuthoritative) ? 0 : attach.flat.def,
+  };
+  const attachPct = {
+    atk: isAuthoritativelyOverridden(baseStatOverrides, "atk", overridesAuthoritative) ? 0 : attach.pct.atk,
+    hp: isAuthoritativelyOverridden(baseStatOverrides, "hp", overridesAuthoritative) ? 0 : attach.pct.hp,
+    def: isAuthoritativelyOverridden(baseStatOverrides, "def", overridesAuthoritative) ? 0 : attach.pct.def,
+  };
+  const attachCrit = { critRate: attach.critRate, critDmg: attach.critDmg };
+  const panel = computePanel(def, weapon, dispatchFlat, remolderFlat, neuralHelixFlat, affinityFlat, attachFlat);
   const aff = resolveAffinityBonus(def, affinity?.keyId, affinity?.level, registry);
   // Common Keys (generic architecture, 2026): REUSABLE definitions resolved via the registry
   // (max 3 — "3 Common Key Slots"; fewer allowed). Stats from every selected key SUM and fold
@@ -505,9 +527,9 @@ function makeDoll(
     hpPct: nhActive && !isAuthoritativelyOverridden(baseStatOverrides, "hp", overridesAuthoritative) ? (def.neuralHelixStats?.hpPct ?? 0) + NEURAL_HELIX_GLOBAL_PCT : 0,
     defPct: nhActive && !isAuthoritativelyOverridden(baseStatOverrides, "def", overridesAuthoritative) ? (def.neuralHelixStats?.defPct ?? 0) + NEURAL_HELIX_GLOBAL_PCT : 0,
   };
-  const atkPct = (commonStats.atkPct ?? 0) + aff.atk + (levelStat.atkPct ?? 0) + nhPct.atkPct + remolderPlan.selfPct.atk + remolderGrants.unityPct.atk + remolderGrants.alliedPct.atk;
-  const hpPct = aff.hp + (levelStat.hpPct ?? 0) + nhPct.hpPct + remolderPlan.selfPct.hp + remolderGrants.unityPct.hp + remolderGrants.alliedPct.hp;
-  const defPct = (levelStat.defPct ?? 0) + nhPct.defPct + remolderPlan.selfPct.def + remolderGrants.unityPct.def + remolderGrants.alliedPct.def;
+  const atkPct = (commonStats.atkPct ?? 0) + aff.atk + (levelStat.atkPct ?? 0) + nhPct.atkPct + attachPct.atk + remolderPlan.selfPct.atk + remolderGrants.unityPct.atk + remolderGrants.alliedPct.atk;
+  const hpPct = aff.hp + (levelStat.hpPct ?? 0) + nhPct.hpPct + attachPct.hp + remolderPlan.selfPct.hp + remolderGrants.unityPct.hp + remolderGrants.alliedPct.hp;
+  const defPct = (levelStat.defPct ?? 0) + nhPct.defPct + attachPct.def + remolderPlan.selfPct.def + remolderGrants.unityPct.def + remolderGrants.alliedPct.def;
   let confectance = config.confectanceStart;
   for (const k of def.fixedKeys) {
     if (keys.includes(k.id)) {
@@ -547,8 +569,8 @@ function makeDoll(
     hp: hpPct > 0 ? finalStat(panel.hp, 0, hpPct) : panel.hp,
     maxHp: hpPct > 0 ? finalStat(panel.hp, 0, hpPct) : panel.hp,
     defStat: defPct > 0 ? finalStat(panel.def, 0, defPct) : panel.def,
-    critRate: def.base.critRate + (commonStats.critRate ?? 0) + remolderPlan.critRate,
-    critDmg: def.base.critDmg + aff.critDmg + (commonStats.critDmg ?? 0) + remolderPlan.critDmg,
+    critRate: def.base.critRate + (commonStats.critRate ?? 0) + remolderPlan.critRate + attachCrit.critRate,
+    critDmg: def.base.critDmg + aff.critDmg + (commonStats.critDmg ?? 0) + remolderPlan.critDmg + attachCrit.critDmg,
     outOfTurnDmg: (commonStats.outOfTurnDmg ?? 0) + remolderPlan.outOfTurnDmg,
     // PATTERN REMOLDER (2026): full resolved state kept for combat consumption + provenance.
     remolder:
@@ -695,6 +717,12 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
         }
       }
     }
+    // WEAPON ATTACHMENTS (2026): validate the per-slot configuration against the confirmed contract
+    // (per-slot maxima, unique stats, Muzzle-only Crit Damage) — rejected loudly, never silently.
+    const attachErrors = validateAttachmentConfig(m.attachments);
+    if (attachErrors.length > 0) {
+      throw new Error(`Team member ${m.characterId}: invalid attachment configuration — ${attachErrors.join("; ")}`);
+    }
   }
   const config = resolveConfig(scenario.configOverrides);
   // PATTERN REMOLDER (2026): resolve every member's plan (clamp/totals/set activation) then
@@ -723,13 +751,27 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
     const nhFlat = resolveNeuralHelixFlat(rd, m.applyDispatchStats, m.overridesAuthoritative, m.baseStatOverrides);
     // AFFINITY-LEVEL flat (2026) is likewise part of the real panel basis — same gating (`resolveAffinityFlat`).
     const affFlat = resolveAffinityFlat(rd, m.affinityLevel ?? DEFAULT_AFFINITY_LEVEL, m.applyDispatchStats, m.overridesAuthoritative, m.baseStatOverrides);
-    let flat = { atk: 0, hp: 0, def: 0 };
+    // WEAPON ATTACHMENT flat (2026) is likewise part of the real panel basis — EXPLICIT EQUIPMENT
+    // (absent = 0), same as the panel path; Debug-authoritative overrides suppress it per stat.
+    // WEAPON ATTACHMENT flat (2026) is likewise part of the real panel basis — EXPLICIT EQUIPMENT
+    // (absent = 0), NOT gated by the controlled-fixture switch (matching the panel path); a
+    // Debug-authoritative override still suppresses it per stat.
+    const attachFlatRaw = resolveAttachmentStats(m.attachments).flat;
+    const aFlat =
+      m.overridesAuthoritative === true && m.baseStatOverrides
+        ? {
+            atk: Object.prototype.hasOwnProperty.call(m.baseStatOverrides, "atk") ? 0 : attachFlatRaw.atk,
+            hp: Object.prototype.hasOwnProperty.call(m.baseStatOverrides, "hp") ? 0 : attachFlatRaw.hp,
+            def: Object.prototype.hasOwnProperty.call(m.baseStatOverrides, "def") ? 0 : attachFlatRaw.def,
+          }
+        : attachFlatRaw;
+    let flat = { atk: aFlat.atk, hp: aFlat.hp, def: aFlat.def };
     if (m.applyDispatchStats !== false) {
       const df = DISPATCH_STAT_BUFFS[rd.class];
       flat = {
-        atk: remolderPlans[i].flat.atk + ichor.atk + df.atk + nhFlat.atk + affFlat.atk,
-        hp: remolderPlans[i].flat.hp + ichor.hp + df.hp + nhFlat.hp + affFlat.hp,
-        def: remolderPlans[i].flat.def + ichor.def + df.def + nhFlat.def + affFlat.def,
+        atk: remolderPlans[i].flat.atk + ichor.atk + df.atk + nhFlat.atk + affFlat.atk + aFlat.atk,
+        hp: remolderPlans[i].flat.hp + ichor.hp + df.hp + nhFlat.hp + affFlat.hp + aFlat.hp,
+        def: remolderPlans[i].flat.def + ichor.def + df.def + nhFlat.def + affFlat.def + aFlat.def,
       };
     }
     return computePanel(d, w, undefined, flat).atk;
@@ -765,7 +807,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
       }
     }
     const weaponCalibrationLevel = m.calibrationLevel ?? weapon?.calibrationLevel;
-    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel ?? DEFAULT_AFFINITY_LEVEL }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, weaponCalibrationLevel, m.baseStatOverrides, m.applyDispatchStats, m.overridesAuthoritative, remolderPlans[i], remolderGrants[i], config, registry);
+    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel ?? DEFAULT_AFFINITY_LEVEL }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, weaponCalibrationLevel, m.attachments, m.baseStatOverrides, m.applyDispatchStats, m.overridesAuthoritative, remolderPlans[i], remolderGrants[i], config, registry);
   });
   const dummy = makeDummy(scenario.dummy);
   return {

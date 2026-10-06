@@ -108,3 +108,45 @@ export function validateAttachmentConfig(config: AttachmentConfig | undefined): 
   }
   return errors;
 }
+
+/** Resolved attachment contribution, split by the EXISTING engine buckets (no new bucket). */
+export interface ResolvedAttachmentStats {
+  /** Flat bucket (summed into the panel flat bucket BEFORE the percentage multiply). */
+  flat: { atk: number; hp: number; def: number };
+  /** Percentage buckets (applied AFTER the flat sum, via the proven Final Stat formula). */
+  pct: { atk: number; hp: number; def: number };
+  /** Existing panel crit stats (additive). */
+  critRate: number;
+  critDmg: number;
+}
+
+/**
+ * Sum a per-slot attachment configuration into the EXISTING engine stat buckets (flat / percentage
+ * / crit). Empty/absent slots contribute nothing. Data-driven from `ATTACHMENT_STAT_DEFS` — no new
+ * bucket, no damage-formula change. Callers must validate the config first (`validateAttachmentConfig`).
+ */
+export function resolveAttachmentStats(config: AttachmentConfig | undefined): ResolvedAttachmentStats {
+  const out: ResolvedAttachmentStats = {
+    flat: { atk: 0, hp: 0, def: 0 },
+    pct: { atk: 0, hp: 0, def: 0 },
+    critRate: 0,
+    critDmg: 0,
+  };
+  if (!config) return out;
+  for (const stats of Object.values(config) as (AttachmentStat[] | undefined)[]) {
+    for (const kind of stats ?? []) {
+      const def = ATTACHMENT_STAT_DEFS[kind];
+      switch (def.bucket) {
+        case "atkFlat": out.flat.atk += def.value; break;
+        case "hpFlat": out.flat.hp += def.value; break;
+        case "defFlat": out.flat.def += def.value; break;
+        case "atkPct": out.pct.atk += def.value; break;
+        case "hpPct": out.pct.hp += def.value; break;
+        case "defPct": out.pct.def += def.value; break;
+        case "critRate": out.critRate += def.value; break;
+        case "critDmg": out.critDmg += def.value; break;
+      }
+    }
+  }
+  return out;
+}
