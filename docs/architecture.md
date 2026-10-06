@@ -210,8 +210,8 @@ Results aggregate from the log (never recomputed): total damage, damage/full-tea
 
 **Information still required before implementation can safely begin (blocking):**
 1. **Set rules & values** — the set-bonus effect(s), how many sets exist, each set's membership, whether a set bonus stacks/can activate more than once, and whether attachments from different sets may coexist across the 4 slots.
-2. **Stat semantics** — ✅ **RESOLVED (in-game 2026, `docs/research.md` §3.19):** the un-suffixed "Attack/Health/Defense" are **FLAT** (flat bucket); the "…Boost (%)" are **PERCENTAGE** (percentage buckets); Crit Rate / Crit DMG are the panel stats the engine already models. (What remains is the attachment stat **VALUES/ranges** — separate evidence.)
-3. **Values & ranges** — the actual stat values/ranges per attachment, per slot, per rarity/tier (if a tier system exists).
+2. **Stat semantics** — ✅ **RESOLVED (in-game 2026, `docs/research.md` §3.19):** the un-suffixed "Attack/Health/Defense" are **FLAT** (flat bucket); the "…Boost (%)" are **PERCENTAGE** (percentage buckets); Crit Rate / Crit DMG are the panel stats the engine already models.
+3. **Values & ranges** — ✅ **RESOLVED (2026, `docs/research.md` §3.19):** the simulator uses **MAX-STAT attachments only** — Attack +72 · Attack Boost (%) +11.4% · Health +162 · Health Boost (%) +11.4% · Defense +48 · Defense Boost (%) +11.4% · Crit Rate +15% · Crit Damage (%) +15%. **Random rolls / stat ranges / sub-maximal values / roll generation are deliberately NOT modeled** (competitive-simulation scope decision).
 4. **Rarity / tier system** — whether one exists and its structure.
 5. **Generation/roll rules** — how attachment stats are generated/rolled (or whether the sim only ever takes a user-specified attachment).
 6. **Inventory model** — how many attachments exist per slot; whether a slot may be empty; whether attachments are reusable definitions or bound to a weapon/character; how the user selects them.
