@@ -1003,6 +1003,51 @@ export interface AttachmentSetDef {
   bonuses: AttachmentSetEffect[];
 }
 
+// ---------------------------------------------------------------------------------------------
+// WEAPON ATTACHMENT SYSTEM (2026) — USER-CONFIGURABLE CONFIGURATION CONTRACT (DATA STAGE ONLY).
+// The user selects which stat KINDS each slot has; values are FIXED max-stat constants (no rolls).
+// The active Attachment Set is a SEPARATE loadout-level selection (no per-slot set identity).
+// NOT consumed by the engine yet (see docs/research.md §3.19 / U22).
+// ---------------------------------------------------------------------------------------------
+
+/** The confirmed 4 attachment slots (Muzzle is the only one that may use Crit Damage). */
+export type AttachmentSlot = "muzzle" | "sight" | "foregrip" | "underbarrel";
+
+/** The attachment stat KINDS a user can select (each maps to a fixed max-stat value + bucket). */
+export type AttachmentStat =
+  | "attack"
+  | "attackBoost"
+  | "health"
+  | "healthBoost"
+  | "defense"
+  | "defenseBoost"
+  | "critRate"
+  | "critDamage";
+
+/**
+ * Per-slot selected stat kinds. An ABSENT or EMPTY slot array = an empty slot (contributes no
+ * stats). Per-slot maxima and the Muzzle-only Crit Damage rule are enforced by
+ * `validateAttachmentConfig` (src/data/attachments.ts).
+ */
+export interface AttachmentConfig {
+  muzzle?: AttachmentStat[];
+  sight?: AttachmentStat[];
+  foregrip?: AttachmentStat[];
+  underbarrel?: AttachmentStat[];
+}
+
+/**
+ * LOADOUT-LEVEL attachment selection: the per-slot stat configuration AND the SEPARATE active
+ * Attachment Set. The set is NOT stored per slot and does NOT affect stat selection — it is a
+ * single loadout-level choice (docs/research.md §3.19, "Set selection model").
+ */
+export interface AttachmentLoadout {
+  /** Per-slot selected stat kinds. Absent = no attachments. */
+  attachments?: AttachmentConfig;
+  /** The selected Attachment Set id (loadout-level, independent of the per-slot stats). */
+  activeAttachmentSet?: string;
+}
+
 export type StatusEffect =
   | { kind: "stat_modifier"; stat: "atk" | "def" | "hp" | "critRate"; mode: "flat" | "pct"; value: number }
   | {
