@@ -852,6 +852,157 @@ export interface RemolderModifier {
   effect: RemolderEffect;
 }
 
+// ---------------------------------------------------------------------------------------------
+// WEAPON ATTACHMENT SYSTEM (2026) — SET DEFINITIONS (DATA STAGE ONLY; NOT consumed by the engine).
+// Every weapon has 4 attachment slots (Muzzle / Sight / Foregrip / Underbarrel). Attachment Sets
+// apply to the 3 non-Muzzle slots (Sight / Foregrip / Underbarrel); equipping 3 pieces of the same
+// set activates its 3-piece bonus. ONLY the set definitions are modeled at this stage — no
+// attachment inventory, stat rolls, rarity, generation, or Muzzle set participation (all
+// UNCONFIRMED — see docs/research.md §3.19 / U22). Nothing here is consumed by the engine yet.
+// ---------------------------------------------------------------------------------------------
+
+/** Attachment slots an Attachment Set can apply to (the confirmed 3 non-Muzzle slots). */
+export type AttachmentSetSlot = "sight" | "foregrip" | "underbarrel";
+
+/**
+ * ATTACHMENT SET BONUS GATES (2026): the EXISTING gate vocabulary (same semantics as
+ * `RemolderEffectGates.element`) plus attachment-specific conditions that the current engine
+ * cannot yet express. Absent gate = applies always. Gates restrict; they never approximate.
+ */
+export interface AttachmentSetGates {
+  /** Restrict to hits with ANY of these attack elements (null = phase-less/physical). */
+  element?: (Element | null)[];
+  /**
+   * Restrict to hits with ANY of these attack AMMO categories (the existing `AmmoType` dimension;
+   * e.g. `["melee"]` = melee damage). Same reuse pattern as the `element` gate.
+   */
+  ammoType?: AmmoType[];
+  /**
+   * Restrict to damage dealt OUTSIDE the unit's own turn (Support Attacks, Interceptions,
+   * Counterattacks, and other attacks from passive effects — the confirmed qualifying
+   * categories; no additional category is invented). Same semantic as `RemolderEffectGates.outOfTurn`.
+   */
+  outOfTurn?: boolean;
+  /** Restrict to aoe / targeted attacks (existing `damageCategory`). Same as `RemolderEffectGates.category`. */
+  category?: "aoe" | "targeted";
+  /** Restrict to specific ability types. Same as `RemolderEffectGates.skillTypes`. */
+  skillTypes?: ("basic" | "active" | "ultimate" | "support")[];
+  /**
+   * ATTACHMENT-ONLY GATE (2026, "Phase Strike"): restrict to hits on a target carrying a
+   * Phase-attribute DEBUFF (any phase element — the source does not specify one). The existing
+   * gate vocabulary has no target-status/phase gate and `StatusDef` carries no element attribute,
+   * so this condition is NOT evaluable by the engine yet — recorded DATA ONLY, engine consumption
+   * DEFERRED. No other system may consume this field.
+   */
+  targetPhaseDebuff?: boolean;
+  /**
+   * ATTACHMENT-ONLY GATE (2026, "Summon Boost"): the bonus applies only while this unit's
+   * PHYSICAL Summon is on the battlefield (a Summon creature which can be selected, has stats, and
+   * takes up a tile in battle — the source's definition). The engine has NO Summon model, so this
+   * condition is NOT evaluable yet — recorded DATA ONLY, engine consumption DEFERRED. No Summon
+   * mechanics are invented to consume this field. No other system may consume this field.
+   */
+  physicalSummonOnBattlefield?: boolean;
+  /**
+   * ATTACHMENT-ONLY GATE (2026, "Double Strategy"): restrict to hits whose TARGET is (or is not)
+   * near Cover. The engine has no Cover mechanic (MVP targets are always No Cover), so this
+   * condition is NOT evaluable yet — recorded DATA ONLY, engine consumption DEFERRED. No Cover
+   * detection is invented.
+   */
+  targetNearCover?: boolean;
+  /**
+   * ATTACHMENT-ONLY GATE (2026, "Phase Resonance"): restrict to an attack that exploits exactly
+   * this many PHASE weaknesses (the source states "a phase weakness" / "two phase weaknesses";
+   * the exact at-least vs exactly semantics are NOT confirmed — recorded verbatim). The engine
+   * tracks exploited weaknesses for damage but exposes no phase-count gate, so this is NOT
+   * evaluable yet — recorded DATA ONLY, engine consumption DEFERRED.
+   */
+  phaseWeaknessCount?: number;
+  /**
+   * ATTACHMENT-ONLY GATE (2026, "Shielded Recovery"): restrict to while the unit has a shield-type
+   * effect. The engine has no shield mechanic, so this is NOT evaluable yet — recorded DATA ONLY,
+   * engine consumption DEFERRED. No shield mechanics are invented.
+   */
+  hasShield?: boolean;
+  /**
+   * ATTACHMENT-ONLY GATE (2026, "Ally Support"): restrict to the use of a DEFENSE skill. The
+   * engine has no defense-skill classification, so this is NOT evaluable yet — recorded DATA ONLY,
+   * engine consumption DEFERRED.
+   */
+  defenseSkill?: boolean;
+  /**
+   * ATTACHMENT-ONLY GATE (2026, "Emergency Repair"): the trigger is an ALLIED unit's HP becoming
+   * FULLY healed by an active skill. The engine has no ally-healing/full-heal model, so this is
+   * NOT evaluable yet — recorded DATA ONLY, engine consumption DEFERRED. No healing mechanics are
+   * invented.
+   */
+  allyFullHeal?: boolean;
+}
+
+/**
+ * ATTACHMENT SET BONUS EFFECT (2026) — DATA STAGE. The damage-increase case reuses the EXISTING
+ * `additive_dealt` vocabulary (the ONE additive DMG% bucket — there is NO separate
+ * damage-increase bucket). Non-damage effects (Ultimate healing/shield, damage taken, healing
+ * received, status grants, stability restore) are represented by their own dedicated kinds so they
+ * are NOT silently converted into DMG%. Every kind here is DATA ONLY — the engine does not consume
+ * attachment sets yet (see docs/research.md §3.19 / U22).
+ */
+export type AttachmentSetEffect =
+  /** Existing additive DMG% bucket (same as `RemolderEffect.additive_dealt`). */
+  | { kind: "additive_dealt"; value: number; gates?: AttachmentSetGates }
+  /** Damage-TAKEN reduction (multiplicative), same semantics as the existing `damage_reduction`. */
+  | { kind: "damage_reduction"; value: number; gates?: AttachmentSetGates }
+  /** Healing RECEIVED increase (a non-damage effect — never a DMG% term). */
+  | { kind: "healing_received"; value: number; gates?: AttachmentSetGates }
+  /**
+   * ULTIMATE EFFECT BOOST (2026, "Ultimate Pursuit"): increases the listed Ultimate-skill effect
+   * kinds by `value`. The stack rule is recorded DATA ONLY (`perUse` gained after each Ultimate
+   * use, `max` cap) — the exact stacking CALCULATION is NOT modeled/invented.
+   */
+  | {
+      kind: "ultimate_effect_boost";
+      value: number;
+      appliesTo: ("damage" | "healing" | "shield")[];
+      stack: { perUse: number; max: number };
+      gates?: AttachmentSetGates;
+    }
+  /**
+   * GRANT STATUS (2026): apply a named status. `statusName` is the source's displayed name —
+   * referenced, NOT defined here (the status definition is NOT added by this data). `timing`
+   * records "before the attack" vs "on skill use". DATA ONLY.
+   */
+  | {
+      kind: "grant_status";
+      statusName: string;
+      durationRounds: number;
+      target: "self" | "allies";
+      timing?: "before_attack" | "on_skill";
+      gates?: AttachmentSetGates;
+    }
+  /** RESTORE STABILITY (2026): restore `amount` Stability to `target`, at most `oncePerTurn`. DATA ONLY. */
+  | { kind: "restore_stability"; amount: number; target: "allies"; oncePerTurn: boolean; gates?: AttachmentSetGates };
+
+/**
+ * WEAPON ATTACHMENT SET DEFINITION (2026) — DATA STAGE ONLY (not consumed by the engine yet).
+ * Confirmed structure: a set applies to the Sight / Foregrip / Underbarrel slots, and equipping
+ * 3 pieces of the same set activates the set's 3-piece bonus. A set may carry MULTIPLE effects
+ * (e.g. Close Assault = unconditional + melee-conditional, both additive in the ONE DMG% bucket;
+ * Double Strategy = a targeted branch + an AoE branch). `bonuses` is an array for that reason.
+ * Set stacking beyond this confirmed 3-piece activation is NOT modeled; the Muzzle is NOT part of
+ * any set (unconfirmed).
+ */
+export interface AttachmentSetDef {
+  id: string;
+  name: string;
+  /** Slots this set applies to — the confirmed non-Muzzle slots. */
+  slots: AttachmentSetSlot[];
+  /** Pieces required to activate the bonus (confirmed: 3). */
+  pieces: number;
+  /** The 3-piece bonus effects (damage terms use the ONE additive DMG% bucket; non-damage effects
+   *  use their own dedicated kinds — never silently converted to DMG%). */
+  bonuses: AttachmentSetEffect[];
+}
+
 export type StatusEffect =
   | { kind: "stat_modifier"; stat: "atk" | "def" | "hp" | "critRate"; mode: "flat" | "pct"; value: number }
   | {

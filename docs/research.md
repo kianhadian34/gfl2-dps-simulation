@@ -498,6 +498,74 @@ Previously observed non-crit 3-stack result: **636**. Validated Physical damage 
 
 ---
 
+### 3.19 Attachment system (weapon attachments)
+
+**Status: DOCUMENTED ONLY — NOT IMPLEMENTED (2026).** This section records the currently CONFIRMED structure of the weapon Attachment system. It is deliberately incomplete: **no mechanics, values, stacking behavior, rarity system, stat ranges, or generation rules are invented.** Nothing here is executable by the engine today; the project workflow (Evidence → Document → Test → In-Game Validation → Implement → Commit) has reached the Document stage only. See §4 (uncertainty register) and `docs/architecture.md` for what remains open.
+
+**Attachment slots (CONFIRMED)** — every weapon has **4 attachment slots**:
+
+1. **Muzzle**
+2. **Sight**
+3. **Foregrip**
+4. **Underbarrel**
+
+**Stat pools (CONFIRMED)** — the stat kinds an attachment can roll, by slot:
+
+- **Sight, Underbarrel, Foregrip** can have:
+  - Crit Rate
+  - Attack
+  - Attack Boost (%)
+  - Health
+  - Health Boost (%)
+  - Defense
+  - Defense Boost (%)
+- **Muzzle** can have **all of the above**, plus:
+  - **Crit Damage (%)** — the ONLY stat confirmed exclusive to the Muzzle.
+
+> NOTE (not a confirmed fact): the labels "Attack" / "Health" / "Defense" (no `(%)` suffix) versus "Attack Boost (%)" / "Health Boost (%)" / "Defense Boost (%)" are recorded **verbatim** as supplied. Whether the un-suffixed stats are FLAT and the `Boost (%)` stats are PERCENTAGE is **NOT confirmed** and must not be assumed. (The existing engine already models percentage ATK/HP/DEF and Crit Rate / Crit DMG panel stats generically — see `docs/architecture.md`.)
+
+**Attachment Sets (CONFIRMED)** — Attachment Sets apply to:
+
+- **Sight**
+- **Underbarrel**
+- **Foregrip**
+
+Equipping **3 attachments belonging to the same set** activates an **additional bonus** from that set.
+
+**NOT confirmed about sets (do NOT assume):** the set-bonus values/effects; how many sets exist; each set's membership; whether a set bonus can activate more than once; whether attachments of different sets can coexist; whether the bonus is additive in an existing bucket or a new mechanic; and whether duplicate set membership across the 4 slots behaves specially.
+
+**Muzzle and sets (CONFIRMED negative):** the Muzzle has **NOT** been confirmed to participate in attachment sets. **Do not assume it does.**
+
+**Attachment Set definitions (IMPLEMENTED as DATA, 2026 — 15 sets):** the confirmed sets are recorded as data in `src/data/attachment-sets.ts` (`AttachmentSetDef` in `src/model/types.ts`). Each set applies to the 3 non-Muzzle slots (Sight / Foregrip / Underbarrel) and activates at **3 pieces**. Damage increases use the **EXISTING additive DMG% bucket** (`additive_dealt`) — there is **NO separate damage-increase bucket** (a set may carry multiple terms; Close Assault sums its two). **Non-damage effects use their own dedicated kinds** (Ultimate effect boost, damage-taken reduction, healing received, status grant, stability restore) — they are **never silently converted to DMG%**.
+
+| Set | 3-piece bonus | Representation / gate |
+|---|---|---|
+| Phase Strike | +15% DMG% | `additive_dealt`; gate `targetPhaseDebuff` (attachment-only, DEFERRED) |
+| Freeze Boost | +20% DMG% | `additive_dealt`; gate `element: ["freeze"]` |
+| Burn Boost | +20% DMG% | `additive_dealt`; gate `element: ["burn"]` |
+| Hydro Boost | +20% DMG% | `additive_dealt`; gate `element: ["hydro"]` |
+| Corrosion Boost | +20% DMG% | `additive_dealt`; gate `element: ["corrosion"]` |
+| Summon Boost | +20% DMG% (unit AND its physical Summon) | `additive_dealt`; gate `physicalSummonOnBattlefield` (DEFERRED) |
+| Physical Boost | +20% DMG% | `additive_dealt`; gate `element: [null]` (Physical = phase-less) |
+| Tactical Calculus | +25% DMG% | `additive_dealt`; gate `outOfTurn: true` |
+| Close Assault | +12% unconditional **plus** +24% melee (→ 36% total on melee, one bucket) | two `additive_dealt`; melee term gate `ammoType: ["melee"]` |
+| Ultimate Pursuit | Ultimate damage/healing/shield effects +5%; +1 stack per Ultimate use, max 4 | `ultimate_effect_boost` (value 0.05, `appliesTo: [damage, healing, shield]`, `stack {perUse:1, max:4}`) |
+| Double Strategy | +10% targeted when target NOT near Cover; +10% AoE when target IS near Cover | two `additive_dealt`; gates `category` + `targetNearCover` (DEFERRED) |
+| Phase Resonance | phase-weakness exploit → grant **Phase Boost** 1 turn before the attack; two phase weaknesses → +10% DMG | `grant_status` (Phase Boost, referenced not defined) + `additive_dealt`; gates `skillTypes:["active"]` + `phaseWeaknessCount` (DEFERRED) |
+| Emergency Repair | allied unit fully healed by an active skill → restore 2 Stability, once per turn | `restore_stability` (amount 2, `target:"allies"`, `oncePerTurn:true`); gate `allyFullHeal` (DEFERRED) |
+| Ally Support | using a defense skill → apply **Area Defense II** to allies for 2 turns | `grant_status` (Area Defense II, referenced not defined, 2 turns, `target:"allies"`); gate `defenseSkill` (DEFERRED) |
+| Shielded Recovery | while the unit has a shield: −15% damage taken, +15% healing received | `damage_reduction` + `healing_received`; gate `hasShield` (DEFERRED) |
+
+**These definitions are DATA ONLY — the engine does NOT consume them yet** (no attachment inventory, stat rolls, rarity, generation, or Muzzle set participation). Conditions **NOT evaluable by the current engine** (recorded DATA ONLY, consumption DEFERRED): `targetPhaseDebuff` (no target-status/phase gate; `StatusDef` carries no element), `physicalSummonOnBattlefield` (no Summon model), `targetNearCover` (no Cover detection), `phaseWeaknessCount` (no phase-count gate), `allyFullHeal` (no ally-heal model), `defenseSkill` (no defense-skill classification), `hasShield` (no shield mechanic). **No Summon / Cover / shield / healing / target-phase / defense-skill mechanics are invented** to consume these gates. The `element` / `ammoType` / `outOfTurn` / `category` / `skillTypes` gates reuse the existing engine gate vocabulary and would be evaluable once attachment-set consumption is implemented. **`Phase Boost` and `Area Defense II` are referenced by name only — their status definitions are NOT added by this data.**
+
+**Source** — user-provided CONFIRMED structure (2026). The 15 set names + their 3-piece bonuses are user-confirmed; no in-game numeric evidence has been supplied yet, and no attachment stat values are recorded because none were given.
+
+**Explicitly NOT yet known (do not invent):** set-bonus rules beyond the confirmed 3-piece activation (stacking, multi-activation, cross-set coexistence); rarity/tier system; stat ranges (min/max per roll); generation/roll rules; how many attachments exist per slot; whether slots may be empty; whether an attachment is bound to a weapon/character or is a reusable definition; flat-vs-percentage semantics of the un-suffixed stat labels; how attachment stats fold into the existing panel (flat bucket vs percentage bucket); and any interaction with Calibration / Effect / Trait / Imprint.
+
+**Source** — user-provided CONFIRMED structure (2026). The 9 set names + their 3-piece bonuses are user-confirmed; no in-game numeric evidence has been supplied yet, and no attachment stat values are recorded because none were given.
+
+---
+
 ## 4. Uncertainty register
 
 Every mechanic that is still uncertain, with impact and resolution path. **None of these should be hardcoded as facts in the engine — all are config defaults pending the in-game test plan (§5).**
@@ -526,6 +594,7 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 | U19 | ~~CDMG linearity beyond 120% + Crit-Rate cap/overflow~~ → **RESOLVED 2026-09-03**: (C) **Crit multiplier = 1 + Crit DMG, linear** — 120.0% → ×1.20 (Basic crit 635), 123.5% → ×1.235 (crit 654×4), applied to unrounded damage before the final ceil; (A) **universal Crit system** — Crit Rate decides whether the attack crits, **effective Crit Rate caps at 100%**, overflow is discarded unless a character passive converts it; (B) **passive-specific conversion** — confirmed passive ("every 1% of overflow critical rate is converted to 1% critical damage"): threshold 100%, **ratio 1:1 CONFIRMED**, optional cap; data-driven `excess_crit_conversion` (no character IDs, never a global rule) | CDMG **CONFIRMED (in-game, numeric)** / CR cap + 1:1 conversion **CONFIRMED** (in-game passive text; conversion ratio additionally confirmed by testing) | Crit-damage scaling + crit frequency | ✅ resolved — engine derives `1 + critDmg` (no hardcoded default); applies the 100% cap and converts overflow only via per-character passive data; all paths numerically locked (`critdmg-validation.test.ts`, `crit-overflow-validation.test.ts`). Remaining items are DATA POPULATION only (which characters carry such passives + exact params, CR-raising attachment sources) — not unresolved mechanics |
 | U20 | ~~Multi-weakness stacking (multiplicative vs additive)~~ → **RESOLVED 2026-09-03**: weakness factor is **additive across exploited weaknesses**: `1 + 0.10 × count` — 1 weakness ×1.10 (Burn → 1091); 2 weaknesses ×1.20 (Burn + Medium ammo → 1191); multiplicative ×1.21 ruled out (would give 1201 ≠ 1191) | ~~UNKNOWN~~ → **CONFIRMED (in-game)** | Multi-weakness damage | ✅ resolved — engine `weaknessFactor = 1 + 0.10 × #exploited`, count-driven and generic; regression tests added |
 | U21 | ~~Fixed damage: through-chain vs post-chain~~ → **RESOLVED (behavior) 2026-09-03; FINAL-DMG MODIFIERS IMPLEMENTED 2026**: Fixed Damage is **post-chain with its own ceil** — Overburn = 10% of applier ATK: 1958 × 0.10 = 195.8 → observed **196**; unchanged by Burn immunity (weakness factor), the +20% No-Cover Damage Done (ordinary damage-buff factor), and (2026) ordinary **80% Damage Reduction** (Overburn 1949 → 195) including the boss's −80% 'damage taken' Stability passive (ordinary class — bypassed). **Final DMG Reduction DOES apply to fixed** (1931×0.10×0.40 = 77.24 → 78) and **Fixed DMG Buff DOES apply** (the validated +10% Fixed DMG Key, reclassified 2026 from the earlier "Final DMG Increase" label; 3471×0.10×1.10×0.40 = 152.724 → 153) — the engine multiplies the UNROUNDED fixed value by `(1 + Σ applier Fixed DMG Buffs) × (1 − Σ holder Final DMG Reduction)` before the ceil, at BOTH fixed sites (`applyStatusFixedDamage` + skill-sourced `rollHit`). Engine's old fixed branch (scaling fixed by ordinary additive/phase/weakness/reduction) was a **latent contradiction — corrected**. **Damage-dealt-scaling fixed damage — VALIDATED 2026 (Negative Charge):** uses the TRIGGERING attack's damage after DEF mitigation and crit, × the effect's % (30%), then ceil — `ceil(383 × 0.30) = 115` (non-crit), `ceil(666 × 0.30) = 200` (crit). **DEF-scaling fixed damage — VALIDATED 2026 (Winter's Wrath Lv.1):** uses the CASTING/SOURCE unit's DEF as the scaling stat, target DEF does not mitigate, rounds up — `ceil(source DEF × 0.50) = ceil(1489 × 0.50) = 745`. Only these established facts are claimed (not every modifier, conditional DEF source, or final-DMG interaction). **HP-scaling fixed damage — DEFERRED:** no currently existing character/effect uses HP-scaling fixed damage. **Fixed-damage skill multiplier — DEFERRED:** no current in-game mechanic uses it (not implemented) — with the Fixed DMG Buff bucket VALIDATED via the +10% key; source-named examples — Common Key - Source of Pride / Ultimate Brilliance — not individually in-game tested | CONFIRMED (in-game: ATK-derived value, weakness & ordinary damage-buff immunity, ordinary damage-reduction bypass incl. boss passive, own ceil, Fixed DMG Buff (+10% key) and Final DMG Reduction apply, damage-dealt scaling via Negative Charge, DEF-scaling via Winter's Wrath) / SOURCE-SUPPORTED (unvalidated): other source-named Fixed DMG Buff examples | Fixed Damage handling | ✅ resolved & implemented & CLOSED (2026) — fixed-DMG modifier chain data-driven (`fixed_dmg_modifier` `buff`/`reduction`, `fixedDmgMods`); `final-dmg-validation.test.ts`; `percentOfAtk` status model supported; damage-dealt + DEF-scaling documented (engine representations deferred until concrete effects are added to character data) |
+| U22 | **Weapon Attachment system — set DEFINITIONS implemented as data; all else UNKNOWN (2026)**: 4 slots (Muzzle / Sight / Foregrip / Underbarrel); stat pools (Crit Rate, Attack, Attack Boost %, Health, Health Boost %, Defense, Defense Boost % — plus Crit Damage % on the Muzzle ONLY); Attachment Sets apply to Sight / Underbarrel / Foregrip and activate an additional bonus at **3 same-set attachments** (Muzzle NOT confirmed to participate in sets). **The 15 confirmed sets are recorded as DATA (`src/data/attachment-sets.ts`, `AttachmentSetDef`)** — see §3.19 for the full table. Damage terms use the EXISTING additive DMG% bucket (`additive_dealt`, NO separate bucket); non-damage terms (Ultimate effect boost, damage-taken reduction, healing received, status grant, stability restore) use dedicated kinds and are NEVER converted to DMG%. DATA ONLY — the engine does NOT consume them yet. Gates `element`/`ammoType`/`outOfTurn`/`category`/`skillTypes` reuse existing engine vocabulary (evaluable once consumption exists); `targetPhaseDebuff`, `physicalSummonOnBattlefield`, `targetNearCover`, `phaseWeaknessCount`, `allyFullHeal`, `defenseSkill`, `hasShield` are attachment-only conditions with NO engine model — consumption DEFERRED, no Summon/Cover/shield/healing/target-phase/defense-skill mechanics invented. **UNKNOWN (must NOT be invented):** set stacking/multi-activation/cross-set coexistence beyond the confirmed 3-piece activation; rarity/tier system; stat ranges; generation/roll rules; attachments per slot; empty-slot behavior; reusable-definition vs weapon/character-bound; whether "Attack/Health/Defense" (no %) is FLAT and "…Boost (%)" is PERCENTAGE; how attachment stats fold into the panel (flat vs percentage bucket); the exact Ultimate-Pursuit stacking CALCULATION; interaction with Calibration / Effect / Trait / Imprint | **SET DEFINITIONS IMPLEMENTED (data) 2026** / structure CONFIRMED (user-provided) / attachment stats+mechanics UNKNOWN | Panel stats (ATK/HP/DEF/Crit Rate/Crit DMG) + set-bonus consumption + non-damage effect hooks (heal/shield/stability/status) | **Set definitions recorded (§3.19, `attachment-sets.test.ts`); engine consumption NOT implemented.** Blocked on: attachment stat values/buckets, inventory/generation model, set-stacking rules, and in-game evidence before any consumption |
 
 ---
 

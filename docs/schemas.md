@@ -53,6 +53,8 @@ Level value: `ceil(atkBase1 × coefficient/1000)` (research §3.9). Calibration 
 
 > **2026 update (research.md §3.9):** proposal-era schema below is historical wording, NOT implemented architecture. The established weapon model is `Max-level Stats / Effect (Calibration 1–6) / Trait / Imprint (owner-only)`; **calibration changes ONLY the Weapon Effect** (never the max-level base stats); per-level proficiency curves are **OUT OF SCOPE** (the simulator models MAX-LEVEL weapons only). The `atkBase1` / `lvlCoefficient60` / `skill.calibrationStages` fields are proposal remnants — do not treat them as implemented.
 
+> **Attachment system (2026) — set DEFINITIONS exist as DATA; NOT consumed; NO weapon schema yet.** Every weapon has 4 attachment slots (Muzzle / Sight / Foregrip / Underbarrel) with confirmed stat pools and a 3-same-set Attachment Set rule. The 15 confirmed sets are recorded in `src/data/attachment-sets.ts` (`AttachmentSetDef` in `src/model/types.ts`) — **data only, not consumed by the engine**. See `docs/research.md` §3.19 for the confirmed structure and §4 **U22** for the open mechanics/values. **No attachment fields are added to `WeaponDef` (or anywhere) yet** — the attachment data shape depends on unresolved questions (reusable definition vs weapon-embedded; which stat bucket; inventory/generation). This note is a pointer only; do not infer an implemented weapon schema from it.
+
 ## 3. Skill
 
 ```json

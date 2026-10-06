@@ -188,6 +188,45 @@ Results aggregate from the log (never recomputed): total damage, damage/full-tea
 2. **First validation character(s)** — candidate: Qiongjiu (琼玖), whose full kit (multipliers, stab values, Confectance, keys, support rules) is documented at CONFIRMED level in `docs/research.md` and is the best first test case.
 3. **Whether "auto-battle AI replication" or "user-defined rotation"** is the primary sim mode — APL defaults differ (`ultimate>active>basic` vs explicit rotation).
 
+## 11a. Weapon Attachment system — discovery report (2026, DOCUMENTATION ONLY)
+
+**Status:** discovery/documentation stage + **Attachment Set DEFINITIONS now recorded as data (2026)**. The confirmed structure lives in `docs/research.md` §3.19; the open questions are tracked as **U22** in `docs/research.md` §4. The 15 confirmed Attachment Sets are implemented as **DATA ONLY** — `AttachmentSetDef` (`src/model/types.ts`) + `src/data/attachment-sets.ts` + `src/test/attachment-sets.test.ts`. **The engine does NOT consume them** (no attachment inventory, stat rolls, rarity, generation, or Muzzle set participation). This section is the architectural assessment of where the system would integrate once its remaining rules/values are known.
+
+**Where attachment-related functionality currently exists:** the **set definitions only** (`src/data/attachment-sets.ts`, `AttachmentSetDef` type, `attachment-sets.test.ts`). Everything else is absent. Prior to this, the only mentions were incidental notes that attachments are a future **Crit-Rate source** (`docs/research.md` §4 U19 / §5 item 2 — "CR-raising attachment sources").
+
+**Existing structures that would most likely be extended (assessment, not a decision):**
+- **`WeaponDef`** (`src/model/types.ts`) — the weapon already owns `subStats` (`pctAtk`/`pctHp`/`pctDef`), `calibrations`, `ownerCharacterId`, `imprint`, `trait`. Attachments are a weapon property, so a `WeaponDef.attachments`-style block is the natural extension point. **But** whether an attachment is embedded in the weapon def, or is a separate reusable definition referenced by id (like Common Keys), is UNCONFIRMED (U22) and decides the shape.
+- **`ScenarioTeamMember`** (`src/model/types.ts`) — the equip boundary today carries `weaponId`, `calibrationLevel`, `commonKeyIds`, `equippedFixedKeys`, `expansionKeyId`, `affinityKeyId`. If attachments are chosen per run (like Common Keys), a per-member field such as `attachmentIds`/per-slot ids would be the analogous extension; if they are fixed weapon data, no member field is needed.
+- **`Registry`** (`src/data/registry.ts`) — a reusable attachment definition table (`getAttachment(id)`) would mirror `getCommonKey`/`getWeapon` if attachments are reusable definitions.
+- **`makeDoll` / `computePanel`** (`src/engine/state.ts`) — the ONE stat-aggregation path. Attachment **stat** contributions must fold here, into the existing **flat bucket** (`computePanel`'s flat args) or the existing **percentage buckets** (`atkPct`/`hpPct`/`defPct`), plus Crit Rate / Crit DMG (already panel stats). **Which bucket** is UNCONFIRMED (the flat-vs-% meaning of the un-suffixed labels is U22).
+- **A set-bonus resolution step** — the closest existing analog is the Pattern Remolder **set-bonus** machinery (`RemolderSetBonusDef` + `resolveRemolderUnit`/`resolveRemolderTeam` in `src/engine/remolder.ts`), which already models "N items in a category → activate a set bonus" and a team-level grant pass. Attachment sets ("3 same-set attachments → bonus") are structurally similar and could reuse that pattern — **but the attachment set rules/values are UNCONFIRMED**, so no reuse decision is made.
+
+**What is already reusable:**
+- The **single panel path** (`computePanel` + `finalStat`) and the **shared flat/percentage buckets** — attachment ATK/HP/DEF/Crit Rate/Crit DMG stats need no new stat math, only a new source folded into the existing buckets (the project has done this four times: Dispatch, Remolder flats, Neural Helix, Affinity flats).
+- The **"separate permanent stat source" pattern** (`resolveNeuralHelixFlat` / `resolveAffinityFlat` — a resolver helper shared by the panel path and the Blossom raw-ATK basis, with consistent gating) — a ready template for a future `resolveAttachmentStats`.
+- The **set-bonus activation pattern** (Remolder sets) as a structural reference for attachment sets.
+- The **registry + reusable-definition pattern** (`CommonKeyDef`/`getCommonKey`, `WeaponDef`/`getWeapon`) if attachments are reusable definitions.
+- The **debug-authoritative / controlled-fixture gating** contract (`applyDispatchStats`, `baseStatOverrides`, `overridesAuthoritative`) — a new permanent source must decide how it interacts with controlled math fixtures.
+
+**Information still required before implementation can safely begin (blocking):**
+1. **Set rules & values** — the set-bonus effect(s), how many sets exist, each set's membership, whether a set bonus stacks/can activate more than once, and whether attachments from different sets may coexist across the 4 slots.
+2. **Stat semantics** — whether the un-suffixed "Attack/Health/Defense" are FLAT and the "…Boost (%)" are PERCENTAGE (and confirm Crit Rate / Crit DMG are the panel stats the engine already models).
+3. **Values & ranges** — the actual stat values/ranges per attachment, per slot, per rarity/tier (if a tier system exists).
+4. **Rarity / tier system** — whether one exists and its structure.
+5. **Generation/roll rules** — how attachment stats are generated/rolled (or whether the sim only ever takes a user-specified attachment).
+6. **Inventory model** — how many attachments exist per slot; whether a slot may be empty; whether attachments are reusable definitions or bound to a weapon/character; how the user selects them.
+7. **Stacking/interaction** — how attachment stats combine with the weapon's own `subStats`/Calibration/Effect/Trait/Imprint, and with the permanent stat systems (Dispatch/Remolder/Neural Helix/Affinity).
+8. **Panel folding** — which bucket(s) each attachment stat enters, and whether a new set-bonus mechanic is additive in an existing bucket or a new one.
+9. **Muzzle** — confirmation (or not) that the Muzzle never participates in sets, and its Crit-Damage-only extra stat's bucket.
+10. **Evidence/validation plan** — at least one in-game numeric reading to validate the folding (per the project's Evidence → … → In-Game Validation workflow).
+
+**Architectural concerns:**
+- **Two plausible ownership models** (embedded-in-weapon vs reusable-registry-definition referenced by the member) — they lead to different type/data shapes; decide before coding to avoid a later migration. The repo's recent precedent (Common Keys are reusable registry definitions, NOT character-embedded) suggests the reusable-definition model, but this is not decided.
+- **Set-bonus timing** — attachment set bonuses are evaluated per weapon/character; if they can be team-wide (like Remolder Unity grants), a team-level pass is needed; if strictly per-character, a per-unit pass suffices. UNCONFIRMED.
+- **Fixture gating** — every existing permanent stat source has an explicit gating contract for controlled math tests; the attachment source must define its own (and the controlled-fixture suites must NOT be re-baselined by accident).
+- **Crit-Rate interaction** — attachments are an expected Crit-Rate source; the engine already caps effective Crit Rate at 100% and converts overflow only via character passive data (U19), so attachment Crit Rate must flow through that existing cap, not a new one.
+- **UI** — attachments would add per-weapon selection UI (4 slots); the current Setup screen has a weapon detail card and slot/picker patterns that could host it, but this is out of scope until the data model is fixed.
+
 ## 12. Future phases (deferred, per handoff §19)
 
 Phase 6 optimization (compare builds/teams, search) and Phase 7 web UI are explicitly deferred until the engine is validated. Nothing in this architecture precludes them (engine/API boundary already isolates UI).
