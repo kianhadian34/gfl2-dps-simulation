@@ -1197,6 +1197,14 @@ export interface StatusDef {
   note?: string;
   /** Authoritative text recorded but NOT executable by the engine yet (scope/condition/timing limitation) — presence means: do not treat the numeric effects as complete semantics. */
   deferredNote?: string;
+  /**
+   * PHASE ATTRIBUTE (2026, VALIDATED in-game for Overburn → Burn): the status's intrinsic Phase
+   * element. `null`/absent = NON-elemental (no Phase attribute). Only statuses with an OBSERVED
+   * attribute are populated (do not invent other status→Phase relationships). Consumed by the
+   * generic attachment-set `targetPhaseDebuff` gate — a target "has a Phase attribute debuff" when
+   * it carries an active status whose definition has a non-null `phase`.
+   */
+  phase?: Element | null;
 }
 
 /**

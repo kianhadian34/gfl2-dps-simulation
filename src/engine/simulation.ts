@@ -440,6 +440,8 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
       supportAttack: ev.supportAttack,
       isAoE,
       skillType: skill.type,
+      targetStatusIds: dummy.statuses.map((s) => s.statusId),
+      statusRegistry: state.statusRegistry,
     }) +
     expBonusTerm +
     weaponDealtTerm +

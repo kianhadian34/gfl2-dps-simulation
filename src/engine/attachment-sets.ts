@@ -1,8 +1,9 @@
 import type { AmmoType, AttachmentSetGates, Element } from "../model/types.js";
+import type { EffectiveStatusDef } from "./state.js";
 import { ATTACHMENT_SETS } from "../data/attachment-sets.js";
 
 /**
- * WEAPON ATTACHMENT SET CONSUMPTION (2026) — the first implemented batch.
+ * WEAPON ATTACHMENT SET CONSUMPTION (2026) — implemented batch.
  *
  * The ACTIVE Attachment Set is a loadout-level selection (`ScenarioTeamMember.activeAttachmentSet`,
  * carried on `UnitState.activeAttachmentSet`). Selecting a supported set adds its `additive_dealt`
@@ -10,9 +11,9 @@ import { ATTACHMENT_SETS } from "../data/attachment-sets.js";
  * no separate multiplier, and no formula change.
  *
  * Only the gates the engine can actually evaluate are consumed. Any attachment-only gate the engine
- * cannot evaluate (targetPhaseDebuff / physicalSummonOnBattlefield / targetNearCover /
- * phaseWeaknessCount / hasShield / defenseSkill / allyFullHeal) makes its effect NOT match — so the
- * not-yet-implemented sets stay INERT (never applied unconditionally). No mechanics are invented.
+ * cannot evaluate (physicalSummonOnBattlefield / targetNearCover / phaseWeaknessCount / hasShield /
+ * defenseSkill / allyFullHeal) makes its effect NOT match — so the not-yet-implemented sets stay
+ * INERT (never applied unconditionally). No mechanics are invented.
  *
  * MVP SCOPE (2026): the `outOfTurn` gate maps to Support Actions — the ONLY out-of-turn attacker the
  * engine models. Interceptions / Counterattacks / other passive-effect attacks are NOT modeled and
@@ -28,6 +29,10 @@ export interface AttachmentSetDamageContext {
   supportAttack: boolean;
   isAoE: boolean;
   skillType: "basic" | "active" | "ultimate" | "support";
+  /** The TARGET's active status ids (for the `targetPhaseDebuff` gate). Empty = none. */
+  targetStatusIds: readonly string[];
+  /** The status registry, to resolve a target status's `phase` attribute. */
+  statusRegistry: Map<string, EffectiveStatusDef>;
 }
 
 /**
@@ -50,10 +55,13 @@ export function attachmentSetGatesMatch(gates: AttachmentSetGates | undefined, c
   }
   // Ability-type gate.
   if (gates.skillTypes !== undefined && !gates.skillTypes.includes(ctx.skillType)) return false;
+  // TARGET PHASE-ATTRIBUTE DEBUFF gate (2026, VALIDATED in-game for Overburn → Burn): the target
+  // "has a Phase attribute debuff" when it carries an active status whose DEFINITION has a non-null
+  // `phase`. Data-driven — the element lives on the status data, never hard-coded here.
+  if (gates.targetPhaseDebuff === true && !ctx.targetStatusIds.some((id) => ctx.statusRegistry.get(id)?.phase != null)) return false;
   // Unmodeled attachment-only gates → NOT evaluable → the effect does NOT match (never applied
   // unconditionally). These belong to the not-yet-implemented sets.
   if (
-    gates.targetPhaseDebuff !== undefined ||
     gates.physicalSummonOnBattlefield !== undefined ||
     gates.targetNearCover !== undefined ||
     gates.phaseWeaknessCount !== undefined ||

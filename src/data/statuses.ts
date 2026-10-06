@@ -94,6 +94,10 @@ export const STATUS_DEFS: StatusDef[] = [
     ],
     playerDescription: "Burn: fixed damage equal to 10% of the applier's ATK on application and at each action end.",
     verified: true,
+    // PHASE ATTRIBUTE (VALIDATED in-game 2026): Overburn is a Burn-attribute (Phase) debuff — a
+    // target carrying it satisfies the Phase Strike `targetPhaseDebuff` gate. No other status is
+    // given a phase attribute (unestablished — do not invent).
+    phase: "burn",
     note: "Validated in-game (2026): applier-ATK 1974 → 198 per trigger; sequence apply + holder action-end ×2 = 594, then expires (see docs/research.md §3.10)",
   },
   {
