@@ -988,8 +988,8 @@ export type AttachmentSetEffect =
  * 3 pieces of the same set activates the set's 3-piece bonus. A set may carry MULTIPLE effects
  * (e.g. Close Assault = unconditional + melee-conditional, both additive in the ONE DMG% bucket;
  * Double Strategy = a targeted branch + an AoE branch). `bonuses` is an array for that reason.
- * Set stacking beyond this confirmed 3-piece activation is NOT modeled; the Muzzle is NOT part of
- * any set (unconfirmed).
+ * SET COEXISTENCE (CONFIRMED 2026): exactly ONE active set per character — different sets cannot
+ * coexist or stack (the 3-piece bonus applies once). The Muzzle is NOT part of any set (unconfirmed).
  */
 export interface AttachmentSetDef {
   id: string;

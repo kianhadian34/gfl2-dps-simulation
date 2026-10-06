@@ -10,8 +10,9 @@ import type { AttachmentSetDef, AttachmentSetSlot } from "../model/types.js";
  * Assault = an unconditional term + a melee-conditional term, both summed in that same bucket).
  *
  * NOT modeled here (UNCONFIRMED — do NOT invent): attachment stat rolls/values, rarity/tier,
- * inventory/equipment, generation, Muzzle set participation, or any set-stacking behavior beyond
- * the confirmed 3-piece activation. These definitions are DATA ONLY — the engine does not consume
+ * inventory/equipment, generation, or Muzzle set participation. **Set coexistence/stacking is
+ * CONFIRMED (2026): exactly ONE active set per character — different sets cannot coexist or stack.**
+ * These definitions are DATA ONLY — the engine does not consume
  * them yet (see docs/research.md §3.19 / U22). The per-slot stat pools are documented in
  * docs/research.md §3.19 and are intentionally NOT encoded here (no values were supplied).
  *
