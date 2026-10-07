@@ -102,6 +102,9 @@ export const QIONGJIU: CharacterDef = {
       id: "qiongjiu_guide_to_victory",
       name: "Guide to Victory",
       playerDescription: "Selects 1 direction and deals AoE Burn damage equal to 110% of attack to the first enemy target within 8 tiles in the selected direction. Applies Overburn for 2 turns.",
+      // NOTE (2026 information fix): Guide to Victory carries NO ammo attribute in-game — it is a
+      // Burn PHASE attack with `element: "burn"` but no Ammo Type, so `ammoType` is ABSENT here
+      // (do NOT infer `medium_ammo` from the other abilities; the game shows no Ammo Type for it).
       type: "active",
       levels: {
         1: {
@@ -111,7 +114,6 @@ export const QIONGJIU: CharacterDef = {
           damageCategory: "aoe", // authoritative in-game class (descriptive only; no engine consumer)
           targetingCardinalRay: { direction: "down", range: 1, effectiveArea: 8 }, // VALIDATED 2026: Range 1, Effective Area 8, first enemy in the selected cardinal direction
           element: "burn",
-          ammoType: "medium_ammo",
           multiplier: 1.1,
           stabDamage: 3, // Stability 3 (authoritative Lv1; previously 0 — corrected)
           cooldown: 1,
@@ -125,7 +127,6 @@ export const QIONGJIU: CharacterDef = {
           damageCategory: "aoe", // authoritative in-game class (descriptive only; no engine consumer)
           targetingCardinalRay: { direction: "down", range: 1, effectiveArea: 8 }, // VALIDATED 2026: Range 1, Effective Area 8, first enemy in the selected cardinal direction
           element: "burn",
-          ammoType: "medium_ammo",
           multiplier: 1.1,
           stabDamage: 3,
           cooldown: 1,

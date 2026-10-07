@@ -7,7 +7,7 @@ import type { CharacterDef } from "../model/types.js";
 
 /**
  * GUIDE TO VICTORY (Lv1) — VALIDATED in-game 2026.
- * 110% ATK / Burn / Medium Ammo vs the 5000-DEF, Burn-weak, No-Cover target with the V6
+ * 110% ATK / Burn (NO Ammo Type — Phase-only) vs the 5000-DEF, Burn-weak, No-Cover target with the V6
  * No-Cover bracket (+20%, single total — Steady Plan Lv3):
  *   ceil(ATK × 1.10 × (ATK/(ATK+5000)) × 1.20 × 1.10(burn)) =
  *     1962 ATK → 803 · 1967 ATK → 807 · 1985 ATK → 820

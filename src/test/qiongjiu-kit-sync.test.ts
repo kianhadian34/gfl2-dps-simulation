@@ -130,3 +130,14 @@ test("QJ damaging abilities DO declare their phase/ammo attribute (Basic = phase
   assert.equal(QIONGJIU.skills.active1!.levels[1].ammoType, "medium_ammo");
 });
 
+test("Guide to Victory is Burn PHASE-only: it has NO ammo attribute in-game (2026 information fix)", () => {
+  // Guide deals Burn (phase) damage but the game shows NO Ammo Type for it — so `ammoType` is
+  // ABSENT (not inferred from the other abilities). `element: "burn"` stays (it IS a phase attack).
+  for (const lv of [1, 2] as const) {
+    const v = QIONGJIU.skills.active2!.levels[lv];
+    assert.equal(v.element, "burn", `Lv${lv}: still a Burn phase attack`);
+    assert.equal("ammoType" in v, false, `Lv${lv}: NO ammo attribute at all (absent)`);
+    assert.equal(v.ammoType, undefined, `Lv${lv}: ammoType absent`);
+  }
+});
+
