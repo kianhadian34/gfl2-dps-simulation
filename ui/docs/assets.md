@@ -35,17 +35,28 @@ assets/
 │                                qiongjiu_support.png, qiongjiu_steady_plan.png
 ├── common-keys/                 (GLOBAL — never under a character)
 │   └── qiongjiu_common_strategic_negotiation/…
-└── weapons/                     (GLOBAL — never under a character)
-    └── jinshizou/…
+├── weapons/                     (GLOBAL — never under a character)
+│   └── jinshizou/…
+└── elements/                    (GLOBAL — Phase/Element icons; delivered 2026, NOT yet wired into assets.ts)
+    ├── physical/physical.webp   (Physical / phase-less — engine represents this as element === null)
+    ├── burn/burn.webp
+    ├── hydro/hydro.webp
+    ├── corrosion/corrosion.webp
+    ├── electric/electric.webp
+    ├── freeze/freeze.webp
+    └── omni/omni.webp           (all elements — presentation-only id)
 ```
 
 Wrong placements (do NOT do these):
 - `characters/qiongjiu/weapons/…` — a weapon asset must be addressable by anyone who equips it.
 - `characters/qiongjiu/common-keys/…` — a Common Key asset must not depend on an equipping character.
 
-Future global categories (statuses, buffs, ammo, elements, …) belong in their own top-level
+Future global categories (statuses, buffs, ammo, …) belong in their own top-level
 directories under `assets/`; the current architecture does not prevent adding them later.
-Do not create empty directories for not-yet-needed categories.
+Do not create empty directories for not-yet-needed categories. **Exception (2026): the
+`elements/` directory holds the DELIVERED Phase/Element icons (7 files, see §3) — a global
+category that is NOT yet wired into `assets.ts` (no `element` kind/resolver yet); until it is,
+the files are present but nothing resolves element ids.**
 
 ## 3. Naming convention
 
@@ -70,6 +81,7 @@ Known engine ids (kept in sync with `src/data/*`):
 | Expansion Key | `qiongjiu_exp_ruined_gem` |
 | Skills | `qiongjiu_basic` · `qiongjiu_common_rail` · `qiongjiu_guide_to_victory` · `qiongjiu_pressing_momentum` · `qiongjiu_support` · `qiongjiu_steady_plan` |
 | Weapon | `jinshizou` (player-facing name: **Golden Melody** — the id is internal only) |
+| Elements (delivered, not yet wired) | `physical` · `burn` · `hydro` · `corrosion` · `electric` · `freeze` · `omni` (engine `Element` = `burn`/`hydro`/`freeze`/`electric`/`corrosion`; `physical`/`omni` are presentation-only ids) |
 
 ## 4. The asset mapping / registry
 
@@ -124,6 +136,13 @@ and add the id to `KNOWN_ENTITY_IDS["fixed-key"]`.
 
 After placing the physical file, ALSO add its exact relative path (with extension) to `SUPPLIED_ASSET_FILES` so
 `supplied` becomes `true`.
+
+**Element asset (delivered 2026 — not yet wired):** the path is
+`assets/elements/<elementId>/<elementId>.webp` (one file per element id; all 7 delivered — see
+the manifest `assets/elements/README.md`). `physical` and `omni` are presentation-side ids; the
+engine `Element` union is `burn | hydro | freeze | electric | corrosion`. There is **no
+`element` kind in `assets.ts` yet**, so nothing resolves element ids until a follow-up task adds
+the kind + `elementAsset()` + the `SUPPLIED_ASSET_FILES` entries.
 
 ## 6. Missing assets / fallback
 
