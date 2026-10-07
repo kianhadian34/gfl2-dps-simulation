@@ -134,8 +134,14 @@ export interface SkillDefVariant {
    * NOT an in-game-validated number. Do not add range-resolution logic in the MVP.
    */
   range?: number;
-  element: Element | null;
-  /** Ammo/weapon type of the attack (matches `DummyConfig.weaknessTags` — Ammo Weakness dimension, 2026). */
+  /**
+   * Attack PHASE attribute. `null` = a phase-less PHYSICAL attack (a real attack that carries no
+   * element); ABSENT = the ability has NO attack phase attribute at all — e.g. a buff-only Ultimate
+   * with no damage component (`multiplier`/`fixedDamage` unset). An absent value MUST NOT be shown
+   * as if it were a physical attack; damaging abilities declare it.
+   */
+  element?: Element | null;
+  /** Ammo/weapon type of the attack (matches `DummyConfig.weaknessTags` — Ammo Weakness dimension, 2026). Absent = no ammo attribute. */
   ammoType?: AmmoType;
   /** Fraction of final ATK — used unless fixedDamage is set. */
   multiplier?: number;

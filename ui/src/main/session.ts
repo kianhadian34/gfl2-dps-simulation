@@ -152,12 +152,15 @@ function toSkillView(a: {
   type?: string;
 }): { id: string; name: string; description?: string; descriptions?: Record<number, string>; type?: string; element?: string | null; ammoType?: string } {
   const perLevel = Object.fromEntries(Object.entries(a.levels).filter(([, v]) => v.playerDescription).map(([lv, v]) => [Number(lv), v.playerDescription!]));
-  // The type/element/ammoType are resolved from the LOWEST defined level (level 1) — they do not
-  // vary across levels in current data; fall back to the ability's own `type`.
-  const lv1 = a.levels[1];
-  const type = a.type ?? lv1?.type;
-  const element = lv1?.element;
-  const ammoType = lv1?.ammoType;
+  // The type/element/ammoType are resolved from the LOWEST defined level — they do not vary across
+  // levels in current data. IMPORTANT: `element === null` (phase-less PHYSICAL attack) and
+  // `element` ABSENT (no attack phase attribute — e.g. a buff-only Ultimate) are DISTINCT and both
+  // preserved (the spread below drops only `undefined`).
+  const lowest = Object.keys(a.levels).map(Number).sort((x, y) => x - y)[0];
+  const lv = lowest !== undefined ? a.levels[lowest] : undefined;
+  const type = a.type ?? lv?.type;
+  const element = lv?.element;
+  const ammoType = lv?.ammoType;
   return {
     id: a.id,
     name: a.name,
@@ -169,7 +172,8 @@ function toSkillView(a: {
   };
 }
 
-export function registerSimHandlers(): void {  ipcMain.handle("sim:getSession", () => current);
+export function registerSimHandlers(): void {
+  ipcMain.handle("sim:getSession", () => current);
 
   /** Characters available from the engine registry (the database) — engine-sourced. */
   ipcMain.handle("sim:listCharacters", () =>

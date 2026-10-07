@@ -64,7 +64,7 @@ Level value: `ceil(atkBase1 × coefficient/1000)` (research §3.9). Calibration 
   "type": "basic",                    // basic | active | ultimate | passive | support
   "multiplier": 0.80,                 // fraction of final ATK
   "fixedDamage": null,
-  "element": null,
+  "element": null,                    // null = phase-less PHYSICAL attack; ABSENT = the ability has NO attack phase attribute (e.g. a buff-only Ultimate — do not show as physical)
   "range": 8, "aoe": false,
   "stabDamage": 2,
   "cooldown": 0,

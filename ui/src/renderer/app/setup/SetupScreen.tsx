@@ -125,16 +125,23 @@ function rotationTypeLabel(type: string | undefined): string | undefined {
 
 /**
  * Mini element + ammo badges for a rotation skill card — engine-sourced (the SAME icons the Phase/
- * Ammo weakness sections use). A phase-less skill (`element === null`) shows the `physical` icon.
- * Presentation only; absent metadata renders nothing.
+ * Ammo weakness sections use). An ability shows a badge ONLY for the attribute it actually has:
+ *  - `element` present → the phase icon (`null` = phase-less PHYSICAL attack → the `physical` icon);
+ *  - `element` ABSENT → NO phase icon (the ability has no attack phase attribute — e.g. a buff-only
+ *    Ultimate). Absent must NOT be rendered as if it were a physical attack.
+ *  - `ammoType` present → the ammo icon; absent → none.
+ * Presentation only; a skill with no attributes renders nothing.
  */
 function RotationSkillMeta({ sk, size = 15 }: { sk: RotationSkillView | undefined; size?: number }) {
   if (!sk) return null;
-  const elementId = sk.element ?? "physical"; // engine null = phase-less → the physical presentation icon
+  const hasElement = sk.element !== undefined;
+  const elementId = sk.element ?? "physical"; // present null = phase-less physical attack
   const typeLabel = rotationTypeLabel(sk.type);
+  const hasAny = hasElement || sk.ammoType !== undefined || typeLabel !== undefined;
+  if (!hasAny) return null;
   return (
     <span className="rot-skill-meta">
-      <AssetThumb asset={elementAsset(elementId)} alt={sk.element ?? "physical"} size={size} />
+      {hasElement ? <AssetThumb asset={elementAsset(elementId)} alt={sk.element ?? "physical"} size={size} /> : null}
       {sk.ammoType ? <AssetThumb asset={ammoAsset(sk.ammoType)} alt={sk.ammoType} size={size} /> : null}
       {typeLabel ? <span className="rot-type-chip">{typeLabel}</span> : null}
     </span>

@@ -157,3 +157,26 @@ test("rotation UI: remove/clear still flow through the pure helpers (behavior pr
   assert.ok(s.includes("removeRotationSlotAt(props.setup, c.id, rotation.length - 1)"), "− remove pops the last step");
   assert.ok(s.includes("clearRotation(props.setup, c.id)"), "clear empties the rotation");
 });
+
+test("rotation UI: phase/ammo badges render ONLY when the ability actually has the attribute (2026 information fix)", () => {
+  const s = readFileSync(srcFile("../../src/renderer/app/setup/SetupScreen.tsx"), "utf8");
+  // `element` is optional: present null = phase-less PHYSICAL attack; ABSENT = no phase attribute.
+  assert.ok(s.includes("const hasElement = sk.element !== undefined;"), "badge presence checks `!== undefined` (absent ≠ null)");
+  assert.ok(s.includes("{hasElement ? <AssetThumb asset={elementAsset(elementId)}"), "the phase icon renders ONLY when element is present");
+  assert.ok(s.includes("{sk.ammoType ? <AssetThumb asset={ammoAsset(sk.ammoType)}"), "the ammo icon renders ONLY when ammoType is present");
+  assert.ok(!/elementAsset\(sk\.element \?\? "physical"\)/.test(s), "no unconditional physical fallback that would mislabel a buff-only ability");
+});
+
+test("rotation plumbing: absent element is preserved distinctly from null through buildCharacterMetaView", () => {
+  const meta = buildCharacterMetaView({
+    id: "qiongjiu",
+    name: "Qiongjiu",
+    skills: {
+      active1: { id: "qiongjiu_common_rail", name: "Common Rail", type: "active", element: "burn", ammoType: "medium_ammo" },
+      ultimate: { id: "qiongjiu_pressing_momentum", name: "Pressing the Momentum", type: "ultimate" },
+    },
+  });
+  assert.equal(meta.skills?.active1?.element, "burn");
+  assert.equal("element" in (meta.skills?.ultimate ?? {}), false, "the buff-only Ultimate carries NO element key at all");
+  assert.equal(meta.skills?.ultimate?.ammoType, undefined, "and no ammoType");
+});

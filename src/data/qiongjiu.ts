@@ -147,7 +147,9 @@ export const QIONGJIU: CharacterDef = {
     // 1 turn) — IMPLEMENTED & VALIDATED in-game 2026.
     // BUFF/DEBUFF-ONLY ULTIMATE (authoritative in-game screenshot classification: "Ultimate / Buff /
     // Debuff"): NO damage component and NO damage multiplier — the current buff-only implementation is
-    // correct by design; do not add a multiplier.
+    // correct by design; do not add a multiplier. An ability with no attack carries NO phase/ammo
+    // attribute, so `element`/`ammoType` are intentionally ABSENT here (2026 information fix: the
+    // engine never reads them for a non-damaging ability, and the UI must not display them).
     ultimate: {
       id: "qiongjiu_pressing_momentum",
       name: "Pressing the Momentum",
@@ -158,8 +160,6 @@ export const QIONGJIU: CharacterDef = {
           id: "qiongjiu_pressing_momentum",
           name: "Pressing the Momentum",
           type: "ultimate",
-          element: "burn",
-          ammoType: "medium_ammo",
           stabDamage: 0,
           cooldown: 0,
           confectanceCost: 3,
@@ -179,8 +179,6 @@ export const QIONGJIU: CharacterDef = {
           id: "qiongjiu_pressing_momentum",
           name: "Pressing the Momentum",
           type: "ultimate",
-          element: "burn",
-          ammoType: "medium_ammo",
           stabDamage: 0,
           cooldown: 0,
           confectanceCost: 3,
@@ -204,8 +202,6 @@ export const QIONGJIU: CharacterDef = {
           id: "qiongjiu_pressing_momentum",
           name: "Pressing the Momentum",
           type: "ultimate",
-          element: "burn",
-          ammoType: "medium_ammo",
           stabDamage: 0,
           cooldown: 0,
           confectanceCost: 3,

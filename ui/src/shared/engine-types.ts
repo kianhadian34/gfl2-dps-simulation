@@ -241,9 +241,10 @@ export interface RotationSkillView {
   descriptions?: Record<number, string>;
   /** ENGINE-sourced skill type (basic/active/ultimate/support) — drives the card type rail. */
   type?: string;
-  /** ENGINE-sourced attack element (null = phase-less/physical); absent when unspecified. */
+  /** ENGINE-sourced attack element: `null` = a phase-less PHYSICAL attack; ABSENT = the ability has
+   *  no attack phase attribute (e.g. a buff-only Ultimate) — distinct from `null`, never shown as physical. */
   element?: string | null;
-  /** ENGINE-sourced ammo category (engine `AmmoType`); absent when unspecified. */
+  /** ENGINE-sourced ammo category (engine `AmmoType`); absent when the ability has no ammo attribute. */
   ammoType?: string;
 }
 

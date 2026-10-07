@@ -109,3 +109,24 @@ test("QJ at V6 with a populated fortificationMap produces NO Fortification warni
   assert.ok(!r.warnings.some((w) => w.includes("fortificationLevel")), r.warnings.join("; "));
 });
 
+test("QJ Ultimate is buff-only: NO damage (multiplier/fixedDamage) and NO phase/ammo attribute (2026 information fix)", () => {
+  // The Ultimate is classified in-game as "Ultimate / Buff / Debuff" — it has no damage component.
+  // An ability with no attack must NOT carry a phase/ammo attribute: `element`/`ammoType` are ABSENT
+  // (NOT `null` — `null` would mean a phase-less PHYSICAL attack, which this ability is not).
+  for (const lv of [1, 2, 3] as const) {
+    const v = QIONGJIU.skills.ultimate!.levels[lv];
+    assert.equal(v.multiplier, undefined, `Lv${lv}: no damage multiplier`);
+    assert.equal(v.fixedDamage, undefined, `Lv${lv}: no fixed damage`);
+    assert.equal("element" in v, false, `Lv${lv}: no attack phase attribute at all (absent, not null)`);
+    assert.equal(v.element, undefined, `Lv${lv}: element absent`);
+    assert.equal(v.ammoType, undefined, `Lv${lv}: no ammo attribute`);
+  }
+});
+
+test("QJ damaging abilities DO declare their phase/ammo attribute (Basic = phase-less physical, Common Rail = burn)", () => {
+  assert.equal(QIONGJIU.skills.basic!.levels[1].element, null, "Basic is a phase-less PHYSICAL attack (null, not absent)");
+  assert.equal(QIONGJIU.skills.basic!.levels[1].ammoType, "medium_ammo");
+  assert.equal(QIONGJIU.skills.active1!.levels[1].element, "burn");
+  assert.equal(QIONGJIU.skills.active1!.levels[1].ammoType, "medium_ammo");
+});
+

@@ -143,7 +143,10 @@ function beginUnitRound(doll: UnitState): void {
 
 /** Match the attack's element AND ammo type against the target's exposed weaknesses: +10% damage and +2 stability each (research §3.5 / U20 / 2026 ammo dimension). */
 function exploitedWeaknesses(target: UnitState, skill: SkillDefVariant): { weaknesses: string[]; mult: number; ammoExploited: boolean } {
-  const elementMatches = target.weaknessElements.filter((w) => w === skill.element);
+  // Absent `element` (an ability with no attack phase attribute) behaves as phase-less here; in
+  // practice this is only reached for damaging hits, which declare their element.
+  const element = skill.element ?? null;
+  const elementMatches = target.weaknessElements.filter((w) => w === element);
   const ammoExploited = skill.ammoType !== undefined && target.weaknessTags.includes(skill.ammoType);
   const weaknesses = ammoExploited ? [...elementMatches, skill.ammoType as string] : [...elementMatches];
   // U20 CONFIRMED 2026-09-03 (in-game: Burn → 1091; Burn + Medium ammo (Qiongjiu) → 1191):
@@ -202,7 +205,7 @@ function guideLineSecondaryHits(
     const unit = grid.enemyUnits.find((e) => tileKey(e.coord.x, e.coord.y) === tk);
     const defense = unit ? unit.defense : state.dummy.defStat;
     const weaknesses: Element[] = unit ? (unit.weaknesses ?? ([] as Element[])) : (state.dummy.weaknessElements as Element[]);
-    const weaknessExploited = weaknesses.filter((w) => w === skill.element);
+    const weaknessExploited = weaknesses.filter((w) => w === (skill.element ?? null));
     // Per-secondary status/hit state: line enemies keep their own statuses (FK4 secondary
     // targets receive Guide's applied statuses — e.g. Overburn — via the GENERIC applyStatus).
     const enemyStatuses = unit ? (grid.enemyStatuses.get(unit.unitId) ?? []) : state.dummy.statuses;
@@ -349,6 +352,11 @@ export function applyReactiveDamage(state: SimulationState, victim: UnitState, a
 /** Damage + stability + Confectance-gain application for a single hit; fills the event's damage fields. */
 function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDefVariant, ev: LogEvent, opts?: { exposedOverride?: boolean }): number {
   const dummy = state.dummy;
+  // Attack PHASE element normalisation (2026): an ability with NO attack phase attribute
+  // (`element` absent — e.g. a buff-only Ultimate) is treated as PHASE-LESS for any damage-path
+  // computation. `dealDamageHit` is only reached for damaging hits (`multiplier`/`fixedDamage`
+  // set), which always declare their element; this `?? null` keeps the damage path total.
+  const element = skill.element ?? null;
   // Attack category (VALIDATED 2026): TRUE when this hit is AoE (`damageCategory === "aoe"`).
   // Single source consumed by the category-gated damage features: dealt bonuses (Targeted
   // Attack Boost I — targeted-only), taken reductions (Area Defense I / Targeted Attack
@@ -371,7 +379,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   // element — ammo-only exploits never qualify) by the keyed skill (Common Rail = active1)
   // applies the key's self-statuses BEFORE any damage computation, so the triggering hit
   // already uses the +15% ATK (validated 2000 → 2300 → 1435). Data-driven via the key def.
-  const phaseExploited = weaknesses.some((w) => w === skill.element);
+  const phaseExploited = weaknesses.some((w) => w === element);
   if (phaseExploited) {
     const hook = (actor.equippedKeys ?? [])
       .map((kid) => actor.def?.fixedKeys.find((k) => k.id === kid))
@@ -383,7 +391,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
       }
     }
   }
-  const phaseMult = phaseMultiplier(skill.element, dummy.phase);
+  const phaseMult = phaseMultiplier(element, dummy.phase);
   // Ruined Gem (VALIDATED in-game 2026): on SUPPORT ACTIONS only, when the target currently has
   // the key-declared status (Overburn = the Burn debuff), add the key's value to the SAME
   // additive bucket (0.20+0.20+0.10+0.15 = 1.65 → 934 validated). No separate multiplier; never
@@ -412,7 +420,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
         (dummy.cover === "none" ? actor.weapon.imprint.noCoverBonus : 0)
       : 0;
   const addDealt =
-    additiveDealtBonus(actor, state.statusRegistry, skill.element, {
+    additiveDealtBonus(actor, state.statusRegistry, element, {
       supportAttack: ev.supportAttack,
       targetExposed,
       isAoE,
@@ -435,7 +443,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     // engine-evaluable gates are consumed (unmodeled gates keep their sets inert). MVP: the
     // out-of-turn gate = Support Actions only.
     attachmentSetDealtBonus(actor.activeAttachmentSet, {
-      element: skill.element,
+      element,
       ammoType: skill.ammoType,
       supportAttack: ev.supportAttack,
       isAoE,
@@ -448,7 +456,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     imprintBonus;
   const targetMods = targetPassiveTakenMods(dummy); // U5 boss/target stability-conditional passives
   const addTaken =
-    additiveTakenBonus(dummy, state.statusRegistry, skill.element, { isAoE, isBoss: dummy.isBoss, distance: attackDist, enemiesWithin3: enemiesNear }) + targetMods.additive;
+    additiveTakenBonus(dummy, state.statusRegistry, element, { isAoE, isBoss: dummy.isBoss, distance: attackDist, enemiesWithin3: enemiesNear }) + targetMods.additive;
   // Effect provenance (2026): deduplicated, human-readable sources of the modifiers that
   // contributed to this hit's buckets — a source (ability/passive/key) and its resulting
   // effect are ONE modifier, never double-counted just because both names appear.
@@ -516,7 +524,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   }
   // Area Defense I (VALIDATED in-game tooltip 2026): target-side `damage_reduction`
   // effects gated `whenIncomingCategory: "aoe"` apply ONLY to this hit's category.
-  const { mult, red } = multiplicativeTakenMods(dummy, state.statusRegistry, isAoE, skill.element, { isBoss: dummy.isBoss, distance: attackDist, enemiesWithin3: enemiesNear });
+  const { mult, red } = multiplicativeTakenMods(dummy, state.statusRegistry, isAoE, element, { isBoss: dummy.isBoss, distance: attackDist, enemiesWithin3: enemiesNear });
   // no stability-cover reduction: dummy has no cover (Cover permanently out of scope)
   // U3: NO universal Exposed damage multiplier — the reduction chain contains none.
   const reductionMult = mult * red * targetMods.multiplicative;
@@ -546,7 +554,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   // gated percentages fold into the SAME confirmed crit multiplier (1 + Crit DMG) — evaluated
   // against THIS hit's complete event context (element/category/boss/skill/out-of-turn/distance).
   const remolderCrit = remolderCritDmgBonus(actor, {
-    element: skill.element,
+    element,
     supportAttack: ev.supportAttack,
     targetExposed,
     isAoE,
@@ -1079,7 +1087,7 @@ function grantStackOnWeaknessExploit(state: SimulationState, target: UnitState, 
   for (const p of target.passives) {
     if (p.kind !== "grant_stacks_on_weakness_exploit") continue;
     if (skill.ammoType !== p.weaknessTag) continue;
-    if (p.requiresElements && !p.requiresElements.includes(skill.element)) continue;
+    if (p.requiresElements && !p.requiresElements.includes(skill.element ?? null)) continue;
     const cur = target.statuses.find((s) => s.statusId === p.statusId);
     const next = Math.min(p.maxStacks, (cur?.stacks ?? 0) + (cur ? p.gainPerEvent : p.firstGain));
     const delta = next - (cur?.stacks ?? 0);
