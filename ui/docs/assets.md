@@ -37,25 +37,33 @@ assets/
 │   └── qiongjiu_common_strategic_negotiation/…
 ├── weapons/                     (GLOBAL — never under a character)
 │   └── jinshizou/…
-└── elements/                    (GLOBAL — Phase/Element icons; delivered 2026, wired via elementAsset)
-    ├── physical/physical.webp   (Physical / phase-less — engine represents this as element === null)
-    ├── burn/burn.webp
-    ├── hydro/hydro.webp
-    ├── corrosion/corrosion.webp
-    ├── electric/electric.webp
-    ├── freeze/freeze.webp
-    └── omni/omni.webp           (all elements — presentation-only id)
+├── elements/                    (GLOBAL — Phase/Element icons; delivered 2026, wired via elementAsset)
+│   ├── physical/physical.webp   (Physical / phase-less — engine represents this as element === null)
+│   ├── burn/burn.webp
+│   ├── hydro/hydro.webp
+│   ├── corrosion/corrosion.webp
+│   ├── electric/electric.webp
+│   ├── freeze/freeze.webp
+│   └── omni/omni.webp           (all elements — presentation-only id)
+└── ammo/                        (GLOBAL — Ammo Type icons; delivered 2026, NOT yet wired into assets.ts)
+    ├── heavy_ammo/heavy_ammo.webp
+    ├── medium_ammo/medium_ammo.webp
+    ├── light_ammo/light_ammo.webp
+    ├── shotgun_ammo/shotgun_ammo.webp
+    └── melee/melee.webp
 ```
 
 Wrong placements (do NOT do these):
 - `characters/qiongjiu/weapons/…` — a weapon asset must be addressable by anyone who equips it.
 - `characters/qiongjiu/common-keys/…` — a Common Key asset must not depend on an equipping character.
 
-Future global categories (statuses, buffs, ammo, …) belong in their own top-level
+Future global categories (statuses, buffs, …) belong in their own top-level
 directories under `assets/`; the current architecture does not prevent adding them later.
-Do not create empty directories for not-yet-needed categories. **Note (2026): the `elements/`
-directory is a WIRED global category now — the 7 Phase/Element icons resolve via `elementAsset()`
-and are consumed by the Setup screen's Phase weaknesses section (see §3).**
+Do not create empty directories for not-yet-needed categories. **Notes (2026): the `elements/`
+directory is a WIRED global category — the 7 Phase/Element icons resolve via `elementAsset()`
+and are consumed by the Setup screen's Phase weaknesses section (see §3). The `ammo/` directory
+holds the DELIVERED Ammo Type icons (5 files) — NOT yet wired into `assets.ts` (no `ammo`
+kind/resolver yet); the files are present but nothing resolves ammo ids.**
 
 ## 3. Naming convention
 
@@ -81,6 +89,7 @@ Known engine ids (kept in sync with `src/data/*`):
 | Skills | `qiongjiu_basic` · `qiongjiu_common_rail` · `qiongjiu_guide_to_victory` · `qiongjiu_pressing_momentum` · `qiongjiu_support` · `qiongjiu_steady_plan` |
 | Weapon | `jinshizou` (player-facing name: **Golden Melody** — the id is internal only) |
 | Elements (delivered + wired) | `physical` · `burn` · `hydro` · `corrosion` · `electric` · `freeze` · `omni` (engine `Element` = `burn`/`hydro`/`freeze`/`electric`/`corrosion`; `physical`/`omni` are presentation-only ids) |
+| Ammo Types (delivered, not yet wired) | `heavy_ammo` · `medium_ammo` · `light_ammo` · `shotgun_ammo` · `melee` (engine `AmmoType`, 1:1 ids) |
 
 ## 4. The asset mapping / registry
 
@@ -142,6 +151,13 @@ After placing the physical file, ALSO add its exact relative path (with extensio
 Resolved by `elementAsset(elementId)`; consumed by the Setup screen's **Phase weaknesses** section
 (an icon next to each element). `physical` and `omni` are presentation-side ids; the engine
 `Element` union is `burn | hydro | freeze | electric | corrosion`.
+
+**Ammo Type asset (delivered 2026 — not yet wired):** path
+`assets/ammo/<ammoId>/<ammoId>.webp` (one file per ammo id; all 5 delivered — see the manifest
+`assets/ammo/README.md`). The 5 ids are 1:1 with the engine `AmmoType`
+(`heavy_ammo | medium_ammo | light_ammo | shotgun_ammo | melee`). There is **no `ammo` kind in
+`assets.ts` yet**, so nothing resolves ammo ids until a follow-up task adds the kind +
+`ammoAsset()` + the `SUPPLIED_ASSET_FILES` entries.
 
 ## 6. Missing assets / fallback
 
