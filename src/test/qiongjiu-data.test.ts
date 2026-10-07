@@ -132,7 +132,11 @@ test("Common Key Strategic Negotiation: Universal Key: Skill with the validated 
   assert.equal(ck.type, "Universal Key: Skill");
   assert.equal(ck.verified, true);
   assert.ok(ck.description && ck.description.length > 0);
-  assert.equal(ck.edition, undefined, "SN edition unknown — not invented");
-  assert.deepEqual(ck.stats, { atkPct: 0.05, critRate: 0.05, critDmg: 0.05, outOfTurnDmg: 0.07 });
+  assert.equal(ck.edition, undefined, "Strategic Negotiation edition unknown — not invented");
+  // CORRECTED model (2026): 3 ordered stat slots — #0 is the FIXED stat (Crit Rate, first in the
+  // in-game description); slots #1/#2 are player-selectable (`kind` absent). The "+7% out-of-turn"
+  // is the key's SECONDARY EFFECT (executed panel-stat addition), not a 4th stat slot.
+  assert.deepEqual(ck.stats, [{ kind: "critRate", value: 0.05 }, { value: 0.05 }, { value: 0.05 }], "1 fixed + 2 selectable slots");
+  assert.deepEqual(ck.secondaryEffect?.stats, { outOfTurnDmg: 0.07 }, "+7% out-of-turn is the executed secondary effect");
   assert.equal("commonKey" in QIONGJIU, false, "Common Keys are REUSABLE registry definitions — not embedded in CharacterDef (2026)");
 });

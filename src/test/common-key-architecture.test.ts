@@ -19,15 +19,23 @@ import type { CharacterDef, CommonKeyDef } from "../model/types.js";
  * The fixtures below are test-only generic examples — NOT real in-game keys (none invented).
  */
 
-const SN = "qiongjiu_common_strategic_negotiation";
+const STRATEGIC_NEGOTIATION = "qiongjiu_common_strategic_negotiation";
 
-// ---- Fixture Common Keys (test-only) ----
+// ---- Fixture Common Keys (test-only). These fixtures declare ALL their stat slots FIXED
+//      (`fixedStatCount: 3` / `2`) so they keep testing the fold/SUM behavior unchanged; the
+//      REAL game rule (only the FIRST stat hardcoded; the rest player-chosen) is on Strategic Negotiation and is
+//      covered by the fixed-vs-selectable tests below. ----
 const F_GOLD: CommonKeyDef = {
   id: "fix_gold",
   name: "Gold Fixture",
   edition: "gold",
   characterScope: "dummy5star",
-  stats: { atkPct: 0.05, critRate: 0.05, critDmg: 0.05 },
+  stats: [
+    { kind: "atkPct", value: 0.05 },
+    { kind: "critRate", value: 0.05 },
+    { kind: "critDmg", value: 0.05 },
+  ],
+  fixedStatCount: 3,
   secondaryEffect: {
     type: "status",
     statuses: [{ statusId: "damage_up_ii" }],
@@ -40,7 +48,12 @@ const F_EPIC4: CommonKeyDef = {
   name: "Epic 4★ Fixture",
   edition: "epic4",
   characterScope: "dummy4star",
-  stats: { atkPct: 0.04, critRate: 0.04, critDmg: 0.04 },
+  stats: [
+    { kind: "atkPct", value: 0.04 },
+    { kind: "critRate", value: 0.04 },
+    { kind: "critDmg", value: 0.04 },
+  ],
+  fixedStatCount: 3,
   secondaryEffect: {
     type: "passive",
     passive: { kind: "conditional_damage_modifier", scope: "dealt", mode: "additive", value: 0.05, when: "always" },
@@ -52,14 +65,23 @@ const F_GENERIC: CommonKeyDef = {
   id: "fix_epic_generic",
   name: "Epic Generic Fixture",
   edition: "epicGeneric",
-  stats: { atkPct: 0.03, critRate: 0.03, critDmg: 0.03 },
+  stats: [
+    { kind: "atkPct", value: 0.03 },
+    { kind: "critRate", value: 0.03 },
+    { kind: "critDmg", value: 0.03 },
+  ],
+  fixedStatCount: 3,
   verified: true,
 };
 const F_RARE: CommonKeyDef = {
   id: "fix_rare",
   name: "Rare Fixture",
   edition: "rare",
-  stats: { atkPct: 0.02, critRate: 0.02 },
+  stats: [
+    { kind: "atkPct", value: 0.02 },
+    { kind: "critRate", value: 0.02 },
+  ],
+  fixedStatCount: 2,
   verified: true,
 };
 const CKS: Record<string, CommonKeyDef> = {
@@ -130,13 +152,13 @@ test("4 Common Keys selected → REJECTED (3 Common Key Slots)", () => {
 });
 
 test("3-stat representation (Gold / Epic)", () => {
-  assert.equal(Object.keys(F_GOLD.stats).length, 3, "Gold Key — 3 kinds of stats");
-  assert.equal(Object.keys(F_EPIC4.stats).length, 3, "Epic 4★ — 3 kinds of stats");
-  assert.equal(Object.keys(F_GENERIC.stats).length, 3, "Epic Generic — 3 kinds of stats");
+  assert.equal(F_GOLD.stats.length, 3, "Gold Key — 3 stat slots");
+  assert.equal(F_EPIC4.stats.length, 3, "Epic 4★ — 3 stat slots");
+  assert.equal(F_GENERIC.stats.length, 3, "Epic Generic — 3 stat slots");
 });
 
 test("2-stat representation (Rare)", () => {
-  assert.equal(Object.keys(F_RARE.stats).length, 2, "Rare Key — 2 kinds of stats");
+  assert.equal(F_RARE.stats.length, 2, "Rare Key — 2 stat slots");
 });
 
 test("optional secondary effect: recorded on Gold/Epic, absent on Generic/Rare; the engine IGNORES it", () => {
@@ -194,11 +216,68 @@ test("character-specific Common Key carries its association as DATA only (no com
 
 test("Strategic Negotiation migrated: reusable registry definition with EXACT validated stats", () => {
   assert.equal("commonKey" in QIONGJIU, false, "Common Keys are no longer embedded in CharacterDef");
-  const sn = REGISTRY.getCommonKey(SN)!;
-  assert.equal(sn.id, SN);
+  const sn = REGISTRY.getCommonKey(STRATEGIC_NEGOTIATION)!;
+  assert.equal(sn.id, STRATEGIC_NEGOTIATION);
   assert.equal(sn.name, "Strategic Negotiation");
   assert.equal(sn.type, "Universal Key: Skill");
-  assert.equal(sn.edition, undefined, "SN edition unknown — not invented");
-  assert.equal(sn.secondaryEffect, undefined, "no secondary effect validated for SN — none invented");
-  assert.deepEqual(sn.stats, { atkPct: 0.05, critRate: 0.05, critDmg: 0.05, outOfTurnDmg: 0.07 });
+  assert.equal(sn.edition, undefined, "Strategic Negotiation edition unknown — not invented");
+  // CORRECTED model (2026): 3 ORDERED stat slots — slot #0 is the FIXED stat (Crit Rate, first in
+  // the in-game description); slots #1/#2 are player-selectable (no `kind`) with the key's value.
+  assert.deepEqual(sn.stats, [{ kind: "critRate", value: 0.05 }, { value: 0.05 }, { value: 0.05 }], "3 slots: 1 fixed + 2 selectable");
+  assert.equal(sn.stats[0].kind, "critRate", "the fixed first stat is Crit Rate (in-game description order)");
+  assert.equal(sn.stats[1].kind, undefined, "slot #1 is player-selectable");
+  assert.equal(sn.stats[2].kind, undefined, "slot #2 is player-selectable");
+  // The "+7% out-of-turn" is Strategic Negotiation's SECONDARY EFFECT (semicolon-separated in the description) — an
+  // EXECUTED panel-stat addition, NOT one of the 3 stat slots.
+  assert.equal(sn.secondaryEffect?.type, "stat");
+  assert.deepEqual(sn.secondaryEffect?.stats, { outOfTurnDmg: 0.07 });
+});
+
+test("Common Key selectable slots: the player-chosen kind folds; an unchosen slot contributes nothing", () => {
+  const choices = { [STRATEGIC_NEGOTIATION]: ["critDmg", "atkPct"] as const };
+  const withChoices = createState(
+    {
+      version: 1,
+      seed: 1,
+      turns: 1,
+      team: [{ characterId: "qjck", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], commonKeyIds: [STRATEGIC_NEGOTIATION], commonKeyStatChoices: { [STRATEGIC_NEGOTIATION]: [...choices[STRATEGIC_NEGOTIATION]] } }],
+      dummy: { id: "d", name: "d", hp: 1, defense: 1, stability: 1, weaknesses: [], phase: null, cover: "none" },
+    },
+    customRegistry({ qjck: qj() }),
+    new Set(),
+  ).units.find((x) => x.id === "qjck")!;
+  // fixed Crit Rate 5% + chosen Crit DMG 5% + chosen ATK Boost 5% (+ secondary +7% out-of-turn)
+  assert.equal(withChoices.critRate, 0.05, "fixed slot #0 (Crit Rate) always applies");
+  assert.equal(withChoices.critDmg, 0.05, "chosen slot #1 = Crit DMG");
+  assert.equal(withChoices.panelAtk, 2100, "chosen slot #2 = ATK Boost +5% → ceil(2000 × 1.05)");
+  assert.equal(withChoices.outOfTurnDmg, 0.07, "secondary effect executed");
+  // No choices → only the fixed slot + the secondary effect apply.
+  const noChoices = createState(
+    {
+      version: 1,
+      seed: 1,
+      turns: 1,
+      team: [{ characterId: "qjck", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], commonKeyIds: [STRATEGIC_NEGOTIATION] }],
+      dummy: { id: "d", name: "d", hp: 1, defense: 1, stability: 1, weaknesses: [], phase: null, cover: "none" },
+    },
+    customRegistry({ qjck: qj() }),
+    new Set(),
+  ).units.find((x) => x.id === "qjck")!;
+  assert.equal(noChoices.critRate, 0.05, "fixed stat applies without any choice");
+  assert.equal(noChoices.critDmg, 0, "unchosen slot contributes nothing");
+  assert.equal(noChoices.panelAtk, 2000, "unchosen slot contributes nothing");
+  assert.equal(noChoices.outOfTurnDmg, 0.07, "secondary effect still executed");
+});
+
+test("Common Key stat choices are validated: unknown kind / extra slots / unequipped key are rejected", () => {
+  const base = { version: 1, seed: 1, turns: 1 as const, dummy: { id: "d", name: "d", hp: 1, defense: 1, stability: 1, weaknesses: [], phase: null, cover: "none" as const } };
+  const run = (choices: Record<string, string[]>) =>
+    createState(
+      { ...base, team: [{ characterId: "qjck", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], commonKeyIds: [STRATEGIC_NEGOTIATION], commonKeyStatChoices: choices as never }] },
+      customRegistry({ qjck: qj() }),
+      new Set(),
+    );
+  assert.throws(() => run({ [STRATEGIC_NEGOTIATION]: ["critDmg", "atkPct", "critRate"] }), /selectable stat slot/, "too many choices for a 3-slot key (1 fixed)");
+  assert.throws(() => run({ [STRATEGIC_NEGOTIATION]: ["notAStat"] }), /unknown selectable stat kind/, "unknown kind rejected");
+  assert.throws(() => run({ fix_not_equipped: ["critDmg"] }), /not equipped/, "choices for an unequipped key rejected");
 });

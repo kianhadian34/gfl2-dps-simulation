@@ -1,4 +1,12 @@
-import type { CommonKeyDef } from "../model/types.js";
+import type { CommonKeyDef, CommonKeyStat } from "../model/types.js";
+
+/**
+ * RUNTIME pool of the supported Common Key stat kinds, in CANONICAL display order. The player
+ * picks from this pool for a key's SELECTABLE stat slots (slots after the fixed first one); the
+ * engine validates choices against it. Kept in sync with the type-only `CommonKeyStats` block
+ * (src/model/types.ts) — extend both together.
+ */
+export const COMMON_KEY_STAT_KINDS: CommonKeyStat[] = ["atkPct", "critRate", "critDmg", "outOfTurnDmg"];
 
 /**
  * Common Keys registry data (REUSABLE definitions — the game's Common Key system is a
@@ -22,14 +30,27 @@ export const COMMON_KEYS: CommonKeyDef[] = [
     verified: true,
     description:
       "Crit Rate +5.0%, Critical Damage +5.0%, Attack Boost +5.0%; increase damage dealt outside of the unit's own turn by 7%.",
-    // Strategic Negotiation (VALIDATED in-game 2026, IMPLEMENTED). The +5% ATK / Crit Rate /
-    // Crit DMG are NORMAL stat increases (ATK folds via the proven Final Stat formula; the
-    // others are additive). The +7% adds to Qiongjiu's EXISTING Out-of-Turn Damage stat (her
-    // validated 10% passive Out-of-Turn support damage → 17% total) inside the SAME additive
-    // bracket — NOT a support-specific modifier: the engine consumes the outOfTurnDmg panel
-    // stat for ANY event outside the unit's own turn (in the MVP, Support Actions are the only
-    // such events). Own-turn attacks never receive it. No secondary effect is validated for SN
-    // (none invented). DIRECT in-game match: SN + V6 + DU2 → bucket 1.57 → 865.
-    stats: { atkPct: 0.05, critRate: 0.05, critDmg: 0.05, outOfTurnDmg: 0.07 },
+    // Strategic Negotiation (VALIDATED in-game 2026, IMPLEMENTED). CORRECTED model (2026): a
+    // Common Key has 3 STAT SLOTS — only the FIRST is hardcoded; the rest are PLAYER-CHOSEN
+    // kinds (the key fixes their VALUE, the player picks the KIND at equip time). Strategic Negotiation's in-game
+    // description lists Crit Rate first → slot #0 = Crit Rate +5% (FIXED, `kind` present);
+    // slots #1/#2 are SELECTABLE (`kind` ABSENT — the player chooses; each grants the slot's
+    // value 0.05 for the chosen kind). The "+7% damage dealt outside the unit's own turn"
+    // (semicolon-separated in the description) is the key's SECONDARY EFFECT — modeled as an
+    // EXECUTED panel-stat addition (`secondaryEffect.stats`) so it still folds into the
+    // `outOfTurnDmg` panel stat (Qiongjiu's 10% passive → 17% on out-of-turn events), inside the
+    // SAME additive DMG% bracket — NOT a support-specific modifier. Own-turn attacks never
+    // receive it. DIRECT in-game match (Strategic Negotiation + V6 + DU2 → 865) is reproduced when the player picks
+    // Crit DMG + Attack Boost for the two selectable slots (see strategic-negotiation.test.ts).
+    stats: [
+      { kind: "critRate", value: 0.05 }, // slot #0 — FIXED (hardcoded) stat
+      { value: 0.05 }, // slot #1 — player-chosen kind
+      { value: 0.05 }, // slot #2 — player-chosen kind
+    ],
+    secondaryEffect: {
+      type: "stat",
+      stats: { outOfTurnDmg: 0.07 },
+      description: "Increase damage dealt outside of the unit's own turn by 7%.",
+    },
   },
 ];

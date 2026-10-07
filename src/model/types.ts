@@ -477,6 +477,21 @@ export interface CommonKeyStats {
 export type CommonKeyStat = keyof CommonKeyStats;
 
 /**
+ * A Common Key has up to 3 STAT SLOTS, IN ORDER (2026 CORRECTED model — SOURCE FACT):
+ *  - slot #0 is the key's **FIXED** stat — `kind` is PRESENT (hardcoded on the key);
+ *  - slots #1+ are **PLAYER-CHOSEN** — `kind` is ABSENT; the player selects the stat KIND at
+ *    equip time, and this slot's `value` (fixed by the key, e.g. every stat is +5%) applies to
+ *    whatever kind is chosen. The pool is the supported stat kinds (`CommonKeyStat`).
+ * Absent `kind` therefore means "choosable", NOT "no stat".
+ */
+export interface CommonKeyStatSlot {
+  /** The stat kind — PRESENT for the fixed slot (#0); ABSENT for a player-chosen slot (#1+). */
+  kind?: CommonKeyStat;
+  /** The value this slot grants (fixed by the key), applied to whatever kind occupies the slot. */
+  value: number;
+}
+
+/**
  * Common Key edition taxonomy (AUTHORITATIVE game structure — SOURCE FACTS, 2026):
  * Gold Key (3 stats + secondary effect; 5★ Character Edition) · Epic Key — 4★ Character
  * Edition (3 stats + secondary effect) · Epic Key — Generic Edition (3 stats, no secondary) ·
@@ -485,18 +500,20 @@ export type CommonKeyStat = keyof CommonKeyStats;
 export type CommonKeyEdition = "gold" | "epic4" | "epicGeneric" | "rare";
 
 /**
- * OPTIONAL Common Key secondary effect — recorded DATA ONLY (2026): references the existing
- * generic primitives (status application via `StatusApplySpec` or a `PassiveEffect` shape),
- * but has NO engine consumer and NO trigger timing is invented. It must never be treated as
- * executable semantics today (same contract as the project's `deferredNote`).
+ * OPTIONAL Common Key secondary effect (2026). When it carries a `stats` payload it is
+ * EXECUTED (folded into the panel like a key stat — this is how Strategic Negotiation's +7% out-of-turn is
+ * modeled). `status` / `passive` payloads remain RECORDED DATA ONLY — no trigger timing or
+ * behavior is invented for them, and they must not be treated as executable today.
  */
 export interface CommonKeySecondaryEffect {
-  /** Which existing primitive the secondary effect is built on (status application or passive effect). */
-  type: "status" | "passive";
+  /** Which primitive the secondary effect is built on. "stat" = an executed panel-stat addition. */
+  type: "status" | "passive" | "stat";
   /** Statuses the effect would apply — trigger timing NOT defined (recorded only, not executed). */
   statuses?: StatusApplySpec[];
   /** Passive-effect shape the secondary would use — timing NOT defined (recorded only, not executed). */
   passive?: PassiveEffect;
+  /** Panel-stat additions the secondary effect grants — EXECUTED (folded into the panel). */
+  stats?: CommonKeyStats;
   /** Verbatim/summary of the secondary effect. */
   description?: string;
 }
@@ -516,11 +533,17 @@ export interface CommonKeyDef {
   /** Character association for Character Edition keys (data-only, e.g. the owning doll id); absent = generic key usable by any doll. Never consumed by combat logic. */
   characterScope?: string;
   /**
-   * STAT BLOCK — independent of `secondaryEffect` (the two are never merged). A key grants
-   * exactly the stat fields present (Gold/Epic: 3; Rare: 2). Folds via the existing generic
-   * stat path.
+   * ORDERED STAT SLOTS (2026 CORRECTED model). The FIRST slot is the key's FIXED (hardcoded)
+   * stat — `kind` present. The remaining slots are PLAYER-SELECTABLE: `kind` is absent until the
+   * player chooses one (from `CommonKeyStat`), and the slot's `value` (fixed by the key) applies
+   * to whatever kind is chosen. Folds via the existing generic stat path.
    */
-  stats: CommonKeyStats;
+  stats: CommonKeyStatSlot[];
+  /**
+   * How many LEADING stat slots are fixed (hardcoded). Default 1 (the game rule: only the first
+   * stat is hardcoded). Slots at index ≥ this are player-selectable.
+   */
+  fixedStatCount?: number;
   /** Optional secondary effect — independent of `stats`; recorded data only (see CommonKeySecondaryEffect). No invented trigger timing or behavior. */
   secondaryEffect?: CommonKeySecondaryEffect;
   verified: boolean;
@@ -1311,6 +1334,15 @@ export interface ScenarioTeamMember {
    * SOURCE FACT). Fewer than 3 (0–2) is valid; the engine enforces the 3-key maximum.
    */
   commonKeyIds?: string[];
+  /**
+   * PLAYER-CHOSEN stat kinds for the SELECTABLE slots of each equipped Common Key (2026). Keyed by
+   * Common Key id → an ordered array of chosen stat kinds for that key's slots #1..#N (slot #0 is
+   * the key's fixed stat and is NEVER listed here). A key whose selectable slots are unfilled
+   * (missing/short array) contributes only its fixed stat. The engine validates: no entry for a
+   * slot #0, kind must be a supported `CommonKeyStat`, array length ≤ the key's selectable-slot
+   * count.
+   */
+  commonKeyStatChoices?: Record<string, CommonKeyStat[]>;
   /**
    * Equipped weapon id (1 Weapon Slot per character, 2026) — resolved via `Registry.getWeapon`
    * (reusable definitions in src/data/weapons.ts). ABSENT = NO weapon (no weapon ATK/sub-stats,

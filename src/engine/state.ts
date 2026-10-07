@@ -8,6 +8,7 @@ import { DISPATCH_STAT_BUFFS } from "../data/dispatch.js";
 import { REMOLDER_BUFFS } from "../data/remolder.js";
 import { NEURAL_HELIX_GLOBAL_PCT } from "../data/neural-helix.js";
 import { resolveAttachmentStats, validateAttachmentConfig } from "../data/attachments.js";
+import { COMMON_KEY_STAT_KINDS } from "../data/common-keys.js";
 import { resolveRemolderUnit, resolveRemolderTeam } from "./remolder.js";
 
 /**
@@ -411,6 +412,7 @@ function makeDoll(
   keys: string[],
   affinity: { keyId?: string; level?: number } | undefined,
   commonKeyIds: string[],
+  commonKeyStatChoices: Record<string, CommonKeyStat[]> | undefined,
   expansionKeyId: string | undefined,
   weapon: WeaponDef | null,
   weaponCalibrationLevel: number | undefined,
@@ -506,17 +508,36 @@ function makeDoll(
   const attachCrit = { critRate: attach.critRate, critDmg: attach.critDmg };
   const panel = computePanel(def, weapon, dispatchFlat, remolderFlat, neuralHelixFlat, affinityFlat, attachFlat);
   const aff = resolveAffinityBonus(def, affinity?.keyId, affinity?.level, registry);
-  // Common Keys (generic architecture, 2026): REUSABLE definitions resolved via the registry
-  // (max 3 — "3 Common Key Slots"; fewer allowed). Stats from every selected key SUM and fold
-  // through the EXISTING generic stat path — ATK% via the proven Final Stat formula; Crit Rate
-  // and Crit DMG additive; Out-of-Turn Damage stored as a panel stat consumed only by
-  // out-of-turn events. No character-id logic: any doll may equip any common key.
+  // Common Keys (generic architecture, 2026; CORRECTED stat-slot model 2026): REUSABLE
+  // definitions resolved via the registry (max 3 — "3 Common Key Slots"; fewer allowed). A key
+  // has ordered STAT SLOTS: slot #0 is its FIXED stat; slots after it are PLAYER-CHOSEN kinds
+  // (`commonKeyStatChoices[keyId][i]`, value fixed by the key). A key's SECONDARY EFFECT may
+  // carry an executed `stats` payload (e.g. Strategic Negotiation's +7% out-of-turn). All contributions SUM and fold
+  // through the EXISTING generic stat path — ATK% via the Final Stat formula; Crit Rate / Crit DMG
+  // additive; Out-of-Turn Damage is a panel stat consumed only by out-of-turn events. No
+  // character-id logic: any doll may equip any common key.
   const commonStats: Partial<Record<CommonKeyStat, number>> = {};
+  const addCommonStat = (stat: CommonKeyStat, value: number): void => {
+    commonStats[stat] = (commonStats[stat] ?? 0) + value;
+  };
   for (const keyId of commonKeyIds) {
     const commonDef = registry.getCommonKey(keyId);
     if (!commonDef) throw new Error(`Unknown common key: ${keyId}`);
-    for (const [stat, value] of Object.entries(commonDef.stats)) {
-      commonStats[stat as CommonKeyStat] = (commonStats[stat as CommonKeyStat] ?? 0) + (value ?? 0);
+    const choices = commonKeyStatChoices?.[keyId] ?? [];
+    const fixedCount = commonDef.fixedStatCount ?? 1;
+    commonDef.stats.forEach((slot, i) => {
+      // Slot #0 (and any slot < fixedCount) is hardcoded; later slots use the player's chosen kind.
+      // A fixed slot with a visible `kind` always applies; a SELECTABLE slot applies only when the
+      // player chose a kind (data `kind` on a selectable slot is NOT consulted — the model forbids it).
+      const kind = i < fixedCount ? slot.kind : choices[i - fixedCount];
+      if (kind === undefined) return;
+      addCommonStat(kind, slot.value);
+    });
+    // Executed secondary-effect stat payload (recorded `status`/`passive` variants are NOT executed).
+    if (commonDef.secondaryEffect?.type === "stat" && commonDef.secondaryEffect.stats) {
+      for (const [stat, value] of Object.entries(commonDef.secondaryEffect.stats)) {
+        addCommonStat(stat as CommonKeyStat, value ?? 0);
+      }
     }
   }
   // STANDALONE character Affinity-LEVEL stats (2026, confirmed): Lv5 none, Lv9 ATK/HP/DEF +5% —
@@ -715,6 +736,28 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
         `Team member ${m.characterId}: at most ${MAX_COMMON_KEYS} Common Keys may be equipped (3 Common Key Slots); got ${m.commonKeyIds?.length}`,
       );
     }
+    // COMMON KEY stat choices (2026): the player picks the KIND for each key's SELECTABLE slots
+    // (slots after its fixed first one). Validate loudly — never silently drop a choice.
+    if (m.commonKeyStatChoices) {
+      for (const [keyId, choices] of Object.entries(m.commonKeyStatChoices)) {
+        if (!(m.commonKeyIds ?? []).includes(keyId)) {
+          throw new Error(`Team member ${m.characterId}: commonKeyStatChoices has an entry for "${keyId}" which is not equipped`);
+        }
+        const key = registry.getCommonKey(keyId);
+        if (!key) throw new Error(`Team member ${m.characterId}: unknown common key: ${keyId}`);
+        const selectable = key.stats.length - (key.fixedStatCount ?? 1);
+        if (choices.length > selectable) {
+          throw new Error(
+            `Team member ${m.characterId}: key "${keyId}" has ${selectable} selectable stat slot(s); got ${choices.length} choice(s)`,
+          );
+        }
+        for (const kind of choices) {
+          if (!COMMON_KEY_STAT_KINDS.includes(kind)) {
+            throw new Error(`Team member ${m.characterId}: key "${keyId}" — unknown selectable stat kind: ${kind}`);
+          }
+        }
+      }
+    }
     // DEBUG/controlled-testing (2026): every supplied base-stat override must be a finite,
     // non-negative number — rejected loudly, never silently clamped.
     if (m.baseStatOverrides) {
@@ -814,7 +857,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
       }
     }
     const weaponCalibrationLevel = m.calibrationLevel ?? weapon?.calibrationLevel;
-    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel ?? DEFAULT_AFFINITY_LEVEL }, m.commonKeyIds ?? [], m.expansionKeyId, weapon, weaponCalibrationLevel, m.attachments, m.activeAttachmentSet, m.baseStatOverrides, m.applyDispatchStats, m.overridesAuthoritative, remolderPlans[i], remolderGrants[i], config, registry);
+    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel ?? DEFAULT_AFFINITY_LEVEL }, m.commonKeyIds ?? [], m.commonKeyStatChoices, m.expansionKeyId, weapon, weaponCalibrationLevel, m.attachments, m.activeAttachmentSet, m.baseStatOverrides, m.applyDispatchStats, m.overridesAuthoritative, remolderPlans[i], remolderGrants[i], config, registry);
   });
   const dummy = makeDummy(scenario.dummy);
   return {

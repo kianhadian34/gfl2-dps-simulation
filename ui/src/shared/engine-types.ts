@@ -106,10 +106,19 @@ export interface CommonKeyView {
   name: string;
   /** Character association (data-only; absent = generic key). */
   characterScope?: string;
-  /** Stat block — exactly the fields the key grants (engine `CommonKeyDef.stats`, data-driven; absent = none). */
-  stats?: { atkPct?: number; critRate?: number; critDmg?: number; outOfTurnDmg?: number };
+  /**
+   * ORDERED stat slots (2026 corrected model). Slot #0 (and any slot before `fixedStatCount`) is
+   * the key's FIXED stat (`kind` present). Later slots are PLAYER-SELECTABLE: `kind` is absent —
+   * the player picks the kind, the key's `value` applies to it.
+   */
+  stats?: Array<{ kind?: string; value: number }>;
+  /** How many leading stat slots are fixed (engine default 1). */
+  fixedStatCount?: number;
   /** Secondary-effect description (engine `CommonKeyDef.secondaryEffect.description`; absent = none). */
   secondaryEffect?: string;
+  /** Executed secondary-effect stat lines (engine `CommonKeyDef.secondaryEffect.stats`, e.g. Strategic Negotiation's
+   *  "+7.0% out-of-turn damage") — shown as the key's additional effect when no description exists. */
+  secondaryStatLines?: string[];
 }
 
 export interface CommonKeyListResult {

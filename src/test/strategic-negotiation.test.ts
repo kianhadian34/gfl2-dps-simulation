@@ -5,7 +5,7 @@ import { createState } from "../engine/state.js";
 import { REGISTRY } from "../data/registry.js";
 import { QIONGJIU } from "../data/qiongjiu.js";
 import { customRegistry, makeAlly } from "./helpers.js";
-import type { CharacterDef } from "../model/types.js";
+import type { CharacterDef, CommonKeyStat } from "../model/types.js";
 
 /**
  * COMMON KEY — Strategic Negotiation (VALIDATED in-game 2026):
@@ -28,11 +28,22 @@ import type { CharacterDef } from "../model/types.js";
  *   CRIT Basic (0.8, passive off, critRate 1, critDmg 0): key panel 2100 → 496.90 × 1.05 = 522
  */
 
-const SN = "qiongjiu_common_strategic_negotiation";
+const STRATEGIC_NEGOTIATION = "qiongjiu_common_strategic_negotiation";
+
+/**
+ * CORRECTED model (2026): Strategic Negotiation's slot #0 is FIXED (Crit Rate +5%); its slots
+ * #1/#2 are PLAYER-CHOSEN. The validated in-game composition (ATK +5% / Crit DMG +5%) is
+ * reproduced by choosing `critDmg` and `atkPct` for those slots. `strategicNegotiationEquip(true)`
+ * supplies them; `strategicNegotiationEquip(false)` equips nothing.
+ */
+const STRATEGIC_NEGOTIATION_CHOICES = { [STRATEGIC_NEGOTIATION]: ["critDmg", "atkPct"] } as const;
+function strategicNegotiationEquip(withKey: boolean): { commonKeyIds?: string[]; commonKeyStatChoices?: Record<string, CommonKeyStat[]> } {
+  return withKey ? { commonKeyIds: [STRATEGIC_NEGOTIATION], commonKeyStatChoices: { [STRATEGIC_NEGOTIATION]: [...STRATEGIC_NEGOTIATION_CHOICES[STRATEGIC_NEGOTIATION]] } } : {};
+}
 
 function qj(overrides: { passive?: boolean; critRate?: number; critDmg?: number; atk?: number } = {}): CharacterDef {
   const qj = structuredClone(QIONGJIU);
-  qj.id = "qjsn";
+  qj.id = "qj_strategic_negotiation";
   qj.base = { ...qj.base, atk: overrides.atk ?? 2000, critRate: overrides.critRate ?? 0.2, critDmg: overrides.critDmg ?? 0 };
   if (overrides.passive === false) qj.passive = { ...qj.passive, effects: [], levels: undefined };
   return qj;
@@ -45,11 +56,11 @@ function supportRun(withKey: boolean) {
       version: 1, seed: 1, turns: 1,
       team: [
         { characterId: "ally", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [] },
-        { characterId: "qjsn", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], commonKeyIds: withKey ? [SN] : undefined },
+        { characterId: "qj_strategic_negotiation", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], ...strategicNegotiationEquip(withKey) },
       ] as never,
       dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], phase: null, cover: "none" },
     },
-    customRegistry({ ally, qjsn: qj({ critRate: 0 }) }),
+    customRegistry({ ally, qj_strategic_negotiation: qj({ critRate: 0 }) }),
   );
 }
 
@@ -57,10 +68,10 @@ function railRun(withKey: boolean) {
   return simulateScenario(
     {
       version: 1, seed: 1, turns: 1,
-      team: [{ characterId: "qjsn", applyDispatchStats: false, rotation: ["active1"], equippedFixedKeys: [], commonKeyIds: withKey ? [SN] : undefined }],
+      team: [{ characterId: "qj_strategic_negotiation", applyDispatchStats: false, rotation: ["active1"], equippedFixedKeys: [], ...strategicNegotiationEquip(withKey) }],
       dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], phase: null, cover: "none" },
     },
-    customRegistry({ qjsn: qj({ critRate: 0 }) }),
+    customRegistry({ qj_strategic_negotiation: qj({ critRate: 0 }) }),
   ).log.find((e) => e.action === "qiongjiu_common_rail")!;
 }
 
@@ -93,10 +104,10 @@ test("Crit Rate +5% and Crit DMG +5% are normal additive stat increases (crit ×
     simulateScenario(
       {
         version: 1, seed: 1, turns: 1,
-        team: [{ characterId: "qjsn", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], commonKeyIds: withKey ? [SN] : undefined }],
+        team: [{ characterId: "qj_strategic_negotiation", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], ...strategicNegotiationEquip(withKey) }],
         dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], phase: null, cover: "none" },
       },
-      customRegistry({ qjsn: qj({ passive: false, critRate: 1, critDmg: 0 }) }),
+      customRegistry({ qj_strategic_negotiation: qj({ passive: false, critRate: 1, critDmg: 0 }) }),
     ).log.find((e) => e.action === "qiongjiu_basic")!;
   const keyed = crit(true);
   assert.equal(keyed.attackerAtk, 2100);
@@ -111,13 +122,13 @@ test("Unequipped / removed: all four bonuses absent (2000 ATK, crit 20%, critDmg
   const st = createState(
     {
       version: 1, seed: 1, turns: 1,
-      team: [{ characterId: "qjsn", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [] }],
+      team: [{ characterId: "qj_strategic_negotiation", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [] }],
       dummy: { id: "d", name: "d", hp: 1, defense: 1, stability: 1, weaknesses: [], phase: null, cover: "none" },
     },
-    customRegistry({ qjsn: qj() }),
+    customRegistry({ qj_strategic_negotiation: qj() }),
     new Set(),
   );
-  const u = st.units.find((x) => x.id === "qjsn")!;
+  const u = st.units.find((x) => x.id === "qj_strategic_negotiation")!;
   assert.equal(u.panelAtk, 2000);
   assert.equal(u.critRate, 0.2);
   assert.equal(u.critDmg, 0);
@@ -125,49 +136,52 @@ test("Unequipped / removed: all four bonuses absent (2000 ATK, crit 20%, critDmg
 });
 
 test("Strategic Negotiation data + state pins: +5% ATK/CR/CDMG and outOfTurnDmg 0.07 (10%→17%)", () => {
-  const ck = REGISTRY.getCommonKey(SN)!;
-  assert.equal(ck.id, SN);
+  const ck = REGISTRY.getCommonKey(STRATEGIC_NEGOTIATION)!;
+  assert.equal(ck.id, STRATEGIC_NEGOTIATION);
   assert.equal(ck.name, "Strategic Negotiation");
   assert.equal(ck.type, "Universal Key: Skill");
-  assert.equal(ck.edition, undefined, "SN edition unknown — not invented");
-  assert.deepEqual(ck.stats, { atkPct: 0.05, critRate: 0.05, critDmg: 0.05, outOfTurnDmg: 0.07 });
+  assert.equal(ck.edition, undefined, "Strategic Negotiation edition unknown — not invented");
+  // CORRECTED: 3 ordered slots — #0 fixed (Crit Rate), #1/#2 player-chosen; the +7% out-of-turn is
+  // the key's EXECUTED secondary effect (not a 4th stat slot).
+  assert.deepEqual(ck.stats, [{ kind: "critRate", value: 0.05 }, { value: 0.05 }, { value: 0.05 }]);
+  assert.deepEqual(ck.secondaryEffect?.stats, { outOfTurnDmg: 0.07 });
   const st = createState(
     {
       version: 1, seed: 1, turns: 1,
-      team: [{ characterId: "qjsn", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], commonKeyIds: [SN] }],
+      team: [{ characterId: "qj_strategic_negotiation", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], ...strategicNegotiationEquip(true) }],
       dummy: { id: "d", name: "d", hp: 1, defense: 1, stability: 1, weaknesses: [], phase: null, cover: "none" },
     },
-    customRegistry({ qjsn: qj() }),
+    customRegistry({ qj_strategic_negotiation: qj() }),
     new Set(),
   );
-  const u = st.units.find((x) => x.id === "qjsn")!;
+  const u = st.units.find((x) => x.id === "qj_strategic_negotiation")!;
   assert.equal(u.panelAtk, 2100, "ceil(2000 × 1.05)");
-  assert.equal(u.critRate, 0.25, "20% + 5%");
-  assert.equal(u.critDmg, 0.05, "0 + 5%");
+  assert.equal(u.critRate, 0.25, "20% + 5% (fixed slot #0)");
+  assert.equal(u.critDmg, 0.05, "0 + 5% (chosen slot #1)");
   assert.equal(u.outOfTurnDmg, 0.07, "added to Qiongjiu's existing 10% → 17% total on out-of-turn events");
 });
 
-test("DIRECT in-game match: SN + V6 + DU2 — Support bracket 1.57 reproduces the validated 865 (ATK 2082 · 90% · DEF 5000 · 0.20+0.20+0.17)", () => {
-  // Panel ATK 2082 = ceil(1982 × 1.05) with SN. V6 gives No-Cover +0.20 and the passive
+test("DIRECT in-game match: Strategic Negotiation + V6 + DU2 — Support bracket 1.57 reproduces the validated 865 (ATK 2082 · 90% · DEF 5000 · 0.20+0.20+0.17)", () => {
+  // Panel ATK 2082 = ceil(1982 × 1.05) with Strategic Negotiation. V6 gives No-Cover +0.20 and the passive
   // Out-of-Turn +0.10; the V5 trigger applies Damage Up II +0.20 to QJ before the triggering
-  // ally's attack. Bucket: 0.20 (No-Cover) + 0.20 (Damage Up II) + 0.17 (0.10 passive + 0.07 SN
+  // ally's attack. Bucket: 0.20 (No-Cover) + 0.20 (Damage Up II) + 0.17 (0.10 passive + 0.07 Strategic Negotiation
   // Out-of-Turn) = 0.57 → 1.57 — the exact in-game composition (550.8686 × 1.57 = 864.8637 → 865).
-  const ally = makeAlly("sn_ally", 1000);
+  const ally = makeAlly("ally", 1000);
   const r = simulateScenario(
     {
       version: 1, seed: 1, turns: 1,
       team: [
-        { characterId: "sn_ally", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [] },
-        { characterId: "qjsn", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], commonKeyIds: [SN] },
+        { characterId: "ally", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [] },
+        { characterId: "qj_strategic_negotiation", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], ...strategicNegotiationEquip(true) },
       ] as never,
       dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], phase: null, cover: "none" },
       configOverrides: { fortificationLevel: 6 },
     },
-    customRegistry({ sn_ally: ally, qjsn: qj({ atk: 1982, critRate: 0 }) }),
+    customRegistry({ ally: ally, qj_strategic_negotiation: qj({ atk: 1982, critRate: 0 }) }),
   );
   const sup = r.log.find((e) => e.supportAttack === true)!;
   assert.ok(sup, "Support Action fired against the no-cover dummy");
-  assert.equal(sup.attackerAtk, 2082, "panel ATK 2082 = ceil(1982 × 1.05) — SN +5% ATK as in-game");
-  assert.equal(sup.bonusBracket, 1.57, "1 + 0.20 No-Cover + 0.20 Damage Up II + 0.17 Out-of-Turn (10% passive + 7% SN) — additive in the SAME DMG% bucket");
+  assert.equal(sup.attackerAtk, 2082, "panel ATK 2082 = ceil(1982 × 1.05) — Strategic Negotiation +5% ATK as in-game");
+  assert.equal(sup.bonusBracket, 1.57, "1 + 0.20 No-Cover + 0.20 Damage Up II + 0.17 Out-of-Turn (10% passive + 7% key) — additive in the SAME DMG% bucket");
   assert.equal(sup.finalDamage, 865, "ceil(550.8686 × 1.57) — exact in-game match");
 });

@@ -98,8 +98,8 @@ test("dispatch stays separate from a base override: ATK 1000 override → +231 d
 });
 
 test("percentage modifiers operate on the dispatch-inclusive flat: ceil((802 + 231) × 1.05)", () => {
-  const u = createState(liveScenario({ baseStatOverrides: { atk: 802, hp: 1893, def: 528 }, commonKeyIds: ["qiongjiu_common_strategic_negotiation"] }), REGISTRY, new Set()).units[0];
-  // Live ATK% = NH 22% + Strategic Negotiation 5% = 27%; the common-key % rides the dispatch-inclusive flat.
+  const u = createState(liveScenario({ baseStatOverrides: { atk: 802, hp: 1893, def: 528 }, commonKeyIds: ["qiongjiu_common_strategic_negotiation"], commonKeyStatChoices: { qiongjiu_common_strategic_negotiation: ["critDmg", "atkPct"] } }), REGISTRY, new Set()).units[0];
+  // Live ATK% = NH 22% + Strategic Negotiation 5% (now a PLAYER-CHOSEN slot, 2026 corrected model) = 27%; the common-key % rides the dispatch-inclusive flat.
   assert.equal(u.panelAtk, Math.ceil((802 + 231 + 245 + 196 + 115) * (1 + 0.22 + 0.05)), "ceil((base + dispatch + Remolder + NH + affinity) × 1.27) — same finalStat(base + flat, pct) product");
   assert.equal(u.hp, Math.ceil((1893 + 519 + 679 + 333 + 292) * 1.12), "HP keeps the dispatch-inclusive flat × the live 12% HP%");
 });

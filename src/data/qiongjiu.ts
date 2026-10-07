@@ -514,5 +514,5 @@ export const QIONGJIU: CharacterDef = {
     def: 92,
     atkPct: 0.10,
   },
-  // Common Keys are REUSABLE registry definitions (src/data/common-keys.ts) — SN lives there.
+  // Common Keys are REUSABLE registry definitions (src/data/common-keys.ts) — Strategic Negotiation lives there.
 };

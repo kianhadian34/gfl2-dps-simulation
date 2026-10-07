@@ -44,9 +44,16 @@ export interface CommonKeySource {
   id: string;
   name: string;
   characterScope?: string;
-  stats?: { atkPct?: number; critRate?: number; critDmg?: number; outOfTurnDmg?: number };
-  /** Engine secondary-effect shape; only its recorded description is surfaced to the UI. */
-  secondaryEffect?: { description?: string };
+  /**
+   * Ordered stat slots (engine `CommonKeyDef.stats`, 2026 corrected model). Slot #0 (and any slot
+   * before `fixedStatCount`) is the key's FIXED stat (`kind` present); later slots are
+   * player-selectable (`kind` absent — the player picks the kind, the key fixes the value).
+   */
+  stats?: Array<{ kind?: string; value: number }>;
+  /** How many leading stat slots are fixed (engine default 1). */
+  fixedStatCount?: number;
+  /** Engine secondary-effect shape; its recorded description and any executed `stat` payload surface to the UI. */
+  secondaryEffect?: { description?: string; stats?: { atkPct?: number; critRate?: number; critDmg?: number; outOfTurnDmg?: number } };
 }
 
 /** Structural engine character shape (satisfied by engine `CharacterDef`). */
@@ -152,8 +159,12 @@ export function buildCommonKeyViews(keys: CommonKeySource[], maxCommonKeys: numb
       id: k.id,
       name: k.name,
       ...(k.characterScope !== undefined ? { characterScope: k.characterScope } : {}),
-      ...(k.stats ? { stats: { ...k.stats } } : {}),
+      ...(k.stats ? { stats: k.stats.map((s) => ({ ...s })) } : {}),
+      ...(k.fixedStatCount !== undefined ? { fixedStatCount: k.fixedStatCount } : {}),
       ...(k.secondaryEffect?.description !== undefined ? { secondaryEffect: k.secondaryEffect.description } : {}),
+      ...(k.secondaryEffect?.stats !== undefined
+        ? { secondaryStatLines: Object.entries(k.secondaryEffect.stats).map(([kind, v]) => `${COMMON_KEY_STAT_LABELS[kind] ?? kind} +${pct1(v ?? 0)}`) }
+        : {}),
     })),
     maxCommonKeys,
   };
@@ -233,22 +244,39 @@ export function buildAttachmentCatalog(src: AttachmentCatalogSource): Attachment
   };
 }
 
-/** Player-facing stat lines a Common Key grants (data-driven label map over `stats`; never invented). */
+/** Stat-kind → display label (data-driven; never invented). */
+const COMMON_KEY_STAT_LABELS: Record<string, string> = {
+  atkPct: "Attack Boost",
+  critRate: "Crit Rate",
+  critDmg: "Crit DMG",
+  outOfTurnDmg: "Out-of-Turn Damage",
+};
+
+/**
+ * Player-facing stat lines a Common Key grants. Under the 2026 corrected model, slots before
+ * `fixedStatCount` (default 1) are FIXED (their kind is shown); later slots are PLAYER-SELECTABLE
+ * and rendered as an open slot ("‹choose a stat›"). Data-driven label map — never invented.
+ */
 export function commonKeyStatLines(k: CommonKeyView): string[] {
   const s = k.stats;
   if (!s) return [];
-  const lines: string[] = [];
-  if (s.atkPct !== undefined) lines.push(`Attack Boost +${pct1(s.atkPct)}`);
-  if (s.critRate !== undefined) lines.push(`Crit Rate +${pct1(s.critRate)}`);
-  if (s.critDmg !== undefined) lines.push(`Crit DMG +${pct1(s.critDmg)}`);
-  return lines;
+  const fixed = k.fixedStatCount ?? 1;
+  return s.map((slot, i) => {
+    if (i < fixed) {
+      // FIXED slot: its kind is present and shown.
+      const label = slot.kind !== undefined ? (COMMON_KEY_STAT_LABELS[slot.kind] ?? slot.kind) : "choose a stat";
+      return `${label} +${pct1(slot.value)}`;
+    }
+    // SELECTABLE slot: the player picks the kind (data `kind` is not consulted) → shown open.
+    return `(selectable) choose a stat +${pct1(slot.value)}`;
+  });
 }
 
-/** The key's additional effect line: the recorded secondary effect when present, else the out-of-turn
- *  damage stat (Golden Melody/Strategic Negotiation source data grants it as the effect component). */
+/** The key's additional effect line: the recorded secondary-effect description when present, else
+ *  an executed secondary `stat` payload rendered as its described effect (e.g. Strategic Negotiation's +7% out-of-turn). */
 export function commonKeyEffectLine(k: CommonKeyView): string | undefined {
   if (k.secondaryEffect !== undefined) return k.secondaryEffect;
-  if (k.stats?.outOfTurnDmg !== undefined) return `+${pct1(k.stats.outOfTurnDmg)} damage dealt outside the unit's own turn`;
+  if (k.secondaryStatLines !== undefined && k.secondaryStatLines.length > 0) return k.secondaryStatLines.join("; ");
   return undefined;
 }
 
