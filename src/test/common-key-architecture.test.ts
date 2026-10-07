@@ -5,7 +5,7 @@ import { createState } from "../engine/state.js";
 import { REGISTRY } from "../data/registry.js";
 import { QIONGJIU } from "../data/qiongjiu.js";
 import { customRegistry, makeAlly } from "./helpers.js";
-import type { CharacterDef, CommonKeyDef } from "../model/types.js";
+import type { CharacterDef, CommonKeyDef, CommonKeyStat } from "../model/types.js";
 
 /**
  * GENERIC COMMON KEY ARCHITECTURE (2026):
@@ -277,7 +277,51 @@ test("Common Key stat choices are validated: unknown kind / extra slots / unequi
       customRegistry({ qjck: qj() }),
       new Set(),
     );
-  assert.throws(() => run({ [STRATEGIC_NEGOTIATION]: ["critDmg", "atkPct", "critRate"] }), /selectable stat slot/, "too many choices for a 3-slot key (1 fixed)");
-  assert.throws(() => run({ [STRATEGIC_NEGOTIATION]: ["notAStat"] }), /unknown selectable stat kind/, "unknown kind rejected");
+  assert.throws(() => run({ [STRATEGIC_NEGOTIATION]: ["critDmg", "atkPct", "hpPct"] }), /selectable stat slot/, "too many choices for a 3-slot key (1 fixed)");
+  assert.throws(() => run({ [STRATEGIC_NEGOTIATION]: ["notAStat"] }), /not a selectable Common Key stat kind/, "unknown kind rejected");
+  assert.throws(() => run({ [STRATEGIC_NEGOTIATION]: ["outOfTurnDmg", "atkPct"] }), /not a selectable Common Key stat kind/, "outOfTurnDmg is the key's EFFECT, never selectable");
   assert.throws(() => run({ fix_not_equipped: ["critDmg"] }), /not equipped/, "choices for an unequipped key rejected");
+});
+
+test("Common Key stat choices: NO duplicates — chosen kinds must differ from each other AND from the fixed stat", () => {
+  const base = { version: 1, seed: 1, turns: 1 as const, dummy: { id: "d", name: "d", hp: 1, defense: 1, stability: 1, weaknesses: [], phase: null, cover: "none" as const } };
+  const run = (choices: CommonKeyStat[]) =>
+    createState(
+      { ...base, team: [{ characterId: "qjck", applyDispatchStats: false, rotation: ["basic"], equippedFixedKeys: [], commonKeyIds: [STRATEGIC_NEGOTIATION], commonKeyStatChoices: { [STRATEGIC_NEGOTIATION]: choices } }] },
+      customRegistry({ qjck: qj() }),
+      new Set(),
+    );
+  // Strategic Negotiation's fixed stat is Crit Rate → a chosen Crit Rate duplicates it.
+  assert.throws(() => run(["critRate", "atkPct"]), /must differ from each other and from the fixed stat/, "duplicate of the fixed stat rejected");
+  // Two identical choices duplicate each other.
+  assert.throws(() => run(["atkPct", "atkPct"]), /must differ from each other and from the fixed stat/, "duplicate choices rejected");
+  // All-distinct (and none equal to the fixed Crit Rate) is accepted.
+  assert.doesNotThrow(() => run(["critDmg", "atkPct"]), "distinct choices accepted");
+});
+
+test("Common Key selectable kinds include Health Boost / Defense Boost (hpPct / defPct fold)", () => {
+  const base = { version: 1, seed: 1, turns: 1 as const, dummy: { id: "d", name: "d", hp: 1, defense: 1, stability: 1, weaknesses: [], phase: null, cover: "none" as const } };
+  const run = (choices?: CommonKeyStat[]) =>
+    createState(
+      {
+        ...base,
+        team: [
+          {
+            characterId: "qjck",
+            applyDispatchStats: false,
+            rotation: ["basic"],
+            equippedFixedKeys: [],
+            commonKeyIds: [STRATEGIC_NEGOTIATION],
+            ...(choices ? { commonKeyStatChoices: { [STRATEGIC_NEGOTIATION]: choices } } : {}),
+          },
+        ],
+      },
+      customRegistry({ qjck: qj() }),
+      new Set(),
+    ).units.find((x) => x.id === "qjck")!;
+  const baseline = run();
+  const withChoices = run(["hpPct", "defPct"]);
+  assert.equal(withChoices.maxHp, Math.ceil(baseline.maxHp * 1.05), "chosen Health Boost +5% folds into HP");
+  assert.equal(withChoices.defStat, Math.ceil(baseline.defStat * 1.05), "chosen Defense Boost +5% folds into DEF");
+  assert.equal(withChoices.critRate, 0.05, "the fixed Crit Rate slot still applies");
 });

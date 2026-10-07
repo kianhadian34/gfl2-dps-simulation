@@ -248,10 +248,13 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .weapon-detail-col .cal-val { color: #f59e3d; font-weight: 600; }
 
 /* --- Common Keys: 3 slot selection (2026) --- */
-.common-key-slots { display: flex; gap: 8px; margin: 2px 0 8px; }
-.common-key-slots.is-single .common-key-slot { flex: 0 1 200px; }
+.common-key-slots { display: flex; gap: 8px; margin: 2px 0 8px; align-items: flex-start; }
+.common-key-slots.is-single > .common-key-slot,
+.common-key-slots.is-single > .common-key-slot-col { flex: 0 1 200px; }
+/* Each slot is a COLUMN: key card on top, its own stat picker beneath (anchored per key). */
+.common-key-slot-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .common-key-slot {
-  flex: 1; min-width: 0; min-height: 150px; position: relative;
+  width: 100%; min-width: 0; min-height: 150px; position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px;
   border: 1px dashed var(--border); border-radius: 4px; background: var(--bg-3);
   color: var(--text); cursor: pointer; padding: 8px 6px;
@@ -267,6 +270,8 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .common-key-badge { display: flex; flex-direction: column; align-items: center; gap: 3px; max-width: 100%; }
 .common-key-name { font-size: 11px; line-height: 1.2; text-align: center; color: var(--text); font-weight: 600; }
 .common-key-stat { font-size: 10px; line-height: 1.3; text-align: center; color: var(--muted); }
+/* Player-chosen selectable stat: a distinct (buff) colour so it reads as the player's pick. */
+.common-key-stat.is-chosen { color: var(--buff); }
 .common-key-effect {
   font-size: 10px; line-height: 1.3; text-align: center; color: var(--dmg);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -292,6 +297,25 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .common-key-picker-card.is-used { opacity: 0.5; cursor: not-allowed; }
 .common-key-picker-card.is-remove { border-style: dashed; justify-content: center; min-height: 150px; color: var(--muted); }
 .common-key-picker-name { font-size: 12px; font-weight: 600; color: var(--text); }
+
+/* --- Common Key stat picker (2026): player-chosen selectable stat boosts.
+   Rendered INSIDE each equipped key's slot column, so it is anchored to that key. --- */
+.common-key-statpick {
+  border: 1px solid var(--border); border-radius: 6px; background: var(--bg-2);
+  padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; cursor: default;
+}
+.common-key-statpick-head { font-size: 11px; font-weight: 600; color: var(--text); }
+.common-key-statpick-fixed { font-size: 11px; }
+.common-key-statpick-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+.common-key-statpill {
+  border: 1px solid var(--border); border-radius: 999px; background: var(--bg-3);
+  color: var(--text); cursor: pointer; padding: 2px 8px; font-size: 11px; line-height: 1.4;
+}
+.common-key-statpill:hover:not(:disabled) { border-color: var(--accent); }
+.common-key-statpill.is-selected { border-color: var(--accent); background: var(--accent); color: var(--bg); font-weight: 600; }
+.common-key-statpill.is-selected .muted { color: inherit; }
+.common-key-statpill:disabled { opacity: 0.45; cursor: not-allowed; }
+
 .common-key-picker .common-key-badge-text {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
 }

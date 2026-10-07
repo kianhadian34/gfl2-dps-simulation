@@ -66,6 +66,12 @@ export interface SetupEquipment {
   calibrationLevel?: number;
   /** Common Key ids — up to 3 (engine-enforced); fewer valid. */
   commonKeyIds?: string[];
+  /**
+   * COMMON KEY stat choices (2026): per-Common-Key chosen kinds for its SELECTABLE stat slots
+   * (slot #0 is the key's fixed stat and is never listed). Keyed by Common Key id → chosen kinds
+   * in slot order. The engine validates (known selectable kinds, ≤ slot count, no duplicates).
+   */
+  commonKeyStatChoices?: Record<string, string[]>;
   /** Fixed Keys — ids only; the engine's existing representation and validation. */
   equippedFixedKeys?: string[];
   expansionKeyId?: string;
@@ -349,17 +355,56 @@ export function setCommonKeyAt(
   if (!Number.isInteger(slot) || slot < 0 || slot > max - 1) return state;
   return updateEquipment(state, charId, (e) => {
     const cur = e.commonKeyIds ?? [];
+    const withCleanChoices = (ids: string[], choices: Record<string, string[]> | undefined): SetupEquipment => {
+      // Drop stat choices for keys no longer equipped (never keep a stale choice).
+      const kept = choices ? Object.fromEntries(Object.entries(choices).filter(([k]) => ids.includes(k))) : undefined;
+      const next: SetupEquipment = { ...e, commonKeyIds: ids };
+      if (kept !== undefined && Object.keys(kept).length > 0) next.commonKeyStatChoices = kept;
+      else delete next.commonKeyStatChoices;
+      return next;
+    };
     if (keyId === undefined) {
       if (slot >= cur.length) return e;
       const next = cur.filter((_, i) => i !== slot);
-      return { ...e, commonKeyIds: next };
+      return withCleanChoices(next, e.commonKeyStatChoices);
     }
     const removed = cur.filter((_, i) => i !== slot); // drop the slot's current occupant
     const dedup = removed.includes(keyId) ? removed.filter((k) => k !== keyId) : removed; // move, not duplicate
     if (dedup.length >= max) return e; // cap preserved (4th distinct key is a no-op)
     const next = [...dedup];
     next.splice(Math.min(slot, next.length), 0, keyId);
-    return { ...e, commonKeyIds: next };
+    return withCleanChoices(next, e.commonKeyStatChoices);
+  });
+}
+
+/**
+ * Toggle a chosen stat kind for a Common Key's SELECTABLE slot (2026). The player picks kinds from
+ * the engine's selectable pool; `maxChoices` is the key's selectable-slot count. Duplicates are
+ * impossible by construction (toggle); the ENGINE remains the authoritative validator. Kinds are
+ * kept in the order they were selected (they map to slots #1..#N).
+ */
+export function toggleCommonKeyStatChoice(
+  state: SetupState,
+  charId: string,
+  keyId: string,
+  kind: string,
+  maxChoices: number,
+): SetupState {
+  return updateEquipment(state, charId, (e) => {
+    const all = { ...(e.commonKeyStatChoices ?? {}) };
+    const cur = all[keyId] ?? [];
+    if (cur.includes(kind)) {
+      const next = cur.filter((k) => k !== kind);
+      if (next.length === 0) delete all[keyId];
+      else all[keyId] = next;
+    } else {
+      if (cur.length >= maxChoices) return e; // per-key cap: no-op, never drop an existing choice
+      all[keyId] = [...cur, kind];
+    }
+    const next: SetupEquipment = { ...e };
+    if (Object.keys(all).length === 0) delete next.commonKeyStatChoices;
+    else next.commonKeyStatChoices = all;
+    return next;
   });
 }
 
@@ -555,6 +600,7 @@ export function buildScenario(setup: SetupState): ScenarioView {
         ...(equ.affinityKeyId !== undefined ? { affinityKeyId: equ.affinityKeyId } : {}),
         ...(equ.affinityLevel !== undefined ? { affinityLevel: equ.affinityLevel } : {}),
         ...(equ.commonKeyIds !== undefined ? { commonKeyIds: equ.commonKeyIds } : {}),
+        ...(equ.commonKeyStatChoices !== undefined ? { commonKeyStatChoices: equ.commonKeyStatChoices } : {}),
         ...(equ.weaponId !== undefined ? { weaponId: equ.weaponId } : {}),
         ...(equ.calibrationLevel !== undefined ? { calibrationLevel: equ.calibrationLevel } : {}),
         ...(equ.expansionKeyId !== undefined ? { expansionKeyId: equ.expansionKeyId } : {}),

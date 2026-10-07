@@ -42,6 +42,9 @@ export interface ScenarioTeamMemberView {
   affinityLevel?: number;
   /** Equipped Common Key ids — up to `maxCommonKeys` (3); fewer valid; engine-enforced. */
   commonKeyIds?: string[];
+  /** COMMON KEY stat choices (2026): per-Common-Key chosen kinds for its SELECTABLE stat slots
+   *  (slot #0 is the key's fixed stat and is never listed). Carried VERBATIM to the engine. */
+  commonKeyStatChoices?: Record<string, string[]>;
   /** Equipped weapon id (1 Weapon Slot) — resolved via the engine weapon registry (never duplicated here). */
   weaponId?: string;
   /** Calibration level of the EQUIPPED weapon (C1–C6 = 1–6); engine-validated. */
@@ -121,10 +124,21 @@ export interface CommonKeyView {
   secondaryStatLines?: string[];
 }
 
+export interface CommonKeyStatOptionView {
+  /** Engine stat kind (e.g. "critRate"). */
+  kind: string;
+  /** Display label ("Crit Rate"). */
+  label: string;
+  /** Fixed value the key grants for a chosen kind (fraction; 0.05 = 5.0%). */
+  value: number;
+}
+
 export interface CommonKeyListResult {
   items: CommonKeyView[];
   /** Engine-enforced 3-ClKey-Slot maximum (src/model/types.ts MAX_COMMON_KEYS). */
   maxCommonKeys: number;
+  /** PLAYER-SELECTABLE stat kinds (engine pool) shown in the per-key stat picker. */
+  selectableStats: CommonKeyStatOptionView[];
 }
 
 /** Engine-sourced per-character key/member metadata (extends the legacy listCharacters shape). */

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, expansionKeyEffectLine, affinityLevelStatLines, affinityLevels, affinityLevelFlatLines } from "../src/shared/lists.js";
+import { buildWeaponViews, buildCommonKeyViews, buildCommonKeySelectableStats, buildCharacterMetaView, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, expansionKeyEffectLine, affinityLevelStatLines, affinityLevels, affinityLevelFlatLines } from "../src/shared/lists.js";
 
 /**
  * ENGINE-SOURCED LIST CONTRACT (2026 — plumbing; no UI controls yet).
@@ -53,11 +53,35 @@ test("unit: commonKeyStatLines/EffectLine render the granted stats and the addit
   );
   assert.deepEqual(
     commonKeyStatLines(sn),
-    ["Crit Rate +5.0%", "(selectable) choose a stat +5.0%", "(selectable) choose a stat +5.0%"],
-    "fixed slot #0 shown with its kind; selectable slots shown open",
+    [
+      { text: "Crit Rate +5.0%", state: "fixed" },
+      { text: "(selectable) choose a stat +5.0%", state: "empty" },
+      { text: "(selectable) choose a stat +5.0%", state: "empty" },
+    ],
+    "fixed slot #0 shown with its kind; unchosen selectable slots shown open",
+  );
+  // With the player's chosen kinds, the selectable lines reflect them (tagged `chosen`), in slot order.
+  assert.deepEqual(
+    commonKeyStatLines(sn, ["critDmg", "hpPct"]),
+    [
+      { text: "Crit Rate +5.0%", state: "fixed" },
+      { text: "Crit DMG +5.0%", state: "chosen" },
+      { text: "Health Boost +5.0%", state: "chosen" },
+    ],
+    "chosen kinds replace the open placeholder (one per selectable slot, in order)",
+  );
+  // A partial choice fills only as many selectable lines as were chosen; the rest stay open.
+  assert.deepEqual(
+    commonKeyStatLines(sn, ["atkPct"]).map((l) => l.state),
+    ["fixed", "chosen", "empty"],
+    "one choice → first selectable line chosen, second still open",
   );
   assert.equal(commonKeyEffectLine(sn), "Increase damage dealt outside of the unit's own turn by 7%.", "the secondary-effect description is the additional effect");
-  assert.deepEqual(commonKeyStatLines(epic), ["Attack Boost +6.0%", "Crit Rate +3.0%", "Crit DMG +3.0%"]);
+  assert.deepEqual(commonKeyStatLines(epic), [
+    { text: "Attack Boost +6.0%", state: "fixed" },
+    { text: "Crit Rate +3.0%", state: "fixed" },
+    { text: "Crit DMG +3.0%", state: "fixed" },
+  ]);
   assert.equal(commonKeyEffectLine(epic), "Boosts Phase damage by 5%.", "recorded secondary effect preferred over stats");
   assert.deepEqual(commonKeyStatLines(bare), []);
   assert.equal(commonKeyEffectLine(bare), undefined, "no stats/effect → nothing emitted");
@@ -224,6 +248,26 @@ test("unit: buildCommonKeyViews carries items + the engine 3-slot maximum", () =
     { id: "k1", name: "Character Key", characterScope: "qiongjiu" },
     { id: "k2", name: "Generic Key" },
   ]);
+});
+
+test("unit: buildCommonKeySelectableStats maps the engine pool to labelled options (5.0% each)", () => {
+  assert.deepEqual(
+    buildCommonKeySelectableStats(["critRate", "critDmg", "hpPct", "defPct", "atkPct"]),
+    [
+      { kind: "critRate", label: "Crit Rate", value: 0.05 },
+      { kind: "critDmg", label: "Crit DMG", value: 0.05 },
+      { kind: "hpPct", label: "Health Boost", value: 0.05 },
+      { kind: "defPct", label: "Defense Boost", value: 0.05 },
+      { kind: "atkPct", label: "Attack Boost", value: 0.05 },
+    ],
+    "the five player-selectable kinds, each at 5.0%",
+  );
+  // The option list comes from the engine pool verbatim (empty pool → empty list, no guessing).
+  assert.deepEqual(buildCommonKeySelectableStats([]), []);
+  // buildCommonKeyViews carries the pool alongside the items.
+  const res = buildCommonKeyViews([{ id: "k", name: "K" }], 3, ["critRate", "atkPct"]);
+  assert.deepEqual(res.selectableStats.map((s) => s.kind), ["critRate", "atkPct"]);
+  assert.deepEqual(buildCommonKeyViews([{ id: "k", name: "K" }], 3).selectableStats, [], "no pool supplied → no options");
 });
 
 test("unit: buildCharacterMetaView maps optional member/key metadata", () => {

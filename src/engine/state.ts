@@ -8,7 +8,7 @@ import { DISPATCH_STAT_BUFFS } from "../data/dispatch.js";
 import { REMOLDER_BUFFS } from "../data/remolder.js";
 import { NEURAL_HELIX_GLOBAL_PCT } from "../data/neural-helix.js";
 import { resolveAttachmentStats, validateAttachmentConfig } from "../data/attachments.js";
-import { COMMON_KEY_STAT_KINDS } from "../data/common-keys.js";
+import { COMMON_KEY_SELECTABLE_STAT_KINDS } from "../data/common-keys.js";
 import { resolveRemolderUnit, resolveRemolderTeam } from "./remolder.js";
 
 /**
@@ -555,8 +555,8 @@ function makeDoll(
     defPct: nhActive && !isAuthoritativelyOverridden(baseStatOverrides, "def", overridesAuthoritative) ? (def.neuralHelixStats?.defPct ?? 0) + NEURAL_HELIX_GLOBAL_PCT : 0,
   };
   const atkPct = (commonStats.atkPct ?? 0) + aff.atk + (levelStat.atkPct ?? 0) + nhPct.atkPct + attachPct.atk + remolderPlan.selfPct.atk + remolderGrants.unityPct.atk + remolderGrants.alliedPct.atk;
-  const hpPct = aff.hp + (levelStat.hpPct ?? 0) + nhPct.hpPct + attachPct.hp + remolderPlan.selfPct.hp + remolderGrants.unityPct.hp + remolderGrants.alliedPct.hp;
-  const defPct = (levelStat.defPct ?? 0) + nhPct.defPct + attachPct.def + remolderPlan.selfPct.def + remolderGrants.unityPct.def + remolderGrants.alliedPct.def;
+  const hpPct = (commonStats.hpPct ?? 0) + aff.hp + (levelStat.hpPct ?? 0) + nhPct.hpPct + attachPct.hp + remolderPlan.selfPct.hp + remolderGrants.unityPct.hp + remolderGrants.alliedPct.hp;
+  const defPct = (commonStats.defPct ?? 0) + (levelStat.defPct ?? 0) + nhPct.defPct + attachPct.def + remolderPlan.selfPct.def + remolderGrants.unityPct.def + remolderGrants.alliedPct.def;
   let confectance = config.confectanceStart;
   for (const k of def.fixedKeys) {
     if (keys.includes(k.id)) {
@@ -745,16 +745,26 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
         }
         const key = registry.getCommonKey(keyId);
         if (!key) throw new Error(`Team member ${m.characterId}: unknown common key: ${keyId}`);
-        const selectable = key.stats.length - (key.fixedStatCount ?? 1);
+        const fixedCount = key.fixedStatCount ?? 1;
+        const selectable = key.stats.length - fixedCount;
         if (choices.length > selectable) {
           throw new Error(
             `Team member ${m.characterId}: key "${keyId}" has ${selectable} selectable stat slot(s); got ${choices.length} choice(s)`,
           );
         }
         for (const kind of choices) {
-          if (!COMMON_KEY_STAT_KINDS.includes(kind)) {
-            throw new Error(`Team member ${m.characterId}: key "${keyId}" — unknown selectable stat kind: ${kind}`);
+          if (!COMMON_KEY_SELECTABLE_STAT_KINDS.includes(kind)) {
+            throw new Error(`Team member ${m.characterId}: key "${keyId}" — kind "${kind}" is not a selectable Common Key stat kind`);
           }
+        }
+        // NO DUPLICATES: the chosen kinds must differ from each other AND from the key's fixed stat
+        // (all 3 stat kinds on a key must be different — 2026, user-confirmed).
+        const fixedKinds = key.stats.slice(0, fixedCount).map((s) => s.kind).filter((k): k is CommonKeyStat => k !== undefined);
+        const combined = [...fixedKinds, ...choices];
+        if (new Set(combined).size !== combined.length) {
+          throw new Error(
+            `Team member ${m.characterId}: key "${keyId}" — the selectable stat kinds must differ from each other and from the fixed stat ("${fixedKinds.join(", ")}"); got ${choices.join(", ")}`,
+          );
         }
       }
     }

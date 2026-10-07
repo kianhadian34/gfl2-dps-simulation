@@ -12,7 +12,7 @@ import { broadcast } from "./windows.js";
 import { simulateScenario } from "../../../src/simulate.ts";
 import { REGISTRY } from "../../../src/data/registry.ts";
 import { WEAPONS } from "../../../src/data/weapons.ts";
-import { COMMON_KEYS } from "../../../src/data/common-keys.ts";
+import { COMMON_KEYS, COMMON_KEY_SELECTABLE_STAT_KINDS } from "../../../src/data/common-keys.ts";
 import { ATTACHMENT_SETS } from "../../../src/data/attachment-sets.ts";
 import { ATTACHMENT_SLOTS, ATTACHMENT_SLOT_MAX_STATS, ATTACHMENT_STAT_DEFS, attachmentStatsForSlot } from "../../../src/data/attachments.ts";
 import { MAX_COMMON_KEYS } from "../../../src/engine/state.ts";
@@ -232,7 +232,7 @@ export function registerSimHandlers(): void {
   ipcMain.handle("sim:listWeapons", () => buildWeaponViews(WEAPONS));
 
   /** Common Keys available from the engine data (+ the engine-enforced 3-slot maximum). */
-  ipcMain.handle("sim:listCommonKeys", () => buildCommonKeyViews(COMMON_KEYS, MAX_COMMON_KEYS));
+  ipcMain.handle("sim:listCommonKeys", () => buildCommonKeyViews(COMMON_KEYS, MAX_COMMON_KEYS, COMMON_KEY_SELECTABLE_STAT_KINDS));
 
   /** Attachment catalog (2026): slots + per-slot rules + stat defs + the IMPLEMENTED sets only. */
   ipcMain.handle("sim:listAttachments", () =>

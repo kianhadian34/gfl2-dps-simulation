@@ -15,6 +15,7 @@ import type {
   WeaponView,
   CommonKeyListResult,
   CommonKeyView,
+  CommonKeyStatOptionView,
   CharacterMetaView,
   WeaponCalibrationEffectView,
   AffinityKeyView,
@@ -153,7 +154,31 @@ export function effectCopyWithCalibration(w: WeaponView | undefined, template: s
   return segments;
 }
 
-export function buildCommonKeyViews(keys: CommonKeySource[], maxCommonKeys: number): CommonKeyListResult {
+/**
+ * Stat-kind → display label (data-driven; never invented). Covers the player-selectable pool AND
+ * the effect-only kinds (outOfTurnDmg).
+ */
+const COMMON_KEY_STAT_LABELS: Record<string, string> = {
+  critRate: "Crit Rate",
+  critDmg: "Crit DMG",
+  hpPct: "Health Boost",
+  defPct: "Defense Boost",
+  atkPct: "Attack Boost",
+  outOfTurnDmg: "Out-of-Turn Damage",
+};
+
+/** Fixed value every selectable Common Key stat grants (0.05 = 5.0%) — mirrors the key data. */
+const COMMON_KEY_SELECTABLE_STAT_VALUE = 0.05;
+
+/**
+ * Build the player-selectable stat options for a Common Key's picker from the engine's selectable
+ * pool (`COMMON_KEY_SELECTABLE_STAT_KINDS`). Kinds are the ONLY source; labels/values are display.
+ */
+export function buildCommonKeySelectableStats(kinds: string[], value = COMMON_KEY_SELECTABLE_STAT_VALUE): CommonKeyStatOptionView[] {
+  return kinds.map((kind) => ({ kind, label: COMMON_KEY_STAT_LABELS[kind] ?? kind, value }));
+}
+
+export function buildCommonKeyViews(keys: CommonKeySource[], maxCommonKeys: number, selectableKinds: string[] = []): CommonKeyListResult {
   return {
     items: keys.map((k) => ({
       id: k.id,
@@ -167,6 +192,7 @@ export function buildCommonKeyViews(keys: CommonKeySource[], maxCommonKeys: numb
         : {}),
     })),
     maxCommonKeys,
+    selectableStats: buildCommonKeySelectableStats(selectableKinds),
   };
 }
 
@@ -244,31 +270,39 @@ export function buildAttachmentCatalog(src: AttachmentCatalogSource): Attachment
   };
 }
 
-/** Stat-kind → display label (data-driven; never invented). */
-const COMMON_KEY_STAT_LABELS: Record<string, string> = {
-  atkPct: "Attack Boost",
-  critRate: "Crit Rate",
-  critDmg: "Crit DMG",
-  outOfTurnDmg: "Out-of-Turn Damage",
-};
+/**
+ * A single player-facing Common Key stat line, tagged with its provenance so the UI can style it
+ * differently: `fixed` (hardcoded stat), `chosen` (a player-selected kind), `empty` (a selectable
+ * slot the player has not filled yet).
+ */
+export interface CommonKeyStatLine {
+  text: string;
+  state: "fixed" | "chosen" | "empty";
+}
 
 /**
  * Player-facing stat lines a Common Key grants. Under the 2026 corrected model, slots before
  * `fixedStatCount` (default 1) are FIXED (their kind is shown); later slots are PLAYER-SELECTABLE
- * and rendered as an open slot ("‹choose a stat›"). Data-driven label map — never invented.
+ * and reflect the player's chosen kind (`chosenKinds`, in slot order) — an unchosen selectable slot
+ * reads "‹choose a stat›". Data-driven label map — never invented.
  */
-export function commonKeyStatLines(k: CommonKeyView): string[] {
+export function commonKeyStatLines(k: CommonKeyView, chosenKinds: string[] = []): CommonKeyStatLine[] {
   const s = k.stats;
   if (!s) return [];
   const fixed = k.fixedStatCount ?? 1;
-  return s.map((slot, i) => {
+  return s.map((slot, i): CommonKeyStatLine => {
     if (i < fixed) {
       // FIXED slot: its kind is present and shown.
       const label = slot.kind !== undefined ? (COMMON_KEY_STAT_LABELS[slot.kind] ?? slot.kind) : "choose a stat";
-      return `${label} +${pct1(slot.value)}`;
+      return { text: `${label} +${pct1(slot.value)}`, state: "fixed" };
     }
-    // SELECTABLE slot: the player picks the kind (data `kind` is not consulted) → shown open.
-    return `(selectable) choose a stat +${pct1(slot.value)}`;
+    // SELECTABLE slot: show the player's chosen kind when present (the data `kind` is NOT consulted).
+    const chosenKind = chosenKinds[i - fixed];
+    if (chosenKind !== undefined) {
+      const label = COMMON_KEY_STAT_LABELS[chosenKind] ?? chosenKind;
+      return { text: `${label} +${pct1(slot.value)}`, state: "chosen" };
+    }
+    return { text: `(selectable) choose a stat +${pct1(slot.value)}`, state: "empty" };
   });
 }
 
@@ -477,4 +511,4 @@ export function expansionKeyEffectLine(e: ExpansionKeyView | undefined): string 
 }
 
 /** Convenience re-export for callers that only need the view types. */
-export type { WeaponView, CommonKeyListResult, CommonKeyView, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, AttachmentSlotView, AttachmentStatView, AttachmentConfigView, AttachmentStatDefView, AttachmentSlotRulesView, AttachmentSetView };
+export type { WeaponView, CommonKeyListResult, CommonKeyView, CommonKeyStatOptionView, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, AttachmentSlotView, AttachmentStatView, AttachmentConfigView, AttachmentStatDefView, AttachmentSlotRulesView, AttachmentSetView };

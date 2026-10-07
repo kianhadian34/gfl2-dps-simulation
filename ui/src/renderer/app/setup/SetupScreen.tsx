@@ -13,6 +13,7 @@ import {
   setExpansionKey,
   setWeapon,
   setCommonKeyAt,
+  toggleCommonKeyStatChoice,
   setAffinityLevel,
   setRoundOrder,
   toggleFixedKey,
@@ -32,7 +33,7 @@ import {
   type RotationSlot,
   type SetupState,
 } from "../../../shared/setup.js";
-import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, RotationSkillView } from "../../../shared/engine-types.js";
+import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CommonKeyStatOptionView, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, RotationSkillView } from "../../../shared/engine-types.js";
 import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, affinityLevels, affinityLevelFlatLines, expansionKeyEffectLine, affinityLevelStatLines, rotationAbilityDescription } from "../../../shared/lists.js";
 import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset, skillAsset, elementAsset, ammoAsset } from "../../../shared/assets.js";
 import { AssetThumb } from "./AssetThumb.js";
@@ -96,16 +97,16 @@ function ExpansionKeyBadge({ k, size }: { k: ExpansionKeyView; size: number }) {
     </span>
   );
 }
-function CommonKeyBadge({ k, size }: { k: CommonKeyView; size: number }) {
+function CommonKeyBadge({ k, size, chosenKinds }: { k: CommonKeyView; size: number; chosenKinds?: string[] }) {
   const effect = commonKeyEffectLine(k);
   return (
     <>
       <AssetThumb asset={commonKeyAsset(k.id)} alt={k.name} size={size} />
       <span className="common-key-badge-text">
         <span className="common-key-name">{k.name}</span>
-        {commonKeyStatLines(k).map((ln) => (
-          <span key={ln} className="common-key-stat">
-            {ln}
+        {commonKeyStatLines(k, chosenKinds).map((ln, i) => (
+          <span key={`${ln.text}-${i}`} className={`common-key-stat is-${ln.state}`}>
+            {ln.text}
           </span>
         ))}
         {effect ? (
@@ -123,6 +124,56 @@ function rotationTypeLabel(type: string | undefined): string | undefined {
   return type ? type.toUpperCase() : undefined;
 }
 
+/**
+ * COMMON KEY STAT PICKER (2026). Rendered INSIDE the equipped key's own slot column, directly
+ * under that key, so each key's selectable stat boosts are visually anchored to the key they
+ * belong to (three keys → three pickers, never one detached bar). The fixed stat(s) are shown
+ * read-only; the player toggles the remaining kinds from the engine pool. A kind that is already
+ * the key's fixed stat, or would exceed the selectable-slot count, is disabled (no duplicates).
+ */
+function CommonKeyStatPicker(props: {
+  k: CommonKeyView;
+  options: CommonKeyStatOptionView[];
+  chosen: string[];
+  onToggle: (kind: string) => void;
+}) {
+  const fixedCount = props.k.fixedStatCount ?? 1;
+  const maxChoices = (props.k.stats?.length ?? 0) - fixedCount;
+  if (maxChoices <= 0) return null; // no selectable slots → nothing to pick (e.g. a fully-fixed key)
+  const fixedKinds = (props.k.stats ?? []).slice(0, fixedCount).map((s) => s.kind).filter((x): x is string => x !== undefined);
+  const labelFor = (kind: string) => props.options.find((o) => o.kind === kind)?.label ?? kind;
+  return (
+    <div className="common-key-statpick" onClick={(e) => e.stopPropagation()}>
+      <span className="common-key-statpick-head">
+        Stat boosts <span className="muted">({props.chosen.length}/{maxChoices})</span>
+      </span>
+      <span className="common-key-statpick-fixed muted">fixed: {fixedKinds.length > 0 ? fixedKinds.map(labelFor).join(", ") : "—"}</span>
+      <span className="common-key-statpick-pills">
+        {props.options.map((opt) => {
+          const isFixed = fixedKinds.includes(opt.kind);
+          const isChosen = props.chosen.includes(opt.kind);
+          const full = props.chosen.length >= maxChoices && !isChosen;
+          const disabled = isFixed || full;
+          return (
+            <button
+              key={opt.kind}
+              type="button"
+              className={`common-key-statpill${isChosen ? " is-selected" : ""}`}
+              disabled={disabled}
+              title={isFixed ? "Already the key's fixed stat" : full ? "All selectable slots are filled" : undefined}
+              onClick={(e) => {
+                e.stopPropagation();
+                props.onToggle(opt.kind);
+              }}
+            >
+              {opt.label} <span className="muted">+{(opt.value * 100).toFixed(1)}%</span>
+            </button>
+          );
+        })}
+      </span>
+    </div>
+  );
+}
 /**
  * Mini element + ammo badges for a rotation skill card — engine-sourced (the SAME icons the Phase/
  * Ammo weakness sections use). An ability shows a badge ONLY for the attribute it actually has:
@@ -738,38 +789,60 @@ export function SetupScreen(props: {
                                 const keyId = (equ.commonKeyIds ?? [])[slot];
                                 const k = keyId !== undefined ? (commonKeys?.items ?? []).find((x) => x.id === keyId) : undefined;
                                 return (
-                                  <button
-                                    key={slot}
-                                    type="button"
-                                    className={`common-key-slot${k ? " is-filled" : " is-empty"}`}
-                                    onClick={() => setCommonKeySlot(slot)}
-                                  >
-                                    {k ? (
-                                      <>
-                                        <CommonKeyBadge k={k} size={64} />
-                                        <span
-                                          className="common-key-slot-remove"
-                                          title="Remove"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            props.onChange(
-                                              setCommonKeyAt(
-                                                props.setup,
-                                                c.id,
-                                                slot,
-                                                undefined,
-                                                commonKeys?.maxCommonKeys ?? MAX_COMMON_KEYS_UI,
-                                              ),
-                                            );
-                                          }}
-                                        >
-                                          ×
-                                        </span>
-                                      </>
-                                    ) : (
-                                      <span className="common-key-slot-plus">+</span>
-                                    )}
-                                  </button>
+                                  // Each slot is a COLUMN: the key card, then (for an equipped key with
+                                  // selectable slots) its own stat picker directly underneath, so the
+                                  // picker is anchored to the key it configures — 3 keys → 3 pickers.
+                                  <div key={slot} className="common-key-slot-col">
+                                    <button
+                                      type="button"
+                                      className={`common-key-slot${k ? " is-filled" : " is-empty"}`}
+                                      onClick={() => setCommonKeySlot(slot)}
+                                    >
+                                      {k ? (
+                                        <>
+                                          <CommonKeyBadge k={k} size={64} chosenKinds={equ.commonKeyStatChoices?.[k.id] ?? []} />
+                                          <span
+                                            className="common-key-slot-remove"
+                                            title="Remove"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              props.onChange(
+                                                setCommonKeyAt(
+                                                  props.setup,
+                                                  c.id,
+                                                  slot,
+                                                  undefined,
+                                                  commonKeys?.maxCommonKeys ?? MAX_COMMON_KEYS_UI,
+                                                ),
+                                              );
+                                            }}
+                                          >
+                                            ×
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <span className="common-key-slot-plus">+</span>
+                                      )}
+                                    </button>
+                                    {k && k.stats ? (
+                                      <CommonKeyStatPicker
+                                        k={k}
+                                        options={commonKeys?.selectableStats ?? []}
+                                        chosen={equ.commonKeyStatChoices?.[k.id] ?? []}
+                                        onToggle={(kind) =>
+                                          props.onChange(
+                                            toggleCommonKeyStatChoice(
+                                              props.setup,
+                                              c.id,
+                                              k.id,
+                                              kind,
+                                              k.stats!.length - (k.fixedStatCount ?? 1),
+                                            ),
+                                          )
+                                        }
+                                      />
+                                    ) : null}
+                                  </div>
                                 );
                               })}
                             </div>

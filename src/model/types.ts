@@ -462,14 +462,17 @@ export interface AffinityFlatStats {
  * Common Key STAT BLOCK — kept EXPLICITLY SEPARATE from the optional secondary effect.
  * Each field is folded through the EXISTING generic stat infrastructure (game structure —
  * SOURCE FACT: Gold/Epic Keys grant 3 kinds of stats, Rare Keys grant 2; a key declares
- * exactly the stat fields it grants). Only the stat kinds evidenced by Strategic Negotiation
- * are represented here — extend this block (never with character-specific logic) when new
- * Common Key evidence arrives.
+ * exactly the stat fields it grants). `outOfTurnDmg` appears only in a key's SECONDARY EFFECT
+ * (Strategic Negotiation's +7% "Effect"), NOT among the player-selectable stat kinds — see
+ * `COMMON_KEY_SELECTABLE_STAT_KINDS`. Extend this block (never with character-specific logic)
+ * when new Common Key evidence arrives.
  */
 export interface CommonKeyStats {
   atkPct?: number;
   critRate?: number;
   critDmg?: number;
+  hpPct?: number;
+  defPct?: number;
   outOfTurnDmg?: number;
 }
 

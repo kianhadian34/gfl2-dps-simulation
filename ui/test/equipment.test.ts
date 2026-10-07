@@ -17,6 +17,7 @@ import {
   setWeapon,
   setCommonKeyAt,
   toggleCommonKey,
+  toggleCommonKeyStatChoice,
   toggleFixedKey,
   type SetupState,
 } from "../src/shared/setup.js";
@@ -229,6 +230,42 @@ test("equipment: setCommonKeyAt(undefined) removes the slot's key and shifts lat
   const before = equipmentOf(s.characters[0]).commonKeyIds;
   s = setCommonKeyAt(s, "qiongjiu", 5, "ck1", 3);
   assert.equal(equipmentOf(s.characters[0]).commonKeyIds, before, "out-of-range slot rejected");
+});
+
+test("equipment: toggleCommonKeyStatChoice toggles a key's selectable stat kinds up to the slot count", () => {
+  let s = setupWith();
+  s = setCommonKeyAt(s, "qiongjiu", 0, "ck_sn", 3);
+  const choices = () => equipmentOf(s.characters[0]).commonKeyStatChoices?.["ck_sn"] ?? [];
+  s = toggleCommonKeyStatChoice(s, "qiongjiu", "ck_sn", "critDmg", 2);
+  s = toggleCommonKeyStatChoice(s, "qiongjiu", "ck_sn", "atkPct", 2);
+  assert.deepEqual(choices(), ["critDmg", "atkPct"], "two kinds chosen in selection order");
+  // At the cap, a 3rd distinct kind is a no-op (never drops an existing choice).
+  s = toggleCommonKeyStatChoice(s, "qiongjiu", "ck_sn", "hpPct", 2);
+  assert.deepEqual(choices(), ["critDmg", "atkPct"], "cap reached → no-op");
+  // Toggling a chosen kind off removes it (and clears the entry when empty).
+  s = toggleCommonKeyStatChoice(s, "qiongjiu", "ck_sn", "critDmg", 2);
+  assert.deepEqual(choices(), ["atkPct"], "kind removed by toggle");
+  s = toggleCommonKeyStatChoice(s, "qiongjiu", "ck_sn", "atkPct", 2);
+  assert.equal(equipmentOf(s.characters[0]).commonKeyStatChoices, undefined, "empty choices cleared entirely");
+});
+
+test("equipment: removing/changing a Common Key drops its stale stat choices; buildScenario carries choices verbatim", () => {
+  let s = setupWith();
+  s = setCommonKeyAt(s, "qiongjiu", 0, "ck_a", 3);
+  s = setCommonKeyAt(s, "qiongjiu", 1, "ck_b", 3);
+  s = toggleCommonKeyStatChoice(s, "qiongjiu", "ck_a", "critDmg", 2);
+  s = toggleCommonKeyStatChoice(s, "qiongjiu", "ck_a", "atkPct", 2);
+  s = toggleCommonKeyStatChoice(s, "qiongjiu", "ck_b", "hpPct", 2);
+  assert.deepEqual(equipmentOf(s.characters[0]).commonKeyStatChoices, { ck_a: ["critDmg", "atkPct"], ck_b: ["hpPct"] });
+  // Removing ck_a must drop ONLY its choices, keeping ck_b's.
+  s = setCommonKeyAt(s, "qiongjiu", 0, undefined, 3);
+  assert.deepEqual(equipmentOf(s.characters[0]).commonKeyStatChoices, { ck_b: ["hpPct"] }, "stale choices for the removed key are dropped");
+  // Replacing ck_b with ck_c drops ck_b's choices too.
+  s = setCommonKeyAt(s, "qiongjiu", 0, "ck_c", 3);
+  assert.equal(equipmentOf(s.characters[0]).commonKeyStatChoices, undefined, "choices for the replaced key dropped; ck_c has none yet");
+  s = toggleCommonKeyStatChoice(s, "qiongjiu", "ck_c", "defPct", 2);
+  const sc: ScenarioView = buildScenario(s);
+  assert.deepEqual(sc.team[0].commonKeyStatChoices, { ck_c: ["defPct"] }, "choices carried verbatim into the engine scenario");
 });
 
 // ---------------------------------------------------------------------------

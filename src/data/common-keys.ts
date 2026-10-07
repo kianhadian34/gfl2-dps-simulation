@@ -1,12 +1,14 @@
 import type { CommonKeyDef, CommonKeyStat } from "../model/types.js";
 
 /**
- * RUNTIME pool of the supported Common Key stat kinds, in CANONICAL display order. The player
- * picks from this pool for a key's SELECTABLE stat slots (slots after the fixed first one); the
- * engine validates choices against it. Kept in sync with the type-only `CommonKeyStats` block
- * (src/model/types.ts) — extend both together.
+ * RUNTIME pool of the PLAYER-SELECTABLE Common Key stat kinds, in CANONICAL display order
+ * (2026, user-confirmed): Crit Rate, Crit Damage, Health Boost, Defense Boost, Attack Boost —
+ * all at 5.0%. The player picks from this pool for a key's SELECTABLE stat slots (slots after
+ * the fixed first one); the engine validates choices against it AND rejects duplicates (all 3
+ * stat kinds on a key must differ). Out-of-Turn Damage is NOT here — it is a key's EFFECT
+ * (secondary effect), not a stat.
  */
-export const COMMON_KEY_STAT_KINDS: CommonKeyStat[] = ["atkPct", "critRate", "critDmg", "outOfTurnDmg"];
+export const COMMON_KEY_SELECTABLE_STAT_KINDS: CommonKeyStat[] = ["critRate", "critDmg", "hpPct", "defPct", "atkPct"];
 
 /**
  * Common Keys registry data (REUSABLE definitions — the game's Common Key system is a
