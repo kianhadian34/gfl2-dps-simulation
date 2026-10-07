@@ -1,8 +1,8 @@
 # Phase / Element icons — delivered drop zone (2026)
 
-The game's Phase/Element icons have been **delivered** (7 files, see below). They are **NOT yet
-wired** into `ui/src/shared/assets.ts` (there is no `element` AssetKind/resolver yet), so nothing
-consumes them — this directory holds the delivered artwork + the STRUCTURE/NAMING contract.
+The game's Phase/Element icons are **delivered and wired** (7 files). They resolve via
+`elementAsset()` in `ui/src/shared/assets.ts` and are consumed by the Setup screen's **Phase
+weaknesses** section (an icon next to each element).
 
 See `ui/docs/assets.md` §2/§3 for the global-category convention this mirrors.
 
@@ -35,6 +35,6 @@ ids only — they are not engine `Element` values.
 
 - Format: **lossless WebP** (8-bit RGBA, transparency preserved), matching the existing supplied
   assets' `.webp`. The originally delivered PNGs were converted 1:1 (pixels unchanged).
-- When these icons are approved for use, a follow-up task adds an `element` kind +
-  `elementAsset()` to `ui/src/shared/assets.ts` and lists the files in `SUPPLIED_ASSET_FILES`.
+- When these icons are changed/replaced, update the file + the `SUPPLIED_ASSET_FILES` entry in
+  `ui/src/shared/assets.ts` (the resolver + Setup-screen wiring already exist).
 

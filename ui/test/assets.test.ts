@@ -6,6 +6,7 @@ import {
   assetRenderSpec,
   characterAsset,
   commonKeyAsset,
+  elementAsset,
   expansionKeyAsset,
   fixedKeyAsset,
   pathFor,
@@ -131,7 +132,7 @@ test("10: missing assets produce the defined fallback; supplied files are discov
 
 test("10b: SUPPLIED_ASSET_FILES is the single source of truth — every entry resolves and is never invented", () => {
   const entries = Object.entries(SUPPLIED_ASSET_FILES);
-  assert.equal(entries.length, 16, "16 supplied images are listed (the Support-skill artwork has NOT been supplied)");
+  assert.equal(entries.length, 23, "23 supplied images are listed (the Support-skill artwork has NOT been supplied; 7 element icons added)");
   for (const [key, file] of entries) {
     const [kind, entityId] = key.split(":");
     assert.ok(KNOWN_ENTITY_IDS[kind as keyof typeof KNOWN_ENTITY_IDS].has(entityId), `entry ${key} maps to a KNOWN entity`);
@@ -170,4 +171,28 @@ test("16: Support Attack is NOT a standalone skill asset (part of Steady Plan; n
   assert.ok(KNOWN_ENTITY_IDS.skill.has("qiongjiu_support"), "qiongjiu_support is a known engine skill id");
   assert.equal(SUPPLIED_ASSET_FILES["skill:qiongjiu_support"], undefined, "no separate Support Attack artwork is required/expected");
   assert.equal(SUPPLIED_ASSET_FILES["skill:qiongjiu_steady_plan"], "assets/characters/qiongjiu/skills/qiongjiu-passive-steady-plan.webp", "Steady Plan carries the passive artwork");
+});
+
+test("17: element icons resolve GLOBALLY by element id — one file per element, no character id", () => {
+  for (const id of ["physical", "burn", "hydro", "corrosion", "electric", "freeze", "omni"]) {
+    const r = assertDefined(elementAsset(id), `element:${id}`);
+    assert.equal(r.kind, "element");
+    assert.equal(r.path, `assets/elements/${id}/${id}`, `${id} under the global elements dir`);
+    assert.ok(!r.path.startsWith("assets/characters/"), "elements are NOT character-owned");
+    assert.equal(r.supplied, true, `${id} icon is supplied`);
+    assert.equal(r.file, `assets/elements/${id}/${id}.webp`, `${id} file path`);
+  }
+});
+
+test("18: elementAsset reports the explicit missing state for an unknown element id (no invented art)", () => {
+  assert.deepEqual(elementAsset("not_an_element"), { status: "unknown", kind: "element", entityId: "not_an_element" });
+  assert.deepEqual(assetRenderSpec(elementAsset("not_an_element")), { mode: "missing" });
+});
+
+test("19: the 5 engine Elements all have a supplied icon; physical/omni are presentation-only ids", () => {
+  const ENGINE_ELEMENTS = ["burn", "hydro", "freeze", "electric", "corrosion"];
+  for (const e of ENGINE_ELEMENTS) assert.ok(KNOWN_ENTITY_IDS.element.has(e), `engine Element ${e} has an icon`);
+  assert.ok(KNOWN_ENTITY_IDS.element.has("physical"), "phase-less (engine element === null) has a presentation icon");
+  assert.ok(KNOWN_ENTITY_IDS.element.has("omni"), "omni is a presentation-only id");
+  assert.equal(KNOWN_ENTITY_IDS.element.size, 7, "exactly the 7 delivered element icons");
 });

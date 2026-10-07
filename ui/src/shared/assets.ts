@@ -29,7 +29,8 @@ export type AssetKind =
   | "affinity-key"
   | "expansion-key"
   | "skill"
-  | "weapon";
+  | "weapon"
+  | "element";
 
 export type AssetEntityId = string;
 
@@ -56,6 +57,13 @@ export const KNOWN_ENTITY_IDS: Record<AssetKind, ReadonlySet<AssetEntityId>> = {
     "qiongjiu_steady_plan",
   ]),
   weapon: new Set(["jinshizou"]),
+  /**
+   * GLOBAL element/phase icons (2026). Engine `Element` = burn | hydro | freeze | electric |
+   * corrosion. `physical` (phase-less; engine `element === null`) and `omni` (all elements) are
+   * PRESENTATION-side ids — they are NOT engine `Element` values. Kept in sync with the delivered
+   * files under `assets/elements/` (see ui/docs/assets.md §2/§3).
+   */
+  element: new Set(["physical", "burn", "hydro", "corrosion", "electric", "freeze", "omni"]),
 };
 
 /**
@@ -84,6 +92,13 @@ export const SUPPLIED_ASSET_FILES: Readonly<Record<string, string>> = {
   "common-key:qiongjiu_common_strategic_negotiation":
     "assets/common-keys/qiongjiu_common_strategic_negotiation/qiongjiu-common-key-strategic-negotiation.webp",
   "weapon:jinshizou": "assets/weapons/jinshizou/64111d2dacf250a428ca4639dece164e.webp",
+  "element:physical": "assets/elements/physical/physical.webp",
+  "element:burn": "assets/elements/burn/burn.webp",
+  "element:hydro": "assets/elements/hydro/hydro.webp",
+  "element:corrosion": "assets/elements/corrosion/corrosion.webp",
+  "element:electric": "assets/elements/electric/electric.webp",
+  "element:freeze": "assets/elements/freeze/freeze.webp",
+  "element:omni": "assets/elements/omni/omni.webp",
 };
 
 /**
@@ -124,6 +139,9 @@ export function pathFor(kind: AssetKind, entityId: AssetEntityId): string {
     case "weapon":
       // GLOBAL: signature ownership is engine data; the ASSET lives under the weapon itself.
       return `assets/weapons/${entityId}/${entityId}`;
+    case "element":
+      // GLOBAL: one file per element id; never under a character directory.
+      return `assets/elements/${entityId}/${entityId}`;
   }
 }
 
@@ -167,6 +185,8 @@ export const affinityKeyAsset = (affinityKeyId: AssetEntityId): AssetRefResult =
 export const expansionKeyAsset = (expansionKeyId: AssetEntityId): AssetRefResult => resolveAsset("expansion-key", expansionKeyId);
 export const skillAsset = (skillId: AssetEntityId): AssetRefResult => resolveAsset("skill", skillId);
 export const weaponAsset = (weaponId: AssetEntityId): AssetRefResult => resolveAsset("weapon", weaponId);
+/** GLOBAL element/phase icon by element id (engine Element, or the presentation ids `physical`/`omni`). */
+export const elementAsset = (elementId: AssetEntityId): AssetRefResult => resolveAsset("element", elementId);
 
 // ---------------------------------------------------------------------------
 // RENDER SPEC (2026) — the single presentation decision for an asset ref, kept PURE

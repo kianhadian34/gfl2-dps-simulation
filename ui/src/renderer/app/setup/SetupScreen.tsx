@@ -30,7 +30,7 @@ import {
 } from "../../../shared/setup.js";
 import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView } from "../../../shared/engine-types.js";
 import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, affinityLevels, affinityLevelFlatLines, expansionKeyEffectLine, affinityLevelStatLines, rotationAbilityDescription } from "../../../shared/lists.js";
-import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset, skillAsset } from "../../../shared/assets.js";
+import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset, skillAsset, elementAsset } from "../../../shared/assets.js";
 import { AssetThumb } from "./AssetThumb.js";
 
 /**
@@ -226,6 +226,7 @@ export function SetupScreen(props: {
                         set({ dummy: { ...props.setup.dummy, weaknesses: ws } });
                       }}
                     />
+                    <AssetThumb asset={elementAsset(id ?? p.label.toLowerCase())} alt={p.label} size={28} />
                     {p.label}
                     {disabled && <span className="muted"> (engine Element pending)</span>}
                   </label>
