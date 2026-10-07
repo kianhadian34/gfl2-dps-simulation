@@ -111,6 +111,57 @@ export function setRoundOrder(state: SetupState, round: number, order: string[])
   return { ...state, roundOrder: next };
 }
 
+// ---------------------------------------------------------------------------
+// ROTATION (2026 revamp) — pure, order-preserving helpers for the two-panel builder.
+// The rotation is a CYCLIC PRIORITY list (src/engine/simulation.ts `pickAction`), so ORDER matters;
+// these helpers keep the list explicit and never invent slots. The engine remains the validator.
+// ---------------------------------------------------------------------------
+
+/** The rotation list for one character (empty array when none). */
+export function rotationOf(state: SetupState, charId: string): RotationSlot[] {
+  return state.rotations[charId] ?? [];
+}
+
+/** Replace a character's rotation list VERBATIM (no filtering — the engine validates slots). */
+export function setRotation(state: SetupState, charId: string, rotation: RotationSlot[]): SetupState {
+  return { ...state, rotations: { ...state.rotations, [charId]: [...rotation] } };
+}
+
+/** Append one slot to the END of a character's rotation (the palette "add" action). */
+export function addRotationSlot(state: SetupState, charId: string, slot: RotationSlot): SetupState {
+  return setRotation(state, charId, [...rotationOf(state, charId), slot]);
+}
+
+/** Insert a slot at a specific index (0..length); out-of-range indices clamp to the end. */
+export function insertRotationSlotAt(state: SetupState, charId: string, index: number, slot: RotationSlot): SetupState {
+  const cur = [...rotationOf(state, charId)];
+  const i = Math.max(0, Math.min(index, cur.length));
+  cur.splice(i, 0, slot);
+  return setRotation(state, charId, cur);
+}
+
+/** Remove the slot at `index` (no-op when out of range). */
+export function removeRotationSlotAt(state: SetupState, charId: string, index: number): SetupState {
+  const cur = [...rotationOf(state, charId)];
+  if (index < 0 || index >= cur.length) return state;
+  cur.splice(index, 1);
+  return setRotation(state, charId, cur);
+}
+
+/** Move the slot at `from` to `to` (reorder by drag/drop). Out-of-range = no-op. */
+export function moveRotationSlot(state: SetupState, charId: string, from: number, to: number): SetupState {
+  const cur = [...rotationOf(state, charId)];
+  if (from < 0 || from >= cur.length || to < 0 || to >= cur.length || from === to) return state;
+  const [moved] = cur.splice(from, 1);
+  cur.splice(to, 0, moved);
+  return setRotation(state, charId, cur);
+}
+
+/** Clear a character's rotation (empty = the engine rejects the run, surfaced in the UI). */
+export function clearRotation(state: SetupState, charId: string): SetupState {
+  return setRotation(state, charId, []);
+}
+
 export interface SetupState {
   turns: number;
   seed: number;

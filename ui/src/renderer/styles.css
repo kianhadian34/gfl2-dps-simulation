@@ -446,29 +446,95 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .form legend { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
 .rot-builder { margin-bottom: 10px; }
 .rot-builder .mname { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
-.rot-builder .rot-slots { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; min-height: 20px; }
-.rot-builder .rot-slot-card {
-  display: inline-flex; align-items: center; gap: 5px;
-  border: 1px solid var(--border); border-radius: 4px; background: var(--bg-3);
-  padding: 3px 8px 3px 3px; font-size: 11px; color: var(--text);
+.rot-builder .rot-count { font-weight: 400; font-size: 11px; margin-left: 2px; }
+/* Two-panel builder: LEFT ability palette, RIGHT ordered sequence (2026 revamp). */
+.rot-builder .rot-panels {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 12px; align-items: start; margin: 6px 0;
 }
-.rot-builder .rot-cards { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0; }
+@media (max-width: 900px) { .rot-builder .rot-panels { grid-template-columns: 1fr; } }
+.rot-builder .rot-panel-label {
+  display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--muted); margin-bottom: 6px;
+}
+.rot-builder .rot-palette,
+.rot-builder .rot-sequence {
+  border: 1px solid var(--border); border-radius: 6px; background: var(--bg-2);
+  padding: 8px; min-height: 64px;
+}
+.rot-builder .rot-empty { font-size: 12px; font-style: italic; padding: 10px 4px; }
+
+/* Ordered sequence — numbered steps + connectors + a loop-back indicator. */
+.rot-builder .rot-slots { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0; min-height: 20px; }
+.rot-builder .rot-slot-wrap { display: inline-flex; align-items: center; position: relative; }
+.rot-builder .rot-slot-wrap.has-connector::before {
+  content: "›"; color: var(--accent); font-weight: 700; font-size: 15px;
+  margin: 0 4px 0 1px; opacity: 0.85;
+}
+.rot-builder .rot-slot-wrap.is-dragging { opacity: 0.4; }
+.rot-builder .rot-slot-wrap.is-drop-target .rot-slot-card {
+  border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.rot-builder .rot-slots { cursor: grab; }
+.rot-builder .rot-loop {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; margin-left: 4px; border-radius: 50%;
+  border: 1px dashed var(--accent); color: var(--accent); font-size: 14px; opacity: 0.9;
+}
+.rot-builder .rot-slot-card {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--border); border-radius: 4px; background: var(--bg-3);
+  padding: 3px 6px 3px 3px; font-size: 11px; color: var(--text);
+}
+.rot-builder .rot-step-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 16px; height: 16px; padding: 0 3px; border-radius: 3px;
+  background: var(--bg); border: 1px solid var(--border);
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+}
+.rot-builder .rot-slot-body { display: inline-flex; flex-direction: column; gap: 2px; }
+.rot-builder .rot-slot-remove {
+  border: none; background: transparent; color: var(--muted); cursor: pointer;
+  font-size: 14px; line-height: 1; padding: 0 2px; margin-left: 2px;
+}
+.rot-builder .rot-slot-remove:hover { color: #ff6b6b; }
+.rot-builder .rot-cards { display: flex; flex-wrap: wrap; gap: 10px; margin: 2px 0; }
 /* Hover must hit the titled card, not the artwork: the image fills most of the card, and an
    untitled img would swallow the hover target (no native tooltip while over it). */
 .rot-builder .rot-card img,
 .rot-builder .rot-slot-card img { pointer-events: none; }
 .rot-builder .rot-card {
+  position: relative; overflow: hidden;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   width: 120px; padding: 8px 6px 7px;
   background: var(--bg-3); border: 1px solid var(--border); border-radius: 4px;
-  cursor: pointer; color: var(--text);
+  cursor: pointer; color: var(--text); transition: border-color 0.12s ease, transform 0.12s ease;
 }
-.rot-builder .rot-card:hover { border-color: var(--accent); }
+.rot-builder .rot-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.rot-builder .rot-card-rail { position: absolute; top: 0; left: 0; width: 100%; height: 3px; }
+.rot-builder .rot-card-rail.is-basic { background: #6b7280; }
+.rot-builder .rot-card-rail.is-active { background: #d97706; }
+.rot-builder .rot-card-rail.is-ultimate { background: #a855f7; }
+.rot-builder .rot-card-rail.is-support { background: #10b981; }
+.rot-builder .rot-card-add {
+  position: absolute; top: 5px; right: 6px; width: 18px; height: 18px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--bg-2); border: 1px solid var(--border); color: var(--muted);
+  font-size: 13px; line-height: 1; opacity: 0; transition: opacity 0.12s ease;
+}
+.rot-builder .rot-card:hover .rot-card-add { opacity: 1; border-color: var(--accent); color: var(--accent); }
 .rot-builder .rot-card .asset-thumb,
 .rot-builder .rot-slot-card .asset-thumb { margin-right: 0; }
 .rot-builder .rot-card-name { font-size: 11px; font-weight: 600; line-height: 1.2; text-align: center; }
 .rot-builder .rot-slot-name { font-size: 11px; line-height: 1.2; }
-.rot-builder .rot-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Mini element + ammo badges (engine-sourced icons) under/next to an ability name. */
+.rot-builder .rot-skill-meta { display: inline-flex; align-items: center; gap: 3px; }
+.rot-builder .rot-skill-meta .asset-thumb { margin-right: 0; }
+.rot-builder .rot-type-chip {
+  font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 0 3px;
+}
+.rot-builder .rot-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .rot-builder .rot-actions button {
   border: 1px solid var(--border); border-radius: 4px; background: var(--bg-2);
   color: var(--text); cursor: pointer; padding: 4px 12px; font-size: 12px;

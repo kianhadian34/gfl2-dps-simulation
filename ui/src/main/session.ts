@@ -139,8 +139,37 @@ function buildEffectSourceCatalog(): Record<string, EffectSourceInfoView> {
   return catalog;
 }
 
-export function registerSimHandlers(): void {
-  ipcMain.handle("sim:getSession", () => current);
+/**
+ * ENGINE-sourced ability metadata for one rotation slot: id/name + player-facing tooltips (top-level
+ * and per-level) + the engine skill TYPE / attack ELEMENT / AMMO category that drive the rotation
+ * card badges. Presentation-only shaping — no mechanics duplicated.
+ */
+function toSkillView(a: {
+  id: string;
+  name: string;
+  playerDescription?: string;
+  levels: Record<number, { playerDescription?: string; type?: string; element?: string | null; ammoType?: string }>;
+  type?: string;
+}): { id: string; name: string; description?: string; descriptions?: Record<number, string>; type?: string; element?: string | null; ammoType?: string } {
+  const perLevel = Object.fromEntries(Object.entries(a.levels).filter(([, v]) => v.playerDescription).map(([lv, v]) => [Number(lv), v.playerDescription!]));
+  // The type/element/ammoType are resolved from the LOWEST defined level (level 1) — they do not
+  // vary across levels in current data; fall back to the ability's own `type`.
+  const lv1 = a.levels[1];
+  const type = a.type ?? lv1?.type;
+  const element = lv1?.element;
+  const ammoType = lv1?.ammoType;
+  return {
+    id: a.id,
+    name: a.name,
+    ...(a.playerDescription ? { description: a.playerDescription } : {}),
+    ...(Object.keys(perLevel).length > 0 ? { descriptions: perLevel } : {}),
+    ...(type !== undefined ? { type } : {}),
+    ...(element !== undefined ? { element } : {}),
+    ...(ammoType !== undefined ? { ammoType } : {}),
+  };
+}
+
+export function registerSimHandlers(): void {  ipcMain.handle("sim:getSession", () => current);
 
   /** Characters available from the engine registry (the database) — engine-sourced. */
   ipcMain.handle("sim:listCharacters", () =>
@@ -178,10 +207,10 @@ export function registerSimHandlers(): void {
               ...(def && def.skills
                 ? {
                     skills: {
-                      ...(def.skills.basic ? { basic: { id: def.skills.basic.id, name: def.skills.basic.name, ...(def.skills.basic.playerDescription ? { description: def.skills.basic.playerDescription } : {}), ...(Object.keys(def.skills.basic.levels).length > 0 ? { descriptions: Object.fromEntries(Object.entries(def.skills.basic.levels).filter(([, v]) => v.playerDescription).map(([lv, v]) => [Number(lv), v.playerDescription!])) } : {}) } } : {}),
-                      ...(def.skills.active1 ? { active1: { id: def.skills.active1.id, name: def.skills.active1.name, ...(def.skills.active1.playerDescription ? { description: def.skills.active1.playerDescription } : {}), ...(Object.keys(def.skills.active1.levels).length > 0 ? { descriptions: Object.fromEntries(Object.entries(def.skills.active1.levels).filter(([, v]) => v.playerDescription).map(([lv, v]) => [Number(lv), v.playerDescription!])) } : {}) } } : {}),
-                      ...(def.skills.active2 ? { active2: { id: def.skills.active2.id, name: def.skills.active2.name, ...(def.skills.active2.playerDescription ? { description: def.skills.active2.playerDescription } : {}), ...(Object.keys(def.skills.active2.levels).length > 0 ? { descriptions: Object.fromEntries(Object.entries(def.skills.active2.levels).filter(([, v]) => v.playerDescription).map(([lv, v]) => [Number(lv), v.playerDescription!])) } : {}) } } : {}),
-                      ...(def.skills.ultimate ? { ultimate: { id: def.skills.ultimate.id, name: def.skills.ultimate.name, ...(def.skills.ultimate.playerDescription ? { description: def.skills.ultimate.playerDescription } : {}), ...(Object.keys(def.skills.ultimate.levels).length > 0 ? { descriptions: Object.fromEntries(Object.entries(def.skills.ultimate.levels).filter(([, v]) => v.playerDescription).map(([lv, v]) => [Number(lv), v.playerDescription!])) } : {}) } } : {}),
+                      ...(def.skills.basic ? { basic: toSkillView(def.skills.basic) } : {}),
+                      ...(def.skills.active1 ? { active1: toSkillView(def.skills.active1) } : {}),
+                      ...(def.skills.active2 ? { active2: toSkillView(def.skills.active2) } : {}),
+                      ...(def.skills.ultimate ? { ultimate: toSkillView(def.skills.ultimate) } : {}),
                     },
                   }
                 : {}),

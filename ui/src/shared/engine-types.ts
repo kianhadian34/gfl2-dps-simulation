@@ -239,6 +239,12 @@ export interface RotationSkillView {
   description?: string;
   /** Per-level player-facing tooltips (engine `SkillDefVariant.playerDescription` keyed by ability level). */
   descriptions?: Record<number, string>;
+  /** ENGINE-sourced skill type (basic/active/ultimate/support) — drives the card type rail. */
+  type?: string;
+  /** ENGINE-sourced attack element (null = phase-less/physical); absent when unspecified. */
+  element?: string | null;
+  /** ENGINE-sourced ammo category (engine `AmmoType`); absent when unspecified. */
+  ammoType?: string;
 }
 
 /** Engine-sourced Fortification upgrade (engine `FortificationUpgrade`) — used to resolve the effective

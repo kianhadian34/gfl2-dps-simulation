@@ -162,5 +162,6 @@ test("rotation: skill metadata passes through buildCharacterMetaView and session
     ultimate: { id: "qiongjiu_pressing_momentum", name: "Pressing the Momentum", description: "Massive burn damage." },
   }, "engine skill ids/names/tooltips reach the renderer");
   const sess = readFileSync(srcFile("../../src/main/session.ts"), "utf8");
-  assert.ok(sess.includes("description: def.skills.basic.playerDescription"), "session forwards the ability tooltip");
+  assert.ok(sess.includes("description: a.playerDescription"), "session forwards the ability tooltip (via toSkillView)");
+  assert.ok(sess.includes("toSkillView(def.skills.basic)"), "basic skill view built from the engine ability def");
 });

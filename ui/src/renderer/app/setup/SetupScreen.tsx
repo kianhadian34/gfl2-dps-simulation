@@ -18,6 +18,10 @@ import {
   toggleFixedKey,
   toggleAttachmentStat,
   setActiveAttachmentSet,
+  addRotationSlot,
+  moveRotationSlot,
+  removeRotationSlotAt,
+  clearRotation,
   PHASE_WEAKNESSES,
   AMMO_WEAKNESSES,
   ROTATION_SLOTS,
@@ -28,7 +32,7 @@ import {
   type RotationSlot,
   type SetupState,
 } from "../../../shared/setup.js";
-import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView } from "../../../shared/engine-types.js";
+import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, RotationSkillView } from "../../../shared/engine-types.js";
 import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, affinityLevels, affinityLevelFlatLines, expansionKeyEffectLine, affinityLevelStatLines, rotationAbilityDescription } from "../../../shared/lists.js";
 import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset, skillAsset, elementAsset, ammoAsset } from "../../../shared/assets.js";
 import { AssetThumb } from "./AssetThumb.js";
@@ -113,6 +117,30 @@ function CommonKeyBadge({ k, size }: { k: CommonKeyView; size: number }) {
     </>
   );
 }
+
+/** Type-rail label for a rotation card (engine skill type; Basic/Active/Ultimate/Support). */
+function rotationTypeLabel(type: string | undefined): string | undefined {
+  return type ? type.toUpperCase() : undefined;
+}
+
+/**
+ * Mini element + ammo badges for a rotation skill card — engine-sourced (the SAME icons the Phase/
+ * Ammo weakness sections use). A phase-less skill (`element === null`) shows the `physical` icon.
+ * Presentation only; absent metadata renders nothing.
+ */
+function RotationSkillMeta({ sk, size = 15 }: { sk: RotationSkillView | undefined; size?: number }) {
+  if (!sk) return null;
+  const elementId = sk.element ?? "physical"; // engine null = phase-less → the physical presentation icon
+  const typeLabel = rotationTypeLabel(sk.type);
+  return (
+    <span className="rot-skill-meta">
+      <AssetThumb asset={elementAsset(elementId)} alt={sk.element ?? "physical"} size={size} />
+      {sk.ammoType ? <AssetThumb asset={ammoAsset(sk.ammoType)} alt={sk.ammoType} size={size} /> : null}
+      {typeLabel ? <span className="rot-type-chip">{typeLabel}</span> : null}
+    </span>
+  );
+}
+
 export function SetupScreen(props: {
   setup: SetupState;
   onChange: (next: SetupState) => void;
@@ -168,9 +196,12 @@ export function SetupScreen(props: {
   };
 
   const addSlot = (id: string, slot: RotationSlot): void => {
-    const cur = props.setup.rotations[id] ?? [];
-    props.onChange({ ...props.setup, rotations: { ...props.setup.rotations, [id]: [...cur, slot] } });
+    props.onChange(addRotationSlot(props.setup, id, slot));
   };
+
+  /** Rotation drag-and-drop: which slot index is being dragged, and which target index is hovered. */
+  const [dragIndex, setDragIndex] = useState<{ charId: string; from: number } | null>(null);
+  const [dropIndex, setDropIndex] = useState<{ charId: string; to: number } | null>(null);
 
   const start = async (): Promise<void> => {
     setFormError(null);
@@ -279,54 +310,107 @@ export function SetupScreen(props: {
               .filter((c) => c.selected)
               .map((c) => {
                 const skillOf = (slot: RotationSlot) => meta[c.id]?.skills?.[slot];
+                const rotation = props.setup.rotations[c.id] ?? [];
+                const isDragFrom = dragIndex?.charId === c.id;
+                const resetDrag = () => { setDragIndex(null); setDropIndex(null); };
                 return (
                 <div key={c.id} className="rot-builder">
                   <div className="mname">
                     <AssetThumb asset={portraitAsset(c.id)} alt={c.name} size={26} />
                     {c.name}
+                    <span className="rot-count muted">{rotation.length === 0 ? "no steps" : `${rotation.length} step${rotation.length === 1 ? "" : "s"}`}</span>
                   </div>
-                  <div className="rot-slots">
-                    {(props.setup.rotations[c.id] ?? []).map((slot, i) => {
-                      const sk = skillOf(slot);
-                      return (
-                        <span key={i} className="rot-slot-card" title={rotationAbilityDescription(meta[c.id] as CharacterMetaView, slot, props.setup.fortificationLevel)}>
-                          {sk ? (
-                            <>
-                              <AssetThumb asset={skillAsset(sk.id)} alt={sk.name} size={34} />
-                              <span className="rot-slot-name">{sk.name}</span>
-                            </>
-                          ) : (
-                            slot
-                          )}
-                        </span>
-                      );
-                    })}
-                  </div>
-                  <div className="rot-cards">
-                    {ROTATION_SLOTS.filter((slot) => meta[c.id]?.skills?.[slot] !== undefined).map((slot) => {
-                      const sk = skillOf(slot);
-                      return (
-                        <button key={slot} type="button" className="rot-card" title={rotationAbilityDescription(meta[c.id] as CharacterMetaView, slot, props.setup.fortificationLevel)} onClick={() => addSlot(c.id, slot)}>
-                          {sk ? (
-                            <>
-                              <AssetThumb asset={skillAsset(sk.id)} alt={sk.name} size={72} />
-                              <span className="rot-card-name">{sk.name}</span>
-                            </>
-                          ) : (
-                            <span className="rot-card-name">{slot}</span>
-                          )}
-                        </button>
-                      );
-                    })}
+                  <div className="rot-panels">
+                    {/* LEFT — ability palette (click to append to the ordered sequence) */}
+                    <div className="rot-palette">
+                      <span className="rot-panel-label">
+                        Abilities <span className="muted">— click to add to the order</span>
+                      </span>
+                      <div className="rot-cards">
+                        {ROTATION_SLOTS.filter((slot) => meta[c.id]?.skills?.[slot] !== undefined).map((slot) => {
+                          const sk = skillOf(slot);
+                          return (
+                            <button key={slot} type="button" className="rot-card" title={rotationAbilityDescription(meta[c.id] as CharacterMetaView, slot, props.setup.fortificationLevel)} onClick={() => addSlot(c.id, slot)}>
+                              <span className={`rot-card-rail is-${sk?.type ?? "basic"}`} aria-hidden />
+                              {sk ? (
+                                <>
+                                  <AssetThumb asset={skillAsset(sk.id)} alt={sk.name} size={72} />
+                                  <span className="rot-card-name">{sk.name}</span>
+                                  <RotationSkillMeta sk={sk} />
+                                </>
+                              ) : (
+                                <span className="rot-card-name">{slot}</span>
+                              )}
+                              <span className="rot-card-add" aria-hidden>+</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {/* RIGHT — ordered sequence (priority order; drag to reorder) */}
+                    <div className="rot-sequence">
+                      <span className="rot-panel-label">
+                        Priority order <span className="muted">— the first usable ability each turn, then loop</span>
+                      </span>
+                      {rotation.length === 0 ? (
+                        <div className="rot-empty muted">empty — add abilities from the left</div>
+                      ) : (
+                        <div className="rot-slots">
+                          {rotation.map((slot, i) => {
+                            const sk = skillOf(slot);
+                            return (
+                              <div
+                                key={i}
+                                className={`rot-slot-wrap${i > 0 ? " has-connector" : ""}${isDragFrom && dragIndex?.from === i ? " is-dragging" : ""}${isDragFrom && dropIndex?.to === i ? " is-drop-target" : ""}`}
+                                draggable
+                                onDragStart={() => setDragIndex({ charId: c.id, from: i })}
+                                onDragOver={(e) => { e.preventDefault(); setDropIndex({ charId: c.id, to: i }); }}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  if (dragIndex !== null && dragIndex.charId === c.id) props.onChange(moveRotationSlot(props.setup, c.id, dragIndex.from, i));
+                                  resetDrag();
+                                }}
+                                onDragEnd={resetDrag}
+                              >
+                                <span className="rot-slot-card" title={rotationAbilityDescription(meta[c.id] as CharacterMetaView, slot, props.setup.fortificationLevel)}>
+                                  <span className="rot-step-num" aria-hidden>{i + 1}</span>
+                                  {sk ? (
+                                    <>
+                                      <AssetThumb asset={skillAsset(sk.id)} alt={sk.name} size={34} />
+                                      <span className="rot-slot-body">
+                                        <span className="rot-slot-name">{sk.name}</span>
+                                        <RotationSkillMeta sk={sk} size={13} />
+                                      </span>
+                                    </>
+                                  ) : (
+                                    slot
+                                  )}
+                                  <button
+                                    type="button"
+                                    className="rot-slot-remove"
+                                    aria-label={`Remove step ${i + 1}`}
+                                    title="Remove this step"
+                                    onClick={(e) => { e.stopPropagation(); props.onChange(removeRotationSlotAt(props.setup, c.id, i)); }}
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              </div>
+                            );
+                          })}
+                          <span className="rot-loop" title="After the last step, the scan loops back to the first" aria-hidden>↻</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="rot-actions">
                     <button
                       type="button"
-                      onClick={() => set({ rotations: { ...props.setup.rotations, [c.id]: (props.setup.rotations[c.id] ?? []).slice(0, -1) } })}
+                      onClick={() => props.onChange(removeRotationSlotAt(props.setup, c.id, rotation.length - 1))}
                     >
                       − remove
                     </button>
-                    <button type="button" onClick={() => set({ rotations: { ...props.setup.rotations, [c.id]: [] } })}>
+                    <button type="button" onClick={() => props.onChange(clearRotation(props.setup, c.id))}>
                       clear
                     </button>
                   </div>

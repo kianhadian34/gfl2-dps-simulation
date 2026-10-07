@@ -29,8 +29,12 @@ Electron BrowserWindow
 2. Choose the **simulation target** (Training Dummy — MVP; HP/DEF/Stability/weaknesses configurable).
 3. Choose **characters from the engine registry** (the character database is engine-sourced via
    `sim:listCharacters`).
-4. Configure the **fixed rotation** per character (Basic / Common Rail / Guide / Ultimate slots)
-   and the MVP settings (turns 1–7, seed, optional 15×15 grid layout).
+4. Configure the **fixed rotation** per character in a two-panel builder: an **ability palette**
+   on the left and the **ordered priority sequence** on the right (numbered steps + connectors +
+   a loop indicator; drag a step to reorder it). The rotation is a CYCLIC PRIORITY list — the
+   engine picks the first *usable* ability each turn and loops. Each card shows the ability
+   artwork, name, its engine skill TYPE rail, and element/ammo mini-badges (the shared icons).
+   Also configure the MVP settings (turns 1–7, seed, optional 15×15 grid layout).
 5. **Start Simulation** → the main process runs the real engine (`simulateScenario`).
 6. Transition to the **Simulation/Debug view**: Grid, Combat Log and Rotation panels inside the
    same window, all sharing ONE authoritative session.

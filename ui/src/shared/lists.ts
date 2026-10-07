@@ -67,7 +67,12 @@ export interface CharacterMetaSource {
   /** STANDALONE character Affinity-LEVEL FLAT stats (engine `CharacterDef.affinityFlatStats`) — each
    *  level's PER-LEVEL increase; the contribution at level N is the cumulative sum of entries 1..N. */
   affinityFlatStats?: Record<number, { atk?: number; hp?: number; def?: number }>;
-  skills?: { basic?: { id: string; name: string; description?: string; descriptions?: Record<number, string> }; active1?: { id: string; name: string; description?: string; descriptions?: Record<number, string> }; active2?: { id: string; name: string; description?: string; descriptions?: Record<number, string> }; ultimate?: { id: string; name: string; description?: string; descriptions?: Record<number, string> } };
+  skills?: {
+    basic?: { id: string; name: string; description?: string; descriptions?: Record<number, string>; type?: string; element?: string | null; ammoType?: string };
+    active1?: { id: string; name: string; description?: string; descriptions?: Record<number, string>; type?: string; element?: string | null; ammoType?: string };
+    active2?: { id: string; name: string; description?: string; descriptions?: Record<number, string>; type?: string; element?: string | null; ammoType?: string };
+    ultimate?: { id: string; name: string; description?: string; descriptions?: Record<number, string>; type?: string; element?: string | null; ammoType?: string };
+  };
   fortificationMap?: Array<{ v: number; ability: string; toLevel: number }>;
   passive?: { playerDescription?: string; levelDescriptions?: Record<number, string> };
 }
