@@ -30,7 +30,8 @@ export type AssetKind =
   | "expansion-key"
   | "skill"
   | "weapon"
-  | "element";
+  | "element"
+  | "ammo";
 
 export type AssetEntityId = string;
 
@@ -64,6 +65,12 @@ export const KNOWN_ENTITY_IDS: Record<AssetKind, ReadonlySet<AssetEntityId>> = {
    * files under `assets/elements/` (see ui/docs/assets.md §2/§3).
    */
   element: new Set(["physical", "burn", "hydro", "corrosion", "electric", "freeze", "omni"]),
+  /**
+   * GLOBAL Ammo Type icons (2026). 1:1 with the engine `AmmoType` union
+   * (`heavy_ammo | medium_ammo | light_ammo | shotgun_ammo | melee`) — no presentation-only ids.
+   * Kept in sync with the delivered files under `assets/ammo/` (see ui/docs/assets.md §2/§3).
+   */
+  ammo: new Set(["heavy_ammo", "medium_ammo", "light_ammo", "shotgun_ammo", "melee"]),
 };
 
 /**
@@ -99,6 +106,11 @@ export const SUPPLIED_ASSET_FILES: Readonly<Record<string, string>> = {
   "element:electric": "assets/elements/electric/electric.webp",
   "element:freeze": "assets/elements/freeze/freeze.webp",
   "element:omni": "assets/elements/omni/omni.webp",
+  "ammo:heavy_ammo": "assets/ammo/heavy_ammo/heavy_ammo.webp",
+  "ammo:medium_ammo": "assets/ammo/medium_ammo/medium_ammo.webp",
+  "ammo:light_ammo": "assets/ammo/light_ammo/light_ammo.webp",
+  "ammo:shotgun_ammo": "assets/ammo/shotgun_ammo/shotgun_ammo.webp",
+  "ammo:melee": "assets/ammo/melee/melee.webp",
 };
 
 /**
@@ -142,6 +154,9 @@ export function pathFor(kind: AssetKind, entityId: AssetEntityId): string {
     case "element":
       // GLOBAL: one file per element id; never under a character directory.
       return `assets/elements/${entityId}/${entityId}`;
+    case "ammo":
+      // GLOBAL: one file per ammo id; never under a character directory.
+      return `assets/ammo/${entityId}/${entityId}`;
   }
 }
 
@@ -187,6 +202,8 @@ export const skillAsset = (skillId: AssetEntityId): AssetRefResult => resolveAss
 export const weaponAsset = (weaponId: AssetEntityId): AssetRefResult => resolveAsset("weapon", weaponId);
 /** GLOBAL element/phase icon by element id (engine Element, or the presentation ids `physical`/`omni`). */
 export const elementAsset = (elementId: AssetEntityId): AssetRefResult => resolveAsset("element", elementId);
+/** GLOBAL ammo-type icon by ammo id (1:1 with the engine `AmmoType`). */
+export const ammoAsset = (ammoId: AssetEntityId): AssetRefResult => resolveAsset("ammo", ammoId);
 
 // ---------------------------------------------------------------------------
 // RENDER SPEC (2026) — the single presentation decision for an asset ref, kept PURE

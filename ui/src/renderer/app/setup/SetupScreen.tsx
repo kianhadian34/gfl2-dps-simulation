@@ -30,7 +30,7 @@ import {
 } from "../../../shared/setup.js";
 import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView } from "../../../shared/engine-types.js";
 import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, affinityLevels, affinityLevelFlatLines, expansionKeyEffectLine, affinityLevelStatLines, rotationAbilityDescription } from "../../../shared/lists.js";
-import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset, skillAsset, elementAsset } from "../../../shared/assets.js";
+import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset, skillAsset, elementAsset, ammoAsset } from "../../../shared/assets.js";
 import { AssetThumb } from "./AssetThumb.js";
 
 /**
@@ -233,7 +233,7 @@ export function SetupScreen(props: {
                 );
               })}
             </fieldset>
-            <fieldset>
+            <fieldset className="ammo-weaknesses">
               <legend>Ammo weaknesses</legend>
               {AMMO_WEAKNESSES.map((a) => (
                 <label key={a.label} className="inline">
@@ -245,6 +245,7 @@ export function SetupScreen(props: {
                       set({ dummy: { ...props.setup.dummy, ammoWeaknesses: ws } });
                     }}
                   />
+                  <AssetThumb asset={ammoAsset(a.tag)} alt={a.label} size={28} />
                   {a.label}
                 </label>
               ))}

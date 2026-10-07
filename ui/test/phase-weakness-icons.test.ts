@@ -45,6 +45,6 @@ test("phase weaknesses: element icons sit TIGHT to the label (the default flex g
   assert.ok(s.includes('<fieldset className="phase-weaknesses">'), "the phase-weakness fieldset carries a scoping class");
   // The form's default `label { gap: 8px }` reads as a large gap beside the icon (+ the
   // icons' baked-in padding), so the phase-weakness row overrides it and drops the icon margin.
-  assert.ok(/\.phase-weaknesses label\.inline \{ gap: \d+px; \}/.test(css), "the phase-weakness label gap is overridden");
-  assert.ok(/\.phase-weaknesses \.asset-thumb \{ margin-right: 0; \}/.test(css), "the element icon right margin is removed");
+  assert.ok(/\.phase-weaknesses label\.inline[,\s][^{]*\{[^}]*gap: \d+px/.test(css), "the phase-weakness label gap is overridden");
+  assert.ok(/\.phase-weaknesses \.asset-thumb[,\s][^{]*\{[^}]*margin-right: 0/.test(css), "the element icon right margin is removed");
 });

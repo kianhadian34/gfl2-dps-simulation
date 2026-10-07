@@ -45,7 +45,7 @@ assets/
 │   ├── electric/electric.webp
 │   ├── freeze/freeze.webp
 │   └── omni/omni.webp           (all elements — presentation-only id)
-└── ammo/                        (GLOBAL — Ammo Type icons; delivered 2026, NOT yet wired into assets.ts)
+└── ammo/                        (GLOBAL — Ammo Type icons; delivered 2026, wired via ammoAsset)
     ├── heavy_ammo/heavy_ammo.webp
     ├── medium_ammo/medium_ammo.webp
     ├── light_ammo/light_ammo.webp
@@ -59,11 +59,10 @@ Wrong placements (do NOT do these):
 
 Future global categories (statuses, buffs, …) belong in their own top-level
 directories under `assets/`; the current architecture does not prevent adding them later.
-Do not create empty directories for not-yet-needed categories. **Notes (2026): the `elements/`
-directory is a WIRED global category — the 7 Phase/Element icons resolve via `elementAsset()`
-and are consumed by the Setup screen's Phase weaknesses section (see §3). The `ammo/` directory
-holds the DELIVERED Ammo Type icons (5 files) — NOT yet wired into `assets.ts` (no `ammo`
-kind/resolver yet); the files are present but nothing resolves ammo ids.**
+Do not create empty directories for not-yet-needed categories. **Notes (2026): `elements/` and
+`ammo/` are WIRED global categories — the 7 Phase/Element icons resolve via `elementAsset()` and
+the 5 Ammo Type icons via `ammoAsset()`; both are consumed by the Setup screen (Phase weaknesses /
+Ammo weaknesses sections — see §3).**
 
 ## 3. Naming convention
 
@@ -89,7 +88,7 @@ Known engine ids (kept in sync with `src/data/*`):
 | Skills | `qiongjiu_basic` · `qiongjiu_common_rail` · `qiongjiu_guide_to_victory` · `qiongjiu_pressing_momentum` · `qiongjiu_support` · `qiongjiu_steady_plan` |
 | Weapon | `jinshizou` (player-facing name: **Golden Melody** — the id is internal only) |
 | Elements (delivered + wired) | `physical` · `burn` · `hydro` · `corrosion` · `electric` · `freeze` · `omni` (engine `Element` = `burn`/`hydro`/`freeze`/`electric`/`corrosion`; `physical`/`omni` are presentation-only ids) |
-| Ammo Types (delivered, not yet wired) | `heavy_ammo` · `medium_ammo` · `light_ammo` · `shotgun_ammo` · `melee` (engine `AmmoType`, 1:1 ids) |
+| Ammo Types (delivered + wired) | `heavy_ammo` · `medium_ammo` · `light_ammo` · `shotgun_ammo` · `melee` (engine `AmmoType`, 1:1 ids) |
 
 ## 4. The asset mapping / registry
 
@@ -108,6 +107,7 @@ expansionKeyAsset(expansionKeyId)
 skillAsset(skillId)
 weaponAsset(weaponId)           // global — no character id
 elementAsset(elementId)         // global — engine Element or the presentation ids `physical`/`omni`
+ammoAsset(ammoId)               // global — engine AmmoType (1:1)
 ```
 
 Every resolver returns `{ status, kind, entityId, path, supplied }` (or `status: "unknown"`):
@@ -152,12 +152,11 @@ Resolved by `elementAsset(elementId)`; consumed by the Setup screen's **Phase we
 (an icon next to each element). `physical` and `omni` are presentation-side ids; the engine
 `Element` union is `burn | hydro | freeze | electric | corrosion`.
 
-**Ammo Type asset (delivered 2026 — not yet wired):** path
-`assets/ammo/<ammoId>/<ammoId>.webp` (one file per ammo id; all 5 delivered — see the manifest
-`assets/ammo/README.md`). The 5 ids are 1:1 with the engine `AmmoType`
-(`heavy_ammo | medium_ammo | light_ammo | shotgun_ammo | melee`). There is **no `ammo` kind in
-`assets.ts` yet**, so nothing resolves ammo ids until a follow-up task adds the kind +
-`ammoAsset()` + the `SUPPLIED_ASSET_FILES` entries.
+**Ammo Type asset (delivered + wired 2026):** path `assets/ammo/<ammoId>/<ammoId>.webp`
+(one file per ammo id; all 5 delivered — see the manifest `assets/ammo/README.md`). Resolved by
+`ammoAsset(ammoId)`; consumed by the Setup screen's **Ammo weaknesses** section (an icon next to
+each ammo type). The 5 ids are 1:1 with the engine `AmmoType`
+(`heavy_ammo | medium_ammo | light_ammo | shotgun_ammo | melee`).
 
 ## 6. Missing assets / fallback
 
@@ -167,7 +166,7 @@ The system never invents artwork and never pretends a file exists:
   "asset missing" state (no broken `<img>`).
 - Known entity, file not placed → `{ status: "defined", supplied: false }`: the caller renders
   a generic fallback (e.g. an initial-letter tile or no image).
-- Current state: **24 known entities; 23 have supplied files** (a `.webp` per entity — all but
+- Current state: **29 known entities; 28 have supplied files** (a `.webp` per entity — all but
   `qiongjiu_support`), listed in the
   `SUPPLIED_ASSET_FILES` inventory keyed by `<kind>:<entityId>`. Assets added later simply get a
   new inventory entry when their physical file is placed.

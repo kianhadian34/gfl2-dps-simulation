@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   affinityKeyAsset,
+  ammoAsset,
   assetRenderSpec,
   characterAsset,
   commonKeyAsset,
@@ -132,7 +133,7 @@ test("10: missing assets produce the defined fallback; supplied files are discov
 
 test("10b: SUPPLIED_ASSET_FILES is the single source of truth — every entry resolves and is never invented", () => {
   const entries = Object.entries(SUPPLIED_ASSET_FILES);
-  assert.equal(entries.length, 23, "23 supplied images are listed (the Support-skill artwork has NOT been supplied; 7 element icons added)");
+  assert.equal(entries.length, 28, "28 supplied images are listed (the Support-skill artwork has NOT been supplied; 7 element + 5 ammo icons added)");
   for (const [key, file] of entries) {
     const [kind, entityId] = key.split(":");
     assert.ok(KNOWN_ENTITY_IDS[kind as keyof typeof KNOWN_ENTITY_IDS].has(entityId), `entry ${key} maps to a KNOWN entity`);
@@ -195,4 +196,26 @@ test("19: the 5 engine Elements all have a supplied icon; physical/omni are pres
   assert.ok(KNOWN_ENTITY_IDS.element.has("physical"), "phase-less (engine element === null) has a presentation icon");
   assert.ok(KNOWN_ENTITY_IDS.element.has("omni"), "omni is a presentation-only id");
   assert.equal(KNOWN_ENTITY_IDS.element.size, 7, "exactly the 7 delivered element icons");
+});
+
+test("20: ammo icons resolve GLOBALLY by ammo id — one file per ammo, no character id", () => {
+  for (const id of ["heavy_ammo", "medium_ammo", "light_ammo", "shotgun_ammo", "melee"]) {
+    const r = assertDefined(ammoAsset(id), `ammo:${id}`);
+    assert.equal(r.kind, "ammo");
+    assert.equal(r.path, `assets/ammo/${id}/${id}`, `${id} under the global ammo dir`);
+    assert.ok(!r.path.startsWith("assets/characters/"), "ammo icons are NOT character-owned");
+    assert.equal(r.supplied, true, `${id} icon is supplied`);
+    assert.equal(r.file, `assets/ammo/${id}/${id}.webp`, `${id} file path`);
+  }
+});
+
+test("21: ammoAsset reports the explicit missing state for an unknown ammo id (no invented art)", () => {
+  assert.deepEqual(ammoAsset("not_an_ammo"), { status: "unknown", kind: "ammo", entityId: "not_an_ammo" });
+  assert.deepEqual(assetRenderSpec(ammoAsset("not_an_ammo")), { mode: "missing" });
+});
+
+test("22: every engine AmmoType has an ammo icon (ids are 1:1)", () => {
+  const ENGINE_AMMO = ["heavy_ammo", "medium_ammo", "light_ammo", "shotgun_ammo", "melee"];
+  for (const a of ENGINE_AMMO) assert.ok(KNOWN_ENTITY_IDS.ammo.has(a), `engine AmmoType ${a} has an icon`);
+  assert.equal(KNOWN_ENTITY_IDS.ammo.size, 5, "exactly the 5 delivered ammo icons");
 });

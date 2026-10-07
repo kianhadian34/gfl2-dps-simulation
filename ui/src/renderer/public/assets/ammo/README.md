@@ -1,8 +1,8 @@
 # Ammo Type icons — delivered drop zone (2026)
 
-The game's Ammo Type icons have been **delivered** (5 files, see below). They are **NOT yet wired**
-into `ui/src/shared/assets.ts` (there is no `ammo` AssetKind/resolver yet), so nothing consumes
-them — this directory holds the delivered artwork + the STRUCTURE/NAMING contract.
+The game's Ammo Type icons are **delivered and wired** (5 files). They resolve via `ammoAsset()`
+in `ui/src/shared/assets.ts` and are consumed by the Setup screen's **Ammo weaknesses** section
+(an icon next to each ammo type).
 
 See `ui/docs/assets.md` §2/§3 for the global-category convention this mirrors, and
 `assets/elements/` for the analogous (already-delivered + wired) element icons.
@@ -34,7 +34,6 @@ Engine `AmmoType` union today (`src/model/types.ts`):
 
 - Format: **lossless WebP** (8-bit RGBA, transparency preserved), matching the existing supplied
   assets. The originally delivered PNGs were converted 1:1 (pixels unchanged).
-- When these icons are approved for use, a follow-up task adds an `ammo` kind + `ammoAsset()` to
-  `ui/src/shared/assets.ts` and lists the files in `SUPPLIED_ASSET_FILES` (then uses them where the
-  Ammo Type is shown — starting with the Setup screen's Ammo weaknesses section).
+- When these icons are changed/replaced, update the file + the `SUPPLIED_ASSET_FILES` entry in
+  `ui/src/shared/assets.ts` (the resolver + Setup-screen wiring already exist).
 
