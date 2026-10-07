@@ -38,3 +38,13 @@ test("phase weaknesses: the icon is rendered inline (small badge) next to the la
   // A small inline badge, distinct from the large artwork sizes (34/64/72/110/300).
   assert.ok(/<AssetThumb asset=\{elementAsset\([^}]*\)\} alt=\{p\.label\} size=\{\d+\} \/>/.test(s), "element AssetThumb carries an explicit small size");
 });
+
+test("phase weaknesses: element icons sit TIGHT to the label (the default flex gap is overridden)", () => {
+  const s = readFileSync(srcFile("../../src/renderer/app/setup/SetupScreen.tsx"), "utf8");
+  const css = readFileSync(srcFile("../../src/renderer/styles.css"), "utf8");
+  assert.ok(s.includes('<fieldset className="phase-weaknesses">'), "the phase-weakness fieldset carries a scoping class");
+  // The form's default `label { gap: 8px }` reads as a large gap beside the icon (+ the
+  // icons' baked-in padding), so the phase-weakness row overrides it and drops the icon margin.
+  assert.ok(/\.phase-weaknesses label\.inline \{ gap: \d+px; \}/.test(css), "the phase-weakness label gap is overridden");
+  assert.ok(/\.phase-weaknesses \.asset-thumb \{ margin-right: 0; \}/.test(css), "the element icon right margin is removed");
+});

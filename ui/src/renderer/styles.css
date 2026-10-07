@@ -399,6 +399,14 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
   text-align: center; line-height: 24px; cursor: help;
 }
 
+/* --- phase weaknesses: element icons sit tight to their label (2026) --- */
+/* The label is an inline-flex with the form's default `gap: 8px`, and each element icon
+   also carries `.asset-thumb`'s 4px right margin PLUS ~8px of baked-in transparent
+   padding (a 36px glyph on a 52px canvas, ~4px at 28px display). Together that reads as
+   a large gap, so tighten the row: drop the icon margin and shrink the flex gap. */
+.phase-weaknesses label.inline { gap: 4px; }
+.phase-weaknesses .asset-thumb { margin-right: 0; }
+
 /* --- effect-source references (same interaction pattern; visually distinct) --- */
 .effect-source-chip {
   border-bottom-style: dashed;

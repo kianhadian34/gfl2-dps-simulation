@@ -209,7 +209,7 @@ export function SetupScreen(props: {
             <label>HP <input type="number" value={props.setup.dummy.hp} onChange={(e) => set({ dummy: { ...props.setup.dummy, hp: Number(e.target.value) } })} /></label>
             <label>DEF <input type="number" value={props.setup.dummy.defense} onChange={(e) => set({ dummy: { ...props.setup.dummy, defense: Number(e.target.value) } })} /></label>
             <label>Stability <input type="number" value={props.setup.dummy.stability} onChange={(e) => set({ dummy: { ...props.setup.dummy, stability: Number(e.target.value) } })} /></label>
-            <fieldset>
+            <fieldset className="phase-weaknesses">
               <legend>Phase weaknesses</legend>
               {PHASE_WEAKNESSES.map((p) => {
                 const id = p.elementId;
