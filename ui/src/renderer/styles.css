@@ -447,12 +447,11 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .rot-builder { margin-bottom: 10px; }
 .rot-builder .mname { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
 .rot-builder .rot-count { font-weight: 400; font-size: 11px; margin-left: 2px; }
-/* Two-panel builder: LEFT ability palette, RIGHT ordered sequence (2026 revamp). */
+/* Stacked builder: abilities palette on TOP, priority order on the line BELOW (2026). */
 .rot-builder .rot-panels {
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  display: grid; grid-template-columns: 1fr;
   gap: 12px; align-items: start; margin: 6px 0;
 }
-@media (max-width: 900px) { .rot-builder .rot-panels { grid-template-columns: 1fr; } }
 .rot-builder .rot-panel-label {
   display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
   color: var(--muted); margin-bottom: 6px;

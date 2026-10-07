@@ -29,8 +29,8 @@ Electron BrowserWindow
 2. Choose the **simulation target** (Training Dummy — MVP; HP/DEF/Stability/weaknesses configurable).
 3. Choose **characters from the engine registry** (the character database is engine-sourced via
    `sim:listCharacters`).
-4. Configure the **fixed rotation** per character in a two-panel builder: an **ability palette**
-   on the left and the **ordered priority sequence** on the right (numbered steps + connectors +
+4. Configure the **fixed rotation** per character in a stacked builder: an **ability palette** on
+   top and the **ordered priority sequence** on the line below (numbered steps + connectors +
    a loop indicator; drag a step to reorder it). The rotation is a CYCLIC PRIORITY list — the
    engine picks the first *usable* ability each turn and loops. Each card shows the ability
    artwork, name, its engine skill TYPE rail, and element/ammo mini-badges (the shared icons).

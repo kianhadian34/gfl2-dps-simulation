@@ -21,8 +21,9 @@ import { buildCharacterMetaView } from "../src/shared/lists.js";
  *
  * The rotation is a CYCLIC PRIORITY list (src/engine/simulation.ts `pickAction`) — ORDER matters.
  * The revamp adds pure, order-preserving helpers (add / insert / remove-at / move / clear) and a
- * two-panel UI (ability palette + numbered ordered sequence with connectors + a loop indicator).
- * These tests pin the helper semantics and the presentation contract; the ENGINE stays the validator.
+ * stacked builder (ability palette on top, numbered priority sequence below with connectors + a
+ * loop indicator). These tests pin the helper semantics and the presentation contract; the ENGINE
+ * stays the validator.
  */
 
 const srcFile = (rel: string): string => join(dirname(fileURLToPath(import.meta.url)), rel);
@@ -113,11 +114,16 @@ test("rotation plumbing: skill type/element/ammoType pass through buildCharacter
 // PRESENTATION CONTRACT
 // ---------------------------------------------------------------------------
 
-test("rotation UI: two-panel builder (ability palette + ordered sequence)", () => {
+test("rotation UI: stacked builder (abilities palette on top, priority order below)", () => {
   const s = readFileSync(srcFile("../../src/renderer/app/setup/SetupScreen.tsx"), "utf8");
-  assert.ok(s.includes('className="rot-panels"'), "two-panel wrapper present");
-  assert.ok(s.includes('className="rot-palette"') && s.includes('className="rot-sequence"'), "left palette + right sequence");
+  const css = readFileSync(srcFile("../../src/renderer/styles.css"), "utf8");
+  assert.ok(s.includes('className="rot-panels"'), "panel wrapper present");
+  assert.ok(s.includes('className="rot-palette"') && s.includes('className="rot-sequence"'), "abilities palette + priority sequence");
   assert.ok(s.includes("Abilities <span") && s.includes("Priority order <span"), "each panel is labelled (palette vs priority order)");
+  // STACKED: the palette (first child) sits ABOVE the priority sequence (single-column grid), not beside it.
+  assert.ok(s.indexOf('className="rot-palette"') < s.indexOf('className="rot-sequence"'), "the palette is rendered before the sequence (top → bottom)");
+  assert.ok(/\.rot-builder \.rot-panels \{[^}]*grid-template-columns: 1fr;/.test(css), "the panels stack in ONE column (priority order on the line below)");
+  assert.ok(!/grid-template-columns: minmax\(0, 1fr\) minmax/.test(css), "no side-by-side two-column template remains");
 });
 
 test("rotation UI: ordered sequence shows numbered steps + connectors + a loop indicator", () => {
