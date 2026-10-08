@@ -9,6 +9,7 @@ import { REMOLDER_BUFFS } from "../data/remolder.js";
 import { NEURAL_HELIX_GLOBAL_PCT } from "../data/neural-helix.js";
 import { resolveAttachmentStats, validateAttachmentConfig } from "../data/attachments.js";
 import { COMMON_KEY_SELECTABLE_STAT_KINDS } from "../data/common-keys.js";
+import { apexStatTotals, resolveApexChassis, type ResolvedApexComponent } from "./apex.js";
 import { resolveRemolderUnit, resolveRemolderTeam } from "./remolder.js";
 
 /**
@@ -152,6 +153,11 @@ export interface SimulationState {
   grid?: GridState;
   statusRegistry: Map<string, EffectiveStatusDef>;
   log: LogEvent[];
+  /**
+   * APEX CHASSIS (2026, scenario-level/account-wide): the RESOLVED equipped components, carried so
+   * the damage path can consume their secondary effects. Empty = no Apex Chassis.
+   */
+  apexComponents: ResolvedApexComponent[];
   /** Explicit TRAINING-DUMMY pass-turn events (2026): separate channel so the main combat log
    *  stays unchanged; the UI interleaves a "Used -> Nothing" row before the target's ticks. */
   passEvents: Array<{ round: number; turn: number; unit: string; actorName: string; action: string }>;
@@ -418,6 +424,7 @@ function makeDoll(
   weaponCalibrationLevel: number | undefined,
   attachments: AttachmentConfig | undefined,
   activeAttachmentSet: string | undefined,
+  apexStats: import("../model/types.js").ApexComponentStats | undefined,
   baseStatOverrides: { atk?: number; hp?: number; def?: number; stability?: number; critRate?: number; critDmg?: number } | undefined,
   applyDispatchStats: boolean | undefined,
   overridesAuthoritative: boolean | undefined,
@@ -554,9 +561,17 @@ function makeDoll(
     hpPct: nhActive && !isAuthoritativelyOverridden(baseStatOverrides, "hp", overridesAuthoritative) ? (def.neuralHelixStats?.hpPct ?? 0) + NEURAL_HELIX_GLOBAL_PCT : 0,
     defPct: nhActive && !isAuthoritativelyOverridden(baseStatOverrides, "def", overridesAuthoritative) ? (def.neuralHelixStats?.defPct ?? 0) + NEURAL_HELIX_GLOBAL_PCT : 0,
   };
-  const atkPct = (commonStats.atkPct ?? 0) + aff.atk + (levelStat.atkPct ?? 0) + nhPct.atkPct + attachPct.atk + remolderPlan.selfPct.atk + remolderGrants.unityPct.atk + remolderGrants.alliedPct.atk;
-  const hpPct = (commonStats.hpPct ?? 0) + aff.hp + (levelStat.hpPct ?? 0) + nhPct.hpPct + attachPct.hp + remolderPlan.selfPct.hp + remolderGrants.unityPct.hp + remolderGrants.alliedPct.hp;
-  const defPct = (commonStats.defPct ?? 0) + (levelStat.defPct ?? 0) + nhPct.defPct + attachPct.def + remolderPlan.selfPct.def + remolderGrants.unityPct.def + remolderGrants.alliedPct.def;
+  // APEX CHASSIS always-on stats (2026, scenario-level/account-wide): ATK%/HP%/DEF% fold into the
+  // EXISTING percentage buckets like every other permanent source. Under the Debug-authoritative
+  // contract an explicitly overridden stat is AUTHORITATIVE, so its Apex percentage is suppressed
+  // too (same rule as Neural Helix above). All-Element Boost is NOT folded anywhere — it is RECORDED
+  // but INERT (it only acts through the unmodeled RES system; see src/engine/apex.ts).
+  const apexAtkPct = !isAuthoritativelyOverridden(baseStatOverrides, "atk", overridesAuthoritative) ? (apexStats?.atkPct ?? 0) : 0;
+  const apexHpPct = !isAuthoritativelyOverridden(baseStatOverrides, "hp", overridesAuthoritative) ? (apexStats?.hpPct ?? 0) : 0;
+  const apexDefPct = !isAuthoritativelyOverridden(baseStatOverrides, "def", overridesAuthoritative) ? (apexStats?.defPct ?? 0) : 0;
+  const atkPct = (commonStats.atkPct ?? 0) + aff.atk + (levelStat.atkPct ?? 0) + nhPct.atkPct + attachPct.atk + apexAtkPct + remolderPlan.selfPct.atk + remolderGrants.unityPct.atk + remolderGrants.alliedPct.atk;
+  const hpPct = (commonStats.hpPct ?? 0) + aff.hp + (levelStat.hpPct ?? 0) + nhPct.hpPct + attachPct.hp + apexHpPct + remolderPlan.selfPct.hp + remolderGrants.unityPct.hp + remolderGrants.alliedPct.hp;
+  const defPct = (commonStats.defPct ?? 0) + (levelStat.defPct ?? 0) + nhPct.defPct + attachPct.def + apexDefPct + remolderPlan.selfPct.def + remolderGrants.unityPct.def + remolderGrants.alliedPct.def;
   let confectance = config.confectanceStart;
   for (const k of def.fixedKeys) {
     if (keys.includes(k.id)) {
@@ -837,6 +852,11 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
     return computePanel(d, w, undefined, flat).atk;
   });
   const remolderGrants = resolveRemolderTeam(remolderPlans, remolderRawAtk);
+  // APEX CHASSIS (2026, scenario-level/account-wide): resolve + validate the equipped components
+  // ONCE for the whole team. The always-on ATK%/HP%/DEF% totals are shared by every member;
+  // All-Element Boost is recorded but inert.
+  const apexComponents = resolveApexChassis(scenario.apexChassis, (id) => registry.getApexComponent(id));
+  const apexStats = apexStatTotals(apexComponents);
   // SUPPORT allied-damage Unity (2026): the winning instance is granted to the owner's allies as
   // `additive_dealt` modifiers (source "unity") — folded into each recipient's resolved modifiers
   // so the EXISTING dealt-bonus path consumes them (no parallel path).
@@ -867,7 +887,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
       }
     }
     const weaponCalibrationLevel = m.calibrationLevel ?? weapon?.calibrationLevel;
-    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel ?? DEFAULT_AFFINITY_LEVEL }, m.commonKeyIds ?? [], m.commonKeyStatChoices, m.expansionKeyId, weapon, weaponCalibrationLevel, m.attachments, m.activeAttachmentSet, m.baseStatOverrides, m.applyDispatchStats, m.overridesAuthoritative, remolderPlans[i], remolderGrants[i], config, registry);
+    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel ?? DEFAULT_AFFINITY_LEVEL }, m.commonKeyIds ?? [], m.commonKeyStatChoices, m.expansionKeyId, weapon, weaponCalibrationLevel, m.attachments, m.activeAttachmentSet, apexStats, m.baseStatOverrides, m.applyDispatchStats, m.overridesAuthoritative, remolderPlans[i], remolderGrants[i], config, registry);
   });
   const dummy = makeDummy(scenario.dummy);
   return {
@@ -881,6 +901,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
     grid: scenario.grid ? buildGrid(scenario.grid) : undefined,
     statusRegistry: applyStatusOverrides(registry.getStatusMap(), config.statusOverrides),
     log: [],
+    apexComponents,
     passEvents: [],
     warnings,
     accum: {

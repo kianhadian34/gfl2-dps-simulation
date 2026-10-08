@@ -21,6 +21,7 @@ import {
 } from "./statuses.js";
 import { remolderCritDmgBonus, remolderFirstTargetStability, remolderHealBonus, remolderHealEndOfActionPct, remolderHealOnAttackPct, remolderReactiveDamage, remolderStabilityRecovery } from "./remolder.js";
 import { attachmentSetDealtBonus } from "./attachment-sets.js";
+import { apexDealtBonus } from "./apex.js";
 import { applyStabilityDamage, endOfRoundStability } from "./stability.js";
 import { abilitySourceLabel, createState, DEFAULT_CONFIG, fortificationV, passiveSourceLabel, supportAttackQuota, weaponCalibration, type EffectiveStatusDef, type SimulationState, type UnitState } from "./state.js";
 import type { ActiveStatus } from "../model/runtime.js";
@@ -450,6 +451,14 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
       skillType: skill.type,
       targetStatusIds: dummy.statuses.map((s) => s.statusId),
       statusRegistry: state.statusRegistry,
+    }) +
+    // APEX CHASSIS (2026): the secondary effects of the scenario's equipped Apex Components enter
+    // the SAME additive DMG% bucket (no separate multiplier). The weapon-type term matches only the
+    // dealer's OWN weapon type; the weakness term matches when the hit exploits a weakness (phase OR
+    // ammo — the authoritative `Weak = 1 + PhaseWeak + AmmoWeak` formula). Data-driven.
+    apexDealtBonus(state.apexComponents, {
+      weaponType: actor.def?.weaponType,
+      weaknessExploited: weaknesses.length > 0,
     }) +
     expBonusTerm +
     weaponDealtTerm +

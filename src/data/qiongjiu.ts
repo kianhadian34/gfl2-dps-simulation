@@ -12,6 +12,10 @@ export const QIONGJIU: CharacterDef = {
   // Validated 2026 in-game: Sentinel class ⇒ permanent Dispatch stats ATK +231 / HP +519 / DEF +222
   // (separate source, src/data/dispatch.ts — folded into the ONE panel path).
   class: "sentinel",
+  // Weapon type (2026): Qiongjiu is an ASSAULT RIFLE doll — evidenced by her signature weapon
+  // Golden Melody being an Assault Rifle (dandegate.net/weapons, filter "Assault Rifle"). Used by
+  // weapon-type-gated effects (Apex Component secondary effects such as "Damage dealt by AR Dolls").
+  weaponType: "ar",
   phase: "burn",
   // VALIDATED CHARACTER BASE STATS (2026, in-game character sheet): HP 1893 · ATK 802 · DEF 528 ·
   // Stability 9 · Crit Rate 20% · Crit DMG +20%. Crit values are BONUS fractions (final crit

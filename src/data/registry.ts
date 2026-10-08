@@ -1,4 +1,5 @@
-import type { AffinityKeyDef, CharacterDef, CommonKeyDef, StatusDef, WeaponDef } from "../model/types.js";
+import type { AffinityKeyDef, ApexComponentDef, CharacterDef, CommonKeyDef, StatusDef, WeaponDef } from "../model/types.js";
+import { APEX_COMPONENTS } from "./apex-components.js";
 import { COMMON_KEYS } from "./common-keys.js";
 import { QIONGJIU } from "./qiongjiu.js";
 import { BASIC_ATTACK_DUMMY } from "./basic-attack-dummy.js";
@@ -20,6 +21,8 @@ export interface Registry {
   getCommonKey(id: string): CommonKeyDef | undefined;
   /** Weapon def by id (REUSABLE definition — equipped via `ScenarioTeamMember.weaponId`, 1 slot; 2026). */
   getWeapon(id: string): WeaponDef | undefined;
+  /** Apex Component def by id (REUSABLE definition — equipped via `Scenario.apexChassis`; 2026). */
+  getApexComponent(id: string): ApexComponentDef | undefined;
 }
 
 const CHARACTERS: CharacterDef[] = [QIONGJIU, BASIC_ATTACK_DUMMY];
@@ -48,5 +51,8 @@ export const REGISTRY: Registry = {
   },
   getWeapon(id) {
     return WEAPONS.find((w) => w.id === id);
+  },
+  getApexComponent(id) {
+    return APEX_COMPONENTS.find((c) => c.id === id);
   },
 };

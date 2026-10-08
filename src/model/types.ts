@@ -566,6 +566,13 @@ export interface CharacterDef {
    * `ScenarioTeamMember.applyDispatchStats: false`. NEVER set `undefined`.
    */
   class: DollClass;
+  /**
+   * DOLL WEAPON TYPE (2026): the doll's own gun class (Qiongjiu = "ar"). Data-only; used by
+   * weapon-type-gated effects (Apex Component secondary effects such as "Damage dealt by AR
+   * Dolls ..."). Optional — absent = the doll declares no weapon type, and any weapon-type-gated
+   * effect simply never matches (never assumed).
+   */
+  weaponType?: WeaponType;
   /** Doll's own phase element (null = phase-less, e.g. physical-ammo dolls). */
   phase: Element | null;
   base: { atk: number; hp: number; def: number; stability: number; critRate: number; critDmg: number };
@@ -1254,6 +1261,16 @@ export interface StatusDef {
  */
 export type AmmoType = "heavy_ammo" | "medium_ammo" | "light_ammo" | "shotgun_ammo" | "melee";
 
+/**
+ * DOLL WEAPON TYPE (2026) — the 7 gun categories the game's weapon filter and the Apex Component
+ * types are keyed to: Assault Rifle, Submachine Gun, Shotgun, Machine Gun, Sniper Rifle, Handgun,
+ * Blade. This is the doll's OWN weapon class (Qiongjiu = "ar", evidenced by her signature weapon
+ * Golden Melody being an Assault Rifle) — distinct from `DollClass` (bulwark/vanguard/support/
+ * sentinel) and from `AmmoType`. Used by Apex Component secondary effects that are gated to a
+ * weapon type ("Damage dealt by AR Dolls ...").
+ */
+export type WeaponType = "ar" | "smg" | "sg" | "mg" | "rf" | "hg" | "bld";
+
 export interface DummyConfig {
   id: string;
   name: string;
@@ -1423,6 +1440,90 @@ export interface ScenarioTeamMember {
   remolderBuffs?: Record<string, number>;
 }
 
+/**
+ * APEX COMPONENT STAT BLOCK (2026) — the always-on stat grants of an Apex Component, folded through
+ * the EXISTING generic stat infrastructure (no parallel stat system). `atkPct`/`hpPct`/`defPct` are
+ * percentages (0.025 = +2.5%); `allElementBoost` is the game's All-Element Boost value (a FLAT
+ * number, e.g. 75 — NOT a percentage). All-Element Boost is RECORDED but INERT: it only has a
+ * damage meaning through the RESMult formula (enemy RES / RESPierce / RESShred / Venomfire), which
+ * this engine does NOT model — so it never modifies damage here.
+ */
+export interface ApexComponentStats {
+  atkPct?: number;
+  hpPct?: number;
+  defPct?: number;
+  /** All-Element Boost (flat value). RECORDED ONLY — no damage effect until the RES system exists. */
+  allElementBoost?: number;
+}
+
+/**
+ * A weapon-type-gated damage term of an Apex Component's SECONDARY EFFECT (e.g. "Damage dealt by
+ * AR Dolls is increased by 5%"). `value` is additive in the existing DMG% dealt bucket.
+ */
+export interface ApexSecondaryWeaponTypeTerm {
+  weaponType: WeaponType;
+  value: number;
+}
+
+/**
+ * APEX COMPONENT SECONDARY EFFECT (2026). A component's second tooltip: a weapon-type-gated
+ * damage term, plus an optional term that applies when the attack EXPLOITS A WEAKNESS. Both are
+ * additive in the existing DMG% dealt bucket. "Exploits a weakness" follows the authoritative
+ * formula `Weak = 1 + PhaseWeak + AmmoWeak` — an exploited PHASE weakness (element) OR an
+ * exploited AMMO weakness both qualify.
+ */
+export interface ApexComponentSecondaryEffect {
+  /** Display name, e.g. "Firepower Reconstruction III" (the tier suffix is part of the name). */
+  name: string;
+  /** Weapon-type-gated term — matches only when the dealer's `CharacterDef.weaponType` equals it. */
+  weaponTypeTerm?: ApexSecondaryWeaponTypeTerm;
+  /** Term applied when the hit exploits a weakness (phase OR ammo — see `Weak` formula). */
+  weaknessExploitValue?: number;
+}
+
+/**
+ * APEX COMPONENT definition (2026). Apex Components live in the Apex Chassis (up to 2 equipped per
+ * scenario, at most ONE per `type`). Data is REUSABLE registry definitions, NOT embedded per doll.
+ */
+export interface ApexComponentDef {
+  id: string;
+  name: string;
+  /**
+   * The component TYPE (one of the 7, matching the 7 weapon types). Only ONE component of a given
+   * type may be equipped at a time, regardless of tier.
+   */
+  type: WeaponType;
+  /** Tier I–IV (roman numerals in-game). Tier III/IV grant ATK%/HP%/DEF%/All-Element Boost. */
+  tier: 1 | 2 | 3 | 4;
+  /** Max enhancement level (duplicates combine up to 5 times → Enhance 1..6). */
+  maxEnhancement: number;
+  /**
+   * BASE stat grants at Enhance 1 (before the per-enhancement increment). Enhance N adds
+   * `(N-1) × statIncrement`.
+   */
+  stats: ApexComponentStats;
+  /** Per-enhancement increment applied to each stat (Tier III: 0.1% / +5; Tier IV: 0.2% / +10). */
+  statIncrement: ApexComponentStats;
+  secondaryEffect?: ApexComponentSecondaryEffect;
+  verified: boolean;
+}
+
+/** One equipped Apex Component: the component id + its enhancement level (1..maxEnhancement). */
+export interface EquippedApexComponent {
+  componentId: string;
+  /** Enhancement level (1 = base). Must be an integer in 1..the component's `maxEnhancement`. */
+  enhancement: number;
+}
+
+/**
+ * APEX CHASSIS configuration (2026) — SCENARIO-LEVEL (account-wide): the guide states Apex
+ * Components are set on the HOC Formation and their stat bonuses apply to the dolls regardless of
+ * the map, so one chassis serves the whole team. Up to 2 components, at most one per type.
+ */
+export interface ApexChassisConfig {
+  components?: EquippedApexComponent[];
+}
+
 export interface Scenario {
   version: number;
   seed: number;
@@ -1433,6 +1534,12 @@ export interface Scenario {
   /** GRID (2026): optional 15×15 battlefield configuration. Absent ⇒ simulation runs without positions (unchanged). */
   grid?: GridConfig;
   configOverrides?: ConfigOverrides;
+  /**
+   * APEX CHASSIS (2026, Heavy Ordnance Corps — the ONE adapted part): SCENARIO-LEVEL (account-wide)
+   * equipped Apex Components. Their always-on ATK%/HP%/DEF% apply to every team member, and their
+   * secondary effects enter the existing DMG% dealt bucket. Absent = no Apex Chassis.
+   */
+  apexChassis?: ApexChassisConfig;
   /**
    * PER-ROUND ACTION ORDER (2026): optional map round → team character ids in the exact order
    * they act that round. Absent ⇒ the team (member) order is used every round. When present,

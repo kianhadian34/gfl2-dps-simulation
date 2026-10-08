@@ -1,4 +1,4 @@
-import type { AbilityDef, CharacterDef, CommonKeyDef, ConfigOverrides, DummyConfig, Scenario, SkillDefVariant, WeaponDef } from "../model/types.js";
+import type { AbilityDef, ApexComponentDef, CharacterDef, CommonKeyDef, ConfigOverrides, DummyConfig, Scenario, SkillDefVariant, WeaponDef } from "../model/types.js";
 import { QIONGJIU } from "../data/qiongjiu.js";
 import type { Registry } from "../data/registry.js";
 import { REGISTRY } from "../data/registry.js";
@@ -48,8 +48,8 @@ export function scenario(overrides: {
   };
 }
 
-/** Registry extended with a synthetic test ally (basic-only doll), optional fixture Common Keys, and optional fixture Weapons. */
-export function customRegistry(extra: Record<string, CharacterDef>, extraCommonKeys: Record<string, CommonKeyDef> = {}, extraWeapons: Record<string, WeaponDef> = {}): Registry {
+/** Registry extended with a synthetic test ally (basic-only doll), optional fixture Common Keys, optional fixture Weapons, and optional fixture Apex Components. */
+export function customRegistry(extra: Record<string, CharacterDef>, extraCommonKeys: Record<string, CommonKeyDef> = {}, extraWeapons: Record<string, WeaponDef> = {}, extraApexComponents: Record<string, ApexComponentDef> = {}): Registry {
   return {
     getCharacter: (id) => (id === "qiongjiu" ? QJ : extra[id]),
     getStatus: (id) => REGISTRY.getStatus(id),
@@ -68,6 +68,9 @@ export function customRegistry(extra: Record<string, CharacterDef>, extraCommonK
     // precedence, then the central TEST fixture weapons (non-game, panel-only), then the base
     // registry table (real game weapons only — see src/data/weapons.ts).
     getWeapon: (id) => extraWeapons[id] ?? TEST_WEAPONS[id] ?? REGISTRY.getWeapon(id),
+    // Apex Components are REUSABLE registry definitions (2026): fixture components provided by
+    // tests take precedence, everything else falls through to the base registry table.
+    getApexComponent: (id) => extraApexComponents[id] ?? REGISTRY.getApexComponent(id),
   };
 }
 

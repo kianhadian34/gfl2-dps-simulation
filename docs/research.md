@@ -644,6 +644,31 @@ Consequences (CONFIRMED): **no `setId` on individual slots**, **no per-attachmen
 
 ---
 
+### 3.20 Apex Chassis (Heavy Ordnance Corps — partial adaptation)
+
+**Status: ONE PART IMPLEMENTED (2026) — the Apex Chassis only.** The Heavy Ordnance Corps (HOCs) is a squad mechanic introduced with Frontier Conquest; this engine adapts **only the Apex Chassis** (user-directed scope). Everything else in HOCs — Armed Echelons (Active/Passive), HOC Rank + Base Components, the Core/Peripheral Battlefield split, HOC skills/Energy, Armed Echelon ammo grades, acquisition — is deliberately **NOT modeled** (see "Explicitly NOT modeled" below). Engine: `src/engine/apex.ts`; data: `src/data/apex-components.ts`; scenario field `Scenario.apexChassis`.
+
+**Mechanic (SOURCE — dandegate.net HOCs primer, 2026):** in the **Apex Chassis** the Commander equips **up to 2 Apex Components** to increase the Dolls' stats or offer conditional buffs. Components come in **4 Tiers** (roman numerals I–IV) and **7 Types**; the 7 Types match the **7 weapon types** and the 7 Polyphase Tiles. **Only 1 Apex Component of a type may be equipped at a time**, even across tiers. **Tier III and IV offer ATK %, HP %, DEF %, and All-Element Boost.** Duplicate components **combine up to 5 times** to amplify effects (Enhance 1–6). Apex Component bonuses apply **regardless of whether the map uses HOCs** (account-wide — set on the HOC Formation).
+
+**The 7 Apex types ↔ weapon types:** Lightweight Protocol (HG) · Blitz Stratagem (SMG) · Firepower Reconstruction (AR) · Hyperdimensional Vision (RF) · Zero Distance Contact (BLD) · Omnidirectional Strike (SG) · Rain of Lead (MG).
+
+**RECORDED COMPONENT (the ONE with authoritative data, 2026 — player's own in-game screenshot):**
+**"Elevation - Firepower Reconstruction"**, **Tier III** → **Attack Boost +2.5% · Health Boost +2.5% · Defense Boost +2.5% · All-Element Boost +75**, plus the **secondary effect** *"Firepower Reconstruction III"* (Lv.1): **"Damage dealt by AR Dolls is increased by 5%. If an attack exploits a weakness, damage dealt is increased by 7%."**
+**Enhancement (SOURCE, guide):** Tier III ranges **2.5%→3.0%** (**+0.1%** per enhancement) and **75→100** (**+5** per enhancement); Tier IV ranges **2.5%→3.5%** (**+0.2%**) and **150→200** (**+10**). Both are exactly `Enhance 1 + 5 × increment`, confirming **Enhance 1–6**.
+
+**Engine representation (IMPLEMENTED 2026):**
+- `Scenario.apexChassis` is **SCENARIO-LEVEL (account-wide)** — one chassis serves the whole team, matching the guide's "HOC Formation" wording.
+- **Always-on stats**: `atkPct` / `hpPct` / `defPct` fold into the EXISTING panel percentage buckets (same Final Stat formula — no parallel stat system), and are suppressed under the Debug-authoritative override exactly like the other permanent sources.
+- **All-Element Boost is RECORDED but INERT**: it only has a damage meaning through the **RESMult** formula (`FinalRES = RES × RESShred`; needs enemy **RES**, **RESPierce** 150/250/600%, **RESShred** 90/80/60%, **Venomfire** 95%), which this engine does **NOT** model — so it never modifies damage here.
+- **Secondary effect**: both terms are **additive in the EXISTING DMG% dealt bucket** (no separate multiplier). The **weapon-type term** matches only the dealer's OWN `CharacterDef.weaponType` (`"ar"` for Qiongjiu — evidenced by her signature weapon Golden Melody being an Assault Rifle); a doll with no declared weapon type never matches. The **weakness-exploit term** matches when the hit exploits a weakness, following the authoritative **`Weak = 1 + PhaseWeak + AmmoWeak`** — an exploited **phase** weakness OR an exploited **ammo** weakness both qualify (our `exploitedWeaknesses` already computes exactly that combined signal).
+- **Validation (LOUD)**: at most 2 components; at most one per `type`; enhancement an integer in `1..maxEnhancement`; unknown component ids rejected — never silently dropped or clamped.
+
+**Explicitly NOT modeled (do not invent):** the other 6 Apex types and Tiers I/II/IV (no data); the **Polyphase-Tile / All-Element-Boost RES subsystem** (no engine model); Armed Echelons / HOC Rank / Base Components / Peripheral Battlefield / HOC skills + Energy / Armed Echelon ammo grades; acquisition, inventory, and drop rates.
+
+**Source** — dandegate.net "Heavy Ordnance Corps Primer" (Apex Chassis section) + the player's own in-game Tier III component screenshot + the dandegate.net "Damage Formula" guide (`Weak`, `RESMult`).
+
+---
+
 ## 4. Uncertainty register
 
 Every mechanic that is still uncertain, with impact and resolution path. **None of these should be hardcoded as facts in the engine — all are config defaults pending the in-game test plan (§5).**
