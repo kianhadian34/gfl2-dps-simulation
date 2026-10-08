@@ -467,6 +467,9 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .setup .content.setup-grid {
   display: grid; grid-template-columns: repeat(2, minmax(320px, 1fr)); gap: 14px 22px; align-content: start;
 }
+/* Two-column auto-flow. `grid-right` pins a section to the RIGHT column (used for DEBUG MODE, so it
+   sits under Apex Chassis rather than filling the row below Simulation settings). */
+.setup .content.setup-grid > .grid-right { grid-column: 2; }
 .setup section { border: 1px solid var(--border); background: var(--bg-2); padding: 10px 12px; }
 .form { display: flex; flex-direction: column; gap: 6px; }
 .form label { display: flex; gap: 8px; align-items: center; font-size: 12px; }

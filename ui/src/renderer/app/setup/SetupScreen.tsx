@@ -1103,6 +1103,24 @@ export function SetupScreen(props: {
         </section>
 
         <section>
+          <h2>Simulation settings</h2>
+          {/* preventDefault — see the note on the target form: implicit submission reloads
+              the renderer and discards the configured state. */}
+          <form className="form" onSubmit={(e) => e.preventDefault()}>
+            <label>
+              Turns (1–7) <input type="number" min={1} max={7} value={props.setup.turns} onChange={(e) => set({ turns: Number(e.target.value) })} />
+            </label>
+            <label>
+              Seed <input type="number" value={props.setup.seed} onChange={(e) => set({ seed: Number(e.target.value) })} />
+            </label>
+            <label className="inline">
+              <input type="checkbox" checked={props.setup.gridEnabled} onChange={(e) => set({ gridEnabled: e.target.checked })} />
+              Enable 15×15 grid (sample layout)
+            </label>
+          </form>
+        </section>
+
+        <section>
           <h2>Apex Chassis <span className="muted">(Heavy Ordnance Corps — account-wide)</span></h2>
           {(apex?.items ?? []).length === 0 ? (
             <span className="muted">no Apex Components available (IPC list empty)</span>
@@ -1202,25 +1220,7 @@ export function SetupScreen(props: {
           )}
         </section>
 
-        <section>
-          <h2>Simulation settings</h2>
-          {/* preventDefault — see the note on the target form: implicit submission reloads
-              the renderer and discards the configured state. */}
-          <form className="form" onSubmit={(e) => e.preventDefault()}>
-            <label>
-              Turns (1–7) <input type="number" min={1} max={7} value={props.setup.turns} onChange={(e) => set({ turns: Number(e.target.value) })} />
-            </label>
-            <label>
-              Seed <input type="number" value={props.setup.seed} onChange={(e) => set({ seed: Number(e.target.value) })} />
-            </label>
-            <label className="inline">
-              <input type="checkbox" checked={props.setup.gridEnabled} onChange={(e) => set({ gridEnabled: e.target.checked })} />
-              Enable 15×15 grid (sample layout)
-            </label>
-          </form>
-        </section>
-
-        <section>
+        <section className="grid-right">
           <h2>DEBUG MODE (controlled testing)</h2>
           <form className="form" onSubmit={(e) => e.preventDefault()}>
             <label className="inline">

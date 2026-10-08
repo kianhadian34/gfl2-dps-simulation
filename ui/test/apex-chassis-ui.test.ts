@@ -47,3 +47,20 @@ test("apex UI: the picker reuses the card pattern and goes through the shared he
 test("apex UI: MAX_APEX_COMPONENTS_UI mirrors the engine maximum (2)", () => {
   assert.equal(MAX_APEX_COMPONENTS_UI, 2, "up to 2 Apex Components");
 });
+
+test("setup UI layout: only the 3 named sections move — Simulation settings left, Apex + DEBUG right", () => {
+  const s = readFileSync(srcFile("../../src/renderer/app/setup/SetupScreen.tsx"), "utf8");
+  // Minimal change: the grid stays a flat 2-column auto-flow (the character sections keep their
+  // ORIGINAL placement); only the 3 sections the layout calls for are repositioned.
+  // DOM order is the auto-flow order → Simulation settings now precedes Apex Chassis.
+  const simIdx = s.indexOf("<h2>Simulation settings</h2>");
+  const apexIdx = s.indexOf("<h2>Apex Chassis");
+  const debugIdx = s.indexOf("<h2>DEBUG MODE");
+  assert.ok(simIdx > 0 && simIdx < apexIdx && apexIdx < debugIdx, "DOM order: Simulation settings → Apex Chassis → DEBUG MODE");
+  // DEBUG is pinned to the RIGHT column so it sits UNDER Apex Chassis (otherwise it would fill the
+  // empty cell to the LEFT of row 4).
+  assert.ok(s.includes('<section className="grid-right">'), "DEBUG MODE is pinned to the right column");
+  assert.ok(!s.includes('className="setup-col"'), "no full-column wrapper restructure (minimal change)");
+  const css = readFileSync(srcFile("../../src/renderer/styles.css"), "utf8");
+  assert.ok(/\.setup \.content\.setup-grid > \.grid-right\s*\{\s*grid-column:\s*2/.test(css), "grid-right pins to column 2");
+});
