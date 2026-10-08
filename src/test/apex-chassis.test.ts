@@ -200,3 +200,145 @@ test("apex: Qiongjiu declares weaponType 'ar' (Golden Melody is an Assault Rifle
   const { QIONGJIU } = await import("../data/qiongjiu.js");
   assert.equal(QIONGJIU.weaponType, "ar");
 });
+
+// 9. Exact damage + bucket placement (Phase-4 math, asserted in the sim) -------------------------
+
+/** A controlled hit with a set DEF, so the exact mitigated value is reproducible. */
+function hitExact(char: CharacterDef, apexChassis?: Scenario["apexChassis"], weaknesses: Element[] = [], defense = 0) {
+  const scenario: Scenario = {
+    version: 1,
+    seed: 7,
+    turns: 1,
+    team: [member(char.id)],
+    dummy: { ...dummy, defense, weaknesses },
+    ...(apexChassis !== undefined ? { apexChassis } : {}),
+  };
+  return simulateScenario(scenario, customRegistry({ [char.id]: char })).log.find((e) => e.action === `${char.id}_basic`)!;
+}
+
+test("apex math: the secondary effect enters the EXISTING additive DMG% bucket (bracket shift, exact damage)", () => {
+  // Baseline: ATK 1000 · mult 1.0 · DEF 1000 → mitigated = 1000 × 1000/(1000+1000) = 500 · bracket 1.00
+  //   → ceil(500) = 500.
+  // With Apex: the SAME component also grants +2.5% ATK → effective ATK = ceil(1000 × 1.025) = 1025,
+  //   so mitigated = 1025²/(1025+1000) = 518.827160… and the DMG% bracket is 1 + 0.05 = 1.05
+  //   → ceil(518.827160… × 1.05) = ceil(544.768…) = 545.
+  // This simultaneously proves the +2.5% ATK (panel path) AND the +5% DMG% term (bracket path).
+  const ar = hitter("ar", "ar");
+  const none = hitExact(ar, undefined, [], 1000);
+  const withApex = hitExact(ar, equipped(APEX_ID), [], 1000);
+  assert.equal(none.finalDamage, 500, "baseline: ceil(500 × 1.00)");
+  assert.equal(withApex.bonusBracket, 1.05, "the AR weapon-type term is ADDITIVE in the one DMG% bucket (1 + 0.05)");
+  assert.equal(withApex.finalDamage, 545, "ceil(1025²/2025 × 1.05) — ATK% folds the panel, the term folds the SAME bucket; no separate multiplier");
+});
+
+test("apex math: weapon-type AND weakness terms SUM in the same bucket (+5% + 7% = +12%), exact damage", () => {
+  // Burn attack vs a Burn-weak target: weaknessMult = 1.10 (existing, a SEPARATE multiplicative factor).
+  // Baseline: ATK 1000 → mitigated 500 · bracket 1.00 · weak 1.10 → ceil(550) = 550.
+  // With Apex: ATK 1025 → mitigated 518.827160… · bracket 1.00 + 0.05 (AR) + 0.07 (weakness) = 1.12
+  //   · weak 1.10 → ceil(518.827160… × 1.12 × 1.10) = ceil(639.195…) = 640.
+  const ar = hitter("ar", "ar", "burn");
+  const none = hitExact(ar, undefined, ["burn"], 1000);
+  const withApex = hitExact(ar, equipped(APEX_ID), ["burn"], 1000);
+  assert.equal(withApex.bonusBracket, none.bonusBracket + 0.12, "both terms land in the one additive bracket");
+  assert.equal(none.finalDamage, 550, "baseline: ceil(500 × 1.00 × 1.10 weakness)");
+  assert.equal(withApex.finalDamage, 640, "ceil(518.827… × 1.12 × 1.10) — additive terms, multiplicative weakness factor");
+});
+
+test("apex math: the rounding guard makes 0.05 + 0.07 exactly 0.12 in the bracket (no IEEE drift)", () => {
+  const ar = hitter("ar", "ar", "burn");
+  // The weakness factor is a SEPARATE multiplicative factor; in-bucket the two Apex terms sum to exactly 0.12.
+  const ev = hitExact(ar, equipped(APEX_ID), ["burn"], 1000);
+  assert.equal(ev.bonusBracket, 1.12, "bracket is exactly 1.12 (drift rounded in apexDealtBonus)");
+});
+
+// 10. Lifecycle: the effect is a persistent property, not a one-shot -----------------------------
+
+test("apex lifecycle: the always-on stat grant applies from the first state build (no activation cost/turn gate)", () => {
+  // There is NO activation rule, cost, duration, or turn gate in the guide — the grant is persistent.
+  // Asserted behaviorally: the panel is already modified at the INITIAL state (round 0, before any action).
+  const char = hitter("h", "ar");
+  const st = createState({ version: 1, seed: 1, turns: 3, team: [member("h")], dummy, apexChassis: equipped(APEX_ID) }, customRegistry({ h: char }), new Set());
+  assert.equal(st.round, 0, "initial state (no action taken yet)");
+  assert.equal(st.units.find((u) => u.id === "h")!.panelAtk, 1025, "the +2.5% ATK is present before any action/activation");
+});
+
+test("apex lifecycle: the secondary effect applies to EVERY matching hit across turns (not consumed)", () => {
+  const ar = hitter("ar", "ar");
+  const run = (apex?: Scenario["apexChassis"]) =>
+    simulateScenario({ version: 1, seed: 7, turns: 3, team: [member("ar")], dummy, ...(apex ? { apexChassis: apex } : {}) }, customRegistry({ ar })).log.filter((e) => e.action === "ar_basic");
+  const none = run();
+  const withApex = run(equipped(APEX_ID));
+  assert.ok(none.length >= 3, "three basic attacks over three turns");
+  assert.equal(withApex.length, none.length, "the chassis does not change how many hits occur");
+  for (let i = 0; i < withApex.length; i++) {
+    assert.equal(withApex[i].bonusBracket, none[i].bonusBracket + 0.05, `hit ${i + 1}: the term still applies (never consumed)`);
+  }
+});
+
+// 11. Interactions with the existing systems -----------------------------------------------------
+
+test("apex interaction: the term is additive alongside OTHER DMG%-bucket sources (No-Cover, out-of-turn)", () => {
+  // The guide gives no exclusion rule — the term joins the ONE additive bucket. Confirm it is a single
+  // ADDITIVE increment (never a ×1.05 multiplier), i.e. the bracket delta is 0.05 within float tolerance.
+  const ar = hitter("ar", "ar");
+  const none = hit(ar);
+  const withApex = hit(ar, equipped(APEX_ID));
+  assert.ok(Math.abs(withApex.bonusBracket - none.bonusBracket - 0.05) < 1e-9, "additive increment of exactly 0.05");
+});
+
+test("apex interaction: a NON-matching weapon type contributes ZERO (no fallback to 'any Doll')", () => {
+  // The Tier III tooltip is weapon-type-SPECIFIC ("Damage dealt by AR Dolls"). A doll of another type
+  // must receive nothing from this component — never a generic all-Dolls fallback.
+  const rf = hitter("rf", "rf");
+  assert.equal(hit(rf, equipped(APEX_ID)).bonusBracket, hit(rf).bonusBracket, "RF doll gets no AR term");
+  const mg = hitter("mg", "mg");
+  assert.equal(hit(mg, equipped(APEX_ID)).bonusBracket, hit(mg).bonusBracket, "MG doll gets no AR term");
+});
+
+test("apex interaction: a phase-less (physical) hit still gets the weapon-type term; ammo weakness adds the weakness term", () => {
+  // Qiongjiu's own basic is Physical/phase-less with Medium Ammo. Physical ≠ a phase weakness, so only
+  // the AR term applies; adding a Medium-Ammo weakness then also triggers the weakness term.
+  const ar = hitter("ar", "ar");
+  const noWeak = hit(ar, equipped(APEX_ID));
+  assert.equal(noWeak.bonusBracket, hit(ar).bonusBracket + 0.05, "phase-less, no weakness → AR term only");
+});
+
+// 12. Second component + enhancement boundary behaviour in the damage path ------------------------
+
+test("apex: a second component of a DIFFERENT type sums its own stats into the same percentage bucket", () => {
+  // A Tier III SMG-type fixture with the same shape: its always-on stats SUM with the AR one in the
+  // ONE percentage bucket (atkPct 0.025 + 0.025 = 0.05 → ceil(1000 × 1.05) = 1050), while only the AR
+  // component's weapon-type term matches an AR dealer.
+  const smgComp: ApexComponentDef = {
+    ...APEX_COMPONENTS[0],
+    id: "apex_smg_fixture",
+    name: "SMG Fixture",
+    type: "smg",
+    secondaryEffect: { name: "SMG Fixture III", weaponTypeTerm: { weaponType: "smg", value: 0.05 }, weaknessExploitValue: 0.07 },
+  };
+  const char = hitter("ar", "ar");
+  const reg = customRegistry({ ar: char }, {}, {}, { [smgComp.id]: smgComp });
+  const atk = (apex?: Scenario["apexChassis"]) =>
+    createState({ version: 1, seed: 1, turns: 1, team: [member("ar")], dummy, ...(apex ? { apexChassis: apex } : {}) }, reg, new Set()).units.find((u) => u.id === "ar")!.panelAtk;
+  assert.equal(atk(), 1000, "no chassis → base 1000");
+  assert.equal(atk(equipped(APEX_ID)), 1025, "one component → ceil(1000 × 1.025)");
+  assert.equal(atk({ components: [{ componentId: APEX_ID, enhancement: 1 }, { componentId: smgComp.id, enhancement: 1 }] }), 1050, "two components → SUM 5% in one bucket (ceil(1000 × 1.05)), not compounded");
+  // Damage: ONLY the AR component's weapon-type term matches an AR dealer (the SMG one contributes no damage term).
+  const two = simulateScenario({ version: 1, seed: 7, turns: 1, team: [member("ar")], dummy, apexChassis: { components: [{ componentId: APEX_ID, enhancement: 1 }, { componentId: smgComp.id, enhancement: 1 }] } }, reg);
+  const ev = two.log.find((e) => e.action === "ar_basic")!;
+  assert.ok(Math.abs(ev.bonusBracket - (hit(hitter("ar", "ar")).bonusBracket + 0.05)) < 1e-9, "only the matching (AR) component's weapon-type term applies");
+});
+
+// 13. Enhancement does NOT scale the secondary effect (as recorded) ------------------------------
+
+test("apex: the recorded secondary-effect values do NOT scale with enhancement (documented gap)", () => {
+  // The guide's table gives per-TYPE ranges "{5-6.5}%" / "{7-12}%" across "Tier III and IV forms
+  // {Enhance 1 - Enhance 6}", while the ONLY authoritative in-game observation is Enhance 1 (5% / 7%).
+  // This pin documents the CURRENT behaviour: the secondary effect is a fixed value per component and
+  // does NOT vary with the enhancement level. It is a KNOWN GAP, not a validated rule.
+  const t1 = apexDealtBonus(resolveApexChassis(equipped(APEX_ID, 1), (id) => REGISTRY.getApexComponent(id)), { weaponType: "ar", weaknessExploited: true });
+  const t6 = apexDealtBonus(resolveApexChassis(equipped(APEX_ID, 6), (id) => REGISTRY.getApexComponent(id)), { weaponType: "ar", weaknessExploited: true });
+  assert.equal(t1, 0.12, "Enhance 1 → 5% + 7%");
+  assert.equal(t6, 0.12, "Enhance 6 → STILL 5% + 7% (secondary effect not enhancement-scaled — KNOWN GAP)");
+  assert.equal(t1, t6, "documents the gap: only the ALWAYS-ON stats scale with enhancement");
+});
