@@ -181,6 +181,11 @@ export interface SetupState {
   /** Per-round action order (round → team character ids in acting order). Absent = team order every round. */
   roundOrder?: Record<number, string[]>;
   gridEnabled: boolean;
+  /**
+   * APEX CHASSIS (2026, Heavy Ordnance Corps — the ONE adapted part): SCENARIO-LEVEL (account-wide)
+   * equipped Apex Components (up to 2, one per type). Engine-validated; carried verbatim.
+   */
+  apexChassis?: Array<{ componentId: string; enhancement: number }>;
   /** DEBUG MODE (controlled testing, 2026): an EXPLICIT configuration path that relaxes the
    *  normal equipment requirements and allows manual base-stat overrides. It never adds keys,
    *  weapons, buffs or stat modifiers by itself; the engine remains authoritative. */
@@ -508,6 +513,55 @@ export function setExpansionKey(state: SetupState, charId: string, keyId: string
   });
 }
 
+// ---------------------------------------------------------------------------
+// APEX CHASSIS (2026) — SCENARIO-LEVEL (account-wide) equipped Apex Components.
+// The engine is the authoritative validator (max 2, one per type, enhancement range);
+// these helpers only shape SetupState and mirror the caps so the UI stays coherent.
+// ---------------------------------------------------------------------------
+
+/** Maximum equipped Apex Components (mirrors the engine `MAX_APEX_COMPONENTS` = 2). */
+export const MAX_APEX_COMPONENTS_UI = 2;
+
+/**
+ * Set (or replace) the Apex Component in a 0-based chassis slot. `componentId === undefined` clears
+ * that slot. The same component may not occupy two slots; a component whose TYPE is already equipped
+ * in ANOTHER slot replaces it there (one per type — the engine's rule), so a type never duplicates.
+ */
+export function setApexComponentAt(state: SetupState, slot: number, componentId: string | undefined, typeOf: (id: string) => string | undefined, max = MAX_APEX_COMPONENTS_UI): SetupState {
+  if (!Number.isInteger(slot) || slot < 0 || slot > max - 1) return state;
+  const cur = [...(state.apexChassis ?? [])];
+  if (componentId === undefined) {
+    if (slot >= cur.length) return state;
+    cur.splice(slot, 1);
+    return withApex(state, cur);
+  }
+  const type = typeOf(componentId);
+  // Drop the slot's current occupant AND any other slot holding the same type (one-per-type).
+  const kept = cur.filter((c, i) => i !== slot && c.componentId !== componentId && !(type !== undefined && typeOf(c.componentId) === type));
+  kept.splice(Math.min(slot, kept.length), 0, { componentId, enhancement: 1 });
+  return withApex(state, kept);
+}
+
+/** Set the enhancement level (1..max) of the Apex Component in a 0-based slot. Invalid = no-op. */
+export function setApexEnhancement(state: SetupState, slot: number, enhancement: number, max = MAX_APEX_COMPONENTS_UI): SetupState {
+  if (!Number.isInteger(slot) || slot < 0 || slot >= max) return state;
+  const cur = [...(state.apexChassis ?? [])];
+  if (slot >= cur.length) return state;
+  if (!Number.isInteger(enhancement) || enhancement < 1) return state;
+  cur[slot] = { ...cur[slot], enhancement };
+  return withApex(state, cur);
+}
+
+/** Normalize the chassis field: empty list → field removed (keeps the legacy scenario shape). */
+function withApex(state: SetupState, components: Array<{ componentId: string; enhancement: number }>): SetupState {
+  if (components.length === 0) {
+    const next = { ...state };
+    delete next.apexChassis;
+    return next;
+  }
+  return { ...state, apexChassis: components };
+}
+
 /** Maximum Fortification level exposed by the UI (per-run global; QJ's engine map covers V1–V6).
  *  Higher values would just be ignored by the engine's per-character map — no reason to offer them. */
 export const MAX_FORTIFICATION_LEVEL = 6;
@@ -674,5 +728,7 @@ export function buildScenario(setup: SetupState): ScenarioView {
     configOverrides: { fortificationLevel: setup.fortificationLevel },
     // Per-round action order (only when the user configured one; engine validates the permutation).
     ...(setup.roundOrder ? { roundOrder: setup.roundOrder } : {}),
+    // APEX CHASSIS (2026): scenario-level (account-wide); carried verbatim, engine validates.
+    ...(setup.apexChassis && setup.apexChassis.length > 0 ? { apexChassis: { components: setup.apexChassis } } : {}),
   };
 }

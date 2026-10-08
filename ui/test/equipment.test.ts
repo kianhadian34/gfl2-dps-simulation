@@ -18,6 +18,8 @@ import {
   setCommonKeyAt,
   toggleCommonKey,
   toggleCommonKeyStatChoice,
+  setApexComponentAt,
+  setApexEnhancement,
   toggleFixedKey,
   type SetupState,
 } from "../src/shared/setup.js";
@@ -266,6 +268,55 @@ test("equipment: removing/changing a Common Key drops its stale stat choices; bu
   s = toggleCommonKeyStatChoice(s, "qiongjiu", "ck_c", "defPct", 2);
   const sc: ScenarioView = buildScenario(s);
   assert.deepEqual(sc.team[0].commonKeyStatChoices, { ck_c: ["defPct"] }, "choices carried verbatim into the engine scenario");
+});
+
+// ---------------------------------------------------------------------------
+// APEX CHASSIS (2026) — SCENARIO-LEVEL (account-wide) Apex Components
+// ---------------------------------------------------------------------------
+
+/** A minimal type lookup mirroring the engine catalog (one-per-type enforcement). */
+const APEX_TYPES: Record<string, string> = { apex_ar: "ar", apex_smg: "smg", apex_ar2: "ar" };
+const apexTypeOf = (id: string) => APEX_TYPES[id];
+
+test("apex: setApexComponentAt fills a slot (enhancement 1) and carries verbatim into the scenario", () => {
+  let s = setApexComponentAt(setupWith(), 0, "apex_ar", apexTypeOf);
+  assert.deepEqual(s.apexChassis, [{ componentId: "apex_ar", enhancement: 1 }]);
+  const sc: ScenarioView = buildScenario(s);
+  assert.deepEqual(sc.apexChassis, { components: [{ componentId: "apex_ar", enhancement: 1 }] }, "scenario-level (account-wide) — not per member");
+  assert.ok(!("apexChassis" in sc.team[0]), "never attached to a team member");
+});
+
+test("apex: one-per-type — equipping a second component of the SAME type replaces the first", () => {
+  let s = setApexComponentAt(setupWith(), 0, "apex_ar", apexTypeOf);
+  s = setApexComponentAt(s, 1, "apex_ar2", apexTypeOf); // same type "ar" in another slot
+  assert.deepEqual(s.apexChassis, [{ componentId: "apex_ar2", enhancement: 1 }], "the earlier same-type component is dropped");
+});
+
+test("apex: two DIFFERENT types coexist (max 2); clearing a slot removes the field when empty", () => {
+  let s = setApexComponentAt(setupWith(), 0, "apex_ar", apexTypeOf);
+  s = setApexComponentAt(s, 1, "apex_smg", apexTypeOf);
+  assert.deepEqual(s.apexChassis, [{ componentId: "apex_ar", enhancement: 1 }, { componentId: "apex_smg", enhancement: 1 }]);
+  s = setApexComponentAt(s, 0, undefined, apexTypeOf);
+  assert.deepEqual(s.apexChassis, [{ componentId: "apex_smg", enhancement: 1 }], "slot 0 cleared, smg kept");
+  s = setApexComponentAt(s, 0, undefined, apexTypeOf);
+  assert.equal(s.apexChassis, undefined, "empty chassis → field removed (legacy scenario shape preserved)");
+  // Out-of-range slot is a no-op.
+  const before = s.apexChassis;
+  assert.equal(setApexComponentAt(s, 5, "apex_ar", apexTypeOf).apexChassis, before, "out-of-range slot rejected");
+});
+
+test("apex: setApexEnhancement sets the level (1..max) and rejects invalid values", () => {
+  let s = setApexComponentAt(setupWith(), 0, "apex_ar", apexTypeOf);
+  s = setApexEnhancement(s, 0, 6);
+  assert.deepEqual(s.apexChassis, [{ componentId: "apex_ar", enhancement: 6 }]);
+  assert.equal(setApexEnhancement(s, 0, 0).apexChassis![0].enhancement, 6, "0 is invalid → no-op");
+  assert.equal(setApexEnhancement(s, 0, 1.5).apexChassis![0].enhancement, 6, "non-integer → no-op");
+  assert.equal(setApexEnhancement(s, 3, 2).apexChassis!.length, 1, "empty slot → no-op");
+});
+
+test("apex: an empty chassis is NOT emitted into the scenario (absent, not an empty object)", () => {
+  const sc: ScenarioView = buildScenario(setupWith());
+  assert.equal(sc.apexChassis, undefined);
 });
 
 // ---------------------------------------------------------------------------

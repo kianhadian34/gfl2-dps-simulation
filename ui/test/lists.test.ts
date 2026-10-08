@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildWeaponViews, buildCommonKeyViews, buildCommonKeySelectableStats, buildCharacterMetaView, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, expansionKeyEffectLine, affinityLevelStatLines, affinityLevels, affinityLevelFlatLines } from "../src/shared/lists.js";
+import { buildWeaponViews, buildCommonKeyViews, buildCommonKeySelectableStats, buildApexCatalog, buildCharacterMetaView, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, expansionKeyEffectLine, affinityLevelStatLines, affinityLevels, affinityLevelFlatLines } from "../src/shared/lists.js";
 
 /**
  * ENGINE-SOURCED LIST CONTRACT (2026 — plumbing; no UI controls yet).
@@ -268,6 +268,34 @@ test("unit: buildCommonKeySelectableStats maps the engine pool to labelled optio
   const res = buildCommonKeyViews([{ id: "k", name: "K" }], 3, ["critRate", "atkPct"]);
   assert.deepEqual(res.selectableStats.map((s) => s.kind), ["critRate", "atkPct"]);
   assert.deepEqual(buildCommonKeyViews([{ id: "k", name: "K" }], 3).selectableStats, [], "no pool supplied → no options");
+});
+
+test("unit: buildApexCatalog shapes the Apex component (stats as %/flat, effect clauses) from engine data", () => {
+  const res = buildApexCatalog(
+    [
+      {
+        id: "apex_firepower_reconstruction_iii",
+        name: "Elevation - Firepower Reconstruction",
+        type: "ar",
+        tier: 3,
+        maxEnhancement: 6,
+        stats: { atkPct: 0.025, hpPct: 0.025, defPct: 0.025, allElementBoost: 75 },
+        statIncrement: { atkPct: 0.001, hpPct: 0.001, defPct: 0.001, allElementBoost: 5 },
+        secondaryEffect: { name: "Firepower Reconstruction III", weaponTypeTerm: { weaponType: "ar", value: 0.05 }, weaknessExploitValue: 0.07 },
+      },
+      { id: "bare", name: "Bare", type: "smg", tier: 1, maxEnhancement: 6, stats: {}, statIncrement: {} },
+    ],
+    2,
+  );
+  const [fr, bare] = res.items;
+  assert.equal(res.maxComponents, 2, "engine-enforced max carried through");
+  assert.deepEqual(fr.statLines, ["Attack Boost +2.5%", "Health Boost +2.5%", "Defense Boost +2.5%", "All-Element Boost +75"], "percentages as %, All-Element Boost as a flat value");
+  assert.deepEqual(fr.incrementLines, ["+0.1% per enhancement", "+0.1% per enhancement", "+0.1% per enhancement", "+5 per enhancement"]);
+  assert.equal(fr.secondaryEffectName, "Firepower Reconstruction III");
+  assert.deepEqual(fr.secondaryEffectLines, ["Damage dealt by AR Dolls +5.0%", "If an attack exploits a weakness +7.0%"]);
+  assert.deepEqual(bare.statLines, [], "no stats → no lines");
+  assert.equal(bare.secondaryEffectName, undefined, "no effect → nothing emitted");
+  assert.deepEqual(bare.secondaryEffectLines, undefined);
 });
 
 test("unit: buildCharacterMetaView maps optional member/key metadata", () => {

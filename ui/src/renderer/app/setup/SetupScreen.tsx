@@ -14,6 +14,9 @@ import {
   setWeapon,
   setCommonKeyAt,
   toggleCommonKeyStatChoice,
+  setApexComponentAt,
+  setApexEnhancement,
+  MAX_APEX_COMPONENTS_UI,
   setAffinityLevel,
   setRoundOrder,
   toggleFixedKey,
@@ -33,7 +36,7 @@ import {
   type RotationSlot,
   type SetupState,
 } from "../../../shared/setup.js";
-import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CommonKeyStatOptionView, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, RotationSkillView } from "../../../shared/engine-types.js";
+import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CommonKeyStatOptionView, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, ApexCatalogView, ApexComponentView, RotationSkillView } from "../../../shared/engine-types.js";
 import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, affinityLevels, affinityLevelFlatLines, expansionKeyEffectLine, affinityLevelStatLines, rotationAbilityDescription } from "../../../shared/lists.js";
 import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset, skillAsset, elementAsset, ammoAsset } from "../../../shared/assets.js";
 import { AssetThumb } from "./AssetThumb.js";
@@ -125,6 +128,41 @@ function rotationTypeLabel(type: string | undefined): string | undefined {
 }
 
 /**
+ * APEX COMPONENT badge (2026) — the Apex Chassis card: name, tier, the always-on stat lines, and
+ * the secondary effect's clauses. All text comes from the engine-sourced `ApexComponentView`.
+ */
+function ApexComponentBadge({ k }: { k: ApexComponentView }) {
+  return (
+    <span className="apex-badge">
+      <span className="apex-badge-name">{k.name}</span>
+      <span className="apex-badge-tier muted">
+        Tier {k.tier} · {k.type.toUpperCase()}
+      </span>
+      {k.statLines.map((ln) => (
+        <span key={ln} className="common-key-stat">
+          {ln}
+        </span>
+      ))}
+      {k.secondaryEffectName ? (
+        <>
+          <span className="apex-badge-effect-name">{k.secondaryEffectName}</span>
+          {(k.secondaryEffectLines ?? []).map((ln) => (
+            <span key={ln} className="common-key-effect">
+              {ln}
+            </span>
+          ))}
+        </>
+      ) : null}
+    </span>
+  );
+}
+
+/** Component id → type lookup from the engine-sourced catalog (for the one-per-type rule). */
+function apexTypeOf(catalog: ApexCatalogView | null): (id: string) => string | undefined {
+  return (id) => catalog?.items.find((c) => c.id === id)?.type;
+}
+
+/**
  * COMMON KEY STAT PICKER (2026). Rendered INSIDE the equipped key's own slot column, directly
  * under that key, so each key's selectable stat boosts are visually anchored to the key they
  * belong to (three keys → three pickers, never one detached bar). The fixed stat(s) are shown
@@ -206,7 +244,7 @@ export function SetupScreen(props: {
   onStart: (scenario: ScenarioView) => Promise<void>;
   onOpenScenario: () => Promise<void>;
 }): JSX.Element {
-  const { listCharacters, listWeapons, listCommonKeys, listAttachments } = useSession();
+  const { listCharacters, listWeapons, listCommonKeys, listAttachments, listApexComponents } = useSession();
   const [charsLoaded, setCharsLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -214,7 +252,9 @@ export function SetupScreen(props: {
   const [weapons, setWeapons] = useState<WeaponView[]>([]);
   const [commonKeys, setCommonKeys] = useState<CommonKeyListResult | null>(null);
   const [attachments, setAttachments] = useState<AttachmentCatalogView | null>(null);
+  const [apex, setApex] = useState<ApexCatalogView | null>(null);
   const [commonKeySlot, setCommonKeySlot] = useState<number | null>(null);
+  const [apexSlot, setApexSlot] = useState<number | null>(null);
   const [affinityPickerFor, setAffinityPickerFor] = useState<string | null>(null);
   const [expansionPickerFor, setExpansionPickerFor] = useState<string | null>(null);
   const [meta, setMeta] = useState<Record<string, CharacterMetaView>>({});
@@ -223,11 +263,12 @@ export function SetupScreen(props: {
 
   useEffect(() => {
     if (charsLoaded) return;
-    Promise.all([listCharacters(), listWeapons(), listCommonKeys(), listAttachments()])
-      .then(([chars, wl, ckl, atc]) => {
+    Promise.all([listCharacters(), listWeapons(), listCommonKeys(), listAttachments(), listApexComponents()])
+      .then(([chars, wl, ckl, atc, apx]) => {
         setWeapons(wl);
         setCommonKeys(ckl);
         setAttachments(atc);
+        setApex(apx);
         setMeta(Object.fromEntries(chars.map((c) => [c.id, c])));
         // Seed DEBUG MODE base stats from the characters' REAL CharacterDef.base (engine-sourced).
         const baseById: Record<string, { atk: number; hp: number; def: number; stability: number; critRate: number; critDmg: number }> = {};
@@ -242,7 +283,7 @@ export function SetupScreen(props: {
       })
       .catch((e: unknown) => setFormError(String(e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [charsLoaded, listCharacters, listWeapons, listCommonKeys, listAttachments]);
+  }, [charsLoaded, listCharacters, listWeapons, listCommonKeys, listAttachments, listApexComponents]);
 
   const set = (patch: Partial<SetupState>): void => props.onChange({ ...props.setup, ...patch });
 
@@ -1059,6 +1100,106 @@ export function SetupScreen(props: {
             The engine remains authoritative: it validates every id, the 3-slot Common Key maximum, C1–C6 calibrations, and
             calibration-without-weapon. Local caps (0–3 Keys, exactly-1 weapon/affinity once equipment is engaged) are UI-only.
           </p>
+        </section>
+
+        <section>
+          <h2>Apex Chassis <span className="muted">(Heavy Ordnance Corps — account-wide)</span></h2>
+          {(apex?.items ?? []).length === 0 ? (
+            <span className="muted">no Apex Components available (IPC list empty)</span>
+          ) : (
+            <>
+              <p className="muted">
+                Up to {apex?.maxComponents ?? MAX_APEX_COMPONENTS_UI} Apex Components — at most one per type. Applies to the whole
+                team. The engine validates the configuration.
+              </p>
+              <div className="common-key-slots">
+                {Array.from({ length: apex?.maxComponents ?? MAX_APEX_COMPONENTS_UI }, (_, slot) => {
+                  const equippedApex = (props.setup.apexChassis ?? [])[slot];
+                  const k = equippedApex !== undefined ? (apex?.items ?? []).find((x) => x.id === equippedApex.componentId) : undefined;
+                  return (
+                    <div key={slot} className="common-key-slot-col">
+                      <button
+                        type="button"
+                        className={`common-key-slot${k ? " is-filled" : " is-empty"}`}
+                        onClick={() => setApexSlot(slot)}
+                      >
+                        {k ? (
+                          <>
+                            <ApexComponentBadge k={k} />
+                            <span
+                              className="common-key-slot-remove"
+                              title="Remove"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                props.onChange(setApexComponentAt(props.setup, slot, undefined, apexTypeOf(apex)));
+                              }}
+                            >
+                              ×
+                            </span>
+                          </>
+                        ) : (
+                          <span className="common-key-slot-plus">+</span>
+                        )}
+                      </button>
+                      {k && equippedApex ? (
+                        <div className="apex-enhance">
+                          <span className="apex-enhance-label">
+                            Enhance <span className="muted">({equippedApex.enhancement}/{k.maxEnhancement})</span>
+                          </span>
+                          <input
+                            type="range"
+                            min={1}
+                            max={k.maxEnhancement}
+                            value={equippedApex.enhancement}
+                            onChange={(e) => props.onChange(setApexEnhancement(props.setup, slot, Number(e.target.value)))}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+              {apexSlot !== null ? (
+                <div className="common-key-picker" role="dialog" aria-label="Choose Apex Component">
+                  <div className="common-key-picker-list">
+                    <button
+                      type="button"
+                      className="common-key-picker-card is-remove"
+                      onClick={() => {
+                        props.onChange(setApexComponentAt(props.setup, apexSlot, undefined, apexTypeOf(apex)));
+                        setApexSlot(null);
+                      }}
+                    >
+                      <span className="common-key-slot-plus">+</span>
+                      <span className="common-key-picker-name">— clear this slot —</span>
+                    </button>
+                    {(apex?.items ?? []).map((k) => {
+                      const inSlot = (props.setup.apexChassis ?? [])[apexSlot]?.componentId === k.id;
+                      const usedElsewhere = (props.setup.apexChassis ?? []).some((c, i) => i !== apexSlot && c.componentId === k.id);
+                      return (
+                        <button
+                          key={k.id}
+                          type="button"
+                          className={`common-key-picker-card${inSlot ? " is-selected" : ""}${usedElsewhere ? " is-used" : ""}`}
+                          disabled={usedElsewhere}
+                          title={usedElsewhere ? "Already equipped in another slot" : undefined}
+                          onClick={() => {
+                            props.onChange(setApexComponentAt(props.setup, apexSlot, k.id, apexTypeOf(apex)));
+                            setApexSlot(null);
+                          }}
+                        >
+                          <ApexComponentBadge k={k} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button type="button" className="common-key-picker-close" onClick={() => setApexSlot(null)}>
+                    Close
+                  </button>
+                </div>
+              ) : null}
+            </>
+          )}
         </section>
 
         <section>

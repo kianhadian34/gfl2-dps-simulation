@@ -26,6 +26,9 @@ import type { ApexChassisConfig, ApexComponentDef, ApexComponentStats } from "..
 /** Resolve one component definition by id (the registry lookup; unknown id → undefined). */
 export type ApexComponentLookup = (id: string) => ApexComponentDef | undefined;
 
+/** Engine-enforced maximum equipped Apex Components (guide: up to 2; one per type). */
+export const MAX_APEX_COMPONENTS = 2;
+
 /** One RESOLVED equipped component: its definition + the validated enhancement level. */
 export interface ResolvedApexComponent {
   def: ApexComponentDef;
@@ -69,8 +72,8 @@ export function resolveApexChassis(
   lookup: ApexComponentLookup,
 ): ResolvedApexComponent[] {
   const components = config?.components ?? [];
-  if (components.length > 2) {
-    throw new Error(`Apex Chassis: at most 2 Apex Components may be equipped (got ${components.length})`);
+  if (components.length > MAX_APEX_COMPONENTS) {
+    throw new Error(`Apex Chassis: at most ${MAX_APEX_COMPONENTS} Apex Components may be equipped (got ${components.length})`);
   }
   const out: ResolvedApexComponent[] = [];
   const seenTypes = new Set<string>();

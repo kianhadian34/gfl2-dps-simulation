@@ -141,6 +141,35 @@ export interface CommonKeyListResult {
   selectableStats: CommonKeyStatOptionView[];
 }
 
+/**
+ * APEX COMPONENT view (2026) — the Apex Chassis (Heavy Ordnance Corps, the ONE adapted part).
+ * Presentation data sourced from the engine's `ApexComponentDef`; the engine stays authoritative.
+ */
+export interface ApexComponentView {
+  id: string;
+  name: string;
+  /** Component type (one of the 7 weapon types) — only ONE component per type may be equipped. */
+  type: string;
+  /** Tier I–IV. */
+  tier: number;
+  /** Max enhancement level (duplicates combine up to 5× → Enhance 1..6). */
+  maxEnhancement: number;
+  /** Always-on stat lines at Enhance 1, e.g. ["Attack Boost +2.5%", "All-Element Boost +75"]. */
+  statLines: string[];
+  /** Per-enhancement increment lines, e.g. ["+0.1% per enhancement", "+5 per enhancement"]. */
+  incrementLines: string[];
+  /** The secondary effect's display name (e.g. "Firepower Reconstruction III"), when present. */
+  secondaryEffectName?: string;
+  /** The secondary effect's clauses as display lines (weapon-type term + weakness-exploit term). */
+  secondaryEffectLines?: string[];
+}
+
+export interface ApexCatalogView {
+  items: ApexComponentView[];
+  /** Engine-enforced maximum equipped Apex Components (2). */
+  maxComponents: number;
+}
+
 /** Engine-sourced per-character key/member metadata (extends the legacy listCharacters shape). */
 export interface FixedKeyView {
   id: string;
@@ -333,6 +362,11 @@ export interface ScenarioView {
   configOverrides?: Record<string, unknown>;
   /** Per-round action order (round → team character ids in acting order). Absent = team order each round. */
   roundOrder?: Record<number, string[]>;
+  /**
+   * APEX CHASSIS (2026): SCENARIO-LEVEL (account-wide) equipped Apex Components. Carried VERBATIM
+   * to the engine (`Scenario.apexChassis`); the engine validates (max 2, one per type, enhancement).
+   */
+  apexChassis?: { components?: Array<{ componentId: string; enhancement: number }> };
 }
 
 /** Full LogEvent mirror — the log window exposes EVERY field the engine emits. */

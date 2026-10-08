@@ -27,6 +27,8 @@ import type {
   AttachmentConfigView,
   AttachmentSlotRulesView,
   AttachmentSetView,
+  ApexCatalogView,
+  ApexComponentView,
 } from "./engine-types.js";
 
 /** Structural engine weapon shape (satisfied by engine `WeaponDef`). */
@@ -267,6 +269,98 @@ export function buildAttachmentCatalog(src: AttachmentCatalogSource): Attachment
       allowedStats: (src.slotAllowedStats[slot] ?? []).map(statDef),
     })),
     sets: src.sets.filter((s) => s.implemented).map((s) => ({ id: s.id, name: s.name })),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// APEX CHASSIS (2026) — Heavy Ordnance Corps, the ONE adapted part.
+// Presentation shaping only: every value comes from the engine's `ApexComponentDef`; nothing is
+// invented here (unknown kinds fall back to their raw id).
+// ---------------------------------------------------------------------------
+
+/** Structural engine Apex component shape (satisfied by engine `ApexComponentDef`). */
+export interface ApexComponentSource {
+  id: string;
+  name: string;
+  type: string;
+  tier: number;
+  maxEnhancement: number;
+  stats: { atkPct?: number; hpPct?: number; defPct?: number; allElementBoost?: number };
+  statIncrement: { atkPct?: number; hpPct?: number; defPct?: number; allElementBoost?: number };
+  secondaryEffect?: {
+    name: string;
+    weaponTypeTerm?: { weaponType: string; value: number };
+    weaknessExploitValue?: number;
+  };
+}
+
+/** Apex stat-kind → display label (data-driven; never invented). */
+const APEX_STAT_LABELS: Record<string, string> = {
+  atkPct: "Attack Boost",
+  hpPct: "Health Boost",
+  defPct: "Defense Boost",
+  allElementBoost: "All-Element Boost",
+};
+
+/** Weapon-type → display label, matching the game's weapon filter (2026). */
+const APEX_WEAPON_TYPE_LABELS: Record<string, string> = {
+  ar: "AR",
+  smg: "SMG",
+  sg: "SG",
+  mg: "MG",
+  rf: "RF",
+  hg: "HG",
+  bld: "BLD",
+};
+
+/** Order the stat lines consistently: the three % boosts first, then All-Element Boost. */
+const APEX_STAT_ORDER = ["atkPct", "hpPct", "defPct", "allElementBoost"] as const;
+
+/**
+ * One Apex stat line: percentages render as "+2.5%", All-Element Boost is a FLAT value → "+75".
+ * `isPct` decides the formatting; the value itself always comes from the engine data.
+ */
+function apexStatLine(kind: string, value: number): string {
+  const label = APEX_STAT_LABELS[kind] ?? kind;
+  return kind === "allElementBoost" ? `${label} +${value}` : `${label} +${(value * 100).toFixed(1)}%`;
+}
+
+/** The per-enhancement increment line for one stat (same formatting rules as `apexStatLine`). */
+function apexIncrementLine(kind: string, value: number): string {
+  return kind === "allElementBoost" ? `+${value} per enhancement` : `+${(value * 100).toFixed(1)}% per enhancement`;
+}
+
+/**
+ * Build the UI Apex catalog from engine data (2026). Non-authoritative display shaping: the
+ * component ids/names/stats/effects all come from the engine definitions the caller provides.
+ */
+export function buildApexCatalog(src: ApexComponentSource[], maxComponents: number): ApexCatalogView {
+  return {
+    items: src.map((c) => {
+      const statLines = APEX_STAT_ORDER.filter((k) => c.stats[k] !== undefined).map((k) => apexStatLine(k, c.stats[k]!));
+      const incrementLines = APEX_STAT_ORDER.filter((k) => c.statIncrement[k] !== undefined).map((k) => apexIncrementLine(k, c.statIncrement[k]!));
+      const eff = c.secondaryEffect;
+      const secondaryEffectLines: string[] = [];
+      if (eff?.weaponTypeTerm) {
+        const wt = APEX_WEAPON_TYPE_LABELS[eff.weaponTypeTerm.weaponType] ?? eff.weaponTypeTerm.weaponType;
+        secondaryEffectLines.push(`Damage dealt by ${wt} Dolls +${(eff.weaponTypeTerm.value * 100).toFixed(1)}%`);
+      }
+      if (eff?.weaknessExploitValue !== undefined) {
+        secondaryEffectLines.push(`If an attack exploits a weakness +${(eff.weaknessExploitValue * 100).toFixed(1)}%`);
+      }
+      return {
+        id: c.id,
+        name: c.name,
+        type: c.type,
+        tier: c.tier,
+        maxEnhancement: c.maxEnhancement,
+        statLines,
+        incrementLines,
+        ...(eff ? { secondaryEffectName: eff.name } : {}),
+        ...(secondaryEffectLines.length > 0 ? { secondaryEffectLines } : {}),
+      };
+    }),
+    maxComponents,
   };
 }
 
@@ -511,4 +605,4 @@ export function expansionKeyEffectLine(e: ExpansionKeyView | undefined): string 
 }
 
 /** Convenience re-export for callers that only need the view types. */
-export type { WeaponView, CommonKeyListResult, CommonKeyView, CommonKeyStatOptionView, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, AttachmentSlotView, AttachmentStatView, AttachmentConfigView, AttachmentStatDefView, AttachmentSlotRulesView, AttachmentSetView };
+export type { WeaponView, CommonKeyListResult, CommonKeyView, CommonKeyStatOptionView, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, AttachmentSlotView, AttachmentStatView, AttachmentConfigView, AttachmentStatDefView, AttachmentSlotRulesView, AttachmentSetView, ApexCatalogView, ApexComponentView };

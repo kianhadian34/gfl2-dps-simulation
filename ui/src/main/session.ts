@@ -15,8 +15,10 @@ import { WEAPONS } from "../../../src/data/weapons.ts";
 import { COMMON_KEYS, COMMON_KEY_SELECTABLE_STAT_KINDS } from "../../../src/data/common-keys.ts";
 import { ATTACHMENT_SETS } from "../../../src/data/attachment-sets.ts";
 import { ATTACHMENT_SLOTS, ATTACHMENT_SLOT_MAX_STATS, ATTACHMENT_STAT_DEFS, attachmentStatsForSlot } from "../../../src/data/attachments.ts";
+import { APEX_COMPONENTS } from "../../../src/data/apex-components.ts";
 import { MAX_COMMON_KEYS } from "../../../src/engine/state.ts";
-import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView, buildAttachmentCatalog } from "../shared/lists.js";
+import { MAX_APEX_COMPONENTS } from "../../../src/engine/apex.ts";
+import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView, buildAttachmentCatalog, buildApexCatalog } from "../shared/lists.js";
 import { buildGrid, moveCost, tileHeightAt, tileKey, bossFootprintTiles } from "../../../src/engine/grid.ts";
 import type { ScenarioView, SessionView, MovementFactView, GridCellFactsView, EffectSourceInfoView } from "../shared/engine-types.js";
 
@@ -244,6 +246,9 @@ export function registerSimHandlers(): void {
       sets: ATTACHMENT_SETS,
     }),
   );
+
+  /** Apex Chassis catalog (2026): the Apex Components + the engine-enforced max (2). */
+  ipcMain.handle("sim:listApexComponents", () => buildApexCatalog(APEX_COMPONENTS, MAX_APEX_COMPONENTS));
 
   ipcMain.handle("sim:run", (_event, scenario: unknown) => {
     if (typeof scenario !== "object" || scenario === null) throw new Error("sim:run expects a scenario object");

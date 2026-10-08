@@ -665,6 +665,8 @@ Consequences (CONFIRMED): **no `setId` on individual slots**, **no per-attachmen
 
 **Explicitly NOT modeled (do not invent):** the other 6 Apex types and Tiers I/II/IV (no data); the **Polyphase-Tile / All-Element-Boost RES subsystem** (no engine model); Armed Echelons / HOC Rank / Base Components / Peripheral Battlefield / HOC skills + Energy / Armed Echelon ammo grades; acquisition, inventory, and drop rates.
 
+**UI IMPLEMENTED (2026):** the Setup screen renders a dedicated, **account-wide** Apex Chassis section (two slots) — a component picker reusing the existing card pattern, a per-slot enhancement slider (1..the component's max), and the component's stat + secondary-effect lines. The catalog comes from the engine over IPC (`sim:listApexComponents` → `buildApexCatalog`, `MAX_APEX_COMPONENTS`); the setup state carries `apexChassis` verbatim into `Scenario.apexChassis` (scenario-level, never per member), and selection flows through `setApexComponentAt` (one-per-type) / `setApexEnhancement`.
+
 **Source** — dandegate.net "Heavy Ordnance Corps Primer" (Apex Chassis section) + the player's own in-game Tier III component screenshot + the dandegate.net "Damage Formula" guide (`Weak`, `RESMult`).
 
 ---
