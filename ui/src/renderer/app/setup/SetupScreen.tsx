@@ -22,6 +22,7 @@ import {
   toggleFixedKey,
   toggleAttachmentStat,
   setActiveAttachmentSet,
+  setPermanentCookingStats,
   addRotationSlot,
   moveRotationSlot,
   removeRotationSlotAt,
@@ -36,8 +37,8 @@ import {
   type RotationSlot,
   type SetupState,
 } from "../../../shared/setup.js";
-import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CommonKeyStatOptionView, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, ApexCatalogView, ApexComponentView, RotationSkillView } from "../../../shared/engine-types.js";
-import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, affinityLevels, affinityLevelFlatLines, expansionKeyEffectLine, affinityLevelStatLines, rotationAbilityDescription } from "../../../shared/lists.js";
+import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CommonKeyStatOptionView, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, ApexCatalogView, ApexComponentView, PermanentCookingStatsView, RotationSkillView } from "../../../shared/engine-types.js";
+import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, affinityLevels, affinityLevelFlatLines, expansionKeyEffectLine, affinityLevelStatLines, cookingStatsLines, rotationAbilityDescription } from "../../../shared/lists.js";
 import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset, skillAsset, elementAsset, ammoAsset } from "../../../shared/assets.js";
 import { AssetThumb } from "./AssetThumb.js";
 
@@ -244,7 +245,7 @@ export function SetupScreen(props: {
   onStart: (scenario: ScenarioView) => Promise<void>;
   onOpenScenario: () => Promise<void>;
 }): JSX.Element {
-  const { listCharacters, listWeapons, listCommonKeys, listAttachments, listApexComponents } = useSession();
+  const { listCharacters, listWeapons, listCommonKeys, listAttachments, listApexComponents, getPermanentCookingStats } = useSession();
   const [charsLoaded, setCharsLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -253,6 +254,7 @@ export function SetupScreen(props: {
   const [commonKeys, setCommonKeys] = useState<CommonKeyListResult | null>(null);
   const [attachments, setAttachments] = useState<AttachmentCatalogView | null>(null);
   const [apex, setApex] = useState<ApexCatalogView | null>(null);
+  const [cookingStats, setCookingStats] = useState<PermanentCookingStatsView | null>(null);
   const [commonKeySlot, setCommonKeySlot] = useState<number | null>(null);
   const [apexSlot, setApexSlot] = useState<number | null>(null);
   const [affinityPickerFor, setAffinityPickerFor] = useState<string | null>(null);
@@ -263,12 +265,13 @@ export function SetupScreen(props: {
 
   useEffect(() => {
     if (charsLoaded) return;
-    Promise.all([listCharacters(), listWeapons(), listCommonKeys(), listAttachments(), listApexComponents()])
-      .then(([chars, wl, ckl, atc, apx]) => {
+    Promise.all([listCharacters(), listWeapons(), listCommonKeys(), listAttachments(), listApexComponents(), getPermanentCookingStats()])
+      .then(([chars, wl, ckl, atc, apx, cooking]) => {
         setWeapons(wl);
         setCommonKeys(ckl);
         setAttachments(atc);
         setApex(apx);
+        setCookingStats(cooking);
         setMeta(Object.fromEntries(chars.map((c) => [c.id, c])));
         // Seed DEBUG MODE base stats from the characters' REAL CharacterDef.base (engine-sourced).
         const baseById: Record<string, { atk: number; hp: number; def: number; stability: number; critRate: number; critDmg: number }> = {};
@@ -283,7 +286,7 @@ export function SetupScreen(props: {
       })
       .catch((e: unknown) => setFormError(String(e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [charsLoaded, listCharacters, listWeapons, listCommonKeys, listAttachments, listApexComponents]);
+  }, [charsLoaded, listCharacters, listWeapons, listCommonKeys, listAttachments, listApexComponents, getPermanentCookingStats]);
 
   const set = (patch: Partial<SetupState>): void => props.onChange({ ...props.setup, ...patch });
 
@@ -815,6 +818,30 @@ export function SetupScreen(props: {
                             <span className="muted">loading attachments…</span>
                           )}
                         </div>
+                      </fieldset>
+
+                      <fieldset>
+                        <legend>
+                          Permanent Cooking Stats <span className="muted">(permanent flat bonus — engine values)</span>
+                        </legend>
+                        <label className="inline">
+                          <input
+                            type="checkbox"
+                            checked={equ.permanentCookingStats === true}
+                            onChange={(e) => props.onChange(setPermanentCookingStats(props.setup, c.id, e.target.checked))}
+                          />
+                          Enable Permanent Cooking Stats
+                        </label>
+                        {equ.permanentCookingStats === true ? (
+                          <div className="affinity-level-bonus">
+                            <span className="affinity-level-bonus-label">Permanent Cooking Stats</span>
+                            {cookingStatsLines(cookingStats).map((ln) => (
+                              <span key={ln} className="affinity-level-bonus-stat">
+                                {ln}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
                       </fieldset>
 
                       <fieldset>

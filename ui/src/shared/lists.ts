@@ -29,6 +29,7 @@ import type {
   AttachmentSetView,
   ApexCatalogView,
   ApexComponentView,
+  PermanentCookingStatsView,
 } from "./engine-types.js";
 
 /** Structural engine weapon shape (satisfied by engine `WeaponDef`). */
@@ -365,6 +366,24 @@ export function buildApexCatalog(src: ApexComponentSource[], maxComponents: numb
 }
 
 /**
+ * Build the Permanent Cooking Stats view from the engine's values (`PERMANENT_COOKING_STATS`), plus
+ * the player-facing stat lines shown in the UI. Engine-sourced — the UI never restates the numbers.
+ */
+export function buildPermanentCookingStatsView(src: { atk: number; hp: number; def: number }): PermanentCookingStatsView {
+  return { atk: src.atk, hp: src.hp, def: src.def };
+}
+
+/** Player-facing lines for the Permanent Cooking Stats bonus (e.g. ["ATK +15", "HP +30", "DEF +15"]). */
+export function cookingStatsLines(v: PermanentCookingStatsView | null | undefined): string[] {
+  if (!v) return [];
+  const lines: string[] = [];
+  if (v.atk !== 0) lines.push(`ATK +${v.atk}`);
+  if (v.hp !== 0) lines.push(`HP +${v.hp}`);
+  if (v.def !== 0) lines.push(`DEF +${v.def}`);
+  return lines;
+}
+
+/**
  * A single player-facing Common Key stat line, tagged with its provenance so the UI can style it
  * differently: `fixed` (hardcoded stat), `chosen` (a player-selected kind), `empty` (a selectable
  * slot the player has not filled yet).
@@ -605,4 +624,4 @@ export function expansionKeyEffectLine(e: ExpansionKeyView | undefined): string 
 }
 
 /** Convenience re-export for callers that only need the view types. */
-export type { WeaponView, CommonKeyListResult, CommonKeyView, CommonKeyStatOptionView, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, AttachmentSlotView, AttachmentStatView, AttachmentConfigView, AttachmentStatDefView, AttachmentSlotRulesView, AttachmentSetView, ApexCatalogView, ApexComponentView };
+export type { WeaponView, CommonKeyListResult, CommonKeyView, CommonKeyStatOptionView, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, AttachmentSlotView, AttachmentStatView, AttachmentConfigView, AttachmentStatDefView, AttachmentSlotRulesView, AttachmentSetView, ApexCatalogView, ApexComponentView, PermanentCookingStatsView };

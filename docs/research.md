@@ -678,6 +678,41 @@ Consequences (CONFIRMED): **no `setId` on individual slots**, **no per-attachmen
 
 ---
 
+### 3.21 Permanent Cooking Stats (user-toggleable permanent flat bonus)
+
+**Status: IMPLEMENTED (2026).** A simple permanent stat system, switched on per character in the UI
+(**Permanent Cooking Stats → Enabled/Disabled**). Engine: `src/data/cooking-stats.ts` + the
+`resolveCookingFlat` gate in `src/engine/state.ts`; scenario field
+`ScenarioTeamMember.permanentCookingStats`.
+
+**Values (SOURCE — user-provided 2026):** **15 Attack · 15 Defense · 30 Health** — FLAT values, not
+percentages.
+
+**Engine representation (IMPLEMENTED 2026):**
+- The bonus enters the **EXISTING flat bucket** of the ONE panel path (`computePanel`) — `Final Stat =
+  ceil((Initial + Flat) × (1 + Stat%))` — summed with the other permanent flat sources (Dispatch /
+  Remolder Lv.60 / Neural Helix / Affinity Level / Attachments) **BEFORE** percentage modifiers.
+  There is **no second stat system and no separate formula**. It is a SEPARATE source — it never
+  merges into `CharacterDef.base`.
+- **OFF by default**: applied only when the member sets `permanentCookingStats: true`.
+- **CONTROLLED math fixtures** (`applyDispatchStats: false`) **exclude** it, exactly like the other
+  permanent sources — so every existing number-pinning oracle (865 / 975 / 1434 / …) is unaffected.
+- **Debug-authoritative overrides** suppress it on any stat the user explicitly overrode (an
+  overridden stat stays exactly as entered, with no cooking flat beneath it).
+- Also folded into the **raw-ATK basis** used for Blossom's top-N highest-ATK selection, so that
+  basis and the real panel can never diverge.
+- **UI**: a per-character `Enable Permanent Cooking Stats` checkbox in the Setup screen, carried
+  verbatim into `ScenarioTeamMember.permanentCookingStats`. The UI never restates the values — the
+  engine data owns them.
+
+**Not claimed / not modeled:** the in-game *acquisition* of these stats (how cooking grants them),
+any per-stat scaling, and any interaction with systems beyond the panel flat bucket. The values are
+user-provided; they are **not** in-game validated numbers.
+
+**Source** — user-provided values (2026).
+
+---
+
 ## 4. Uncertainty register
 
 Every mechanic that is still uncertain, with impact and resolution path. **None of these should be hardcoded as facts in the engine — all are config defaults pending the in-game test plan (§5).**

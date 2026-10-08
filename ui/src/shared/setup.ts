@@ -82,6 +82,12 @@ export interface SetupEquipment {
   attachments?: AttachmentConfigView;
   /** WEAPON ATTACHMENTS (2026): the ACTIVE loadout-level Attachment Set id (engine-validated). */
   activeAttachmentSet?: string;
+  /**
+   * PERMANENT COOKING STATS (2026): per-character toggle for the permanent flat ATK/DEF/HP bonus
+   * (engine `PERMANENT_COOKING_STATS` — 15 ATK / 15 DEF / 30 HP). OFF by default; carried VERBATIM
+   * to the engine (`ScenarioTeamMember.permanentCookingStats`), which owns the values.
+   */
+  permanentCookingStats?: boolean;
 }
 
 /** Fresh engine character rows (sim:listCharacters) vs the user's CURRENT setup: KEEP the user's
@@ -503,6 +509,20 @@ export function setActiveAttachmentSet(state: SetupState, charId: string, setId:
   });
 }
 
+/**
+ * PERMANENT COOKING STATS (2026): enable/disable the per-character permanent flat ATK/DEF/HP bonus.
+ * `false` clears the field entirely, so an off doll reproduces the exact legacy member shape and the
+ * engine applies nothing (the bonus is opt-in). The engine owns the actual values.
+ */
+export function setPermanentCookingStats(state: SetupState, charId: string, enabled: boolean): SetupState {
+  return updateEquipment(state, charId, (e) => {
+    const next: SetupEquipment = { ...e };
+    if (enabled) next.permanentCookingStats = true;
+    else delete next.permanentCookingStats;
+    return next;
+  });
+}
+
 /** Set (or clear) the single Expansion Key (engine contract: one `expansionKeyId`). */
 export function setExpansionKey(state: SetupState, charId: string, keyId: string | undefined): SetupState {
   return updateEquipment(state, charId, (e) => {
@@ -660,6 +680,7 @@ export function buildScenario(setup: SetupState): ScenarioView {
         ...(equ.expansionKeyId !== undefined ? { expansionKeyId: equ.expansionKeyId } : {}),
         ...(equ.attachments !== undefined ? { attachments: equ.attachments } : {}),
         ...(equ.activeAttachmentSet !== undefined ? { activeAttachmentSet: equ.activeAttachmentSet } : {}),
+        ...(equ.permanentCookingStats !== undefined ? { permanentCookingStats: equ.permanentCookingStats } : {}),
         ...(Object.keys(debugOv).length > 0
           ? { baseStatOverrides: debugOv, overridesAuthoritative: true } // DEBUG-MODE AUTHORITATIVE: overridden stats suppress dispatch (e.g. ATK 1500 stays 1500, no +231)
           : {}),

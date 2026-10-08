@@ -5,6 +5,7 @@ import type { ActiveStatus, LogEvent, ResolvedConfig } from "../model/runtime.js
 import { Rng } from "./rng.js";
 import type { Registry } from "../data/registry.js";
 import { DISPATCH_STAT_BUFFS } from "../data/dispatch.js";
+import { PERMANENT_COOKING_STATS } from "../data/cooking-stats.js";
 import { REMOLDER_BUFFS } from "../data/remolder.js";
 import { NEURAL_HELIX_GLOBAL_PCT } from "../data/neural-helix.js";
 import { resolveAttachmentStats, validateAttachmentConfig } from "../data/attachments.js";
@@ -198,6 +199,7 @@ export function computePanel(
   neuralHelixFlat?: { atk?: number; hp?: number; def?: number },
   affinityFlat?: { atk?: number; hp?: number; def?: number },
   attachmentFlat?: { atk?: number; hp?: number; def?: number },
+  cookingFlat?: { atk?: number; hp?: number; def?: number },
 ): { atk: number; hp: number; def: number } {
   const weaponAtkBonus = weaponAtk(weapon);
   const pctAtk = (weapon?.subStats ?? []).filter((s) => s.stat === "pctAtk").reduce((a, s) => a + s.value, 0);
@@ -206,9 +208,9 @@ export function computePanel(
   // Game-authoritative FINAL STAT rounding: the integer results feed every downstream consumer
   // (damage ATK/DEF, applier-ATK fixed damage, HP pools).
   return {
-    atk: finalStat(def.base.atk, weaponAtkBonus + (dispatchFlat?.atk ?? 0) + (remolderFlat?.atk ?? 0) + (neuralHelixFlat?.atk ?? 0) + (affinityFlat?.atk ?? 0) + (attachmentFlat?.atk ?? 0), pctAtk),
-    hp: finalStat(def.base.hp, (dispatchFlat?.hp ?? 0) + (remolderFlat?.hp ?? 0) + (neuralHelixFlat?.hp ?? 0) + (affinityFlat?.hp ?? 0) + (attachmentFlat?.hp ?? 0), pctHp),
-    def: finalStat(def.base.def, (dispatchFlat?.def ?? 0) + (remolderFlat?.def ?? 0) + (neuralHelixFlat?.def ?? 0) + (affinityFlat?.def ?? 0) + (attachmentFlat?.def ?? 0), pctDef),
+    atk: finalStat(def.base.atk, weaponAtkBonus + (dispatchFlat?.atk ?? 0) + (remolderFlat?.atk ?? 0) + (neuralHelixFlat?.atk ?? 0) + (affinityFlat?.atk ?? 0) + (attachmentFlat?.atk ?? 0) + (cookingFlat?.atk ?? 0), pctAtk),
+    hp: finalStat(def.base.hp, (dispatchFlat?.hp ?? 0) + (remolderFlat?.hp ?? 0) + (neuralHelixFlat?.hp ?? 0) + (affinityFlat?.hp ?? 0) + (attachmentFlat?.hp ?? 0) + (cookingFlat?.hp ?? 0), pctHp),
+    def: finalStat(def.base.def, (dispatchFlat?.def ?? 0) + (remolderFlat?.def ?? 0) + (neuralHelixFlat?.def ?? 0) + (affinityFlat?.def ?? 0) + (attachmentFlat?.def ?? 0) + (cookingFlat?.def ?? 0), pctDef),
   };
 }
 
@@ -286,6 +288,32 @@ function resolveAffinityFlat(
     };
   }
   return base;
+}
+
+/**
+ * PERMANENT COOKING STATS FLAT (2026): a user-toggleable permanent flat ATK/DEF/HP bonus
+ * (`PERMANENT_COOKING_STATS`), folded into the SAME flat bucket as the other permanent sources —
+ * no second stat system. Gated EXACTLY like them: OFF unless the member enables it
+ * (`permanentCookingStats === true`), excluded by controlled math fixtures
+ * (`applyDispatchStats === false`), and suppressed on any stat under a Debug-authoritative override.
+ */
+function resolveCookingFlat(
+  enabled: boolean | undefined,
+  applyDispatchStats: boolean | undefined,
+  overridesAuthoritative: boolean | undefined,
+  baseStatOverrides: { atk?: number; hp?: number; def?: number; stability?: number; critRate?: number; critDmg?: number } | undefined,
+): { atk: number; hp: number; def: number } {
+  if (enabled !== true) return { atk: 0, hp: 0, def: 0 };
+  if (applyDispatchStats === false) return { atk: 0, hp: 0, def: 0 };
+  const full = PERMANENT_COOKING_STATS;
+  if (overridesAuthoritative === true && baseStatOverrides) {
+    return {
+      atk: Object.prototype.hasOwnProperty.call(baseStatOverrides, "atk") ? 0 : full.atk,
+      hp: Object.prototype.hasOwnProperty.call(baseStatOverrides, "hp") ? 0 : full.hp,
+      def: Object.prototype.hasOwnProperty.call(baseStatOverrides, "def") ? 0 : full.def,
+    };
+  }
+  return { atk: full.atk, hp: full.hp, def: full.def };
 }
 
 export function resolveConfig(overrides: ConfigOverrides | undefined): ResolvedConfig {
@@ -425,6 +453,7 @@ function makeDoll(
   attachments: AttachmentConfig | undefined,
   activeAttachmentSet: string | undefined,
   apexStats: import("../model/types.js").ApexComponentStats | undefined,
+  permanentCookingStats: boolean | undefined,
   baseStatOverrides: { atk?: number; hp?: number; def?: number; stability?: number; critRate?: number; critDmg?: number } | undefined,
   applyDispatchStats: boolean | undefined,
   overridesAuthoritative: boolean | undefined,
@@ -513,7 +542,10 @@ function makeDoll(
     def: isAuthoritativelyOverridden(baseStatOverrides, "def", overridesAuthoritative) ? 0 : attach.pct.def,
   };
   const attachCrit = { critRate: attach.critRate, critDmg: attach.critDmg };
-  const panel = computePanel(def, weapon, dispatchFlat, remolderFlat, neuralHelixFlat, affinityFlat, attachFlat);
+  // PERMANENT COOKING STATS FLAT (2026): user-toggleable permanent flat ATK/DEF/HP — folded into the
+  // SAME flat bucket as the other permanent sources (no second stat system).
+  const cookingFlat = resolveCookingFlat(permanentCookingStats, applyDispatchStats, overridesAuthoritative, baseStatOverrides);
+  const panel = computePanel(def, weapon, dispatchFlat, remolderFlat, neuralHelixFlat, affinityFlat, attachFlat, cookingFlat);
   const aff = resolveAffinityBonus(def, affinity?.keyId, affinity?.level, registry);
   // Common Keys (generic architecture, 2026; CORRECTED stat-slot model 2026): REUSABLE
   // definitions resolved via the registry (max 3 — "3 Common Key Slots"; fewer allowed). A key
@@ -843,10 +875,12 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
     let flat = { atk: aFlat.atk, hp: aFlat.hp, def: aFlat.def };
     if (m.applyDispatchStats !== false) {
       const df = DISPATCH_STAT_BUFFS[rd.class];
+      // PERMANENT COOKING STATS flat (2026) is likewise part of the real panel basis — same gating.
+      const ck = resolveCookingFlat(m.permanentCookingStats, m.applyDispatchStats, m.overridesAuthoritative, m.baseStatOverrides);
       flat = {
-        atk: remolderPlans[i].flat.atk + ichor.atk + df.atk + nhFlat.atk + affFlat.atk + aFlat.atk,
-        hp: remolderPlans[i].flat.hp + ichor.hp + df.hp + nhFlat.hp + affFlat.hp + aFlat.hp,
-        def: remolderPlans[i].flat.def + ichor.def + df.def + nhFlat.def + affFlat.def + aFlat.def,
+        atk: remolderPlans[i].flat.atk + ichor.atk + df.atk + nhFlat.atk + affFlat.atk + aFlat.atk + ck.atk,
+        hp: remolderPlans[i].flat.hp + ichor.hp + df.hp + nhFlat.hp + affFlat.hp + aFlat.hp + ck.hp,
+        def: remolderPlans[i].flat.def + ichor.def + df.def + nhFlat.def + affFlat.def + aFlat.def + ck.def,
       };
     }
     return computePanel(d, w, undefined, flat).atk;
@@ -887,7 +921,7 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
       }
     }
     const weaponCalibrationLevel = m.calibrationLevel ?? weapon?.calibrationLevel;
-    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel ?? DEFAULT_AFFINITY_LEVEL }, m.commonKeyIds ?? [], m.commonKeyStatChoices, m.expansionKeyId, weapon, weaponCalibrationLevel, m.attachments, m.activeAttachmentSet, apexStats, m.baseStatOverrides, m.applyDispatchStats, m.overridesAuthoritative, remolderPlans[i], remolderGrants[i], config, registry);
+    return makeDoll(def, m.rotation, m.equippedFixedKeys ?? [], { keyId: m.affinityKeyId, level: m.affinityLevel ?? DEFAULT_AFFINITY_LEVEL }, m.commonKeyIds ?? [], m.commonKeyStatChoices, m.expansionKeyId, weapon, weaponCalibrationLevel, m.attachments, m.activeAttachmentSet, apexStats, m.permanentCookingStats, m.baseStatOverrides, m.applyDispatchStats, m.overridesAuthoritative, remolderPlans[i], remolderGrants[i], config, registry);
   });
   const dummy = makeDummy(scenario.dummy);
   return {

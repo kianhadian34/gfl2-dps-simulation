@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { SessionView, WeaponView, CommonKeyListResult, CharacterMetaView, AttachmentCatalogView, ApexCatalogView } from "./engine-types.js";
+import type { SessionView, WeaponView, CommonKeyListResult, CharacterMetaView, AttachmentCatalogView, ApexCatalogView, PermanentCookingStatsView } from "./engine-types.js";
 
 /**
  * Shared session state for the single application window. The main process owns the
@@ -20,6 +20,8 @@ export function useSession(): {
   listAttachments: () => Promise<AttachmentCatalogView>;
   /** Engine-sourced Apex Chassis catalog (Apex Components + the engine-enforced max). */
   listApexComponents: () => Promise<ApexCatalogView>;
+  /** Engine-sourced Permanent Cooking Stats values (the permanent flat ATK/DEF/HP bonus). */
+  getPermanentCookingStats: () => Promise<PermanentCookingStatsView>;
 } {
   const [session, setSession] = useState<SessionView | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,5 +70,7 @@ export function useSession(): {
 
   const listApexComponents = (): Promise<ApexCatalogView> => window.sim.listApexComponents();
 
-  return { session, error, run, openScenario, listCharacters, listWeapons, listCommonKeys, listAttachments, listApexComponents };
+  const getPermanentCookingStats = (): Promise<PermanentCookingStatsView> => window.sim.getPermanentCookingStats();
+
+  return { session, error, run, openScenario, listCharacters, listWeapons, listCommonKeys, listAttachments, listApexComponents, getPermanentCookingStats };
 }

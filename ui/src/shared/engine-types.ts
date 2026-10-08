@@ -59,6 +59,9 @@ export interface ScenarioTeamMemberView {
   /** WEAPON ATTACHMENTS (2026): the ACTIVE loadout-level Attachment Set id (independent of the
    *  per-slot stats). Carried VERBATIM to the engine (`ScenarioTeamMember.activeAttachmentSet`). */
   activeAttachmentSet?: string;
+  /** PERMANENT COOKING STATS (2026): per-member toggle for the permanent flat ATK/DEF/HP bonus.
+   *  Carried VERBATIM to the engine (`ScenarioTeamMember.permanentCookingStats`), which owns the values. */
+  permanentCookingStats?: boolean;
   /** DEBUG/controlled-testing (2026): per-member replacement of the character's OWN base stats
    *  (applied BEFORE weapon/equipment/stat-modifier calculation; engine-validated, never clamped). */
   baseStatOverrides?: {
@@ -168,6 +171,16 @@ export interface ApexCatalogView {
   items: ApexComponentView[];
   /** Engine-enforced maximum equipped Apex Components (2). */
   maxComponents: number;
+}
+
+/**
+ * PERMANENT COOKING STATS view (2026) — the engine's permanent flat ATK/DEF/HP bonus values
+ * (`PERMANENT_COOKING_STATS`). Engine-sourced over IPC so the UI never restates the numbers.
+ */
+export interface PermanentCookingStatsView {
+  atk: number;
+  hp: number;
+  def: number;
 }
 
 /** Engine-sourced per-character key/member metadata (extends the legacy listCharacters shape). */

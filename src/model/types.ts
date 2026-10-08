@@ -1438,6 +1438,15 @@ export interface ScenarioTeamMember {
    * supplied via `Scenario.remolderBuffSet` (production data populates later).
    */
   remolderBuffs?: Record<string, number>;
+  /**
+   * PERMANENT COOKING STATS (2026): per-member toggle for the permanent flat ATK/DEF/HP bonus
+   * (`PERMANENT_COOKING_STATS` — 15 ATK / 15 DEF / 30 HP). Absent/false = the bonus is NOT applied
+   * (OFF by default). When true it enters the EXISTING flat bucket of the ONE panel path, summed
+   * with the other permanent flat sources before percentage modifiers. Excluded by controlled math
+   * fixtures (`applyDispatchStats: false`) like the other permanent sources, and suppressed on any
+   * stat under a Debug-authoritative override.
+   */
+  permanentCookingStats?: boolean;
 }
 
 /**

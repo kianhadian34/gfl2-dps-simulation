@@ -16,9 +16,10 @@ import { COMMON_KEYS, COMMON_KEY_SELECTABLE_STAT_KINDS } from "../../../src/data
 import { ATTACHMENT_SETS } from "../../../src/data/attachment-sets.ts";
 import { ATTACHMENT_SLOTS, ATTACHMENT_SLOT_MAX_STATS, ATTACHMENT_STAT_DEFS, attachmentStatsForSlot } from "../../../src/data/attachments.ts";
 import { APEX_COMPONENTS } from "../../../src/data/apex-components.ts";
+import { PERMANENT_COOKING_STATS } from "../../../src/data/cooking-stats.ts";
 import { MAX_COMMON_KEYS } from "../../../src/engine/state.ts";
 import { MAX_APEX_COMPONENTS } from "../../../src/engine/apex.ts";
-import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView, buildAttachmentCatalog, buildApexCatalog } from "../shared/lists.js";
+import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView, buildAttachmentCatalog, buildApexCatalog, buildPermanentCookingStatsView } from "../shared/lists.js";
 import { buildGrid, moveCost, tileHeightAt, tileKey, bossFootprintTiles } from "../../../src/engine/grid.ts";
 import type { ScenarioView, SessionView, MovementFactView, GridCellFactsView, EffectSourceInfoView } from "../shared/engine-types.js";
 
@@ -249,6 +250,9 @@ export function registerSimHandlers(): void {
 
   /** Apex Chassis catalog (2026): the Apex Components + the engine-enforced max (2). */
   ipcMain.handle("sim:listApexComponents", () => buildApexCatalog(APEX_COMPONENTS, MAX_APEX_COMPONENTS));
+
+  /** Permanent Cooking Stats values (2026): the engine's permanent flat ATK/DEF/HP bonus. */
+  ipcMain.handle("sim:getPermanentCookingStats", () => buildPermanentCookingStatsView(PERMANENT_COOKING_STATS));
 
   ipcMain.handle("sim:run", (_event, scenario: unknown) => {
     if (typeof scenario !== "object" || scenario === null) throw new Error("sim:run expects a scenario object");
