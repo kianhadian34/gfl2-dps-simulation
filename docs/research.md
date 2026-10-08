@@ -680,13 +680,13 @@ Consequences (CONFIRMED): **no `setId` on individual slots**, **no per-attachmen
 
 ### 3.21 Permanent Cooking Stats (user-toggleable permanent flat bonus)
 
-**Status: IMPLEMENTED (2026).** A simple permanent stat system, switched on per character in the UI
-(**Permanent Cooking Stats → Enabled/Disabled**). Engine: `src/data/cooking-stats.ts` + the
-`resolveCookingFlat` gate in `src/engine/state.ts`; scenario field
+**Status: IMPLEMENTED (2026) · VALIDATED (authority-backed 2026).** A simple permanent stat system,
+switched on per character in the UI (**Permanent Cooking Stats → Enabled/Disabled**). Engine:
+`src/data/cooking-stats.ts` + the `resolveCookingFlat` gate in `src/engine/state.ts`; scenario field
 `ScenarioTeamMember.permanentCookingStats`.
 
-**Values (SOURCE — user-provided 2026):** **15 Attack · 15 Defense · 30 Health** — FLAT values, not
-percentages.
+**Values (VALIDATED — user's own authoritative confirmation, 2026):** **15 Attack · 15 Defense ·
+30 Health** — FLAT values, not percentages.
 
 **Engine representation (IMPLEMENTED 2026):**
 - The bonus enters the **EXISTING flat bucket** of the ONE panel path (`computePanel`) — `Final Stat =
@@ -702,14 +702,19 @@ percentages.
 - Also folded into the **raw-ATK basis** used for Blossom's top-N highest-ATK selection, so that
   basis and the real panel can never diverge.
 - **UI**: a per-character `Enable Permanent Cooking Stats` checkbox in the Setup screen, carried
-  verbatim into `ScenarioTeamMember.permanentCookingStats`. The UI never restates the values — the
-  engine data owns them.
+  verbatim into `ScenarioTeamMember.permanentCookingStats`. While enabled, the bonus is shown as
+  GREEN stat lines (`ATK +15 · HP +30 · DEF +15`), fetched from the ENGINE over IPC
+  (`sim:getPermanentCookingStats`) — the UI never restates the numbers.
 
 **Not claimed / not modeled:** the in-game *acquisition* of these stats (how cooking grants them),
-any per-stat scaling, and any interaction with systems beyond the panel flat bucket. The values are
-user-provided; they are **not** in-game validated numbers.
+any per-stat scaling, and any interaction with systems beyond the panel flat bucket.
 
-**Source** — user-provided values (2026).
+**Validation status:** the **values** are **VALIDATED by the project owner's authority (2026)** — the
+authoritative confirmation is the user's own, not an independent in-game screenshot recorded here.
+The **engine behaviour** (flat-bucket folding before percentages, opt-in gating, controlled-fixture
+exclusion, Debug-authoritative suppression) is **engine/test validated**.
+
+**Source** — user's authoritative confirmation (2026).
 
 ---
 

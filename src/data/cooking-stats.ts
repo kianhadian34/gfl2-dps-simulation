@@ -8,7 +8,9 @@
  * (Dispatch / Remolder Lv.60 / Neural Helix / Affinity Level / Attachments) BEFORE percentage
  * modifiers. There is no second stat system and no separate formula.
  *
- * SOURCE: user-provided values (2026) — the system grants 15 Attack, 15 Defense, 30 Health.
+ * SOURCE: VALIDATED by the user's authority (2026) — the system grants 15 Attack, 15 Defense,
+ * 30 Health. (The values are the project owner's authoritative confirmation; no independent in-game
+ * screenshot is recorded here.)
  *
  * Gating (matches the established permanent-source convention):
  *  - OFF by default: a scenario member only receives it when `permanentCookingStats: true`.

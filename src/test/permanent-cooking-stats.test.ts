@@ -54,7 +54,7 @@ function unit(opts: { base?: { atk: number; hp: number; def: number }; cooking?:
   return createState(scenario, customRegistry({ [char.id]: char }), new Set()).units.find((u) => u.id === char.id)!;
 }
 
-test("cooking stats: the data values are the user-provided 15 ATK / 15 DEF / 30 HP", () => {
+test("cooking stats: the data values are the validated 15 ATK / 15 DEF / 30 HP", () => {
   assert.deepEqual(PERMANENT_COOKING_STATS, { atk: 15, def: 15, hp: 30 });
 });
 
