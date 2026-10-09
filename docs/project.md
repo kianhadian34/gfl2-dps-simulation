@@ -1,15 +1,18 @@
 # GFL2 Simulation — Permanent Project Continuity Record
 
-**Document:** `docs/project.md` — the authoritative continuity record for this repository.
+**Document:** `docs/project.md` — the project continuity record (a navigator + state snapshot for
+this project). It **summarizes and points to** the documents that own each subject (§1.5) and does
+not replace them.
 **Established:** 2026-10-09.
 **Supersedes:** the external session handout (`GFL2 Simulation — Session Handoff`), which was
 created to bootstrap a session with no access to the prior conversation. That handout is kept
-OUTSIDE the project directory and is not part of the repository.
+OUTSIDE the project directory and is not part of the repository. (It supersedes the *handout* only —
+not any document in §1.5.)
 
-**Structure of this document:** §1 tells a new session how to start. §2 is the refreshable
-state snapshot. §3–§5 are the durable architecture, decisions and subsystem inventory. §6 is the
-numerical evidence record. §7 is the change history. §8–§10 are the live backlog, open questions
-and the single next action.
+**Structure of this document:** §1 tells a new session how to start and who owns what. §2 is the
+refreshable state snapshot. §3–§5 are the durable architecture, decisions and subsystem inventory.
+§6 is the numerical evidence record. §7 is the change history. §8–§10 are the live backlog, open
+questions and the single next action.
 
 **Authority order (unchanged by this document):** the **repository** is the authority for code
 state; **`docs/research.md` + `docs/validation-checklist.md`** are the authority for in-game
@@ -22,14 +25,30 @@ Where it disagrees with the code, the code wins — and this document should the
 
 ### 1.1 Purpose
 
-This file exists so a new session can resume work by reading **one file** instead of
-reconstructing context from old conversations. It records what is built, what is decided, what is
-proven, what remains open, and what to do next.
+This file exists so a new session can **orient quickly** — it is the single starting point and a
+navigator, not a substitute for the documents that own each detail. It records what is built, what
+is decided, what is proven, what remains open, and what to do next, and **points to the file that
+owns each topic** (§1.5) rather than restating it.
+
+**This document is an ADDITIONAL requirement on top of the project's existing responsibilities, not
+a replacement for any of them.** Maintaining it does **not** discharge any other obligation:
+
+- The mandatory workflow (§3.5) still applies in full — including **Test**, **In-Game Validation**,
+  and **Implement**. Never skip a workflow step because this document was updated.
+- The **owning documents** must still be updated whenever their subject changes (§1.5). Updating
+  this file does **not** satisfy the requirement to update them, and it must not be used in their
+  place.
+- Established code-quality, regression-testing, Git, and shared-mechanism practices still apply.
 
 ### 1.2 Session-start instructions (copyable)
 
-> Read `docs/project.md` completely before starting work. Then **verify the current repository
-> state** (§2) rather than trusting the snapshot in this document — it is dated and may be stale.
+> Read `docs/project.md` completely before starting work. Then **verify the actual repository
+> state** — run the build/tests and check git (§2.2) — **before relying on the §2 snapshot** in this
+> document. The snapshot is dated and will go stale between updates.
+>
+> **The repository and the current test results are authoritative.** If this document and the code
+> disagree, the code wins — treat the document as wrong and correct it (§1.4).
+>
 > Inspect the relevant implementation and evidence before changing anything.
 >
 > Respect the established architecture, formulas and decisions in §3–§4. Do not reopen settled
@@ -38,14 +57,20 @@ proven, what remains open, and what to do next.
 > When the user supplies in-game numbers, **calculate the expected result immediately** and
 > compare it to the observed value before writing any code or documentation.
 >
-> **Never invent game mechanics or claim evidence that does not exist.** `Not Tested` is a
+> **Never invent game mechanics or claim evidence that does not exist, and never promote an
+> inference to a confirmed fact** — label the evidence class (§6 legend). `Not Tested` is a
 > legitimate state (see §3.6).
 >
 > Make focused changes and preserve existing test coverage — never weaken or delete a test to
 > accommodate new behavior.
 >
-> Update `docs/project.md` as part of completing meaningful work (§1.4), not as a separate
-> afterthought.
+> Update `docs/project.md` as part of completing meaningful work (§1.4) — not as a separate
+> afterthought — and **end each task by reporting whether it was updated and which sections
+> changed** (or why no update was needed).
+>
+> **Maintaining `docs/project.md` is ADDITIONAL to your existing duties, not a replacement.** Keep
+> following the full workflow (§3.5) and keep updating the documents that own each subject (§1.5).
+> Updating this file never substitutes for them.
 >
 > Ask for clarification only when a necessary decision cannot be resolved from the repository,
 > the source material, or the established project decisions in this file.
@@ -80,23 +105,92 @@ proven, what remains open, and what to do next.
 
 ### 1.4 Maintenance contract (Phase 3)
 
-Every future session MUST maintain this document. Whenever meaningful project work occurs:
+Every future session MUST maintain this document. When a session starts, read this file
+**completely** before doing anything else (§1.2), then verify the repository state.
+
+**When an update is required.** Update `docs/project.md` **as part of the task that caused the
+change** — never postponed to "later" or left to be reconstructed from chat history. An update is
+required whenever work changes any of:
+
+- behavior or architecture;
+- a formula or a numeric rule;
+- game data (`src/data/**`) or data shapes (`src/model/types.ts`);
+- validation evidence or a claim's evidence class (§6);
+- tests (added, changed, or removed) or their results;
+- implementation status of any subsystem (§5);
+- a decision that was previously open now being settled (§4), or a settled decision being reversed;
+- limitations or open questions (§9);
+- the backlog or the next action (§8, §10).
+
+An explicit trigger list is better than a vague "meaningful work": **if any line above changed,
+this document changed.** If genuinely none did (e.g. a read-only investigation, or a change
+confined to a subsystem that no section describes), no update is needed — see the end-of-task
+report below.
+
+**Rules (every session):**
 
 1. Read the relevant existing sections before starting.
 2. Follow the established workflow (§3.5).
 3. Preserve previous decisions and evidence unless new evidence contradicts them.
-4. Update the §2 snapshot when relevant work changes the state.
-5. Record significant implementation changes, decisions, test results and validation evidence.
+4. Update the §2 snapshot when relevant work changes the state (branch/HEAD/working tree, and
+   re-run the build/tests rather than copying old numbers).
+5. Record significant implementation changes, decisions, test results and validation evidence **at
+   summary level, pointing to the owning document (§1.5) for the detail**.
 6. Update subsystem status (§5) and the backlog (§8) so they reflect the actual outcome.
 7. Record unresolved questions (§9) rather than silently making assumptions.
 8. **Record commit hashes only after commits actually exist.** Never claim a change was committed
-   when it was not.
+   when it was not. If work is uncommitted, say so explicitly.
 9. Re-read the document for contradictions and stale statements after updating it.
 10. Verify the final document accurately describes the repository and the work performed.
 
-Documentation updates happen **as part of completing the corresponding task**, not postponed.
-Routine/noise details need not be logged; record what would materially help a future session
-understand the system, avoid repeated work, or make the next correct decision.
+**Evidence discipline (§3.6, §6).** Every recorded claim must carry its evidence class: confirmed
+in-game observation `[GAME]`, source/tooltip evidence `[SOURCE]`, automated test `[TEST]`,
+mathematical check `[MATH]`, shared-mechanism validation `[SHARED]`, inference `[INFER]`, or
+unresolved `[UNKNOWN]` (§6 legend). **Never promote an inference to a confirmed fact.** If a claim's
+class is unclear, record the weaker (more conservative) class and note why it is unclear.
+
+**Concise and current — update in place, do not append duplicates.** Revise the existing section
+that describes the thing that changed. Do **not** add a second copy of a fact, a second history
+entry for the same work, or a "new" section that restates an existing one. Preserve decision
+history that is still useful (why a decision was made, what was ruled out) — but a superseded
+statement should be **corrected or replaced in place**, with a short note that it changed, not left
+standing beside its replacement. The document must not grow without bound: it is a current record
+plus the decision history that still helps, not a transcript.
+
+**Summarize and point; do not duplicate the owning documents (§1.5).** Record the outcome, the
+decision, and **where the detail lives** — link to `docs/research.md`, `docs/validation-checklist.md`,
+`docs/architecture.md`, the schemas, the code, or the tests rather than copying their content here.
+Keeping a full specification or test record here duplicates an owner and creates two sources that
+will drift apart. The owning document must still be updated whenever its subject changes; updating
+this file is never a substitute for that.
+
+**End-of-task report.** At the end of every task, report **whether `docs/project.md` was updated
+and exactly which sections changed**. If no update was needed, say so and briefly why (which
+trigger lines above did not fire). This keeps the document's upkeep visible instead of silent.
+
+### 1.5 Documentation ownership map — this file does NOT own these details
+
+`docs/project.md` is a **navigator and continuity record**. The documents below **own** their
+subjects: when their subject changes, update **them** (as well as this file's summary/pointer).
+Do **not** treat this file as their replacement, and do **not** copy their content here.
+
+| Document | Owns |
+|---|---|
+| `docs/research.md` | **Authority** for mechanics and in-game evidence; the uncertainty register (U-IDs) and the in-game test plan |
+| `docs/validation-checklist.md` | **Authority** for validation status, the three validation states, the source hierarchy, and the claim-level evidence tables |
+| `docs/architecture.md` | Layers, module breakdown, damage pipeline, turn loop, APL record, attachment architecture |
+| `docs/schemas.md` | Data schemas / shapes |
+| `docs/grid.md` | Grid and positioning rules |
+| `ui/docs/ui.md` | UI architecture, panels, IPC, deferred UI scope |
+| `ui/docs/assets.md` | Asset infrastructure, path contract, ownership rules, supplied-file inventory |
+| `src/data/**` + `src/engine/**` | The authoritative behavior itself (code is the source of truth for code state) |
+| `src/test/**`, `ui/test/**` | The executable evidence for the claims this file summarizes |
+
+**Division of labor:** this file records *what changed, what is decided, what is open, and where to
+look*; the owning document records *the detail of its subject*. A change that alters a mechanic's
+evidence goes in `docs/research.md` / `docs/validation-checklist.md` **and** is summarized here; a
+new formula derivation goes in the owning design document **and** is summarized here. Never the
+summary alone.
 
 ---
 
@@ -107,10 +201,10 @@ understand the system, avoid repeated work, or make the next correct decision.
 | Item | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | `8d8ef61ee777b0f39108bf2777590da2c5d3d9b2` |
-| `origin/main` | `8d8ef61ee777b0f39108bf2777590da2c5d3d9b2` (in sync) |
-| Working tree | clean (no modified tracked files) |
-| Untracked | `.reasonix/` (host-managed session artifacts — **never stage**) and `docs/project.md` (this document, newly created this session — **uncommitted**, see §7.1/§10) |
+| HEAD | `98c4fab1b4462a5a3b253b18f31b349590fa7ebd` |
+| `origin/main` | `98c4fab1b4462a5a3b253b18f31b349590fa7ebd` (in sync) |
+| Working tree | `docs/project.md` **modified, uncommitted** (§7.1 items 4–5); no other tracked changes |
+| Untracked | `.reasonix/` (host-managed session artifacts — **never stage**) |
 | Engine build | `npm run build` → exit 0 |
 | Engine tests | **671 pass · 0 fail · 0 skipped** across **95 test files** |
 | UI typecheck | exit 0 |
@@ -222,6 +316,13 @@ into `UnitState` → `simulate()` runs the deterministic round loop → `Simulat
 ### 3.5 Mandatory workflow
 
 **Evidence → Document → Test → In-Game Validation → Implement → Commit.**
+
+This applies to **every** task, in full. The `Document` step covers **both** the owning documents
+(§1.5 — e.g. `docs/research.md`, `docs/validation-checklist.md`, `docs/architecture.md`) **and** the
+continuity summary in this file; it is never satisfied by one alone. Where a step genuinely does not
+apply (for example, in-game validation for a documentation-only change), say so explicitly instead
+of silently skipping it. Maintaining `docs/project.md` is an **additional** requirement (§1.1) — it
+never replaces this workflow, the owning documents, or any existing project practice.
 
 ### 3.6 Validation states (exactly three)
 
@@ -493,7 +594,8 @@ character/skill/key/weapon assets consumed by the Setup screen. Manifest docs li
 
 ## 6. Evidence and Validation Record
 
-Evidence classes used below (per §3.6 and §1.4 of the handout):
+Evidence classes used below (the legend for §1.4's evidence rule; distinct from the validation
+states in §3.6):
 
 - **[GAME]** — directly observed in-game (the strongest class).
 - **[SOURCE]** — authoritative source/tooltip/screenshot (an authoritative input, NOT a
@@ -641,13 +743,17 @@ commit actually exists**.
 ### 7.1 This session (2026-10-09)
 
 **Session scope:** new session bootstrapped from the external handout; orientation/audit; a
-documentation-drift cleanup; then the establishment of this document.
+documentation-drift cleanup; establishment of this document; hardening its maintenance contract;
+making explicit that this document is additional to — never a replacement for — the existing
+workflow and owning documents.
 
 | # | Work | Files | Verification | Commit |
 |---|---|---|---|---|
 | 1 | **Orientation audit** (no repository changes). Re-verified the handout against the repo: git state, engine build/tests, UI typecheck/tests/build, zero character-id conditionals, registry contents, no TODO markers, no engine `try/catch`. Found that the handout's "97 files · 673 pass" was inflated by two stale `dist/` artifacts (real: 95 files / 671 tests). | — | all suites green | — (read-only) |
 | 2 | **Documentation-drift cleanup.** Corrected stale status labels and superseded-design claims after verifying each against the implementation. | `docs/architecture.md`, `ui/docs/assets.md`, `ui/docs/ui.md` | `git diff --check` clean; engine 671 pass; UI 286 pass; typecheck 0 | `8d8ef61` (pushed) |
-| 3 | **Establish `docs/project.md`** (this document) — the permanent continuity record, its structure, and its maintenance contract. | `docs/project.md` | see §2 re-run; `git diff --check` | uncommitted (§8/§10) |
+| 3 | **Establish `docs/project.md`** (this document) — the permanent continuity record, its structure, and its maintenance contract. | `docs/project.md` | see §2 re-run; `git diff --check` | `98c4fab` (pushed) |
+| 4 | **Harden the maintenance contract.** Added an explicit update-trigger list, the anti-duplication ("update in place") rule, the evidence-discipline rule, the end-of-task report requirement, and sharpened the "repository is authoritative if this document is stale" statement (§1.2/§1.4). Refreshed the §2 snapshot to the current HEAD and closed backlog item B2. | `docs/project.md` | `git diff --check` clean; no source/test change | uncommitted (§10) |
+| 5 | **Scope clarification: additional, not replacement.** Made explicit that maintaining this document is an ADDITIONAL requirement on top of existing duties — the full workflow (§3.5) and the owning documents still apply. Added §1.5 (documentation ownership map: which file owns which subject) and the `Document`-step clarification in §3.5; strengthened §1.1, §1.2 and §1.4 (rule 5 + a "summarize and point, do not duplicate" clause). No requirement removed or weakened. | `docs/project.md` | `git diff --check` clean; no source/test change; docs-only | uncommitted (§10) |
 
 **Detail — the documentation-drift cleanup (`8d8ef61`):** the task and its outcome are also
 recorded here because future sessions should not re-fix them.
@@ -731,9 +837,11 @@ character that depends on an out-of-scope mechanic (§9.2) cannot be fully model
 
 | # | Task | Priority | Depends on | Evidence required | Status |
 |---|---|---|---|---|---|
-| B1 | `docs/schemas.md` header/status still says "Proposed … proposal, awaiting approval" | Low | — | repo inspection only (the file already self-notes the proposal-era content at line 54) | **Open** — deliberately out of the previous task's scope |
-| B2 | Commit `docs/project.md` | — | user authorization | — | **Uncommitted** (§10) |
+| B1 | `docs/schemas.md` header/status still says "Proposed … proposal, awaiting approval" | Low | — | repo inspection only (the file already self-notes the proposal-era content at line 54) | **Open** — deliberately out of previous tasks' scope |
 | B3 | Resolve the Apex secondary-effect scaling question | — | user's call | in-game tooltip read | **DEFERRED — Apex is WIP** (user decision, 2026-10-09) |
+
+**Closed this session:** B2 (commit `docs/project.md`) — completed as `98c4fab`; preserved in §7.1
+per the rule that completed items move to the history.
 
 ### 8.3 Deferred / blocked (not ready to start)
 
@@ -827,8 +935,10 @@ then proceed.** The engine is verified ready, and the registry is a one-line cha
 work, everything needed to start is in place and verified (§2), and every other open item is either
 deferred by user choice (Apex, §9.1) or blocked on unavailable evidence (§9.3).
 
-**Immediately preceding that:** `docs/project.md` is **uncommitted** (§7.1 item 3). Per standing
-instructions, it will not be committed without the user's explicit authorization.
+**Open documentation state:** this document (`docs/project.md`) is committed and pushed as
+`98c4fab`. Two subsequent documentation revisions are currently **uncommitted** — §7.1 item 4
+(contract hardening) and item 5 (the additional-not-replacement clarification). Neither will be
+committed without the user's explicit authorization.
 
 **This section must be updated whenever the priority changes.**
 
