@@ -817,6 +817,131 @@ hit, the Support recovery family is not damage, and the Unity family needs an al
 
 ---
 
+### 3.23 Elemental tiles — Burn family (2026, SOURCE — NOT implemented)
+
+**Mechanic** — Ground-tile effects that persist on the battlefield and debuff units standing on
+them, plus the 2026 **Tile Transformation** layer (Tile Upgrade + Polyphase Fusion).
+
+**Source** — `https://dandegate.net/guides/gfl2s-new-tile-mechanics` ("Elemental Tile
+Transformation", author **B Botzu**, published 2026-04-04, updated 2026-09-07). **This is a
+community guide, not an official data page** — its own footer states it "reflects the author's
+opinions" and "does not represent an official Dandegate.net position." It also states the feature
+is **CN-only** and that **names are subject to change** on global release. Treat as **source
+hierarchy level 5 (secondary/community)** for discovery; the effect names were independently
+resolved from the site's own effect records (see below).
+
+**Confidence** — **[SOURCE], Not Tested.** No in-game observation, no automated test. Every value
+below is what the guide states.
+
+**Scope of this section:** **Burn-related tiles only** (the base Burn tile and every fusion tile
+that contains Burn). Non-Burn tiles and non-Burn fusions are **deliberately out of scope here** —
+do not treat their absence as "no such tiles".
+
+#### 3.23.1 The transformation layer (applies to all elemental tiles)
+
+- **Tile Upgrade** — generating the **same** element onto an existing tile levels it up. **Three
+  stages**: Base → Lv2 → Lv3. It **keeps the original bonuses** and either improves numbers or adds
+  effects. At **Lv3**, further generation **only refreshes duration**.
+- **Polyphase Fusion** — generating **two fusible base elements** onto the same tile produces a
+  fusion tile carrying **partial effects of both**. Fusion tiles **take priority over base tiles**
+  and are **not** overwritten by a third element. They also level to **Lv3**, and **either** fused
+  element can level them. Fusing onto an **already-upgraded** tile starts at that tile's level.
+- **Three versions:** **Allied** (debuffs enemies) / **Enemy** (debuffs allies) / **Neutral**
+  (debuffs everyone), set by whichever unit last generated onto the tile. Enemy versions **swap
+  which units are targeted**; neutral versions **apply all effects**.
+- **Duration resets to 3 rounds** on every upgrade or fusion (note: the per-effect durations
+  stated below are separate 2-turn status durations).
+
+#### 3.23.2 Effect-name resolution (independently verified)
+
+The guide renders effects as opaque `[effect:<uuid>]` tokens. The names below were resolved by
+fetching each `https://dandegate.net/effects/<uuid>` record (the page title is the effect name) —
+**not** guessed from context:
+
+| Effect uuid | Name |
+|---|---|
+| `71b3f790-db3b-4188-a3d7-15fa9752b57a` | **Overburn** |
+| `a55cd12e-7fd4-47c1-bddc-6e933f2a323a` | **Conflagration** |
+| `174c1af6-3fc1-41aa-b4ec-48e5583baacb` | **Combustion** |
+| `783df2a2-7606-4471-abbf-e49dcfb6e813` | **Combustion II** |
+| `1e0dd817-2d72-4a4a-98d5-4acd6e11b8e5` | **Stability Loss I** |
+| `d85addc9-1d0c-46cb-a37a-377dde1be0ae` | **Frozen** |
+| `7dec35ce-d8cc-443e-8a4e-410233b3cda6` | **Damp** |
+| `8cfe89a9-404a-42e5-9cc7-5bf57b070887` | **Paralysis** |
+| `bba5e073-5719-4cc8-85d9-6de563caaa5e` | **Congestion** |
+| `c3a3ce01-1487-4a69-bc3c-9c04aa8c26ec` | **Meltdown** |
+
+**Note:** only **Overburn** of these exists in this repo (`src/data/statuses.ts`). The other nine
+are **not defined** in the engine.
+
+#### 3.23.3 Base Burn tile — "Incineration" → "Flashover II" → "Flashover III"
+
+Allied version, verbatim (effect tokens resolved):
+
+| Lv | Name | Effect |
+|---|---|---|
+| **Lv1** | **Incineration** | Applies **Burn weakness** to enemy units on the area. Applies **Overburn** and **Conflagration** to enemy units that remain on the area after ending their action, lasting **2 turns**. Considered a Burn tile. |
+| **Lv2** | **Flashover II** | Applies **Burn weakness** … Applies **Overburn**, **Conflagration**, and **Combustion** … lasting **2 turns**. Considered a Burn tile. |
+| **Lv3** | **Flashover III** | Applies **Burn weakness** … Applies **Overburn**, **Conflagration**, and **Combustion II** … lasting **2 turns**. Enemy units on the area **gain 1 stack of Combustion II and generate Flashover III tiles within a 3-tile radius around themselves for every 3 times they take Burn damage**, lasting for **3 turn**. Considered a Burn tile. |
+
+**Upgrade deltas:** Lv2 adds **Combustion**; Lv3 upgrades it to **Combustion II** and adds the
+self-propagation clause. The **Lv1 tile name is "Incineration"** — the same term Vector's kit uses
+for the tiles her skills generate.
+
+#### 3.23.4 Burn fusion tiles
+
+| Pair | Name | Effect (Allied, verbatim with resolved names) |
+|---|---|---|
+| **Burn + Hydro** | **Scalding Vapors** | Inflicts **Burn and Hydro weakness** to enemy units in the area. Applies **Overburn**, **Conflagration**, and **Damp** to enemy units remaining in the area after their actions, lasting **2 turns**. When the tile is generated, deals **Burn damage and Hydro damage equal to 10% of the caster's ATK** to enemy units in the area. Can be triggered repeatedly when applying Burn or Hydro tiles, **up to 10 times per round by the same caster**. Considered a Fusion Tile. |
+| **Burn + Corrosion** | **Venomfire** | Applies **Burn and Corrosion weakness** to enemy units in this area. Enemy units which end their turn in this area take **fixed damage equal to 50% of the inflictor's attack** and gain **Overburn**, **Conflagration**, and **Stability Loss I** for **2 turns**. When enemy units in this area take **Burn or Corrosion damage**, they and **all enemy units within 2 tiles** take **fixed damage equal to 10% of the inflictor's attack**. Considered a Fusion Tile. |
+| **Burn + Freeze** | **Smoldering Suspire** | Applies **Burn and Freeze weakness** to enemy units in this area. Enemy units which end their action in this area gain **Overburn**, **Conflagration**, and **Frozen** to enemy units remaining in the area after their actions, lasting for **2 turns**, as well as taking **Burn damage and Freeze damage equal to 50% of the inflictor's attack**. Considered a Fusion Tile. |
+| **Burn + Electric** *(CN only, unofficial TL)* | **Crackling Flare (震爆)** | Applies **Burn and Electric weakness** to enemy units on the area. Applies **Overburn** and **Conflagration** to enemy units that remain on the area after ending their action, lasting **2 turns**. When enemy units on this tile take **AoE damage**, they take **fixed damage equal to 30% of the inflictor's attack**; if that AoE damage is **Electric or Hydro**, increased to **60%**; **doubled against large targets**. Stability damage taken by enemy units on this area is **increased by 1 point**, and their **Stability Index recovery is reduced by 10%**. When the Stability index of allied units in this area is **greater than 0**, Stability damage taken is **reduced by 1 point**, and their **Burn and Electric Boost are increased by 15 points**. Considered a Fusion Tile. |
+
+#### 3.23.5 Fusion Lv2 / Lv3 (Burn-containing fusions)
+
+The guide's tabs carry the higher levels; transcribed as stated (Lv2 / Lv3 shown as deltas from Lv1
+where the source repeats the base text):
+
+**Scalding Vapors II (Lv2):** applies **Overburn**, **Conflagration**, **Combustion**, and
+**Congestion** (2 turns); **restores HP equal to 5% of max HP to friendly units** remaining in the
+area after their actions; generation damage **10% → 15% of the caster's ATK**; still **10×/round**.
+**Scalding Vapors III (Lv3):** **Combustion II** + **Congestion** (2t); friendly HP restore
+**5% → 8%**; generation damage **→ 20%**; **damage taken by enemy units in the area is increased by
+15%**.
+
+**Venomfire II (Lv2):** turn-end **fixed damage 50% → 150%**; gains **Overburn**, **Conflagration**,
+**Combustion**, **Stability Loss I**, and **1 random debuff** (2t); the Burn/Corrosion-triggered
+splash becomes **fixed 25% within 3 tiles** (was 10% within 2). **Venomfire III (Lv3):** turn-end
+fixed damage **→ 300%**; **Combustion II**; splash **25% within 3 tiles**; **Burn and Corrosion
+resistance of enemy units in this area is reduced by 5%**.
+
+**Smoldering Suspire II (Lv2):** gains **Combustion**; Burn/Freeze damage **50% → 75%**; **mobility of
+ally units in this area +1 tile** and they are **immune to Paralysis**. **Smoldering Suspire III
+(Lv3):** **Combustion II** + **Meltdown**; damage **→ 100%**; **damage dealt by enemy units in this
+area is reduced by 15%** and their **attack range is reduced by 3 tiles**; ally mobility **+2
+tiles**, still **immune to Paralysis**.
+
+**Crackling Flare II (Lv2):** gains **Combustion** and **Paralysis**; enemy **+1 → +2 Stability
+damage taken**, recovery reduction **10% → 15%**; ally **Burn and Electric Boost 15 → 25 points**.
+**Crackling Flare III (Lv3):** **Combustion II** + **Paralysis**; enemy **+3 Stability damage
+taken**, recovery reduction **30%**; **if the unit is a Boss, their Stability Index recovery is
+delayed by 1 turn**; ally Stability damage taken **−2 points**, **Burn and Electric Boost → 50
+points**.
+
+#### 3.23.6 What this section does NOT establish
+
+- **No in-game validation.** Nothing here is `Validated`; all of it is `[SOURCE]` from a community
+  guide.
+- **Not implemented.** The engine has **no tile system at all** (`docs/grid.md` — terrain is
+  height/blocked/ladder only; `GridConfig` carries no tile-effect field). Nothing above is modeled.
+- **Non-Burn tiles and fusions** are out of scope for this section (see the scope note above).
+- **"Burn and Electric Boost … points"** uses the same "Boost/points" vocabulary as the Apex
+  All-Element Boost — the relationship between those is **[UNKNOWN]** here.
+- **The guide covers 7 of the 10 phase pairs** (8 including the CN-only Burn+Electric);
+  **Corrosion+Freeze** and **Electric+Freeze** are not listed.
+
+---
+
 ## 4. Uncertainty register
 
 Every mechanic that is still uncertain, with impact and resolution path. **None of these should be hardcoded as facts in the engine — all are config defaults pending the in-game test plan (§5).**
