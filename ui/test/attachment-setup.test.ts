@@ -217,6 +217,21 @@ test("catalog: stat defs expose the engine max values (never invented in the UI)
   assert.equal(crit.value, 0.15, "Crit Damage max value from engine data");
 });
 
+test("catalog: attachment stat labels use the repo-dominant 'Crit DMG' spelling (not 'Crit Damage')", async () => {
+  const d = await engineAttachmentData();
+  const cat = buildAttachmentCatalog({
+    slots: d.ATTACHMENT_SLOTS,
+    slotMaxStats: d.ATTACHMENT_SLOT_MAX_STATS,
+    slotAllowedStats: Object.fromEntries(d.ATTACHMENT_SLOTS.map((s) => [s, d.attachmentStatsForSlot(s)])),
+    statDefs: d.ATTACHMENT_STAT_DEFS,
+    sets: d.ATTACHMENT_SETS,
+  });
+  const crit = cat.slots.find((s) => s.slot === "muzzle")!.allowedStats.find((s) => s.kind === "critDamage")!;
+  assert.equal(crit.label, "Crit DMG", "the player-facing label matches the panel term used everywhere else");
+  // The label is what the player reads; the engine stat KIND deliberately stays `critDamage`.
+  assert.equal(crit.kind, "critDamage", "the engine identifier is unchanged by the display-label normalization");
+});
+
 // ---------------------------------------------------------------------------
 // RENDERER — the Setup screen exposes the controls (presentation contract)
 // ---------------------------------------------------------------------------

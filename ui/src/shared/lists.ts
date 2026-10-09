@@ -298,7 +298,7 @@ const ATTACHMENT_STAT_LABELS: Record<string, string> = {
   defense: "Defense",
   defenseBoost: "Defense Boost",
   critRate: "Crit Rate",
-  critDamage: "Crit Damage",
+  critDamage: "Crit DMG", // dominant spelling repo-wide (the panel term; the engine `critDamage` kind stays as-is)
 };
 
 /**

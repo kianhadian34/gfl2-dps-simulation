@@ -21,10 +21,10 @@ assets/remolder-categories/<categoryId>/<categoryId>.webp
 
 | Path | Category | Notes |
 |---|---|---|
-| `assets/remolder-categories/bulwark/bulwark.webp` | Bulwark | blue glyph badge, 44×44 |
-| `assets/remolder-categories/vanguard/vanguard.webp` | Vanguard | purple glyph badge, 44×44 |
-| `assets/remolder-categories/support/support.webp` | Support | green glyph badge, 44×44 |
-| `assets/remolder-categories/sentinel/sentinel.webp` | Sentinel | red glyph badge, 44×44 |
+| `assets/remolder-categories/bulwark/bulwark.webp` | Bulwark | blue glyph badge, 52×52 |
+| `assets/remolder-categories/vanguard/vanguard.webp` | Vanguard | purple glyph badge, 52×52 |
+| `assets/remolder-categories/support/support.webp` | Support | green glyph badge, 52×52 |
+| `assets/remolder-categories/sentinel/sentinel.webp` | Sentinel | red glyph badge, 52×52 |
 
 The 4 ids are **1:1 with the engine `RemolderCategory` union** (`src/model/types.ts`):
 
@@ -38,15 +38,19 @@ presentation-side) — every icon maps to a real engine category.
 ## Delivery notes
 
 - **Source:** delivered as PNGs named `ImagoFactor_<Category>.png` (one per category directory).
-  Converted **1:1 to lossless WebP** (8-bit RGBA, transparency preserved) and renamed to the
-  canonical `<categoryId>.webp`. Pixels are unchanged — verified by decoding both the source PNG and
-  the converted WebP to raw RGBA and comparing SHA-256 (identical for all 4).
-- **Sizing:** 44×44 (the source art's native size; the element icons are 52×52 and the physical
-  element badge 50×50, so these are slightly smaller and render at 16–18px in the UI).
+  Converted **1:1 to lossless WebP** (8-bit RGBA) and renamed to the canonical `<categoryId>.webp`.
+  For the initial 44×44 delivery the conversion was verified lossless by decoding both the source PNG
+  and the converted WebP to raw RGBA and comparing SHA-256 (identical for all 4).
+- **Sizing:** 52×52, matching the element icons (the physical element badge is 50×50). The source
+  art was delivered at 44×44 natively and has been **upscaled to 52×52 with Lanczos** (a 44→52
+  non-integer 1.18× resample) so all global icon categories share one size. This resample is
+  intentionally NOT pixel-identical to the 44×44 source — transparency and colours are preserved,
+  and the glyph edges stay smooth (verified visually on all 4).
 
 ## Wiring (done 2026)
 
-1. Converted the delivered PNGs to lossless WebP at the paths above.
+1. Converted the delivered PNGs to lossless WebP at the paths above, upscaled to 52×52 with Lanczos
+   to match the element icons.
 2. `ui/src/shared/assets.ts`: `AssetKind` member `"remolder-category"`; the 4 ids in
    `KNOWN_ENTITY_IDS`; a `pathFor` case; the 4 `SUPPLIED_ASSET_FILES` entries; the
    `remolderCategoryAsset(id)` convenience resolver.
