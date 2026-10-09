@@ -88,6 +88,14 @@ export interface SetupEquipment {
    * to the engine (`ScenarioTeamMember.permanentCookingStats`), which owns the values.
    */
   permanentCookingStats?: boolean;
+  /**
+   * PATTERN REMOLDER (2026): per-character selected buff levels, buffId -> level. Level 0 =
+   * inactive (the key is DROPPED, never stored as 0); a level above a buff's max clamps. Carried
+   * VERBATIM to the engine (`ScenarioTeamMember.remolderBuffs`), which owns the buff table and the
+   * validation (unknown ids are rejected; levels are clamped). The UI also never sends
+   * `Scenario.remolderBuffSet` — it relies on the engine's production default.
+   */
+  remolderBuffs?: Record<string, number>;
 }
 
 /** Fresh engine character rows (sim:listCharacters) vs the user's CURRENT setup: KEEP the user's
@@ -523,6 +531,40 @@ export function setPermanentCookingStats(state: SetupState, charId: string, enab
   });
 }
 
+/**
+ * PATTERN REMOLDER (2026): set ONE buff's selected level for a character. `level` is clamped to
+ * `[0, maxLevel]` (the engine clamps too — the UI just never sends an out-of-range value). **Level 0
+ * removes the buff** (the engine treats 0 as inactive), and when no buff remains the whole
+ * `remolderBuffs` field is dropped so an untouched character reproduces the exact legacy shape.
+ * Unknown buff ids are NEVER validated here — the engine remains the only validator.
+ */
+export function setRemolderBuffLevel(state: SetupState, charId: string, buffId: string, level: number, maxLevel: number): SetupState {
+  return updateEquipment(state, charId, (e) => {
+    const next: SetupEquipment = { ...e };
+    const map: Record<string, number> = { ...(e.remolderBuffs ?? {}) };
+    const clamped = Math.max(0, Math.min(Math.floor(level), maxLevel));
+    if (clamped <= 0) delete map[buffId];
+    else map[buffId] = clamped;
+    if (Object.keys(map).length === 0) delete next.remolderBuffs;
+    else next.remolderBuffs = map;
+    return next;
+  });
+}
+
+/** PATTERN REMOLDER (2026): clear ALL selected buff levels for a character (drops the field). */
+export function clearRemolderBuffs(state: SetupState, charId: string): SetupState {
+  return updateEquipment(state, charId, (e) => {
+    const next: SetupEquipment = { ...e };
+    delete next.remolderBuffs;
+    return next;
+  });
+}
+
+/** PATTERN REMOLDER (2026): the character's selected buff levels (empty record when none). */
+export function remolderBuffsOf(c: SetupCharacter): Record<string, number> {
+  return c.equipment?.remolderBuffs ?? {};
+}
+
 /** Set (or clear) the single Expansion Key (engine contract: one `expansionKeyId`). */
 export function setExpansionKey(state: SetupState, charId: string, keyId: string | undefined): SetupState {
   return updateEquipment(state, charId, (e) => {
@@ -681,6 +723,7 @@ export function buildScenario(setup: SetupState): ScenarioView {
         ...(equ.attachments !== undefined ? { attachments: equ.attachments } : {}),
         ...(equ.activeAttachmentSet !== undefined ? { activeAttachmentSet: equ.activeAttachmentSet } : {}),
         ...(equ.permanentCookingStats !== undefined ? { permanentCookingStats: equ.permanentCookingStats } : {}),
+        ...(equ.remolderBuffs !== undefined && Object.keys(equ.remolderBuffs).length > 0 ? { remolderBuffs: equ.remolderBuffs } : {}),
         ...(Object.keys(debugOv).length > 0
           ? { baseStatOverrides: debugOv, overridesAuthoritative: true } // DEBUG-MODE AUTHORITATIVE: overridden stats suppress dispatch (e.g. ATK 1500 stays 1500, no +231)
           : {}),

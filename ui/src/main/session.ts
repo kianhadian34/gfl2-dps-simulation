@@ -17,11 +17,13 @@ import { ATTACHMENT_SETS } from "../../../src/data/attachment-sets.ts";
 import { ATTACHMENT_SLOTS, ATTACHMENT_SLOT_MAX_STATS, ATTACHMENT_STAT_DEFS, attachmentStatsForSlot } from "../../../src/data/attachments.ts";
 import { APEX_COMPONENTS } from "../../../src/data/apex-components.ts";
 import { PERMANENT_COOKING_STATS } from "../../../src/data/cooking-stats.ts";
+import { REMOLDER_BUFFS } from "../../../src/data/remolder.ts";
 import { MAX_COMMON_KEYS } from "../../../src/engine/state.ts";
 import { MAX_APEX_COMPONENTS } from "../../../src/engine/apex.ts";
-import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView, buildAttachmentCatalog, buildApexCatalog, buildPermanentCookingStatsView } from "../shared/lists.js";
+import { resolveRemolderUnit } from "../../../src/engine/remolder.ts";
+import { buildWeaponViews, buildCommonKeyViews, buildCharacterMetaView, buildAttachmentCatalog, buildApexCatalog, buildPermanentCookingStatsView, buildRemolderCatalog } from "../shared/lists.js";
 import { buildGrid, moveCost, tileHeightAt, tileKey, bossFootprintTiles } from "../../../src/engine/grid.ts";
-import type { ScenarioView, SessionView, MovementFactView, GridCellFactsView, EffectSourceInfoView } from "../shared/engine-types.js";
+import type { ScenarioView, SessionView, MovementFactView, GridCellFactsView, EffectSourceInfoView, RemolderPreviewView } from "../shared/engine-types.js";
 
 let current: SessionView | null = null;
 let runCounter = 0;
@@ -222,6 +224,7 @@ export function registerSimHandlers(): void {
                   }
                 : {}),
               ...(def && def.fortificationMap ? { fortificationMap: def.fortificationMap } : {}),
+              ...(def && def.remolderSetBonuses ? { remolderSetBonuses: def.remolderSetBonuses } : {}),
               ...(def && def.passive
                 ? { passive: { ...(def.passive.playerDescription ? { playerDescription: def.passive.playerDescription } : {}), ...(def.passive.levelDescriptions ? { levelDescriptions: def.passive.levelDescriptions } : {}) } }
                 : {}),
@@ -253,6 +256,37 @@ export function registerSimHandlers(): void {
 
   /** Permanent Cooking Stats values (2026): the engine's permanent flat ATK/DEF/HP bonus. */
   ipcMain.handle("sim:getPermanentCookingStats", () => buildPermanentCookingStatsView(PERMANENT_COOKING_STATS));
+
+  /** Pattern Remolder buff catalog (2026): the engine's production REMOLDER_BUFFS, shaped for display. */
+  ipcMain.handle("sim:listRemolderBuffs", () => buildRemolderCatalog(REMOLDER_BUFFS));
+
+  /**
+   * Pattern Remolder LIVE PREVIEW (2026) — resolved BY THE ENGINE so the UI never reimplements the
+   * category-total or Set-Bonus activation rule. Input: an array of `{ characterId, remolderBuffs }`
+   * selections (the SAME shape the scenario carries). Returns one `RemolderPreviewView` per entry.
+   * Each entry is resolved independently: an unknown buff id (engine rejection) yields that entry's
+   * `error` rather than failing the whole call, so one bad selection never blanks the others.
+   */
+  ipcMain.handle("sim:resolveRemolder", (_event, selections: unknown) => {
+    if (!Array.isArray(selections)) throw new Error("sim:resolveRemolder expects an array of selections");
+    return selections.map((sel: unknown): RemolderPreviewView & { error?: string } => {
+      const s = sel as { characterId?: unknown; remolderBuffs?: unknown };
+      const fallback: RemolderPreviewView = { categoryTotals: { bulwark: 0, vanguard: 0, support: 0, sentinel: 0 }, activeSetBonusIds: [], activeBuffs: [] };
+      if (typeof s?.characterId !== "string") return { ...fallback, error: "selection is missing a characterId" };
+      const def = REGISTRY.getCharacter(s.characterId);
+      const levels = (typeof s.remolderBuffs === "object" && s.remolderBuffs !== null ? s.remolderBuffs : {}) as Record<string, number>;
+      try {
+        const plan = resolveRemolderUnit(levels, REMOLDER_BUFFS, def?.remolderSetBonuses, def?.remolderFlat);
+        return {
+          categoryTotals: plan.categoryTotals,
+          activeSetBonusIds: plan.activeSetBonusIds,
+          activeBuffs: plan.activeBuffs.map((b) => ({ buffId: b.buffId, level: b.level })),
+        };
+      } catch (e) {
+        return { ...fallback, error: e instanceof Error ? e.message : String(e) };
+      }
+    });
+  });
 
   ipcMain.handle("sim:run", (_event, scenario: unknown) => {
     if (typeof scenario !== "object" || scenario === null) throw new Error("sim:run expects a scenario object");

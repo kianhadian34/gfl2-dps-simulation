@@ -718,6 +718,86 @@ exclusion, Debug-authoritative suppression) is **engine/test validated**.
 
 ---
 
+### 3.22 Pattern Remolder — Setup UI (user-selectable buff levels)
+
+**Status: IMPLEMENTED (2026). UI LAYER ONLY — the engine system was already implemented and is
+UNCHANGED by this work.**
+
+The Pattern Remolder ("flower system") engine (`src/engine/remolder.ts` + `src/data/remolder.ts`)
+was already complete and consumed `ScenarioTeamMember.remolderBuffs` (buffId → level) against a
+global buff table. The UI had no way to select levels, so the whole system was unreachable from the
+app; this section documents the UI layer that exposes it.
+
+**Engine contract (unchanged):**
+- `ScenarioTeamMember.remolderBuffs?: Record<string, number>` — the per-character selected buff
+  levels. **Level 0 = inactive**; levels above a buff's `maxLevel` **clamp**; an unknown buff id is
+  **rejected** by the engine.
+- `Scenario.remolderBuffSet?` — the global buff table. **Absent ⇒ the engine uses the production
+  `REMOLDER_BUFFS`** (60 buffs: 15 Bulwark / 15 Vanguard / 15 Support / 15 Sentinel). The UI does
+  **not** send this field — it relies on the engine default, so the UI can never disagree with the
+  engine's own buff table.
+- **Set Bonuses** activate automatically from the four category totals
+  (`CharacterDef.remolderSetBonuses`, e.g. Qiongjiu's Embryo → Seedling → Sprout → Shoot → Bud →
+  Blossom). Remolder level is always treated as 60, so all six are eligible. **The engine owns this
+  activation rule**; the UI only displays the result.
+
+**UI surface (IMPLEMENTED 2026):**
+- A per-character **Pattern Remolder** section in the Setup screen: four category groups (Bulwark /
+  Vanguard / Support / Sentinel), each listing that category's engine-defined buffs. Each buff shows
+  its name, its recorded `source` name (when the engine supplies one), a **0..`maxLevel` level
+  stepper**, and the **engine-sourced effect lines for the selected level** (e.g. `ATK +2.2%`). Every
+  number is fetched from the engine over IPC — the UI never restates a value.
+- A **live preview computed BY THE ENGINE**: `sim:resolveRemolder` calls the engine's existing
+  `resolveRemolderUnit` and returns, per character, the four `categoryTotals` and the
+  `activeSetBonusIds` for the current selection. The UI renders those directly — it does **NOT**
+  reimplement the category-total or activation rule.
+- Buff definitions are fetched once via `sim:listRemolderBuffs`, which serializes the engine's
+  production `REMOLDER_BUFFS` (plus per-level effect lines). Set Bonus definitions ride the existing
+  `sim:listCharacters` payload (`CharacterMetaView.remolderSetBonuses`, the same pattern as
+  `affinityFlatStats`).
+
+**Representation:** level selections are carried **VERBATIM** into
+`ScenarioTeamMember.remolderBuffs`; the UI validates **no** numbers (the engine validates ids and
+clamps levels). A character with **no** levels selected emits **no** `remolderBuffs` key, preserving
+the exact legacy member shape.
+
+**Not claimed / not modeled:** the in-game *flower-board* geometry/acquisition (which flower grants
+which buff — that is the engine's `source` NAME, recorded data only), any inventory/cost/currency,
+and any selection legality beyond "known buff id + level ≤ max". The UI presents the engine's
+existing buff/level data only.
+
+**Validation (2026) — the selection really moves the stats.** Verified end-to-end on the REAL path
+(`setRemolderBuffLevel` → `buildScenario` → `createState` → live panel; seed 7, 7 turns, Qiongjiu,
+no other equipment), pinned by `ui/test/remolder-setup.test.ts`:
+- **Panel stats rise** — baseline ATK **1939** / HP **4162** / DEF **1315** / Crit Rate **20%** →
+  Attack Boost Lv6 **1996** (+57), HP Boost Lv6 **4296** (+134), Defense Boost Lv6 **1358** (+43),
+  Critical Boost Lv3 **23%** (+3%). Attack Boost Lv6 checks out arithmetically:
+  `ceil(1589 × (1 + 0.22 + 0.036)) = ceil(1995.784) = 1996` — i.e. the buff enters the SAME flat×%
+  panel chain (one stat path).
+- **Damage-side buffs raise the simulated total** without touching the panel — Physical Boost Lv5
+  **5300 → 5313**, Onslaught Stance Lv5 (Active) **→ 5354**, Smite Boost Lv7 (Crit DMG) **→ 5355**.
+- **Set Bonuses activate progressively** — Sentinel alone ⇒ none; `+ Vanguard 2` ⇒ **Embryo**; full
+  requirement totals ⇒ all six (**Embryo → Seedling → Sprout → Shoot → Bud → Blossom**).
+- **Unity lands on the ALLY** — HP Unity Lv5 raises the ally's max HP **+22**, Attack Unity Lv5 the
+  ally's panel ATK **+11**; the owner is never a recipient, and with **no** ally there is nobody to
+  grant to (so a solo character correctly shows no change).
+- **The live preview agrees with the simulation** — for the same selection the preview's
+  `categoryTotals` + `activeSetBonusIds` equal the simulated unit's resolved plan.
+- **Selections survive a restart** (the persisted setup round-trips `remolderBuffs`).
+- **Engine rejects** an unknown buff id (the UI never validates ids itself).
+
+**Known inert selection (recorded, NOT faked):** **Purification Feedback** (`ally_cleanse_stat_pct`)
+is stored and displayed but has **no engine consumer** — the MVP has no ally-debuff/cleanse trigger,
+so selecting it changes nothing (pinned by a test so the gap stays visible). The other buffs that
+show no effect in a given run are **correctly gated**, not inert: element boosts/Smites need the
+matching attack element, Thronebreaker/Beheading Blade need a boss target, Headhunter/CQC Elite/
+Melee Countermeasures need a grid distance, the Bulwark taken-damage family needs the holder to be
+hit, the Support recovery family is not damage, and the Unity family needs an ally present.
+
+**Source** — engine data (`src/data/remolder.ts`, `src/engine/remolder.ts`) + a UI requirement (2026).
+
+---
+
 ## 4. Uncertainty register
 
 Every mechanic that is still uncertain, with impact and resolution path. **None of these should be hardcoded as facts in the engine — all are config defaults pending the in-game test plan (§5).**

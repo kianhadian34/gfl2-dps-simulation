@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { ScenarioView, SessionView, WeaponView, CommonKeyListResult, CharacterMetaView, AttachmentCatalogView, ApexCatalogView, PermanentCookingStatsView } from "../shared/engine-types.js";
+import type { ScenarioView, SessionView, WeaponView, CommonKeyListResult, CharacterMetaView, AttachmentCatalogView, ApexCatalogView, PermanentCookingStatsView, RemolderCatalogView, RemolderPreviewView } from "../shared/engine-types.js";
 
 /**
  * Narrow, typed preload API exposed as window.sim.
@@ -18,6 +18,11 @@ const api = {
   listApexComponents: (): Promise<ApexCatalogView> => ipcRenderer.invoke("sim:listApexComponents"),
   /** Engine-sourced Permanent Cooking Stats values (the permanent flat ATK/DEF/HP bonus). */
   getPermanentCookingStats: (): Promise<PermanentCookingStatsView> => ipcRenderer.invoke("sim:getPermanentCookingStats"),
+  /** Engine-sourced Pattern Remolder buff catalog (the production REMOLDER_BUFFS, shaped for display). */
+  listRemolderBuffs: (): Promise<RemolderCatalogView> => ipcRenderer.invoke("sim:listRemolderBuffs"),
+  /** ENGINE-RESOLVED Remolder preview (category totals + active Set Bonuses) for the given selections. */
+  resolveRemolder: (selections: Array<{ characterId: string; remolderBuffs?: Record<string, number> }>): Promise<Array<RemolderPreviewView & { error?: string }>> =>
+    ipcRenderer.invoke("sim:resolveRemolder", selections),
   run: (scenario: ScenarioView): Promise<SessionView> => ipcRenderer.invoke("sim:run", scenario),
   openScenario: (): Promise<SessionView | null> => ipcRenderer.invoke("dialog:openScenario"),
   onSessionUpdate: (cb: (session: SessionView) => void): void => {

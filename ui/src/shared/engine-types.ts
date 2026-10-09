@@ -183,6 +183,60 @@ export interface PermanentCookingStatsView {
   def: number;
 }
 
+/**
+ * PATTERN REMOLDER views (2026) — the "flower system" presented in the Setup UI. Every value here
+ * is serialized from the ENGINE (`src/data/remolder.ts` / `src/engine/remolder.ts`); the UI never
+ * restates a buff name, level, or number.
+ */
+export interface RemolderBuffView {
+  id: string;
+  name: string;
+  /** Engine `RemolderCategory` (bulwark / vanguard / support / sentinel). */
+  category: string;
+  /** Recorded source NAME from the authoritative material (e.g. "Heaven Blossom") — omitted when unsupplied. */
+  source?: string;
+  /** Buffs are invalid above this level; the engine clamps supplied levels to it. */
+  maxLevel: number;
+  /** One entry per level DEFINED by the engine table (exact level keys only, no interpolation). */
+  levels: RemolderBuffLevelView[];
+}
+
+/** One Remolder level's engine-sourced effect lines (e.g. ["ATK +2.2%"]). */
+export interface RemolderBuffLevelView {
+  level: number;
+  lines: string[];
+}
+
+/** The full Remolder buff catalog for the UI (engine-sourced) + the display order of the categories. */
+export interface RemolderCatalogView {
+  /** Category ids in display order. */
+  categories: string[];
+  buffs: RemolderBuffView[];
+}
+
+/** A per-character Remolder Set Bonus (`CharacterDef.remolderSetBonuses`), shaped for display. */
+export interface RemolderSetBonusView {
+  id: string;
+  name: string;
+  /** Remolder tier (1/10/20/30/45/60) — the engine always assumes level 60, so all are eligible. */
+  remolderLevel: number;
+  requires: { bulwark: number; vanguard: number; support: number; sentinel: number };
+  /** Engine-sourced effect lines. */
+  lines: string[];
+}
+
+/**
+ * ENGINE-RESOLVED Remolder preview for ONE character (2026) — produced by the engine's
+ * `resolveRemolderUnit`, so the UI never reimplements the category-total or activation rule.
+ */
+export interface RemolderPreviewView {
+  categoryTotals: { bulwark: number; vanguard: number; support: number; sentinel: number };
+  /** Ids of the Set Bonuses the engine activated for the current selection. */
+  activeSetBonusIds: string[];
+  /** Ids + resolved (clamped) levels of the active buffs. */
+  activeBuffs: Array<{ buffId: string; level: number }>;
+}
+
 /** Engine-sourced per-character key/member metadata (extends the legacy listCharacters shape). */
 export interface FixedKeyView {
   id: string;
@@ -294,6 +348,9 @@ export interface CharacterMetaView {
   fortificationMap?: FortificationUpgradeView[];
   /** Engine-sourced passive metadata (per-level exact in-game text). */
   passive?: PassiveDescriptionView;
+  /** PATTERN REMOLDER (2026): this character's Set Bonuses (`CharacterDef.remolderSetBonuses`,
+   *  e.g. Qiongjiu Embryo→Blossom). Activation is resolved by the ENGINE from the category totals. */
+  remolderSetBonuses?: RemolderSetBonusView[];
 }
 
 /** Engine-sourced ability metadata for one rotation slot (the skill id feeds the asset resolver). */

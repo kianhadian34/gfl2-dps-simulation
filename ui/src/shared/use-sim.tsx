@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { SessionView, WeaponView, CommonKeyListResult, CharacterMetaView, AttachmentCatalogView, ApexCatalogView, PermanentCookingStatsView } from "./engine-types.js";
+import type { SessionView, WeaponView, CommonKeyListResult, CharacterMetaView, AttachmentCatalogView, ApexCatalogView, PermanentCookingStatsView, RemolderCatalogView, RemolderPreviewView } from "./engine-types.js";
 
 /**
  * Shared session state for the single application window. The main process owns the
@@ -22,6 +22,10 @@ export function useSession(): {
   listApexComponents: () => Promise<ApexCatalogView>;
   /** Engine-sourced Permanent Cooking Stats values (the permanent flat ATK/DEF/HP bonus). */
   getPermanentCookingStats: () => Promise<PermanentCookingStatsView>;
+  /** Engine-sourced Pattern Remolder buff catalog (the production REMOLDER_BUFFS, shaped for display). */
+  listRemolderBuffs: () => Promise<RemolderCatalogView>;
+  /** ENGINE-RESOLVED Remolder preview (category totals + active Set Bonuses) for the given selections. */
+  resolveRemolder: (selections: Array<{ characterId: string; remolderBuffs?: Record<string, number> }>) => Promise<Array<RemolderPreviewView & { error?: string }>>;
 } {
   const [session, setSession] = useState<SessionView | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,5 +76,10 @@ export function useSession(): {
 
   const getPermanentCookingStats = (): Promise<PermanentCookingStatsView> => window.sim.getPermanentCookingStats();
 
-  return { session, error, run, openScenario, listCharacters, listWeapons, listCommonKeys, listAttachments, listApexComponents, getPermanentCookingStats };
+  const listRemolderBuffs = (): Promise<RemolderCatalogView> => window.sim.listRemolderBuffs();
+
+  const resolveRemolder = (selections: Array<{ characterId: string; remolderBuffs?: Record<string, number> }>): Promise<Array<RemolderPreviewView & { error?: string }>> =>
+    window.sim.resolveRemolder(selections);
+
+  return { session, error, run, openScenario, listCharacters, listWeapons, listCommonKeys, listAttachments, listApexComponents, getPermanentCookingStats, listRemolderBuffs, resolveRemolder };
 }

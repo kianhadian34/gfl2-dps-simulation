@@ -23,6 +23,9 @@ import {
   toggleAttachmentStat,
   setActiveAttachmentSet,
   setPermanentCookingStats,
+  setRemolderBuffLevel,
+  clearRemolderBuffs,
+  remolderBuffsOf,
   addRotationSlot,
   moveRotationSlot,
   removeRotationSlotAt,
@@ -37,8 +40,8 @@ import {
   type RotationSlot,
   type SetupState,
 } from "../../../shared/setup.js";
-import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CommonKeyStatOptionView, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, ApexCatalogView, ApexComponentView, PermanentCookingStatsView, RotationSkillView } from "../../../shared/engine-types.js";
-import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, affinityLevels, affinityLevelFlatLines, expansionKeyEffectLine, affinityLevelStatLines, cookingStatsLines, rotationAbilityDescription } from "../../../shared/lists.js";
+import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CommonKeyStatOptionView, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, ApexCatalogView, ApexComponentView, PermanentCookingStatsView, RemolderCatalogView, RemolderPreviewView, RotationSkillView } from "../../../shared/engine-types.js";
+import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, affinityLevels, affinityLevelFlatLines, expansionKeyEffectLine, affinityLevelStatLines, cookingStatsLines, remolderCategoryLabel, remolderCategoryTotal, remolderRequirementLine, remolderTotalLevels, rotationAbilityDescription } from "../../../shared/lists.js";
 import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset, skillAsset, elementAsset, ammoAsset } from "../../../shared/assets.js";
 import { AssetThumb } from "./AssetThumb.js";
 
@@ -245,7 +248,7 @@ export function SetupScreen(props: {
   onStart: (scenario: ScenarioView) => Promise<void>;
   onOpenScenario: () => Promise<void>;
 }): JSX.Element {
-  const { listCharacters, listWeapons, listCommonKeys, listAttachments, listApexComponents, getPermanentCookingStats } = useSession();
+  const { listCharacters, listWeapons, listCommonKeys, listAttachments, listApexComponents, getPermanentCookingStats, listRemolderBuffs, resolveRemolder } = useSession();
   const [charsLoaded, setCharsLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -255,6 +258,9 @@ export function SetupScreen(props: {
   const [attachments, setAttachments] = useState<AttachmentCatalogView | null>(null);
   const [apex, setApex] = useState<ApexCatalogView | null>(null);
   const [cookingStats, setCookingStats] = useState<PermanentCookingStatsView | null>(null);
+  const [remolder, setRemolder] = useState<RemolderCatalogView | null>(null);
+  // ENGINE-RESOLVED Remolder preview per character id (category totals + active Set Bonuses).
+  const [remolderPreview, setRemolderPreview] = useState<Record<string, RemolderPreviewView & { error?: string }>>({});
   const [commonKeySlot, setCommonKeySlot] = useState<number | null>(null);
   const [apexSlot, setApexSlot] = useState<number | null>(null);
   const [affinityPickerFor, setAffinityPickerFor] = useState<string | null>(null);
@@ -265,13 +271,14 @@ export function SetupScreen(props: {
 
   useEffect(() => {
     if (charsLoaded) return;
-    Promise.all([listCharacters(), listWeapons(), listCommonKeys(), listAttachments(), listApexComponents(), getPermanentCookingStats()])
-      .then(([chars, wl, ckl, atc, apx, cooking]) => {
+    Promise.all([listCharacters(), listWeapons(), listCommonKeys(), listAttachments(), listApexComponents(), getPermanentCookingStats(), listRemolderBuffs()])
+      .then(([chars, wl, ckl, atc, apx, cooking, rem]) => {
         setWeapons(wl);
         setCommonKeys(ckl);
         setAttachments(atc);
         setApex(apx);
         setCookingStats(cooking);
+        setRemolder(rem);
         setMeta(Object.fromEntries(chars.map((c) => [c.id, c])));
         // Seed DEBUG MODE base stats from the characters' REAL CharacterDef.base (engine-sourced).
         const baseById: Record<string, { atk: number; hp: number; def: number; stability: number; critRate: number; critDmg: number }> = {};
@@ -286,7 +293,32 @@ export function SetupScreen(props: {
       })
       .catch((e: unknown) => setFormError(String(e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [charsLoaded, listCharacters, listWeapons, listCommonKeys, listAttachments, listApexComponents, getPermanentCookingStats]);
+  }, [charsLoaded, listCharacters, listWeapons, listCommonKeys, listAttachments, listApexComponents, getPermanentCookingStats, listRemolderBuffs]);
+
+  // PATTERN REMOLDER live preview (2026): whenever the SELECTED characters' buff levels change, ask
+  // the ENGINE (sim:resolveRemolder → resolveRemolderUnit) for the category totals + active Set
+  // Bonuses. The UI never reimplements the totals or the activation rule. Keyed on a serialized
+  // selection so the effect fires only on a real change (never per render).
+  const remolderKey = JSON.stringify(props.setup.characters.filter((c) => c.selected).map((c) => [c.id, c.equipment?.remolderBuffs ?? {}]));
+  useEffect(() => {
+    const sels = props.setup.characters.filter((c) => c.selected).map((c) => ({ characterId: c.id, remolderBuffs: c.equipment?.remolderBuffs }));
+    if (sels.length === 0) {
+      setRemolderPreview({});
+      return;
+    }
+    let alive = true;
+    resolveRemolder(sels)
+      .then((res) => {
+        if (alive) setRemolderPreview(Object.fromEntries(sels.map((s, i) => [s.characterId, res[i]]).filter(([, v]) => v !== undefined)));
+      })
+      .catch(() => {
+        /* the engine reports per-entry errors inside the preview; a transport failure just leaves the last preview */
+      });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remolderKey]);
 
   const set = (patch: Partial<SetupState>): void => props.onChange({ ...props.setup, ...patch });
 
@@ -579,6 +611,9 @@ export function SetupScreen(props: {
                 const ownerName = weapon?.ownerCharacterId !== undefined ? meta[weapon.ownerCharacterId]?.name : undefined;
                 const affinityKey = m?.affinityKey;
                 const expansionKey = m?.expansionKey;
+                const remolderLevels = remolderBuffsOf(c);
+                const remolderPreviewFor = remolderPreview[c.id];
+                const remolderBuffsIn = (cat: string) => (remolder?.buffs ?? []).filter((b) => b.category === cat);
                 const atkBoostPct = Math.round((weapon?.subStats.find((s) => s.stat === "pctAtk")?.value ?? 0) * 100);
                 return (
                   <div key={c.id} className="rot-builder">
@@ -1116,6 +1151,99 @@ export function SetupScreen(props: {
                           </>
                         ) : (
                           <span className="muted">no Expansion Key defined for this character</span>
+                        )}
+                      </fieldset>
+
+                      <fieldset className="remolder-section">
+                        <legend>
+                          Pattern Remolder <span className="muted">(per-buff levels — engine data; Set Bonuses activate automatically from the category totals)</span>
+                        </legend>
+                        {remolder === null ? (
+                          <span className="muted">loading engine Remolder data…</span>
+                        ) : (
+                          <>
+                            <div className="remolder-preview">
+                              <div className="remolder-totals">
+                                <span className="remolder-preview-label">Category totals</span>
+                                {remolder.categories.map((cat) => (
+                                  <span key={cat} className="remolder-total">
+                                    {remolderCategoryLabel(cat)} {remolderCategoryTotal(remolderPreviewFor, cat)}
+                                  </span>
+                                ))}
+                              </div>
+                              <div className="remolder-sets">
+                                <span className="remolder-preview-label">Set Bonuses</span>
+                                {(m?.remolderSetBonuses ?? []).length === 0 ? (
+                                  <span className="muted">none defined for this character</span>
+                                ) : (
+                                  (m?.remolderSetBonuses ?? []).map((set) => {
+                                    const active = remolderPreviewFor?.activeSetBonusIds?.includes(set.id) ?? false;
+                                    return (
+                                      <span
+                                        key={set.id}
+                                        className={`remolder-set${active ? " is-active" : ""}`}
+                                        title={`Requires ${remolderRequirementLine(set.requires)}${set.lines.length > 0 ? ` — ${set.lines.join("; ")}` : ""}`}
+                                      >
+                                        {set.name}
+                                        <span className="remolder-set-req">{remolderRequirementLine(set.requires)}</span>
+                                      </span>
+                                    );
+                                  })
+                                )}
+                              </div>
+                              {remolderPreviewFor?.error !== undefined ? <span className="remolder-error">{remolderPreviewFor.error}</span> : null}
+                            </div>
+                            {remolderTotalLevels(remolderLevels) > 0 ? (
+                              <button type="button" className="remolder-clear" onClick={() => props.onChange(clearRemolderBuffs(props.setup, c.id))}>
+                                Clear all Remolder levels
+                              </button>
+                            ) : null}
+                            <div className="remolder-categories">
+                              {remolder.categories.map((cat) => (
+                                <details key={cat} className="remolder-category">
+                                  <summary>
+                                    {remolderCategoryLabel(cat)}{" "}
+                                    <span className="muted">
+                                      ({remolderBuffsIn(cat).filter((b) => (remolderLevels[b.id] ?? 0) > 0).length} of {remolderBuffsIn(cat).length} active)
+                                    </span>
+                                  </summary>
+                                  {remolderBuffsIn(cat).map((b) => {
+                                    const level = remolderLevels[b.id] ?? 0;
+                                    const lines = b.levels.find((l) => l.level === level)?.lines ?? [];
+                                    return (
+                                      <div key={b.id} className="remolder-buff">
+                                        <div className="remolder-buff-head">
+                                          <span className="remolder-buff-name">{b.name}</span>
+                                          {b.source !== undefined ? <span className="remolder-buff-source">from {b.source}</span> : null}
+                                        </div>
+                                        <div className="remolder-buff-levels">
+                                          {[0, ...b.levels.filter((l) => l.level <= b.maxLevel).map((l) => l.level)].map((lv) => (
+                                            <button
+                                              key={lv}
+                                              type="button"
+                                              className={`remolder-level-pill${level === lv ? " is-selected" : ""}`}
+                                              onClick={() => props.onChange(setRemolderBuffLevel(props.setup, c.id, b.id, lv, b.maxLevel))}
+                                            >
+                                              {lv === 0 ? "0" : `Lv${lv}`}
+                                            </button>
+                                          ))}
+                                        </div>
+                                        {level > 0 ? (
+                                          <div className="remolder-buff-effects">
+                                            {lines.map((ln) => (
+                                              <span key={ln} className="remolder-effect-line">
+                                                {ln}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    );
+                                  })}
+                                </details>
+                              ))}
+                            </div>
+                          </>
                         )}
                       </fieldset>
                     </div>

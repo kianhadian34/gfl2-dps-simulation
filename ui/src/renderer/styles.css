@@ -591,3 +591,50 @@ button.primary:disabled { opacity: 0.6; }
 .log-scroll, .rot-scroll { overflow: auto; }
 .move-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
 .move-table td { padding: 1px 6px; border-bottom: 1px solid var(--border); }
+
+/* --- Pattern Remolder (2026): per-buff levels + the ENGINE-RESOLVED Set-Bonus preview --- */
+.remolder-section { margin-top: 10px; }
+.remolder-preview {
+  display: flex; flex-direction: column; gap: 6px;
+  margin: 2px 0 10px; padding: 6px 8px;
+  border-left: 2px solid var(--buff); background: var(--bg-2);
+}
+.remolder-preview-label {
+  font-size: 11px; color: var(--muted); letter-spacing: 0.04em;
+  text-transform: uppercase; font-weight: 600;
+}
+.remolder-totals, .remolder-sets { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.remolder-total {
+  font-size: 11px; color: var(--text); font-weight: 600;
+  border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; background: var(--bg-3);
+}
+.remolder-set {
+  font-size: 11px; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px;
+  display: inline-flex; align-items: baseline; gap: 6px; cursor: default;
+}
+.remolder-set.is-active { border-color: var(--buff); color: var(--buff); font-weight: 600; }
+.remolder-set-req { font-size: 10px; color: inherit; opacity: 0.75; }
+.remolder-error { font-size: 11px; color: var(--bad); }
+.remolder-clear {
+  border: 1px solid var(--border); border-radius: 6px; background: var(--bg-2);
+  color: var(--text); cursor: pointer; padding: 3px 10px; font-size: 11px; margin-bottom: 8px;
+}
+.remolder-clear:hover { border-color: var(--bad); color: var(--bad); }
+.remolder-categories { display: flex; flex-direction: column; gap: 6px; }
+.remolder-category { border: 1px solid var(--border); border-radius: 6px; background: var(--bg-2); }
+.remolder-category > summary { cursor: pointer; padding: 5px 8px; font-size: 12px; font-weight: 600; color: var(--text); }
+.remolder-buff { padding: 5px 8px 7px; border-top: 1px solid var(--border); }
+.remolder-buff-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.remolder-buff-name { font-size: 12px; color: var(--text); font-weight: 600; }
+.remolder-buff-source { font-size: 10px; color: var(--muted); }
+.remolder-buff-levels { display: flex; flex-wrap: wrap; gap: 4px; }
+.remolder-level-pill {
+  border: 1px solid var(--border); border-radius: 999px; background: var(--bg-3);
+  color: var(--text); cursor: pointer; padding: 1px 8px; font-size: 11px; line-height: 1.5;
+  min-width: 30px;
+}
+.remolder-level-pill:hover { border-color: var(--accent); }
+.remolder-level-pill.is-selected { border-color: var(--accent); background: var(--accent); color: var(--bg); font-weight: 600; }
+.remolder-buff-effects { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
+.remolder-effect-line { font-size: 11px; color: var(--buff); font-weight: 600; }

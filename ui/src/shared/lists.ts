@@ -30,6 +30,11 @@ import type {
   ApexCatalogView,
   ApexComponentView,
   PermanentCookingStatsView,
+  RemolderBuffView,
+  RemolderBuffLevelView,
+  RemolderCatalogView,
+  RemolderSetBonusView,
+  RemolderPreviewView,
 } from "./engine-types.js";
 
 /** Structural engine weapon shape (satisfied by engine `WeaponDef`). */
@@ -86,6 +91,59 @@ export interface CharacterMetaSource {
   };
   fortificationMap?: Array<{ v: number; ability: string; toLevel: number }>;
   passive?: { playerDescription?: string; levelDescriptions?: Record<number, string> };
+  /** PATTERN REMOLDER (2026): this character's Set Bonus definitions (`CharacterDef.remolderSetBonuses`). */
+  remolderSetBonuses?: RemolderSetBonusSource[];
+}
+
+/** Structural engine Remolder Set Bonus shape (satisfied by engine `RemolderSetBonusDef`). */
+export interface RemolderSetBonusSource {
+  id: string;
+  name: string;
+  remolderLevel: number;
+  requires: { bulwark: number; vanguard: number; support: number; sentinel: number };
+  effects: RemolderEffectSource[];
+}
+
+/** Structural engine Remolder buff definition (satisfied by engine `RemolderBuffDef`). */
+export interface RemolderBuffSource {
+  id: string;
+  name: string;
+  category: string;
+  source?: string;
+  maxLevel: number;
+  effects: Record<number, RemolderEffectSource[]>;
+}
+
+/** Structural engine Remolder effect (satisfied by engine `RemolderEffect`) — read structurally. */
+export interface RemolderEffectSource {
+  kind: string;
+  value?: number;
+  pct?: number;
+  amount?: number;
+  stat?: string;
+  label?: string;
+  atk?: number;
+  hp?: number;
+  durationRounds?: number;
+  pctOfMaxHp?: number;
+  capAtAtk?: boolean;
+  count?: number;
+  gates?: RemolderGatesSource;
+}
+
+/** Structural engine Remolder effect gates (satisfied by engine `RemolderEffectGates`). */
+export interface RemolderGatesSource {
+  actions?: string;
+  category?: string;
+  targetExposed?: boolean;
+  skillTypes?: string[];
+  bossTarget?: boolean;
+  minDistance?: number;
+  maxDistance?: number;
+  enemiesWithin3?: { atLeast?: number; atMost?: number };
+  element?: (string | null)[];
+  anyPhase?: boolean;
+  outOfTurn?: boolean;
 }
 
 export function buildWeaponViews(weapons: WeaponSource[]): WeaponView[] {
@@ -383,6 +441,215 @@ export function cookingStatsLines(v: PermanentCookingStatsView | null | undefine
   return lines;
 }
 
+// ---------------------------------------------------------------------------
+// PATTERN REMOLDER (2026) — the "flower system" presented in the Setup UI.
+// Presentation shaping ONLY: every buff id/name/category/max-level and every effect VALUE comes
+// from the engine (`src/data/remolder.ts`). This module never restates or invents a number — it
+// renders the engine's own effect vocabulary as display lines (the same pattern the Apex catalog
+// uses). Category display order/labels are presentation; the category SET is engine-defined.
+// ---------------------------------------------------------------------------
+
+/** Display order of the four engine Remolder categories. */
+const REMOLDER_CATEGORY_ORDER = ["bulwark", "vanguard", "support", "sentinel"] as const;
+const REMOLDER_CATEGORY_LABELS: Record<string, string> = {
+  bulwark: "Bulwark",
+  vanguard: "Vanguard",
+  support: "Support",
+  sentinel: "Sentinel",
+};
+const REMOLDER_ELEMENT_LABELS: Record<string, string> = {
+  burn: "Burn",
+  hydro: "Hydro",
+  electric: "Electric",
+  freeze: "Freeze",
+  corrosion: "Corrosion",
+};
+const REMOLDER_SKILL_TYPE_LABELS: Record<string, string> = {
+  basic: "Basic attacks",
+  active: "Active skills",
+  ultimate: "Ultimate",
+  support: "Support Actions",
+};
+
+/** Player-facing label for an engine Remolder category id (unknown ids fall back to the raw id). */
+export function remolderCategoryLabel(category: string): string {
+  return REMOLDER_CATEGORY_LABELS[category] ?? category;
+}
+
+/** Player-facing label for an engine stat key (atk/hp/def). */
+function remolderStatLabel(stat: string | undefined): string {
+  return stat === "atk" ? "ATK" : stat === "hp" ? "HP" : stat === "def" ? "DEF" : (stat ?? "");
+}
+
+/** Signed percentage from an engine fraction (e.g. 0.036 → "+3.6%", −0.05 → "−5.0%"). */
+function remolderSignedPct(value: number | undefined): string {
+  const v = value ?? 0;
+  return `${v < 0 ? "−" : "+"}${pct1(Math.abs(v))}`;
+}
+
+/** The gate clause of an effect, from the engine's gate vocabulary (empty when ungated). */
+function remolderGateSuffix(gates: RemolderGatesSource | undefined): string {
+  if (!gates) return "";
+  const parts: string[] = [];
+  if (gates.actions === "support") parts.push("Support Actions");
+  if (gates.category === "aoe") parts.push("AoE");
+  else if (gates.category === "targeted") parts.push("Targeted");
+  if (gates.targetExposed === true) parts.push("vs Stability-broken target");
+  if (gates.skillTypes !== undefined) parts.push(gates.skillTypes.map((t) => REMOLDER_SKILL_TYPE_LABELS[t] ?? t).join(" / "));
+  if (gates.bossTarget === true) parts.push("vs boss");
+  if (gates.minDistance !== undefined) parts.push(`distance > ${gates.minDistance}`);
+  if (gates.maxDistance !== undefined) parts.push(`distance ≤ ${gates.maxDistance}`);
+  if (gates.enemiesWithin3 !== undefined) {
+    const { atLeast, atMost } = gates.enemiesWithin3;
+    if (atLeast !== undefined && atMost !== undefined && atLeast === atMost) parts.push(`exactly ${atLeast} enemy within 3 tiles`);
+    else if (atLeast !== undefined && atMost !== undefined) parts.push(`${atLeast}–${atMost} enemies within 3 tiles`);
+    else if (atLeast !== undefined) parts.push(`≥${atLeast} enemies within 3 tiles`);
+    else if (atMost !== undefined) parts.push(`≤${atMost} enemies within 3 tiles`);
+  }
+  if (gates.element !== undefined || gates.anyPhase === true) {
+    const names = (gates.element ?? []).map((e) => (e === null ? "Physical" : (REMOLDER_ELEMENT_LABELS[e] ?? String(e))));
+    if (gates.anyPhase === true) names.push("Phase");
+    parts.push([...new Set(names)].join(" or "));
+  }
+  if (gates.outOfTurn === true) parts.push("out-of-turn");
+  return parts.length > 0 ? ` (${parts.join(", ")})` : "";
+}
+
+/**
+ * One engine Remolder effect rendered as a player-facing line. `pairedValue` supplies the strength
+ * for the Unity marker kinds (whose value lives in the same level's stat_pct / additive_dealt).
+ * Returns `undefined` for an unrecognised kind (never a fabricated line).
+ */
+export function remolderEffectLine(effect: RemolderEffectSource, pairedValue?: number): string | undefined {
+  const g = remolderGateSuffix(effect.gates);
+  switch (effect.kind) {
+    case "additive_dealt":
+      return `Damage dealt ${remolderSignedPct(effect.value)}${g}`;
+    case "additive_taken":
+      return `Damage taken ${remolderSignedPct(effect.value)}${g}`;
+    case "multiplicative_taken":
+      return `Damage taken ${remolderSignedPct(-(effect.value ?? 0))}${g}`;
+    case "stat_pct":
+      return `${remolderStatLabel(effect.stat)} ${remolderSignedPct(effect.value)}`;
+    case "crit_rate":
+      return `Crit Rate ${remolderSignedPct(effect.value)}`;
+    case "crit_dmg":
+      return `Crit DMG ${remolderSignedPct(effect.value)}`;
+    case "crit_dmg_gated":
+      return `Crit DMG ${remolderSignedPct(effect.value)}${g}`;
+    case "heal_on_attack":
+      return `On dealing damage: recover ${pct1(effect.pct ?? 0)} of ATK as HP`;
+    case "first_target_stability":
+      return `First damaged target each turn: Stability −${effect.amount}`;
+    case "heal_end_of_action":
+      return `End of action: recover ${pct1(effect.pct ?? 0)} of max HP`;
+    case "stability_recovery":
+      return `End of action: Stability +${effect.amount}`;
+    case "flat_hp_from_base_atk":
+      return `HP ${remolderSignedPct(effect.pct)} of INITIAL ATK (flat)`;
+    case "flat_atk_from_base_hp":
+      return `ATK ${remolderSignedPct(effect.pct)} of INITIAL max HP (flat)`;
+    case "heal_bonus":
+      return `Healing / shield dealt ${remolderSignedPct(effect.value)}`;
+    case "ally_cleanse_stat_pct":
+      return `On cleansing an ally: ATK ${remolderSignedPct(effect.atk)} / HP ${remolderSignedPct(effect.hp)} for ${effect.durationRounds} rounds`;
+    case "reactive_damage":
+      return `On taking damage: deal ${pct1(effect.pctOfMaxHp ?? 0)} of own max HP back to the attacker${effect.capAtAtk === true ? " (capped at 100% ATK)" : ""}`;
+    case "out_of_turn_dmg":
+      return `Out-of-turn damage ${remolderSignedPct(effect.value)}`;
+    case "allied_stat_pct_battle_start":
+      return `Battle start: the top-${effect.count} highest-ATK allied units gain ${remolderStatLabel(effect.stat)} ${remolderSignedPct(effect.value)}`;
+    case "unity":
+      return pairedValue !== undefined
+        ? `Allied Unity: allies gain ${remolderStatLabel(effect.stat)} ${remolderSignedPct(pairedValue)} (strongest level wins; does not stack)`
+        : `Allied Unity (${remolderStatLabel(effect.stat)})`;
+    case "unity_dealt":
+      return pairedValue !== undefined
+        ? `Allied Unity: allies gain damage dealt ${remolderSignedPct(pairedValue)}${g}`
+        : `Allied Unity: damage dealt${g}`;
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * The display lines for ONE level's effect list. Unity marker kinds are paired with their same-level
+ * strength value (the engine's own rule: Unity strength = the level's stat_pct / additive_dealt) and
+ * that paired self-effect is NOT shown separately — it is not a self buff.
+ */
+export function remolderLevelLines(effects: RemolderEffectSource[]): string[] {
+  const unity = effects.find((e) => e.kind === "unity");
+  const unityValue = unity !== undefined ? effects.find((e) => e.kind === "stat_pct" && e.stat === unity.stat)?.value : undefined;
+  const unityDealt = effects.find((e) => e.kind === "unity_dealt");
+  const unityDealtValue = unityDealt !== undefined ? effects.find((e) => e.kind === "additive_dealt")?.value : undefined;
+  const out: string[] = [];
+  for (const e of effects) {
+    // The paired self-effect of a Unity marker is the marker's STRENGTH — shown inside the Unity line.
+    if (unity !== undefined && e.kind === "stat_pct" && e.stat === unity.stat) continue;
+    if (unityDealt !== undefined && e.kind === "additive_dealt") continue;
+    const line = e.kind === "unity" ? remolderEffectLine(e, unityValue) : e.kind === "unity_dealt" ? remolderEffectLine(e, unityDealtValue) : remolderEffectLine(e);
+    if (line !== undefined) out.push(line);
+  }
+  return out;
+}
+
+/**
+ * Build the UI Remolder catalog from the ENGINE's buff definitions. Levels are the exact keys the
+ * engine defines (no interpolation); buffs are grouped into the engine's categories in the UI's
+ * display order. Nothing is dropped: an unknown category is appended rather than silently lost.
+ */
+export function buildRemolderCatalog(buffs: RemolderBuffSource[]): RemolderCatalogView {
+  const defined = [...new Set(buffs.map((b) => b.category))];
+  const categories = [
+    ...REMOLDER_CATEGORY_ORDER.filter((c) => defined.includes(c)),
+    ...defined.filter((c) => !(REMOLDER_CATEGORY_ORDER as readonly string[]).includes(c)).sort(),
+  ];
+  const view = buffs.map((b): RemolderBuffView => {
+    const levels: RemolderBuffLevelView[] = Object.keys(b.effects)
+      .map(Number)
+      .sort((a, b2) => a - b2)
+      .map((level) => ({ level, lines: remolderLevelLines(b.effects[level] ?? []) }));
+    return {
+      id: b.id,
+      name: b.name,
+      category: b.category,
+      ...(b.source !== undefined ? { source: b.source } : {}),
+      maxLevel: b.maxLevel,
+      levels,
+    };
+  });
+  return { categories, buffs: categories.flatMap((c) => view.filter((v) => v.category === c)) };
+}
+
+/** Shape one engine Remolder Set Bonus definition for the UI (name/tier/requirements/effect lines). */
+export function buildRemolderSetBonusView(set: RemolderSetBonusSource): RemolderSetBonusView {
+  return {
+    id: set.id,
+    name: set.name,
+    remolderLevel: set.remolderLevel,
+    requires: { ...set.requires },
+    lines: set.effects.map((e) => remolderEffectLine(e)).filter((l): l is string => l !== undefined),
+  };
+}
+
+/** The category-total requirement line for a Set Bonus, e.g. "Bulwark 5 · Vanguard 9 · Sentinel 15". */
+export function remolderRequirementLine(requires: { bulwark: number; vanguard: number; support: number; sentinel: number }): string {
+  return (["bulwark", "vanguard", "support", "sentinel"] as const)
+    .filter((c) => requires[c] > 0)
+    .map((c) => `${remolderCategoryLabel(c)} ${requires[c]}`)
+    .join(" · ");
+}
+
+/** The ENGINE-resolved category total for one category id (0 when no preview is available yet). */
+export function remolderCategoryTotal(preview: RemolderPreviewView | null | undefined, category: string): number {
+  return preview?.categoryTotals[category as keyof RemolderPreviewView["categoryTotals"]] ?? 0;
+}
+
+/** Total selected (active) levels across the four categories — a compact summary for a collapsed view. */
+export function remolderTotalLevels(buffLevels: Record<string, number> | undefined): number {
+  return Object.values(buffLevels ?? {}).reduce((sum, lv) => sum + (lv > 0 ? lv : 0), 0);
+}
+
 /**
  * A single player-facing Common Key stat line, tagged with its provenance so the UI can style it
  * differently: `fixed` (hardcoded stat), `chosen` (a player-selected kind), `empty` (a selectable
@@ -510,6 +777,9 @@ export function buildCharacterMetaView(def: CharacterMetaSource): CharacterMetaV
           },
         }
       : {}),
+    ...(def.remolderSetBonuses !== undefined
+      ? { remolderSetBonuses: def.remolderSetBonuses.map(buildRemolderSetBonusView) }
+      : {}),
   };
 }
 
@@ -624,4 +894,4 @@ export function expansionKeyEffectLine(e: ExpansionKeyView | undefined): string 
 }
 
 /** Convenience re-export for callers that only need the view types. */
-export type { WeaponView, CommonKeyListResult, CommonKeyView, CommonKeyStatOptionView, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, AttachmentSlotView, AttachmentStatView, AttachmentConfigView, AttachmentStatDefView, AttachmentSlotRulesView, AttachmentSetView, ApexCatalogView, ApexComponentView, PermanentCookingStatsView };
+export type { WeaponView, CommonKeyListResult, CommonKeyView, CommonKeyStatOptionView, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, AttachmentSlotView, AttachmentStatView, AttachmentConfigView, AttachmentStatDefView, AttachmentSlotRulesView, AttachmentSetView, ApexCatalogView, ApexComponentView, PermanentCookingStatsView, RemolderBuffView, RemolderBuffLevelView, RemolderCatalogView, RemolderSetBonusView };
