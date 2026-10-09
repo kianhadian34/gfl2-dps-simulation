@@ -1,8 +1,13 @@
 ﻿# Renderer Assets — Developer Guide (2026)
 
-English-only project documentation. This document defines the **asset infrastructure only**.
-No UI component renders images yet; future UI tasks consume the mapping described here, one
-area at a time.
+English-only project documentation. This document defines the **asset infrastructure** (resolvers,
+path contract, ownership rules) and tracks which categories are wired into the UI. Asset rendering
+itself IS now live: the Setup screen renders artwork through `AssetThumb`
+(`ui/src/renderer/app/setup/AssetThumb.tsx`) in the character, skill, fixed-key, common-key,
+affinity-key, expansion-key, weapon, Phase-weakness, Ammo-weakness and Pattern Remolder areas, and
+the global `elements/`, `ammo/` and `remolder-categories/` categories are **wired and consumed**
+(§2/§3). Only `qiongjiu_support` has no supplied file of the known entities — the fallback tile is
+what renders for it, which is the intended "asset missing" path (§6), not a wiring gap.
 
 ## 1. Where assets live
 
@@ -192,6 +197,7 @@ The system never invents artwork and never pretends a file exists:
 ## 7. Constraints
 
 - The renderer stays engine-free: `assets.ts` must not import engine modules.
-- No UI changes ship in this infrastructure task; actual image rendering is integrated per UI
-  area in separate tasks.
+- Asset rendering IS integrated (2026) — the Setup screen consumes the mapping through `AssetThumb`
+  (see the header). This bullet originally said rendering was deferred to separate tasks; that is
+  historical. Future categories/areas are added the same way, one area at a time.
 - Keep `KNOWN_ENTITY_IDS` in sync with engine data changes (documented in the file header).

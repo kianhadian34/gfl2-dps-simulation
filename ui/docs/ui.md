@@ -51,7 +51,7 @@ Setup screen · Grid · Combat Log · Rotation panels
 ```
 - The renderer must **not** import or execute `src/engine/*`; grid geometry, footprint, heights
   and movement costs are computed in the main process via the engine's grid module.
-- Engine stays independently testable: its `tsc` build and 244-test suite are untouched.
+- Engine stays independently testable: its `tsc` build and its own test suite are untouched. (This line originally read "244-test suite" when the UI was built; the count has since grown as the engine gained systems. Rather than pin a number that drifts with every engine commit, run `npm test` at the repository root for the current figure.)
 - Main imports engine sources directly (`../../../src/…`) so UI interactions trace into engine
   TypeScript via source maps/breakpoints.
 

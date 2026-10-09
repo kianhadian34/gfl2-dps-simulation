@@ -1,6 +1,6 @@
-# GFL2 Combat Simulator — Proposed Architecture (MVP)
+# GFL2 Combat Simulator — Architecture (MVP)
 
-Status: proposal, awaiting approval. Follows handoff §19–§21: accuracy-first, data-driven, engine independent of UI, nothing out-of-scope built "just in case".
+Status: **IMPLEMENTED (2026).** This document was written pre-implementation and is retained as the design record: the layers, module breakdown, damage pipeline, turn loop and contracts described below are built and validated under `src/` (see `docs/validation-checklist.md` for claim-level evidence). The original status line read "proposal, awaiting approval"; the decisions it awaited are settled and recorded in §11. Where an originally-proposed mechanism was superseded by what was actually built, the individual section says so. Follows handoff §19–§21: accuracy-first, data-driven, engine independent of UI, nothing out-of-scope built "just in case".
 
 ---
 
@@ -54,7 +54,7 @@ Status: proposal, awaiting approval. Follows handoff §19–§21: accuracy-first
 | `cooldowns` | Per-skill cooldown state + decrement timing — **confirmed: wait N full turns after the cast turn** (default `nextOwnTurnEnd`; alternative `endOfOwnTurn` selectable for testing only) |
 | `resources` | Confectance gauge, gains/costs (event-driven, per skill data) |
 | `rng` | Seeded RNG object (split-mix like, injectable) |
-| `apl` | Action-priority interpreter (§8) |
+| `apl` | Action-priority interpreter (§8) — **NOT BUILT: superseded by the fixed rotation (§8, §11 item 3). No `apl` module exists.** |
 | `log` | Structured event records (§9) |
 | `results` | Aggregations: total damage, dmg/round, dmg/action, per-character, per-source |
 
@@ -134,6 +134,13 @@ The dummy never acts. All random draws go through `rng` in a fixed call order (d
 
 ## 8. APL (action priority)
 
+> **NOT BUILT — superseded by the fixed rotation (2026, §11 item 3).** Auto-battle APL replication
+> was scoped out of the MVP (`docs/validation-checklist.md` §2). What the engine actually implements
+> is a per-member **user-defined fixed rotation** (`ScenarioTeamMember.rotation`, a cyclic priority
+> list scanned by `pickAction` in `src/engine/simulation.ts`, falling back to `basic`). There is no
+> `apl` module and no condition-driven interpreter. The sketch below is retained as the original
+> design record for the deferred auto-battle mode — do not read it as implemented behavior.
+
 - Built in as a small interpreter over skill predicates: `condition → action`, evaluated top-down.
 - Default (documented as a model assumption, research U12):
 
@@ -182,11 +189,13 @@ Results aggregate from the log (never recomputed): total damage, damage/full-tea
 
 ---
 
-## 11. Open decisions (user-owned, needed at implementation kickoff, not blocking these docs)
+## 11. Kickoff decisions (SETTLED — recorded, no longer open)
 
-1. **Implementation language/runtime** — environment has Node 22; TypeScript is the natural fit (typed data model), but this is the user's call.
-2. **First validation character(s)** — candidate: Qiongjiu (琼玖), whose full kit (multipliers, stab values, Confectance, keys, support rules) is documented at CONFIRMED level in `docs/research.md` and is the best first test case.
-3. **Whether "auto-battle AI replication" or "user-defined rotation"** is the primary sim mode — APL defaults differ (`ultimate>active>basic` vs explicit rotation).
+These three questions were open when this document was written. All are now decided and implemented; the original question wording is kept so the decision record is readable.
+
+1. **Implementation language/runtime** — environment has Node 22; TypeScript is the natural fit (typed data model), but this is the user's call. **→ SETTLED: TypeScript.** The project is TypeScript on Node ≥ 22 (`package.json` `engines`, `typescript` devDependency); the engine compiles with `tsc -p tsconfig.json` and `src/` contains no `.js` sources.
+2. **First validation character(s)** — candidate: Qiongjiu (琼玖), whose full kit (multipliers, stab values, Confectance, keys, support rules) is documented at CONFIRMED level in `docs/research.md` and is the best first test case. **→ SETTLED: Qiongjiu is the primary implemented/validation character** (`src/data/qiongjiu.ts`; registered in `src/data/registry.ts`, alongside the non-character `BASIC_ATTACK_DUMMY` test unit). She remains the reference subject for claim-level evidence in `docs/validation-checklist.md`.
+3. **Whether "auto-battle AI replication" or "user-defined rotation"** is the primary sim mode — APL defaults differ (`ultimate>active>basic` vs explicit rotation). **→ SETTLED: user-defined fixed rotation.** Each team member declares an explicit `rotation` (`ScenarioTeamMember.rotation`); `pickAction` (`src/engine/simulation.ts`) scans it as a cyclic priority list, with `basic` as the fallback. Auto-battle AI replication is **out of MVP scope** (U12 remains UNKNOWN — see `docs/validation-checklist.md` §2).
 
 ## 11a. Weapon Attachment system — discovery report (2026, DOCUMENTATION ONLY)
 
