@@ -133,7 +133,11 @@ report below.
 2. Follow the established workflow (§3.5).
 3. Preserve previous decisions and evidence unless new evidence contradicts them.
 4. Update the §2 snapshot when relevant work changes the state (branch/HEAD/working tree, and
-   re-run the build/tests rather than copying old numbers).
+   re-run the build/tests rather than copying old numbers). **Do NOT open a commit solely to
+   refresh this document after every commit** — refresh the snapshot at the **start of the next
+   task** or when **wrapping up meaningful work**. A short in-sync lag between a commit and the
+   next snapshot refresh is expected and is not an error; the repository (§1.2) remains
+   authoritative throughout.
 5. Record significant implementation changes, decisions, test results and validation evidence **at
    summary level, pointing to the owning document (§1.5) for the detail**.
 6. Update subsystem status (§5) and the backlog (§8) so they reflect the actual outcome.
@@ -201,9 +205,9 @@ summary alone.
 | Item | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | `98c4fab1b4462a5a3b253b18f31b349590fa7ebd` |
-| `origin/main` | `98c4fab1b4462a5a3b253b18f31b349590fa7ebd` (in sync) |
-| Working tree | `docs/project.md` **modified, uncommitted** (§7.1 items 4–5); no other tracked changes |
+| HEAD | `0670d2b57b4535f9b66ac4a71c37fc770ec2fc79` |
+| `origin/main` | `0670d2b57b4535f9b66ac4a71c37fc770ec2fc79` (in sync) |
+| Working tree | clean (no modified tracked files) |
 | Untracked | `.reasonix/` (host-managed session artifacts — **never stage**) |
 | Engine build | `npm run build` → exit 0 |
 | Engine tests | **671 pass · 0 fail · 0 skipped** across **95 test files** |
@@ -752,8 +756,9 @@ workflow and owning documents.
 | 1 | **Orientation audit** (no repository changes). Re-verified the handout against the repo: git state, engine build/tests, UI typecheck/tests/build, zero character-id conditionals, registry contents, no TODO markers, no engine `try/catch`. Found that the handout's "97 files · 673 pass" was inflated by two stale `dist/` artifacts (real: 95 files / 671 tests). | — | all suites green | — (read-only) |
 | 2 | **Documentation-drift cleanup.** Corrected stale status labels and superseded-design claims after verifying each against the implementation. | `docs/architecture.md`, `ui/docs/assets.md`, `ui/docs/ui.md` | `git diff --check` clean; engine 671 pass; UI 286 pass; typecheck 0 | `8d8ef61` (pushed) |
 | 3 | **Establish `docs/project.md`** (this document) — the permanent continuity record, its structure, and its maintenance contract. | `docs/project.md` | see §2 re-run; `git diff --check` | `98c4fab` (pushed) |
-| 4 | **Harden the maintenance contract.** Added an explicit update-trigger list, the anti-duplication ("update in place") rule, the evidence-discipline rule, the end-of-task report requirement, and sharpened the "repository is authoritative if this document is stale" statement (§1.2/§1.4). Refreshed the §2 snapshot to the current HEAD and closed backlog item B2. | `docs/project.md` | `git diff --check` clean; no source/test change | uncommitted (§10) |
-| 5 | **Scope clarification: additional, not replacement.** Made explicit that maintaining this document is an ADDITIONAL requirement on top of existing duties — the full workflow (§3.5) and the owning documents still apply. Added §1.5 (documentation ownership map: which file owns which subject) and the `Document`-step clarification in §3.5; strengthened §1.1, §1.2 and §1.4 (rule 5 + a "summarize and point, do not duplicate" clause). No requirement removed or weakened. | `docs/project.md` | `git diff --check` clean; no source/test change; docs-only | uncommitted (§10) |
+| 4 | **Harden the maintenance contract.** Added an explicit update-trigger list, the anti-duplication ("update in place") rule, the evidence-discipline rule, the end-of-task report requirement, and sharpened the "repository is authoritative if this document is stale" statement (§1.2/§1.4). Refreshed the §2 snapshot to the current HEAD and closed backlog item B2. | `docs/project.md` | `git diff --check` clean; no source/test change | `0670d2b` (pushed) |
+| 5 | **Scope clarification: additional, not replacement.** Made explicit that maintaining this document is an ADDITIONAL requirement on top of existing duties — the full workflow (§3.5) and the owning documents still apply. Added §1.5 (documentation ownership map: which file owns which subject) and the `Document`-step clarification in §3.5; strengthened §1.1, §1.2 and §1.4 (rule 5 + a "summarize and point, do not duplicate" clause). No requirement removed or weakened. | `docs/project.md` | `git diff --check` clean; no source/test change; docs-only | `0670d2b` (pushed) |
+| 6 | **Snapshot refresh** — corrected the three self-referential statements left stale by committing items 4–5 (§2 working-tree row, §7.1 commit columns, §10 open state) and recorded the no-per-commit-refresh policy in §1.4. | `docs/project.md` | `git diff --check` clean; docs-only | uncommitted (§10) |
 
 **Detail — the documentation-drift cleanup (`8d8ef61`):** the task and its outcome are also
 recorded here because future sessions should not re-fix them.
@@ -935,10 +940,11 @@ then proceed.** The engine is verified ready, and the registry is a one-line cha
 work, everything needed to start is in place and verified (§2), and every other open item is either
 deferred by user choice (Apex, §9.1) or blocked on unavailable evidence (§9.3).
 
-**Open documentation state:** this document (`docs/project.md`) is committed and pushed as
-`98c4fab`. Two subsequent documentation revisions are currently **uncommitted** — §7.1 item 4
-(contract hardening) and item 5 (the additional-not-replacement clarification). Neither will be
-committed without the user's explicit authorization.
+**Open documentation state:** `docs/project.md` is committed and pushed as `0670d2b`. The snapshot
+refresh (§7.1 item 6) is currently **uncommitted**; it will not be committed without the user's
+explicit authorization. Note (policy, §1.4): the snapshot is **not** refreshed after every commit —
+it is refreshed at the start of the next task or when wrapping up meaningful work, so a brief
+in-sync lag after a commit is expected and is not an error.
 
 **This section must be updated whenever the priority changes.**
 
