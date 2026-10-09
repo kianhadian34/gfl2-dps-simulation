@@ -205,9 +205,9 @@ summary alone.
 | Item | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | `0670d2b57b4535f9b66ac4a71c37fc770ec2fc79` |
-| `origin/main` | `0670d2b57b4535f9b66ac4a71c37fc770ec2fc79` (in sync) |
-| Working tree | clean (no modified tracked files) |
+| HEAD | `ca21212847dfc867c41d09e65f2c21dd6fbec19e` |
+| `origin/main` | `ca21212847dfc867c41d09e65f2c21dd6fbec19e` (in sync) |
+| Working tree | in progress: Vector source record (`docs/dolls/vector.md`) + 19 asset files — **uncommitted** (§7.1 item 7) |
 | Untracked | `.reasonix/` (host-managed session artifacts — **never stage**) |
 | Engine build | `npm run build` → exit 0 |
 | Engine tests | **671 pass · 0 fail · 0 skipped** across **95 test files** |
@@ -288,6 +288,7 @@ into `UnitState` → `simulate()` runs the deterministic round loop → `Simulat
 | `docs/research.md` | **Authority** for mechanics + in-game evidence (~161 KB) |
 | `docs/validation-checklist.md` | **Authority** for validation status + evidence states (~84 KB) |
 | `docs/schemas.md`, `docs/grid.md`, `docs/architecture.md` | Design record |
+| `docs/dolls/<charId>.md` | **Per-doll source record** — authoritative source transcription for one doll (established with `docs/dolls/vector.md`, 2026) |
 | `ui/docs/ui.md`, `ui/docs/assets.md` | UI architecture + asset infrastructure |
 
 ### 3.4 Architectural invariants
@@ -594,6 +595,16 @@ character/skill/key/weapon assets consumed by the Setup screen. Manifest docs li
 | Affinity Key | `qiongjiu_affinity_warm_as_jade` (Warm as Jade) |
 | Qiongjiu abilities | `qiongjiu_basic` (Fuse), `qiongjiu_common_rail`, `qiongjiu_guide_to_victory`, `qiongjiu_pressing_momentum`, `qiongjiu_support`, `qiongjiu_steady_plan` (passive) |
 
+**This table describes the REGISTRY AS IMPLEMENTED.** Vector is **not** in it — her source record
+exists (`docs/dolls/vector.md`) but no `CharacterDef`, registry entry, status, or weapon data has
+been created. Do not read the per-doll doc as registry presence.
+
+### 5.7 Per-doll source records (documented, NOT implemented)
+
+| Doll | Record | Status |
+|---|---|---|
+| Vector | `docs/dolls/vector.md` | **SOURCE DATA ONLY** — kit, Fortification map, 9 keys, Remolder flats, signature weapon transcribed; **base stats resolved** (`[GAME]`: HP 1819 / ATK 748 / DEF 569 / Stab 10 / CR 20% / CDMG 120% / Move 6); **no engine/registry/UI changes**; 13 recorded implementation gaps |
+
 ---
 
 ## 6. Evidence and Validation Record
@@ -758,7 +769,8 @@ workflow and owning documents.
 | 3 | **Establish `docs/project.md`** (this document) — the permanent continuity record, its structure, and its maintenance contract. | `docs/project.md` | see §2 re-run; `git diff --check` | `98c4fab` (pushed) |
 | 4 | **Harden the maintenance contract.** Added an explicit update-trigger list, the anti-duplication ("update in place") rule, the evidence-discipline rule, the end-of-task report requirement, and sharpened the "repository is authoritative if this document is stale" statement (§1.2/§1.4). Refreshed the §2 snapshot to the current HEAD and closed backlog item B2. | `docs/project.md` | `git diff --check` clean; no source/test change | `0670d2b` (pushed) |
 | 5 | **Scope clarification: additional, not replacement.** Made explicit that maintaining this document is an ADDITIONAL requirement on top of existing duties — the full workflow (§3.5) and the owning documents still apply. Added §1.5 (documentation ownership map: which file owns which subject) and the `Document`-step clarification in §3.5; strengthened §1.1, §1.2 and §1.4 (rule 5 + a "summarize and point, do not duplicate" clause). No requirement removed or weakened. | `docs/project.md` | `git diff --check` clean; no source/test change; docs-only | `0670d2b` (pushed) |
-| 6 | **Snapshot refresh** — corrected the three self-referential statements left stale by committing items 4–5 (§2 working-tree row, §7.1 commit columns, §10 open state) and recorded the no-per-commit-refresh policy in §1.4. | `docs/project.md` | `git diff --check` clean; docs-only | uncommitted (§10) |
+| 6 | **Snapshot refresh** — corrected the three self-referential statements left stale by committing items 4–5 (§2 working-tree row, §7.1 commit columns, §10 open state) and recorded the no-per-commit-refresh policy in §1.4. | `docs/project.md` | `git diff --check` clean; docs-only | `ca21212` (pushed) |
+| 7 | **Vector source record (documentation only).** Read Qiongjiu's `CharacterDef` to map the data schema, then transcribed Vector's kit from `dandegate.net/dolls/vector` into a new per-doll record. Verified each factual claim against the repo (status list, grid config, cooldown model, Confectance cap, `AffinityKeyDef`/`WeaponDef`/`imprint` shapes) and marked every gap as `[UNKNOWN]`/not-implemented rather than assuming. Downloaded 23 CDN assets and placed 19 into the asset tree (18 character + 1 weapon; **placed, not wired**). **Base stats then supplied by the user** (`[GAME]`: HP 1819 / ATK 748 / DEF 569 / Stab 10 / CR 20% / CDMG 120% / Move 6) and recorded — the one data blocker, resolved; the general fact "base Crit Rate is 20% for ALL characters" was recorded in its **owning** document `docs/research.md` §3.8. **Confectance >6 — RESOLVED [GAME]:** the user's earlier "might be a system allowing >6" hypothesis was then fully explained (2026-10-09): at **Fortification V5** Vector gains **2 Confectance slots SEPARATE from her normal 6**, and those extras are what her passive Lv.3 clause counts (+10%/+20% ATK). **U9's cap of 6 is unchanged** — the normal gauge never overflows; the engine must **not** raise `confectanceMax`. Recorded in `docs/dolls/vector.md` §4.5/§7 and `docs/research.md` §3.12. | `docs/dolls/vector.md` (new), `docs/research.md` §3.8 + §3.12, `ui/src/renderer/public/assets/characters/vector/**` (18), `ui/src/renderer/public/assets/weapons/banshees-whisper/**` (1), `docs/project.md` | claims verified by direct repo inspection; **no code/tests changed**; in-game validation **N/A** (docs-only) | uncommitted (§10) |
 
 **Detail — the documentation-drift cleanup (`8d8ef61`):** the task and its outcome are also
 recorded here because future sessions should not re-fix them.
@@ -831,12 +843,25 @@ dfe777d docs(attachment): element boosts validated by shared mechanism; only Bur
 
 Only genuinely open work. Completed items are closed and preserved in §7.
 
-### 8.1 Immediate next step — a USER DECISION
+### 8.1 Immediate next step — Vector (character NAMED by the user, 2026-10-09)
 
-**Add the next character.** The engine is audited and ready: zero character-id conditionals,
-data-driven dispatch, registry is a one-line change. **The user has not yet named the character.**
-Ask, then follow Evidence → Document → Test → In-Game Validation → Implement → Commit. Note: a new
-character that depends on an out-of-scope mechanic (§9.2) cannot be fully modeled yet.
+**Implement Vector.** The user named her as the next character, and her source record now exists
+(`docs/dolls/vector.md`). The engine is audited and ready: zero character-id conditionals,
+data-driven dispatch, registry is a one-line change.
+
+**Before any implementation, these are the blocking items (from `docs/dolls/vector.md` §7/§10):**
+
+| # | Blocker | Why it blocks | Evidence needed |
+|---|---|---|---|
+| ~~V1~~ | ~~**Base stats** (ATK/HP/DEF/critRate/critDmg)~~ | **RESOLVED 2026-10-09** — user-provided character sheet: **HP 1819 · ATK 748 · DEF 569 · Stability 10 · Crit Rate 20% · Crit DMG 120% · Movement 6**; recorded in `docs/dolls/vector.md` §3 | — (obtained) |
+| V2 | **The V5 extra Confectance slots + the turn-start drain** — Vector's passive (Lv.3, at **V5**) grants **2 Confectance slots SEPARATE from the normal 6**, read by clause 5 for **+10% (1 slot) / +20% (2 slots)**; clause 4's turn-start drain consumes the gauge for +10% ATK | **Mechanic RESOLVED [GAME]** (user-provided 2026-10-09). **U9 unchanged** — the normal gauge stays capped at 6; the extras are a separate resource. Engine work: a **second, V5-gated resource** + the turn-start drain (the engine's at-max check exists but is **Ultimate-scoped**). **Do NOT raise `confectanceMax` to 8** | in-game sheet not needed — mechanic known; needs engine implementation. A controlled run would move the arithmetic to `Validated` |
+| V3 | **Burn/Incineration tiles** | Foundational to Vector's kit (Dead End Meltdown, Searing Finale, FK1, passive V5); the grid has **no tile-effect system** | design/evidence step |
+| V4 | **7+ new statuses** (Overheat Combustion, Smolder, Overheat, Accelerant, Incineration, Extra Command, Apathetic Resistance, Emergency Support) | None exist; each needs a definition + evidence | source texts (have) + in-game behavior |
+| V5 | **Signature weapon shape gaps** (Imprint condition, weapon ATK endpoints, trait pool) | Not representable in today's `WeaponDef`/`Imprint` shapes | source + judgement |
+
+**Recommended order:** base stats are IN. Next, decide scope on V2–V4 with the user, since each is
+engine-scale work rather than data entry. Do **not** implement a partial kit that silently
+approximates an unmodeled mechanic (§1.4 / the anti-approximation rule).
 
 ### 8.2 Active tasks
 
@@ -844,9 +869,11 @@ character that depends on an out-of-scope mechanic (§9.2) cannot be fully model
 |---|---|---|---|---|---|
 | B1 | `docs/schemas.md` header/status still says "Proposed … proposal, awaiting approval" | Low | — | repo inspection only (the file already self-notes the proposal-era content at line 54) | **Open** — deliberately out of previous tasks' scope |
 | B3 | Resolve the Apex secondary-effect scaling question | — | user's call | in-game tooltip read | **DEFERRED — Apex is WIP** (user decision, 2026-10-09) |
+| B4 | Vector implementation (see §8.1 V2–V5) | High | V2–V5 scope decision | then Evidence → Test → In-Game Validation | **Base stats IN (V1 resolved, `[GAME]`); BLOCKED on the V2–V4 engine-scale work and a scope decision** |
+| B5 | Wire the 19 placed Vector assets into `assets.ts` (`KNOWN_ENTITY_IDS` + `SUPPLIED_ASSET_FILES` → `supplied: true`) | Low | — | none (files are placed) | **Open** — assets are placed but NOT wired; deliberately out of the docs-only task |
 
-**Closed this session:** B2 (commit `docs/project.md`) — completed as `98c4fab`; preserved in §7.1
-per the rule that completed items move to the history.
+**Closed earlier this session:** B2 (commit `docs/project.md`) — completed as `98c4fab`; preserved in
+§7.1 per the rule that completed items move to the history.
 
 ### 8.3 Deferred / blocked (not ready to start)
 
@@ -855,6 +882,9 @@ per the rule that completed items move to the history.
 - **Apex Tier I/II/IV components and the other 6 types** — no data recorded; do not invent.
 - **Element DoTs (U16)** — definitions unknown; deferred.
 - **Auto-battle AI (U12)** — out of MVP scope.
+- **Vector mechanics needing new engine systems** — Burn/Incineration tiles, the Confectance-drain
+  ATK buff, cooldown reduction, allied healing, "large target" classification. Recorded in full in
+  `docs/dolls/vector.md` §7. Each is its own design/evidence step; **do not approximate them**.
 
 ### 8.4 Optional cleanup (only if it ever matters)
 
@@ -899,10 +929,15 @@ installers beyond plain Windows dev builds.
 
 ### 9.3 Genuine unknowns that must NOT be filled with assumptions
 
-- Which character the user wants next (§8.1).
+- Which character the user wants next (§8.1). **RESOLVED 2026-10-09: Vector.**
 - The 7 inert attachment sets' mechanics (gates reference undefined statuses; **Phase Boost** /
   **Area Defense II** are referenced but not defined).
 - Ultimate-Pursuit stacking details.
+- ~~**Can Confectance exceed its max of 6?**~~ **RESOLVED 2026-10-09 [GAME]:** yes, but as a
+  **SEPARATE resource** — at **V5** Vector gains **2 Confectance slots separate from the normal 6**,
+  read by her passive Lv.3 clause for **+10%/+20% ATK**. **U9's cap of 6 is unchanged** (the normal
+  gauge never overflows). Recorded in `docs/dolls/vector.md` §4.5/§7 and `docs/research.md` §3.12;
+  engine representation **not yet built**. **Do not raise `confectanceMax`.**
 - Live level cap / endgame stat magnitudes (U13).
 - Element DoT definitions (U16).
 - The term "Nixie/交换机" (U18) — needs user clarification, not code.
@@ -933,18 +968,34 @@ installers beyond plain Windows dev builds.
 
 ## 10. Next Action
 
-**The single most appropriate next action: get the user's decision on the next character (§8.1),
-then proceed.** The engine is verified ready, and the registry is a one-line change.
+**The single most appropriate next action: scope Vector's implementation with the user.** Her
+source record is complete and the **only data blocker (base stats) is resolved** (`[GAME]`: HP 1819 ·
+ATK 748 · DEF 569 · Stability 10 · Crit Rate 20% · Crit DMG 120% · Movement 6). What remains
+(`docs/dolls/vector.md` §7 V2–V5) is **engine-scale work, not data entry**: Burn/Incineration tiles,
+7+ new statuses, and the turn-start "at max Confectance" drain.
 
-**Why this is next:** it is the only blocking item that requires a user decision rather than code
-work, everything needed to start is in place and verified (§2), and every other open item is either
-deferred by user choice (Apex, §9.1) or blocked on unavailable evidence (§9.3).
+**Clarified and RESOLVED 2026-10-09 (user, in-game evidence):** the Confectance cap is **6 for the
+normal gauge and unchanged** (U9 remains validated) — V2 was never a cap contradiction. The earlier
+"above index 6" hypothesis is now explained: at **Fortification V5** Vector gains **2 Confectance
+slots SEPARATE from the normal 6**, and those extra slots are what her passive Lv.3 clause counts
+(**1 → +10% ATK, 2 → +20%**). So the mechanic is **known**; what remains is **engine
+implementation** — a second, V5-gated resource plus the turn-start drain. **The engine must not
+raise `confectanceMax` to 8** (that would wrongly uncap the normal gauge).
 
-**Open documentation state:** `docs/project.md` is committed and pushed as `0670d2b`. The snapshot
-refresh (§7.1 item 6) is currently **uncommitted**; it will not be committed without the user's
-explicit authorization. Note (policy, §1.4): the snapshot is **not** refreshed after every commit —
-it is refreshed at the start of the next task or when wrapping up meaningful work, so a brief
-in-sync lag after a commit is expected and is not an error.
+**Why this is next:** the data-only portion of Vector is ready, but implementing a *partial* kit
+would silently approximate mechanics the engine does not model — which the project rules forbid
+(`§1.4`; "never invent game mechanics"). So the correct next step is a decision, not code:
+either (a) extend the engine for tiles/statuses, or (b) implement only the subset that is honestly
+modelable today and record the rest as inert/unmodeled, exactly as the 7 inert attachment sets are.
+
+**Also outstanding (nothing here is committed):**
+
+- `docs/dolls/vector.md` (new) + 19 placed asset files + this document's updates are
+  **uncommitted** (§7.1 item 7) — awaiting the user's authorization.
+- **Vector's assets are placed but NOT wired** (`assets.ts` untouched) — backlog **B5**.
+- `docs/project.md`'s own snapshot is at `ca21212`; the §7.1 item 6 commit is recorded, item 7 is
+  pending. Per the §1.4 policy the snapshot is refreshed at the start of the next task or when
+  wrapping up — not by a separate commit after every commit.
 
 **This section must be updated whenever the priority changes.**
 

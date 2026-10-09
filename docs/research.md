@@ -240,6 +240,13 @@ Attacker stability is irrelevant to the attacker's own damage output (CONFIRMED)
 
 Attributes: ATK (攻击), HP (生命), DEF (防御), Stability Index (稳态指数), Crit Rate (暴击), Crit DMG (暴击伤害, panel base 120%), ATK%/HP%/DEF% (attack/life/defense %, "big stats"), Stability Damage Reduction % (稳态减伤), 行动力 movement (grid/round), 攻击范围 attack range (grids), weaknesses (弱点).
 
+**Base Crit Rate = 20% for ALL characters** (user-provided in-game knowledge, 2026-10-09 — source
+hierarchy level 1). The per-character `CharacterDef.base.critRate` remains explicit data (each doll
+declares it) rather than an engine-wide default; this fact is what makes the declared value
+predictable, not a reason to hardcode it. **Base Crit DMG is likewise uniform: the panel base is
+120% (`critDmg 0.2`, multiplier `1 + critDmg`)** — confirmed for Qiongjiu (§3.3) and stated by the
+user for Vector (`docs/dolls/vector.md` §3).
+
 Level-60 base magnitudes (CONFIRMED, 2024 BWIKI data): Qiongjiu `ATK 119→1224, HP 233→2494, DEF 65→695, stability 9, crit 20%, cdmg 120%`; Suomi ATK 837 / HP 2298 / DEF 725. With weapon + helix, an endgame DPS panels ~2000–3200 ATK, ~700–1100 DEF, ~3000–6000 HP (reasonable projection, PROBABLE).
 
 **Implementation interpretation** — store base stats + additive flat (small) sources + percentage (big) modifiers; compute panel at init once per sim: `flat × (1 + pct)`.
@@ -391,6 +398,18 @@ Only these replacement/blocking/consumption interactions are validated for SB II
 **Confidence** — Event-driven, per-skill-text generation CONFIRMED (a `damage × m` proportion is **rejected** by data). Cost values are per-skill (3; some ultimates consume ALL). **Max capacity and battle-start value CONFIRMED in-game (2026-09-03, Qiongjiu no keys): start 3, max 6**; Pressing the Momentum cost **3** (confirmed). **No passive Confectance damage bonus — DISPROVEN in-game (2026-09-03, U10)**: Qiongjiu's damage was unchanged across rising Confectance Index values over repeated attacks; the beta "+5% damage per 10 Confectance, up to +50%" claim came from a one-test-era BWIKI page and is **not** a current-game mechanic. Confectance is modeled purely as a **resource**; its combat effects come only from specific character/skill/passive mechanics that explicitly check, gain, or consume it.
 
 **Implementation interpretation** — `confectance: int` on each unit; event hooks (`onDamageDealt`, `onKill`, `onSkillCast`, custom per skill) define gains; **casting consumes the cost IMMEDIATELY on activation — before the action's damage/status/other effects resolve (VALIDATED in-game 2026)**; resource gains from damage/action effects are applied **after the action's hit/resolution**; **multiple independent gains from one action are all applied** (validated example: start 0, weakness-exploit +2 and element trigger +1 from one Hydro attack → 3; the mutual order of those gains is not observable and is not important). **No generic Confectance damage bonus is modeled** (U10 disproven); Confectance affects combat only through explicit data-driven gains, costs, and interactions.
+
+**RESOLVED (2026-10-09, user-provided in-game evidence) — Confectance CAN go above 6, but as a
+SEPARATE resource, never by raising the normal cap.** Raised by Vector's kit, whose passive (Lv.3,
+gated on Fortification **V5**) states *"for each point of Confectance Index **above the maximum**,
+further increases the attack by 10%, up to 20%"* (`docs/dolls/vector.md` §4.5). The mechanic:
+at **V5** the doll gains **2 extra Confectance Index slots SEPARATE from the normal 6**; those 2
+extra slots are what the clause counts (1 → +10%, 2 → +20%). **The normal gauge's cap remains 6 and
+U9 is unchanged** — the extra slots are a distinct, character-and-Fortification-gated resource, not
+an overflow of the ordinary gauge. **Do not implement it by raising `confectanceMax`.** Engine
+representation (a second resource) is **not yet built**; see `docs/dolls/vector.md` §7 G4/G4b.
+*(This is user-provided evidence — level 1 in the source hierarchy; a controlled run would move the
+per-point arithmetic to `Validated`.)*
 
 **Unknowns** — per-doll gain tables (outside Qiongjiu's confirmed +1 per damage event), kill bonus. (U10 — generic Confectance damage bonus: **DISPROVEN**, not modeled.) (Cap 6 and battle-start 3 are CONFIRMED for Qiongjiu with no keys; engine defaults updated — overrides remain available for alternative testing.)
 
