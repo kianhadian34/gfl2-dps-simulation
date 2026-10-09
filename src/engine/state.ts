@@ -778,6 +778,16 @@ export function createState(scenario: Scenario, registry: Registry, warnings: Se
   }
   for (const m of scenario.team) {
     if (m.rotation.length === 0) throw new Error(`Rotation for ${m.characterId} must not be empty`);
+    // CLASS (2026): the dispatch-stat table is keyed by class, so an unknown class would otherwise
+    // fail later with a cryptic `Cannot read properties of undefined`. Validate it HERE so a data
+    // typo names itself — loud, and never a silent NaN panel stat. (The character itself is
+    // resolved here too; the later lookups assume a known class.)
+    const memberDef = registry.getCharacter(m.characterId);
+    if (memberDef && !Object.prototype.hasOwnProperty.call(DISPATCH_STAT_BUFFS, memberDef.class)) {
+      throw new Error(
+        `Character ${m.characterId}: unknown class "${memberDef.class}" — must be one of ${Object.keys(DISPATCH_STAT_BUFFS).join(" | ")}`,
+      );
+    }
     if ((m.commonKeyIds?.length ?? 0) > MAX_COMMON_KEYS) {
       throw new Error(
         `Team member ${m.characterId}: at most ${MAX_COMMON_KEYS} Common Keys may be equipped (3 Common Key Slots); got ${m.commonKeyIds?.length}`,

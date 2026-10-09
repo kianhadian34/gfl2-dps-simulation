@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 import { simulateScenario } from "../simulate.js";
 import { QIONGJIU } from "../data/qiongjiu.js";
 import { STATUS_DEFS } from "../data/statuses.js";
+import { REGISTRY, type Registry } from "../data/registry.js";
 import { customRegistry, makeAlly } from "./helpers.js";
-import type { CharacterDef } from "../model/types.js";
+import type { CharacterDef, StatusDef } from "../model/types.js";
 
 /**
  * FIXED KEY 5: Necessary Adjustments (VALIDATED in-game 2026):
@@ -114,6 +115,63 @@ test("FK5: Ultimate (Pressing Momentum) does not trigger Blazing Assault II", ()
   const ev = r.log.find((e) => e.action === "qiongjiu_pressing_momentum")!;
   assert.ok(ev, "Ultimate executed against the Burn-weak target");
   assert.ok(!hasBlazing(ev), "trigger is Common Rail ONLY");
+});
+
+/**
+ * PROVENANCE GENERICITY (2026) — the phase-weakness-exploit hook is declared by KEY DATA
+ * (`KeyDef.phaseWeaknessExploitStatuses`), so ANY character's key may carry it. The status' `source`
+ * label must come from the KEY's own `name`, never a character-specific literal. It was previously
+ * hardcoded to the string "qiongjiu-fk5-necessary-adjustments", which would have mis-attributed any
+ * OTHER character's key in the UI log.
+ *
+ * The decisive test: RENAME the key and the surfaced label must follow it. A hardcoded literal
+ * cannot follow a rename.
+ *
+ * The probe status is a `damage_modifier` because that is the only status kind surfaced through the
+ * hit's `effectSources` (Blazing Assault II is a `stat_modifier`, so it never appears there).
+ */
+test("FK5 provenance: the applied status source is the KEY's own name — not a hardcoded literal", () => {
+  const PROBE: StatusDef = {
+    id: "probe_exploit_dealt",
+    name: "Probe Exploit Dealt",
+    category: "buff",
+    stackable: false,
+    maxStacks: 1,
+    durationRounds: 2,
+    tickAt: "ownActionEnd",
+    purgeable: true,
+    effects: [{ kind: "damage_modifier", scope: "dealt", mode: "additive", value: 0.2 }],
+    verified: true,
+  };
+  const probeMap = new Map(REGISTRY.getStatusMap());
+  probeMap.set(PROBE.id, PROBE);
+  const withProbe: Registry = { ...REGISTRY, getStatus: (id) => probeMap.get(id), getStatusMap: () => probeMap };
+
+  const railHit = (keyName: string) => {
+    const qj = qjf5();
+    const fk5 = qj.fixedKeys.find((k) => k.id === "qiongjiu_fk5_necessary_adjustments")!;
+    fk5.name = keyName;
+    fk5.phaseWeaknessExploitStatuses!.statuses = [{ statusId: PROBE.id, durationRounds: 2 }];
+    const r = simulateScenario(
+      {
+        version: 1, seed: 7, turns: 1,
+        team: [{ characterId: "qjf5", applyDispatchStats: false, rotation: ["active1"], equippedFixedKeys: ["qiongjiu_fk5_necessary_adjustments"] }] as never,
+        dummy: { id: "d", name: "d", hp: 999999999, defense: 5000, stability: 65, weaknesses: ["burn"], phase: null, cover: "none" },
+        configOverrides: { fortificationLevel: 6 },
+      },
+      { ...withProbe, getCharacter: (id) => (id === "qjf5" ? qj : REGISTRY.getCharacter(id)) },
+    );
+    return r.log.find((e) => e.action === "qiongjiu_common_rail")!;
+  };
+
+  const a = railHit("Necessary Adjustments");
+  const b = railHit("Some Other Key Name");
+  assert.ok(a.statusesApplied?.includes(PROBE.id), "the key's hook still fires");
+  assert.ok(b.statusesApplied?.includes(PROBE.id), "the key's hook fires regardless of its name");
+  assert.ok(a.effectSources?.includes("Necessary Adjustments (Fixed Key)"), `label = the key's own name: ${JSON.stringify(a.effectSources)}`);
+  assert.ok(b.effectSources?.includes("Some Other Key Name (Fixed Key)"), `renaming the key renames the label: ${JSON.stringify(b.effectSources)}`);
+  assert.ok(!JSON.stringify(a).includes("qiongjiu-fk5-necessary-adjustments"), "the old hardcoded slug is gone");
+  assert.ok(!JSON.stringify(b).includes("qiongjiu-fk5-necessary-adjustments"), "the old hardcoded slug is gone");
 });
 
 test("FK5: without the key, Common Rail + phase weakness → no Blazing Assault II", () => {

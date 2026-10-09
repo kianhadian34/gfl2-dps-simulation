@@ -382,12 +382,17 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   // already uses the +15% ATK (validated 2000 → 2300 → 1435). Data-driven via the key def.
   const phaseExploited = weaknesses.some((w) => w === element);
   if (phaseExploited) {
-    const hook = (actor.equippedKeys ?? [])
+    // The phase-weakness-exploit hook is declared by KEY DATA (KeyDef.phaseWeaknessExploitStatuses),
+    // so ANY character's key may carry it. Retain the KEY so the provenance label comes from the
+    // key's own name — never a character-specific literal (2026: this was hardcoded to Qiongjiu's
+    // FK5 and would have mis-attributed any other character's key in the log).
+    const key = (actor.equippedKeys ?? [])
       .map((kid) => actor.def?.fixedKeys.find((k) => k.id === kid))
-      .find((k) => k?.phaseWeaknessExploitStatuses && actor.def?.skills[k.phaseWeaknessExploitStatuses.ability as keyof NonNullable<typeof actor.def.skills>]?.id === skill.id)
-      ?.phaseWeaknessExploitStatuses;
+      .find((k) => k?.phaseWeaknessExploitStatuses && actor.def?.skills[k.phaseWeaknessExploitStatuses.ability as keyof NonNullable<typeof actor.def.skills>]?.id === skill.id);
+    const hook = key?.phaseWeaknessExploitStatuses;
+    const keyLabel = key ? `${key.name} (Fixed Key)` : "Fixed Key";
     for (const spec of hook?.statuses ?? []) {
-      if (applyStatus(state, actor, { ...spec, applier: { id: actor.id, atk: actor.panelAtk }, source: "qiongjiu-fk5-necessary-adjustments" })) {
+      if (applyStatus(state, actor, { ...spec, applier: { id: actor.id, atk: actor.panelAtk }, source: spec.source ?? keyLabel })) {
         ev.statusesApplied.push(spec.statusId);
       }
     }
