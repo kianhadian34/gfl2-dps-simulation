@@ -552,6 +552,10 @@ test("setup screen: a per-character Pattern Remolder section with steppers + eng
   assert.ok(s.includes("activeSetBonusIds?.includes(set.id)"), "Set-Bonus activation comes from the ENGINE preview");
   assert.ok(s.includes("resolveRemolder(sels)"), "the preview is fetched over IPC from the engine");
   assert.ok(s.includes("listRemolderBuffs()"), "the buff catalog is fetched from the engine");
+  // Category icons (2026): resolved BY ID from the asset registry, never a hardcoded path.
+  assert.ok(s.includes("remolderCategoryAsset(cat)"), "the category icon resolves from the engine category id");
+  assert.ok(s.includes("asset={remolderCategoryAsset(cat)}"), "the icon renders through AssetThumb (supplied/fallback/missing handled)");
   // The UI must not restate the values it renders.
   assert.ok(!s.includes("remolder_sentinel_attack_boost"), "no hard-coded buff id in the renderer");
+  assert.ok(!s.includes("/assets/remolder-categories/"), "no hard-coded asset path in the renderer");
 });

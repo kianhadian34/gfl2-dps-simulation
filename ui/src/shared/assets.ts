@@ -31,7 +31,8 @@ export type AssetKind =
   | "skill"
   | "weapon"
   | "element"
-  | "ammo";
+  | "ammo"
+  | "remolder-category";
 
 export type AssetEntityId = string;
 
@@ -71,6 +72,12 @@ export const KNOWN_ENTITY_IDS: Record<AssetKind, ReadonlySet<AssetEntityId>> = {
    * Kept in sync with the delivered files under `assets/ammo/` (see ui/docs/assets.md §2/§3).
    */
   ammo: new Set(["heavy_ammo", "medium_ammo", "light_ammo", "shotgun_ammo", "melee"]),
+  /**
+   * GLOBAL Pattern Remolder category icons (2026) — DELIVERED + WIRED. 1:1 with the engine
+   * `RemolderCategory` union (`bulwark | vanguard | support | sentinel`) — no presentation-only
+   * ids. Kept in sync with the delivered files under `assets/remolder-categories/`.
+   */
+  "remolder-category": new Set(["bulwark", "vanguard", "support", "sentinel"]),
 };
 
 /**
@@ -111,6 +118,10 @@ export const SUPPLIED_ASSET_FILES: Readonly<Record<string, string>> = {
   "ammo:light_ammo": "assets/ammo/light_ammo/light_ammo.webp",
   "ammo:shotgun_ammo": "assets/ammo/shotgun_ammo/shotgun_ammo.webp",
   "ammo:melee": "assets/ammo/melee/melee.webp",
+  "remolder-category:bulwark": "assets/remolder-categories/bulwark/bulwark.webp",
+  "remolder-category:vanguard": "assets/remolder-categories/vanguard/vanguard.webp",
+  "remolder-category:support": "assets/remolder-categories/support/support.webp",
+  "remolder-category:sentinel": "assets/remolder-categories/sentinel/sentinel.webp",
 };
 
 /**
@@ -157,6 +168,9 @@ export function pathFor(kind: AssetKind, entityId: AssetEntityId): string {
     case "ammo":
       // GLOBAL: one file per ammo id; never under a character directory.
       return `assets/ammo/${entityId}/${entityId}`;
+    case "remolder-category":
+      // GLOBAL: one file per Remolder category id; never under a character directory.
+      return `assets/remolder-categories/${entityId}/${entityId}`;
   }
 }
 
@@ -204,6 +218,8 @@ export const weaponAsset = (weaponId: AssetEntityId): AssetRefResult => resolveA
 export const elementAsset = (elementId: AssetEntityId): AssetRefResult => resolveAsset("element", elementId);
 /** GLOBAL ammo-type icon by ammo id (1:1 with the engine `AmmoType`). */
 export const ammoAsset = (ammoId: AssetEntityId): AssetRefResult => resolveAsset("ammo", ammoId);
+/** GLOBAL Pattern Remolder category icon by category id (1:1 with the engine `RemolderCategory`). */
+export const remolderCategoryAsset = (categoryId: AssetEntityId): AssetRefResult => resolveAsset("remolder-category", categoryId);
 
 // ---------------------------------------------------------------------------
 // RENDER SPEC (2026) — the single presentation decision for an asset ref, kept PURE

@@ -42,7 +42,7 @@ import {
 } from "../../../shared/setup.js";
 import type { ScenarioView, WeaponView, CommonKeyView, CommonKeyListResult, CommonKeyStatOptionView, CharacterMetaView, AffinityKeyView, ExpansionKeyView, AttachmentCatalogView, ApexCatalogView, ApexComponentView, PermanentCookingStatsView, RemolderCatalogView, RemolderPreviewView, RotationSkillView } from "../../../shared/engine-types.js";
 import { fixedKeyLabel, effectCopyWithCalibration, commonKeyStatLines, commonKeyEffectLine, affinityKeyStatLines, affinityLevels, affinityLevelFlatLines, expansionKeyEffectLine, affinityLevelStatLines, cookingStatsLines, remolderCategoryLabel, remolderCategoryTotal, remolderRequirementLine, remolderTotalLevels, rotationAbilityDescription } from "../../../shared/lists.js";
-import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset, skillAsset, elementAsset, ammoAsset } from "../../../shared/assets.js";
+import { portraitAsset, fixedKeyAsset, commonKeyAsset, affinityKeyAsset, expansionKeyAsset, weaponAsset, skillAsset, elementAsset, ammoAsset, remolderCategoryAsset } from "../../../shared/assets.js";
 import { AssetThumb } from "./AssetThumb.js";
 
 /**
@@ -1167,6 +1167,7 @@ export function SetupScreen(props: {
                                 <span className="remolder-preview-label">Category totals</span>
                                 {remolder.categories.map((cat) => (
                                   <span key={cat} className="remolder-total">
+                                    <AssetThumb asset={remolderCategoryAsset(cat)} alt={remolderCategoryLabel(cat)} size={16} />
                                     {remolderCategoryLabel(cat)} {remolderCategoryTotal(remolderPreviewFor, cat)}
                                   </span>
                                 ))}
@@ -1202,6 +1203,7 @@ export function SetupScreen(props: {
                               {remolder.categories.map((cat) => (
                                 <details key={cat} className="remolder-category">
                                   <summary>
+                                    <AssetThumb asset={remolderCategoryAsset(cat)} alt={remolderCategoryLabel(cat)} size={18} />
                                     {remolderCategoryLabel(cat)}{" "}
                                     <span className="muted">
                                       ({remolderBuffsIn(cat).filter((b) => (remolderLevels[b.id] ?? 0) > 0).length} of {remolderBuffsIn(cat).length} active)

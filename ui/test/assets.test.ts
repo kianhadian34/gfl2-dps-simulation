@@ -15,6 +15,7 @@ import {
   resolveAsset,
   skillAsset,
   weaponAsset,
+  remolderCategoryAsset,
   KNOWN_ENTITY_IDS,
   SUPPLIED_ASSET_FILES,
   type AssetRefResult,
@@ -133,7 +134,7 @@ test("10: missing assets produce the defined fallback; supplied files are discov
 
 test("10b: SUPPLIED_ASSET_FILES is the single source of truth — every entry resolves and is never invented", () => {
   const entries = Object.entries(SUPPLIED_ASSET_FILES);
-  assert.equal(entries.length, 28, "28 supplied images are listed (the Support-skill artwork has NOT been supplied; 7 element + 5 ammo icons added)");
+  assert.equal(entries.length, 32, "32 supplied images are listed (the Support-skill artwork has NOT been supplied; 7 element + 5 ammo + 4 Remolder-category icons added)");
   for (const [key, file] of entries) {
     const [kind, entityId] = key.split(":");
     assert.ok(KNOWN_ENTITY_IDS[kind as keyof typeof KNOWN_ENTITY_IDS].has(entityId), `entry ${key} maps to a KNOWN entity`);
@@ -218,4 +219,27 @@ test("22: every engine AmmoType has an ammo icon (ids are 1:1)", () => {
   const ENGINE_AMMO = ["heavy_ammo", "medium_ammo", "light_ammo", "shotgun_ammo", "melee"];
   for (const a of ENGINE_AMMO) assert.ok(KNOWN_ENTITY_IDS.ammo.has(a), `engine AmmoType ${a} has an icon`);
   assert.equal(KNOWN_ENTITY_IDS.ammo.size, 5, "exactly the 5 delivered ammo icons");
+});
+
+test("23: Remolder category icons resolve GLOBALLY by category id — one file per category, no character id", () => {
+  for (const id of ["bulwark", "vanguard", "support", "sentinel"]) {
+    const r = assertDefined(remolderCategoryAsset(id), `remolder-category:${id}`);
+    assert.equal(r.kind, "remolder-category");
+    assert.equal(r.path, `assets/remolder-categories/${id}/${id}`, `${id} under the global remolder-categories dir`);
+    assert.ok(!r.path.startsWith("assets/characters/"), "Remolder category icons are NOT character-owned");
+    assert.equal(r.supplied, true, `${id} icon is supplied`);
+    assert.equal(r.file, `assets/remolder-categories/${id}/${id}.webp`, `${id} file path`);
+  }
+});
+
+test("24: remolderCategoryAsset reports the explicit missing state for an unknown category id (no invented art)", () => {
+  assert.deepEqual(remolderCategoryAsset("not_a_category"), { status: "unknown", kind: "remolder-category", entityId: "not_a_category" });
+  assert.deepEqual(assetRenderSpec(remolderCategoryAsset("not_a_category")), { mode: "missing" });
+});
+
+test("25: every engine RemolderCategory has a delivered icon (ids are 1:1 — no presentation-only ids)", () => {
+  // Mirrors the engine union: src/model/types.ts `RemolderCategory`.
+  const ENGINE_REMOLDER_CATEGORIES = ["bulwark", "vanguard", "support", "sentinel"];
+  for (const c of ENGINE_REMOLDER_CATEGORIES) assert.ok(KNOWN_ENTITY_IDS["remolder-category"].has(c), `engine RemolderCategory ${c} has an icon`);
+  assert.equal(KNOWN_ENTITY_IDS["remolder-category"].size, 4, "exactly the 4 delivered category icons — no extra/presentation ids");
 });

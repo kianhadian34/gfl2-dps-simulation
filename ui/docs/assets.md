@@ -45,12 +45,17 @@ assets/
 │   ├── electric/electric.webp
 │   ├── freeze/freeze.webp
 │   └── omni/omni.webp           (all elements — presentation-only id)
-└── ammo/                        (GLOBAL — Ammo Type icons; delivered 2026, wired via ammoAsset)
-    ├── heavy_ammo/heavy_ammo.webp
-    ├── medium_ammo/medium_ammo.webp
-    ├── light_ammo/light_ammo.webp
-    ├── shotgun_ammo/shotgun_ammo.webp
-    └── melee/melee.webp
+├── ammo/                        (GLOBAL — Ammo Type icons; delivered 2026, wired via ammoAsset)
+│   ├── heavy_ammo/heavy_ammo.webp
+│   ├── medium_ammo/medium_ammo.webp
+│   ├── light_ammo/light_ammo.webp
+│   ├── shotgun_ammo/shotgun_ammo.webp
+│   └── melee/melee.webp
+└── remolder-categories/         (GLOBAL — Pattern Remolder category icons; delivered 2026, wired via remolderCategoryAsset)
+    ├── bulwark/bulwark.webp
+    ├── vanguard/vanguard.webp
+    ├── support/support.webp
+    └── sentinel/sentinel.webp
 ```
 
 Wrong placements (do NOT do these):
@@ -62,7 +67,11 @@ directories under `assets/`; the current architecture does not prevent adding th
 Do not create empty directories for not-yet-needed categories. **Notes (2026): `elements/` and
 `ammo/` are WIRED global categories — the 7 Phase/Element icons resolve via `elementAsset()` and
 the 5 Ammo Type icons via `ammoAsset()`; both are consumed by the Setup screen (Phase weaknesses /
-Ammo weaknesses sections — see §3).**
+Ammo weaknesses sections — see §3).** **`remolder-categories/` is a WIRED global category (2026):
+the 4 Remolder category icons resolve via `remolderCategoryAsset()` and are consumed by the Setup
+screen's Pattern Remolder section (category group headers + the category-totals row). Its ids are
+1:1 with the engine `RemolderCategory` (`bulwark | vanguard | support | sentinel`). See the manifest
+`assets/remolder-categories/README.md`.**
 
 ## 3. Naming convention
 
@@ -108,6 +117,7 @@ skillAsset(skillId)
 weaponAsset(weaponId)           // global — no character id
 elementAsset(elementId)         // global — engine Element or the presentation ids `physical`/`omni`
 ammoAsset(ammoId)               // global — engine AmmoType (1:1)
+remolderCategoryAsset(categoryId) // global — engine RemolderCategory (1:1)
 ```
 
 Every resolver returns `{ status, kind, entityId, path, supplied }` (or `status: "unknown"`):
@@ -158,6 +168,14 @@ Resolved by `elementAsset(elementId)`; consumed by the Setup screen's **Phase we
 each ammo type). The 5 ids are 1:1 with the engine `AmmoType`
 (`heavy_ammo | medium_ammo | light_ammo | shotgun_ammo | melee`).
 
+**Pattern Remolder category asset (delivered + wired 2026):** path
+`assets/remolder-categories/<categoryId>/<categoryId>.webp` (one file per category id; all 4
+delivered — see the manifest `assets/remolder-categories/README.md`). Resolved by
+`remolderCategoryAsset(categoryId)`; consumed by the Setup screen's **Pattern Remolder** section
+(an icon in each category group header and in the category-totals row). The 4 ids are 1:1 with the
+engine `RemolderCategory` union (`bulwark | vanguard | support | sentinel`) — no presentation-only
+ids.
+
 ## 6. Missing assets / fallback
 
 The system never invents artwork and never pretends a file exists:
@@ -166,7 +184,7 @@ The system never invents artwork and never pretends a file exists:
   "asset missing" state (no broken `<img>`).
 - Known entity, file not placed → `{ status: "defined", supplied: false }`: the caller renders
   a generic fallback (e.g. an initial-letter tile or no image).
-- Current state: **29 known entities; 28 have supplied files** (a `.webp` per entity — all but
+- Current state: **33 known entities; 32 have supplied files** (a `.webp` per entity — all but
   `qiongjiu_support`), listed in the
   `SUPPLIED_ASSET_FILES` inventory keyed by `<kind>:<entityId>`. Assets added later simply get a
   new inventory entry when their physical file is placed.
