@@ -17,6 +17,7 @@ import {
   type ActiveStatus,
 } from "../model/runtime.js";
 import {
+  type AreaShape,
   type BossPlacement,
   type GridConfig,
   type GridCoord,
@@ -72,6 +73,63 @@ export function tileHeightAt(state: GridState, x: number, y: number): TileHeight
 /** Distance between two units' range origins: unit tile for 1×1, boss CENTER tile for 3×3. */
 export function unitDistance(a: GridCoord, b: GridCoord): number {
   return manhattan(a, b);
+}
+
+/** Chebyshev distance — max(|dx|,|dy|). The `square` area metric; NOT the range metric. */
+export function chebyshev(a: GridCoord, b: GridCoord): number {
+  return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+}
+
+/**
+ * Enumerate the TILES of an area of the given `shape` and `radius` centered on `origin`,
+ * inclusive of the origin itself, clamped to the battlefield. Pure geometry — no units, no
+ * combat rules (see `AreaShape` for why both shapes exist and why neither is asserted as any
+ * specific effect's real behavior).
+ *
+ * - `manhattan` ⇒ diamond: |dx|+|dy| ≤ radius (radius 1 = origin + 4 orthogonal = 5 tiles).
+ * - `square`    ⇒ Chebyshev block: max(|dx|,|dy|) ≤ radius (radius 1 = a full 3×3 = 9 tiles).
+ *
+ * Returns a stable, row-major order (ascending y, then ascending x) so callers and tests are
+ * deterministic. A radius of 0 yields just the origin. Out-of-bounds tiles are omitted.
+ */
+export function areaTiles(origin: GridCoord, shape: AreaShape, radius: number, size = GRID_SIZE): GridCoord[] {
+  if (!Number.isInteger(radius) || radius < 0) throw new Error(`area radius must be a non-negative integer (got ${radius})`);
+  const tiles: GridCoord[] = [];
+  for (let y = origin.y - radius; y <= origin.y + radius; y++) {
+    for (let x = origin.x - radius; x <= origin.x + radius; x++) {
+      if (!inBounds(x, y, size)) continue;
+      const inside = shape === "square" ? chebyshev(origin, { x, y }) <= radius : manhattan(origin, { x, y }) <= radius;
+      if (inside) tiles.push({ x, y });
+    }
+  }
+  return tiles;
+}
+
+/**
+ * Enumerate the ALLIED unit ids whose placement lies inside an area of the given `shape`/`radius`
+ * centered on `originTile`, INCLUDING the unit standing on the origin tile itself (the source
+ * wording covers "this unit and all allied units within… the area"). Order follows the grid's own
+ * placement order — deterministic.
+ *
+ * Pure geometry over PLACED units only: an id is returned when `placements` has it and its coord
+ * is in the area. Units without a placement (unplaced dolls, the dummy) are never returned — this
+ * helper does not decide what an unplaced/origin unit's area means; that is the caller's rule.
+ *
+ * `size` clamps the area to the battlefield; the origin itself need not be in bounds (an
+ * out-of-bounds origin simply matches nothing).
+ */
+export function allyIdsInArea(
+  state: GridState,
+  originTile: GridCoord,
+  shape: AreaShape,
+  radius: number,
+): string[] {
+  const inside = new Set(areaTiles(originTile, shape, radius, state.size).map((t) => tileKey(t.x, t.y)));
+  const ids: string[] = [];
+  for (const [unitId, placement] of state.placements) {
+    if (inside.has(tileKey(placement.coord.x, placement.coord.y))) ids.push(unitId);
+  }
+  return ids;
 }
 
 const ORTHO = [

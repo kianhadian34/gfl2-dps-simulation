@@ -5,7 +5,7 @@ import type { Registry } from "../data/registry.js";
 import { rollHit } from "./damage.js";
 import { cooldownRemaining, setCooldown, tickCooldowns } from "./cooldowns.js";
 import { drainAllConfectance, gainConfectance, spendConfectance } from "./resources.js";
-import { attackHeightEffect, bossFootprintTiles, legalDestinations, moveCost, resolveCardinalRayTarget, resolveCardinalRayTargets, tileKey, unitDistance, type GridState } from "./grid.js";
+import { allyIdsInArea, attackHeightEffect, bossFootprintTiles, legalDestinations, moveCost, resolveCardinalRayTarget, resolveCardinalRayTargets, tileKey, unitDistance, type GridState } from "./grid.js";
 import {
   additiveDealtBonus,
   additiveTakenBonus,
@@ -765,13 +765,62 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   return totalDamage;
 }
 
+/**
+ * Resolve the RECIPIENT list for a status spec (2026) — the single rule shared by
+ * `applySkillStatuses` and the `beforeSupportStatuses` path, so a declared target is never
+ * silently ignored and the two paths can never diverge.
+ *
+ * - `self`        ⇒ the acting unit.
+ * - `all_allies`  ⇒ every member of the allied team (`state.units`), INCLUDING the actor.
+ * - `ally_area`   ⇒ the PLACED allies inside an area around the ACTOR (`spec.allyArea`), including
+ *                   the actor when it is itself placed inside that area. Area targeting needs
+ *                   positions, so a missing grid (or an unplaced actor) is an HONEST ERROR rather
+ *                   than a silent approximation (project owner, 2026-10-10).
+ * - `target`/absent ⇒ the resolving action's target (the enemy/dummy).
+ *
+ * The dummy/enemy side is never included in the ally variants.
+ */
+function resolveStatusRecipients(
+  state: SimulationState,
+  actor: UnitState,
+  target: UnitState,
+  spec: StatusApplySpec,
+): UnitState[] {
+  switch (spec.target) {
+    case "all_allies":
+      return state.units;
+    case "ally_area": {
+      const area = spec.allyArea;
+      // A missing `allyArea` is a data error, not a no-op: fail loudly.
+      if (!area) throw new Error(`status ${spec.statusId}: target "ally_area" requires allyArea { shape, radius }`);
+      // Area targeting is inherently positional — refuse to guess without a grid.
+      if (!state.grid) {
+        throw new Error(
+          `status ${spec.statusId}: target "ally_area" requires a battle grid (Scenario.grid); the actor ${actor.id} has no position to measure an area from`,
+        );
+      }
+      const placement = state.grid.placements.get(actor.id);
+      if (!placement) {
+        throw new Error(`status ${spec.statusId}: target "ally_area" requires the actor ${actor.id} to be placed on the grid`);
+      }
+      const ids = new Set(allyIdsInArea(state.grid, placement.coord, area.shape, area.radius));
+      // Map ids back to units in `state.units` order so the fan-out stays deterministic and the
+      // per-spec reporting dedupe below is unaffected.
+      return state.units.filter((u) => ids.has(u.id));
+    }
+    case "self":
+      return [actor];
+    default:
+      return [target];
+  }
+}
+
 function applySkillStatuses(state: SimulationState, actor: UnitState, target: UnitState, specs: StatusApplySpec[] | undefined, ev: LogEvent, sourceLabel: string): void {
   for (const spec of specs ?? []) {
-    // ALL-ALLIES (2026): every member of the allied team, INCLUDING the acting unit — Vector's
-    // Ultimate "Applies Accelerant to all allied units". `state.units` IS the allied side (the
-    // enemy/dummy lives in `state.dummy`), so it is never included. Other targets resolve to the
-    // single recipient they always did.
-    const recipients = spec.target === "all_allies" ? state.units : [spec.target === "self" ? actor : target];
+    // Recipient resolution is shared with the `beforeSupportStatuses` path (see the helper):
+    // `all_allies` = the whole allied team INCLUDING the actor; `ally_area` = the placed allies
+    // within an area around the actor; `self` = the actor; otherwise the resolved target.
+    const recipients = resolveStatusRecipients(state, actor, target, spec);
     // Capture the applier (id + ATK at cast) so applier-ATK fixed damage works (Overburn 2026),
     // and the human-readable provenance (sourceLabel) of the granting ability/passive/key.
     const full = { ...spec, applier: spec.applier ?? { id: actor.id, atk: actor.panelAtk }, source: spec.source ?? sourceLabel };
@@ -1122,10 +1171,9 @@ function resolveSupportHit(state: SimulationState, shooter: UnitState, skill: Sk
   if (ult?.beforeSupportStatuses) {
     const label = abilitySourceLabel(shooter.def!, "ultimate", shooter.skillLevels.ultimate ?? 1);
     for (const spec of ult.beforeSupportStatuses) {
-      // Recipient resolution — the SAME rule as `applySkillStatuses`, so a declared target is
-      // never silently ignored: `all_allies` = the whole allied team (incl. the shooter);
-      // `self` = the shooter; otherwise the resolving action's target (here: the dummy).
-      const recipients = spec.target === "all_allies" ? state.units : [spec.target === "self" ? shooter : dummy];
+      // Recipient resolution — the SHARED helper, so this path can never diverge from
+      // `applySkillStatuses` (a declared target is never silently ignored).
+      const recipients = resolveStatusRecipients(state, shooter, dummy, spec);
       // Report ONCE per SPEC (consistent with `applySkillStatuses`) — one entry for the spec, not
       // one per recipient in the all-allies fan-out.
       let reported = false;

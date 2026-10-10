@@ -477,9 +477,9 @@ not prose transcription. Source class: **secondary (community database)** — hi
 
 | # | Effect | Tags | In repo? | Definition (site record) |
 |---|---|---|---|---|
-| 1 | **Overburn** | Burn/Debuff | ✅ `overburn` | fixed dmg **10%** of applier ATK, on gain + at action end, to the holder *and allies within 1 tile* |
+| 1 | **Overburn** | Burn/Debuff | ✅ `overburn` *(its **"allies within 1 tile"** clause is **NOT implemented** — the status applies to `target` only and its fixed damage hits only the holder. **Recorded 2026** as an open gap; the area vocabulary it needs now exists — §3.32)* | fixed dmg **10%** of applier ATK, on gain + at action end, to the holder *and allies within 1 tile* |
 | 2 | **Blazing Assault II** | Attack/Buff/Burn | ✅ `blazing_assault_ii` | **ATK +15%** |
-| 3 | **Overheat Combustion** | Burn/Debuff | ❌ *(its **tick point** is supported — `ownActionStart` §3.27; its **"all allied units within a 1-tile area"** clause needs AREA targeting, which `all_allies` (§3.28) does **not** provide — that is the whole team, not a 1-tile radius)* | fixed dmg **20%** of applier ATK, on gain + **at the start of the holder's action**, to the holder *and allies within a 1-tile area* · **V1:** *Burn damage taken* **+30%**, area → **3×3** · **V5:** Burn dmg taken +30%, area 3×3, **30%**, and **at action end generates Incineration tiles within 1 tile** |
+| 3 | **Overheat Combustion** | Burn/Debuff | ❌ *(its **tick point** is supported — `ownActionStart` §3.27; its **"all allied units within a 1-tile area"** clause now has targeting vocabulary — `target: "ally_area"` §3.32, where the 1-tile/3×3 shape choice is **Not Tested**. It does NOT use `all_allies` (§3.28) — that is the whole team, not a radius)* | fixed dmg **20%** of applier ATK, on gain + **at the start of the holder's action**, to the holder *and allies within a 1-tile area* · **V1:** *Burn damage taken* **+30%**, area → **3×3** · **V5:** Burn dmg taken +30%, area 3×3, **30%**, and **at action end generates Incineration tiles within 1 tile** |
 | 4 | **Smolder** | Burn/Debuff | ❌ *(its **V4 count clause** "for every Burn debuff, damage taken +3%" is now **supported** — `damage_modifier.perMatching` §3.29; its tile generation is not)* | **on taking Burn damage** → generates **Incineration tiles within 3 tiles**, 2 turns (cannot be cleansed) · **V4:** *for every Burn debuff*, **damage taken +3%** |
 | 5 | **Overheat** | Burn/Debuff | ❌ *(its **effect** — "disallow the use of active skills" — is now **supported**: `StatusEffect { kind: "deny_skills" }` §3.31; Overheat itself is not defined)* | **"Command Prohibition, disallows the use of active skills."** |
 | 6 | **Accelerant** | Attack/Buff/Burn | ❌ *(its **V6 count clause** "per Burn buff, damage dealt +5%" is now **supported** — `damage_modifier.perMatching` §3.29; its fixed-damage instance is not. NOTE: its **Burn affiliation** is now declared as `StatusDef.element` on other statuses, not on Accelerant itself — Accelerant is still undefined)* | *Burn damage dealt* **+10%**, plus 1 instance of **fixed dmg 20% of ATK** (cannot be cleansed) · **V2:** **+30%** · **V6:** *per Burn buff* **+5% dealt**, **+30%**, **crit dmg +15%**, fixed 20% |
@@ -515,6 +515,7 @@ not prose transcription. Source class: **secondary (community database)** — hi
 | ~~**Count-by-classification scaling** ("for every Burn debuff/buff")~~ | ~~no such scaling exists~~ — **DONE 2026** (`damage_modifier.perMatching` + `StatusDef.element`; `docs/research.md` §3.29) | ~~Smolder V4 (+3% taken per Burn debuff); Accelerant V6 (+5% dealt per Burn buff)~~ — **the scaling is done; both statuses still need their other pieces** (Smolder needs tile generation; Accelerant needs its fixed-damage instance). Both clauses are **Not Tested** (the self-counting question in §3.29 is open) |
 | ~~**Support-trigger vocabulary**~~ | ~~the only trigger is `onAllySingleTargetHit`~~ — **DONE 2026** (`trigger: "onEnemyStatusApplied"` + `statusId`, a separate union member; `docs/research.md` §3.30). The old wording claiming an *event bus* with `onDebuffApplied`/`onUnitAttacked` was **doc drift** — no bus ever existed; §3.14 is corrected | ~~Emergency Support / FK6~~ — **the trigger is done; Emergency Support itself is still undefined, and FK6's numbers are Vector's data** |
 | ~~**All-allies status targeting**~~ | ~~`StatusApplySpec.target` is `self \| target`~~ — **DONE 2026** (`all_allies`, every team member incl. the caster; `docs/research.md` §3.28) | ~~Ultimate applies Accelerant + Blazing Assault II to **all allies**~~ — **the targeting is done; those statuses still need their own definitions** (Accelerant needs the Burn-dealt gate + a fixed instance; Blazing Assault II already exists) |
+| ~~**Area / radius targeting** ("allied units within a 1-tile area" / "3×3")~~ | ~~no area enumeration exists; `all_allies` is the whole team, not a radius~~ — **DONE 2026** (`target: "ally_area"` + `AreaShape` (`manhattan`/`square`) + `areaTiles`/`allyIdsInArea`; `docs/research.md` §3.32) | ~~Overheat Combustion ("this unit and all allied units within a 1-tile area", V1 → 3×3); **Overburn's own "allies within 1 tile" clause**~~ — **the vocabulary is done. WHICH SHAPE is the real game's is Not Tested, so it is a data choice; and Overburn's area clause is now recorded as an OPEN gap it never previously had** |
 
 **c) Genuinely new mechanics:**
 
@@ -645,10 +646,11 @@ weapon.
    `blazing_assault_ii`, `extra_command`, and now `apathetic_resistance` exist); the authoritative
    inventory, their upgrade variants, and the exact capability gaps are recorded in **§7.1**.
    Remaining vocabulary needs: **none** — the reusable set is complete. What remains is the
-   V3-coupled tile clauses and **area/radius targeting**.
+   V3-coupled tile clauses, **Overburn's own unimplemented 1-tile clause** (recorded 2026), and the
+   per-effect **area SHAPE decision** (Not Tested).
    *(The **per-element gate**, the **start-of-action tick**, **all-allies targeting**,
-   **count-by-classification scaling**, the **enemy-status support trigger** and **skill denial**
-   are now DONE — §7.1.)*
+   **count-by-classification scaling**, the **enemy-status support trigger**, **skill denial** and
+   **area/radius targeting** are now DONE — §7.1.)*
 3. **Untile/tile mechanics** (G1, G9) — Burn/Incineration tiles are foundational to Vector's kit
    and the engine has no tile system.
 4. ~~**Turn-start "at max Confectance" drain** and **the 2 extra V5 slots** (G3, G4, G4b)~~ —

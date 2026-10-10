@@ -28,6 +28,29 @@ export type TileHeight = "ground" | "high";
 export const TILE_HEIGHTS: TileHeight[] = ["ground", "high"];
 
 /**
+ * AREA SHAPE (2026) — the tile-shape vocabulary an area/radius effect selects on. Two shapes are
+ * distinguished because the source text uses what may be two DIFFERENT metrics, and conflating
+ * them would silently change who is hit:
+ *
+ * - `"manhattan"` / a DIAMOND — tiles whose Manhattan distance (|dx|+|dy|) is ≤ `radius`. At
+ *   `radius: 1` this is the origin plus the 4 ORTHOGONAL neighbours (5 tiles). This matches the
+ *   confirmed range metric ("skill range is a diamond", `docs/grid.md`) and the wording
+ *   *"within a 1-tile area"*.
+ * - `"square"` / a CHEBYSHEV block — tiles whose Chebyshev distance (max(|dx|,|dy|)) is ≤
+ *   `radius`. At `radius: 1` this is a full **3×3** block (9 tiles), matching the wording
+ *   *"area is increased to 3×3"*.
+ *
+ * NEITHER shape is asserted as the game's real behavior for any specific effect: the per-effect
+ * choice is DATA and is **Not Tested** (`docs/research.md` §3.32). This vocabulary exists so both
+ * readings are EXPRESSIBLE rather than one being baked into the engine. Only these two shapes are
+ * modeled — do not invent others.
+ */
+export type AreaShape = "manhattan" | "square";
+
+/** The area shapes the engine models (Manhattan diamond, Chebyshev square). */
+export const AREA_SHAPES: AreaShape[] = ["manhattan", "square"];
+
+/**
  * A ladder connects a ground tile to an adjacent high-ground tile. Being on a tile
  * adjacent (Manhattan 1) to the ground end lets a unit climb at cost 1 Mobility.
  * Only this confirmed ladder behavior is modeled (Not Tested: any additional ladder

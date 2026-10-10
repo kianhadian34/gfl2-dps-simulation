@@ -22,6 +22,20 @@ unimplemented).
 - Range origin: the unit's own tile for 1×1; the **boss center tile** for 3×3.
 - No Euclidean distance.
 
+### Area / radius (2026; the SHAPE choice is Not Tested)
+- **`AreaShape`** models area targeting as one of two explicit shapes — `"manhattan"` (a diamond,
+  `|dx|+|dy| ≤ radius`) or `"square"` (a Chebyshev block, `max(|dx|,|dy|) ≤ radius`). Both exist
+  because the source text uses what may be **two different metrics** (*"within a 1-tile area"* vs
+  *"area is increased to 3×3"*); at radius 1 the diamond is 5 tiles and the square is 9.
+- **The engine asserts NEITHER shape as any effect's real behavior** — the per-effect choice is
+  data and is **Not Tested**. Full rationale: `docs/research.md` §3.32.
+- **`areaTiles`** enumerates a shape's tiles (origin-inclusive, clamped, row-major, pure);
+  **`allyIdsInArea`** returns the **placed** allied unit ids inside it. `chebyshev()` supplies the
+  square metric — distinct from the confirmed Manhattan **range** metric above.
+- **Area targeting REQUIRES the grid**: without a `Scenario.grid` (or for an unplaced actor) the
+  engine raises an honest error rather than approximating the clause away.
+- Membership is **pure distance** — LOS/terrain do not affect it (not modeled).
+
 ### Movement (Validated / Mathematically Proven)
 - **Orthogonal = 1 Mobility, diagonal = 2** → movement cost ≡ Manhattan distance.
 - A unit may move up to its Mobility; using less is allowed; exceeding is illegal.

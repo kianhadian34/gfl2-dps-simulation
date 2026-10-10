@@ -1377,6 +1377,82 @@ observe the immunity at all, because no enemy ever picks an action.
 
 ---
 
+### 3.32 Area / radius targeting (`target: "ally_area"` + the `AreaShape` vocabulary) — 2026, IMPLEMENTED + TESTED
+
+**Mechanic** — a status application whose recipients are the **allied units inside an AREA around
+the caster**, rather than a single target or the whole team.
+
+**Source** — two Vector clauses:
+- **Overheat Combustion** — *"this unit and all allied units within a **1-tile area** … take fixed
+  damage equal to 20% …"*; **V1** upgrades the area to **3×3**.
+- **Overburn** — fixed damage *"to the holder **and allies within 1 tile**"* (recorded in
+  `docs/dolls/vector.md` §7.1; **still unimplemented** — see the note below).
+
+Neither status is defined here — this section records the **targeting vocabulary** they need.
+
+**The shape ambiguity, and why BOTH are modeled.** The source text uses what may be **two
+different metrics**, and conflating them silently changes who is hit:
+
+| Wording | `manhattan` (diamond) | `square` (Chebyshev block) |
+|---|---|---|
+| *"within a 1-tile area"* | radius 1 ⇒ origin + **4 orthogonal** = **5** tiles | radius 1 ⇒ a full **3×3** = **9** tiles |
+| *"area is increased to 3×3"* | would need radius 2 (a 13-tile diamond) | radius 1 = exactly 3×3 |
+
+`docs/grid.md` establishes Manhattan as the confirmed **range** metric, but neither clause is
+phrased as range, and *"3×3"* is unambiguously a **square block**. The repo cannot resolve which
+reading is real, so the engine **does not choose**: `AreaShape = "manhattan" | "square"` makes both
+**expressible**, and the per-effect choice is **DATA** and **Not Tested**. (Precedent for the
+square: `bossFootprintTiles` already treats "3×3" as a Chebyshev block — that is a *footprint*, not
+evidence about targeting areas.)
+
+**Implementation interpretation**
+- **`AreaShape`** (`src/model/grid.ts`): `"manhattan"` (a diamond — `|dx|+|dy| ≤ radius`) or
+  `"square"` (a Chebyshev block — `max(|dx|,|dy|) ≤ radius`). Only these two; do not invent others.
+- **`areaTiles(origin, shape, radius, size)`** (`src/engine/grid.ts`) — PURE geometry: the tiles of
+  the area, **inclusive of the origin**, clamped to the battlefield, in stable row-major order.
+  Rejects a negative/non-integer radius. A new `chebyshev()` helper supplies the square metric
+  (distinct from the confirmed `manhattan()` range metric).
+- **`allyIdsInArea(state, originTile, shape, radius)`** — the **placed** allied unit ids inside the
+  area, including the unit standing on the origin tile (the wording covers *"this unit and all
+  allied units within…"*). Placement-keyed, so it reads real positions rather than assuming them.
+- **`StatusApplySpec`** gained `target: "ally_area"` plus the paired `allyArea: { shape, radius }`.
+  A missing `allyArea` with `target: "ally_area"` is an **honest error**, never a silent no-op.
+- **Recipient resolution is now ONE shared helper** (`resolveStatusRecipients`), used by BOTH
+  `applySkillStatuses` and the `beforeSupportStatuses` path. That refactor was deliberate: those
+  two paths previously duplicated the `all_allies` rule by hand, so a third targeting mode would
+  have been a place for them to diverge. Per-spec reporting semantics are unchanged.
+- **No grid ⇒ HONEST ERROR** (project owner, 2026-10-10). An area is inherently positional; rather
+  than silently approximating the clause away, the engine throws naming the status and the actor.
+  This matches the repo's other honest-error cases (illegal grid moves throw;
+  `guideLineSecondaryHits` throws on a missing placement) and the anti-approximation rule. An
+  **unplaced actor** is likewise an error.
+
+**Deliberately NOT done here (recorded, not hidden):**
+- **Overburn's own "allies within 1 tile" clause is NOT implemented**, and was **not previously
+  recorded as a gap anywhere**. Its implemented status applies to `target` only, and its fixed
+  damage hits only the holder — so the area clause has never been exercised (Overburn was validated
+  against the dummy, where the area is unobservable). This section supplies the vocabulary; wiring
+  Overburn's area remains **open** and is now on the record.
+
+**Evidence status** — the *clauses* are `[SOURCE]` (secondary, community database, hierarchy level
+5); the *no-grid error rule* and the *shape expressibility decision* are `[GAME]` (project owner,
+2026-10-10). **The shape choice for any effect is Not Tested** — the engine makes both available but
+claims neither. Covered by `src/test/area-targeting.test.ts` (18 tests: the diamond vs square tile
+sets including the diagonal difference, origin inclusion, radius 0, the closed-form counts at
+radius 2 (13 vs 25), battlefield clamping at a corner, radius validation, the `chebyshev`-vs-
+`manhattan` distinction, end-to-end recipient resolution through the real simulate path for BOTH
+shapes, a distant-ally control, the dummy never being a recipient, the three honest-error paths
+(no grid / unplaced actor / missing `allyArea`), a fixture-leak guard, and a guard that no shipped
+spec uses `ally_area` yet).
+
+**Unknowns / not claimed** — which metric the real game uses for either clause (the central Not
+Tested question); whether the area origin is always the **caster** (assumed from *"this unit
+and…"*) or sometimes the target; whether an area effect also catches NON-allied units (only the
+ally variant exists here); whether "3×3" ever means a rectangle rather than a radius-1 block; and
+whether LOS/terrain affects area membership (not modeled — membership is pure distance).
+
+---
+
 ## 4. Uncertainty register
 
 Every mechanic that is still uncertain, with impact and resolution path. **None of these should be hardcoded as facts in the engine — all are config defaults pending the in-game test plan (§5).**

@@ -2,7 +2,7 @@
 // are UNVERIFIED in research (docs/research.md §4) and are surfaced in
 // SimulationResult.warnings instead of being silently assumed.
 
-import type { GridConfig } from "./grid.js";
+import type { AreaShape, GridConfig } from "./grid.js";
 
 // FINAL Global-release element vocabulary (2026): exactly five PHASE elements.
 // ice→freeze and acid→corrosion were renames; hydro was added; `physical` and `decay`
@@ -86,8 +86,28 @@ export interface StatusApplySpec {
    * - `all_allies` — EVERY member of the allied team (`state.units`), INCLUDING the acting unit
    *   (2026: Vector's Ultimate "Applies Accelerant to all allied units"). Same meaning as the
    *   Pattern Remolder `unity_dealt` target of the same name. The enemy/dummy is never included.
+   * - `ally_area` — allied units whose PLACEMENT lies within an area around the acting unit
+   *   (`allyArea`, below). Distinct from `all_allies`, which is the whole team regardless of
+   *   position (2026: Overheat Combustion's "this unit and all allied units within a 1-tile area").
+   *   REQUIRES a battle grid; see `allyArea`.
    */
-  target?: "self" | "target" | "all_allies";
+  target?: "self" | "target" | "all_allies" | "ally_area";
+  /**
+   * REQUIRED when `target: "ally_area"` — the area AROUND THE ACTING UNIT whose placed allies
+   * receive the status, inclusive of the acting unit's own tile. Modeled as a separate union-free
+   * paired field for readability of the data; validated at apply time (a missing `allyArea` with
+   * `target: "ally_area"` is an honest error, never a silent no-op).
+   *
+   * `shape`: `"manhattan"` (a diamond — "within a 1-tile area") or `"square"` (a Chebyshev block —
+   * "area is increased to 3×3"). BOTH are modeled deliberately: the source text may use two
+   * different metrics, and the per-effect choice is DATA, **Not Tested** (`docs/research.md`
+   * §3.32). Neither is a claim about the real game.
+   *
+   * The recipient set counts PLACED units only. With NO battle grid the engine cannot evaluate an
+   * area at all and THROWS (never a silent approximation) — consistent with the repo's other
+   * honest-error cases.
+   */
+  allyArea?: { shape: AreaShape; radius: number };
   /** Source of the application (for applier-ATK fixed damage / later source rules). Optional; captures id + ATK at cast time. */
   applier?: { id: string; atk: number };
 }
