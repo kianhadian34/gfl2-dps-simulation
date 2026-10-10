@@ -170,6 +170,10 @@ export function additiveDealtBonus(
           const matches = e.whenPhase === "phase" ? element !== null : element === null;
           if (!matches) continue;
         }
+        // PER-ELEMENT gate (2026, Accelerant's "Burn damage dealt +10%"): the hit's attack element
+        // must be in the list. `null` in the list matches a phase-less hit — the same OR-list
+        // semantics as the attachment-set / Remolder element gates.
+        if (e.whenElement !== undefined && !e.whenElement.includes(element)) continue;
         // scaleWithStacks === false → the bonus applies ONCE per status (Support Boost I:
         // stacks are remaining activations, NOT a magnitude multiplier — VALIDATED 2026).
         sum += def.scaleWithStacks === false ? e.value : e.value * s.stacks;
@@ -197,6 +201,10 @@ export function additiveTakenBonus(
     if (!def) continue;
     for (const e of def.effects) {
       if (e.kind === "damage_modifier" && e.scope === "taken" && e.mode === "additive") {
+        // PER-ELEMENT gate (2026, Overheat Combustion V1's "Burn damage taken +30%"): the incoming
+        // hit's element must be in the list (`null` = phase-less) — the same OR-list semantics as
+        // the dealt-side gate and the attachment-set / Remolder element gates.
+        if (e.whenElement !== undefined && !e.whenElement.includes(element)) continue;
         sum += e.value * s.stacks;
       }
       if (e.kind === "stack_tier_modifier" && e.scope === "taken") {
@@ -354,6 +362,9 @@ export function multiplicativeTakenMods(
     if (!def) continue;
     for (const e of def.effects) {
       if (e.kind === "damage_modifier" && e.scope === "taken" && e.mode === "multiplicative") {
+        // PER-ELEMENT gate (2026): honored on the multiplicative branch too, so a `whenElement`
+        // is never silently ignored regardless of `mode`.
+        if (e.whenElement !== undefined && !e.whenElement.includes(incomingElement)) continue;
         mult *= Math.pow(e.value, s.stacks);
       }
       // Area Defense I / Targeted Attack Defense I (VALIDATED in-game tooltips 2026):

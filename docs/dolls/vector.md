@@ -509,7 +509,7 @@ not prose transcription. Source class: **secondary (community database)** — hi
 | Gap | Engine today | Needed by |
 |---|---|---|
 | ~~**`critDmg` on `stat_modifier`**~~ | ~~stats are `atk \| def \| hp \| critRate` only~~ — **DONE 2026** | ~~Apathetic Resistance~~; **still needed by Accelerant V6** (+15% Crit DMG) |
-| **Per-element gate on a damage modifier** | `damage_modifier.whenPhase` is only *phase vs phase-less*; only `stack_tier_modifier.when.element` is per-element | Overheat Combustion V1 (Burn dmg *taken* +30%); Accelerant (*dealt* +10%) |
+| ~~**Per-element gate on a damage modifier**~~ | ~~`damage_modifier.whenPhase` is only *phase vs phase-less*; only `stack_tier_modifier.when.element` is per-element~~ — **DONE 2026** (`whenElement`, both scopes + both modes; `docs/research.md` §3.26) | ~~Overheat Combustion V1 (Burn dmg *taken* +30%)~~; ~~Accelerant (*dealt* +10%)~~ — **the gate is done; those statuses still need other pieces** (see below) |
 | **Start-of-action status tick** | `tickAt` is `ownActionEnd \| roundEnd` only | Overheat Combustion (fires at the holder's action **start**) |
 | **Count-by-classification scaling** ("for every Burn debuff/buff") | no such scaling exists | Smolder V4 (+3% taken per Burn debuff); Accelerant V6 (+5% dealt per Burn buff) |
 | **Support-trigger vocabulary** | the only trigger is `onAllySingleTargetHit` | Emergency Support / FK6 |
@@ -526,6 +526,10 @@ not prose transcription. Source class: **secondary (community database)** — hi
 - ~~**`critDmg` on `stat_modifier`**~~ — **IMPLEMENTED 2026**: added to the stat union and routed
   through the ONE `statModifier` path into the confirmed `1 + Crit DMG` multiplier. Unblocked
   **Apathetic Resistance**. See `docs/research.md` §3.25.
+- ~~**Per-element gate on a damage modifier**~~ — **IMPLEMENTED 2026**: `damage_modifier.whenElement`
+  (an OR-list, `null` = phase-less), honored on the DEALT and TAKEN scopes and on both modes.
+  `docs/research.md` §3.26. **This unblocks the element GATE only** — Accelerant and Overheat
+  Combustion still need the other pieces listed above/below.
 - ~~**Apathetic Resistance** (Crit DMG +25%, 2 turns)~~ — **IMPLEMENTED 2026** as the
   `apathetic_resistance` status. `docs/research.md` §3.25.
 - ~~**Extra Command** (extra main actions)~~ — **IMPLEMENTED 2026** via the `extra_action` status
@@ -542,8 +546,10 @@ tile-side (`docs/research.md` §3.23).
 - **Element gate:** add a **proper `whenElement`** to `damage_modifier` (dealt + taken), mirroring the
   existing `whenPhase` / `whenCategory` gates — **not** folding it into `stack_tier_modifier`. (The
   latter *can* express an element-gated flat bonus via a single-tier `tiers` map, but that kind is a
-  per-stack tier table; using it for a flat modifier would be an abuse.)
-- **Scope:** **documentation first** — record this evidence before implementing anything.
+  per-stack tier table; using it for a flat modifier would be an abuse.) — **DONE 2026**:
+  `damage_modifier.whenElement` is implemented (both scopes + both modes). `docs/research.md` §3.26.
+- **Scope:** **documentation first** — record this evidence before implementing anything. (The
+  implementation slices then proceed one vocabulary addition at a time.)
 - **Already-available note for future implementation:** `StatusDef.phase` (an element attribute) exists
   and Overburn carries `phase: "burn"`, but it is consumed **only** by the attachment-set Phase Strike
   gate — it is *not* a general element gate for modifiers. Do not conflate the two.
@@ -629,9 +635,9 @@ weapon.
 2. **New statuses** (G2) — **6 of Vector's 10 referenced effects remain undefined** (`overburn`,
    `blazing_assault_ii`, `extra_command`, and now `apathetic_resistance` exist); the authoritative
    inventory, their upgrade variants, and the exact capability gaps are recorded in **§7.1**.
-   Remaining vocabulary needs: per-element damage gate, start-of-action tick,
-   count-by-classification scaling, all-allies targeting, support-trigger vocabulary; plus one
-   genuinely new mechanic (skill denial) and the V3-coupled tile clauses.
+   Remaining vocabulary needs: start-of-action tick, count-by-classification scaling, all-allies
+   targeting, support-trigger vocabulary; plus one genuinely new mechanic (skill denial) and the
+   V3-coupled tile clauses. *(The **per-element gate** is now DONE — §7.1.)*
 3. **Untile/tile mechanics** (G1, G9) — Burn/Incineration tiles are foundational to Vector's kit
    and the engine has no tile system.
 4. ~~**Turn-start "at max Confectance" drain** and **the 2 extra V5 slots** (G3, G4, G4b)~~ —

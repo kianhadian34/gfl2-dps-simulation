@@ -1071,6 +1071,45 @@ immunity.
 
 ---
 
+### 3.26 Per-element gate on damage modifiers (`whenElement`) — 2026, IMPLEMENTED + TESTED
+
+**Mechanic** — a `damage_modifier` may be restricted to hits of **specific attack elements**.
+
+**Why it exists** — two of Vector's Burn clauses are element-gated damage modifiers:
+**Accelerant** ("*Burn damage dealt* +10%", DEALT scope) and **Overheat Combustion V1** ("*Burn damage
+taken* +30%", TAKEN scope). Before this, the ONLY per-element gate in the engine was
+`stack_tier_modifier.when.element` — a per-stack tier table, which would have been an abuse for a
+flat modifier.
+
+**Implementation interpretation** — a new optional field on the `damage_modifier` union member
+(`src/model/types.ts`):
+```
+whenElement?: (Element | null)[]
+```
+**Semantics — deliberately IDENTICAL to the existing element gates** (`AttachmentSetGates.element`,
+`RemolderEffectGates.element`): an **OR-list**; the hit's attack element must be one of the listed
+values; **`null` in the list matches a PHASE-LESS hit**. Absent = all elements (existing behavior
+preserved).
+
+**Consumed in three places** (`src/engine/statuses.ts`), so the gate is **never silently ignored**:
+- `additiveDealtBonus` — the DEALT scope (Accelerant's shape)
+- `additiveTakenBonus` — the TAKEN additive scope (Overheat Combustion V1's shape)
+- `multiplicativeTakenMods` — the TAKEN multiplicative branch, honored for consistency: a declared
+  `whenElement` applies regardless of `mode`
+
+**What it reads** — the **attack's own element** (`SkillDefVariant.element`; `null` = phase-less), never
+the target's weakness list. Element identity is the existing `Element` union
+(`burn | hydro | freeze | electric | corrosion`) plus `null` — **no element or category is invented**.
+
+**Evidence status** — this is an **engine vocabulary** addition, not a game mechanic: the values are
+the engine's own taxonomy. Covered by `src/test/element-gate.test.ts` (9 tests: matching /
+non-matching element, OR-lists, the `null` phase-less case, ungated controls on both scopes, the
+multiplicative branch, an end-to-end damage check, and a guard that the synthetic fixtures never leak
+into production data). **Neither Accelerant nor Overheat Combustion is implemented by this** — each
+still needs other pieces; see `docs/dolls/vector.md` §7.1 for the exact remaining gaps.
+
+---
+
 ## 4. Uncertainty register
 
 Every mechanic that is still uncertain, with impact and resolution path. **None of these should be hardcoded as facts in the engine — all are config defaults pending the in-game test plan (§5).**

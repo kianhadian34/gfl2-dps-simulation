@@ -1146,6 +1146,18 @@ export type StatusEffect =
       whenCategory?: "aoe" | "targeted";
       /** NEW (2026) — optional phase gate for a DEALT bonus, using the EXISTING taxonomy (Phase attack = has an element, `element !== null`; phase-less = `element === null`): "phase" = only elemental hits (Phase Boost I, +10%); "phase_less" = only phase-less hits. Absent = all (existing behavior). No new element/category is invented. */
       whenPhase?: "phase" | "phase_less";
+      /**
+       * NEW (2026) — optional PER-ELEMENT gate, on BOTH scopes (the same OR-list semantics as the
+       * existing `AttachmentSetGates.element` / `RemolderEffectGates.element`: the hit's attack
+       * element must be one of these; `null` in the list matches a PHASE-LESS hit). This is the
+       * generic form of the per-element gate that previously existed only on
+       * `stack_tier_modifier.when.element`. Absent = all elements (existing behavior).
+       *
+       * Needed by Vector's Burn clauses: Accelerant ("Burn damage dealt +10%", DEALT) and
+       * Overheat Combustion V1 ("Burn damage taken +30%", TAKEN). No element is invented — the
+       * values are the engine's existing `Element` union plus `null`.
+       */
+      whenElement?: (Element | null)[];
     }
   | { kind: "damage_reduction"; value: number; whenIncomingCategory?: "aoe" | "targeted" }
   | {

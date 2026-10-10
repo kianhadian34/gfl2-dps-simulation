@@ -205,12 +205,12 @@ summary alone.
 | Item | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | `cb2d0e1bd81d237b784461eb3f91296f62adb584` |
-| `origin/main` | `cb2d0e1bd81d237b784461eb3f91296f62adb584` (in sync) |
-| Working tree | in progress: **V4 slice 2 — Apathetic Resistance (IMPLEMENTED)** — **uncommitted** (§7.1 item 12) |
-| Untracked | `.reasonix/` (host-managed session artifacts — **never stage**) and `src/test/apathetic-resistance.test.ts` |
+| HEAD | `95717b04f3b304001ac84d933a555814da8d0d8f` |
+| `origin/main` | `95717b04f3b304001ac84d933a555814da8d0d8f` (in sync) |
+| Working tree | in progress: **V4 slice 3 — the `whenElement` gate (IMPLEMENTED)** — **uncommitted** (§7.1 item 13) |
+| Untracked | `.reasonix/` (host-managed session artifacts — **never stage**) and `src/test/element-gate.test.ts` |
 | Engine build | `npm run build` → exit 0 |
-| Engine tests | **692 pass · 0 fail · 0 skipped** across **98 test files** |
+| Engine tests | **701 pass · 0 fail · 0 skipped** across **99 test files** |
 | UI typecheck | exit 0 |
 | UI tests | **286 pass · 0 fail** |
 | UI build | exit 0 |
@@ -508,6 +508,7 @@ scope is invented or expanded.
 | Turn-start Confectance drain (+ extra slots) | `simulation.ts`, `resources.ts`, `statuses.ts`, `model/types.ts` | yes | **[GAME]** (mechanic, user-provided 2026-10-09) + `[TEST]` (8 tests) | generic `turn_start_confectance_drain`; a second extra-slot pool; round-scoped ATK% folded into the existing in-combat ATK% bucket. **NOT in-game validated.** |
 | Extra Command (extra main actions) | `model/types.ts`, `data/statuses.ts`, `simulation.ts` | yes | **[GAME]** (semantics, user-provided 2026-10-09) + `[TEST]` (6 tests) | generic `extra_action` status effect + the `extra_command` status + an action loop (`actionBudget`); no move in an extra action; tick once per unit-turn. **NOT in-game validated.** |
 | Apathetic Resistance (Crit DMG buff) | `model/types.ts`, `engine/statuses.ts`, `engine/simulation.ts`, `data/statuses.ts` | yes | **[SOURCE]** (values) + `[TEST]` (7 tests) | `critDmg` added to the `stat_modifier` stat union; read through the ONE `statModifier` path into the confirmed `1 + Crit DMG` multiplier; crit stats stay continuous. **NOT in-game validated.** |
+| Per-element damage gate (`whenElement`) | `model/types.ts`, `engine/statuses.ts` | yes | `[TEST]` (9 tests) | an OR-list (`null` = phase-less) on `damage_modifier`, honored on DEALT + TAKEN and both modes, so it is never silently ignored. Same semantics as the attachment-set / Remolder element gates. **Engine vocabulary, not a game mechanic.** |
 | Determinism / seeded RNG | `engine/rng.ts` | yes | engine guarantee | `determinism.test.ts` |
 | Effect provenance | `simulation.ts`, `state.ts`, `model/runtime.ts` | yes | **Validated** | `effectSources` + `effectSourceRefs` |
 | Grid / positioning (core) | `engine/grid.ts`, `docs/grid.md` | yes (core) | **Validated** (core rules only) | height interaction Not Tested; **elemental tiles NOT modeled** (Burn family documented in `docs/research.md` §3.23) |
@@ -778,7 +779,8 @@ workflow and owning documents.
 | 9 | **V2 — turn-start Confectance drain engine capability (IMPLEMENTED + TESTED).** Added the generic `turn_start_confectance_drain` `PassiveEffect` (`atkPct`, `extraSlots`, `perExtraSlotAtkPct`), a SECOND `extraConfectance` pool that `gainConfectance` fills from gains beyond `confectanceMax`, `drainAllConfectance`, and a turn-start trigger granting a round-scoped `UnitState.roundAtkPct` folded into the **existing** in-combat ATK% bucket (`statModifier`). **`confectanceMax` (U9 = 6) is UNCHANGED** — verified by a guard test. Semantics confirmed with the user: overflow fills the extras; clause 5 is additive on clause 4 → **+10/+20/+30% for 0/1/2 filled extras**; the drain consumes both pools. **No character ids anywhere.** | `src/model/types.ts`, `src/engine/resources.ts`, `src/engine/state.ts`, `src/engine/statuses.ts`, `src/engine/simulation.ts`, `src/test/confectance-drain.test.ts` (new), `docs/research.md` §3.12, `docs/dolls/vector.md`, `docs/project.md` | engine **679 pass / 0 fail** (+8 new); UI typecheck/tests/build green; **CLI output byte-identical** on `examples/qiongjiu-dummy.json` (no regression for existing characters); `git diff --check` clean | `437cee2` (pushed) |
 | 10 | **V4 — status/effect inventory documented (evidence only).** Resolved **all 10** effect IDs Vector's kit references against the site's own effect records (`dandegate.net/effects/<uuid>`, `effectDetails` incl. every upgrade variant) and recorded the authoritative inventory in `docs/dolls/vector.md` **§7.1**: **2 exist** (`overburn`, `blazing_assault_ii`) / **8 missing**, each with its definition, tags, and upgrade variants. Classified the gaps: 6 reusable vocabulary additions, 3 genuinely new mechanics (one — extra actions — **out of MVP scope**), and the V3-coupled tile clauses. **Two record corrections recorded:** `Overheat Combustion` is a distinct Burn-debuff effect (resolves the V3-era ambiguity) and `Overheat` is a *third* distinct effect = **skill denial**. Design decision recorded with the user: add a **proper `whenElement`** gate to `damage_modifier` (not reuse `stack_tier_modifier`). **No code changed.** | `docs/dolls/vector.md` §7.1 + §7/G2 + §10, `docs/research.md` §3.23.6 (cross-ref), `docs/project.md` | **docs only — no code/tests changed**; `git diff --check` clean; in-game validation **N/A** | `cb2d0e1` (pushed) |
 | 11 | **V4 slice 1 — Extra Command (IMPLEMENTED + TESTED).** Added the generic `extra_action` `StatusEffect` kind + the `extra_command` status (`category: "state"`) + an **action loop** in the turn loop driven by the previously-vestigial `UnitState.actionBudget`. Semantics confirmed with the user: the holder acts again in the same unit-turn (e.g. Ultimate → Skill 1/2 or Basic), **cannot move** during the extra action, **one extra action per stack**; the end-of-action tick runs **once**, after all actions. Data-driven — no character or skill ids. | `src/model/types.ts`, `src/data/statuses.ts`, `src/engine/simulation.ts`, `src/test/extra-command.test.ts` (new), `docs/research.md` §3.24 (new), `docs/dolls/vector.md`, `docs/validation-checklist.md`, `docs/project.md` | engine **685 pass / 0 fail** (+6 new); UI typecheck/tests/build green; **CLI output byte-identical**; `git diff --check` clean | `cb2d0e1` (pushed) |
-| 12 | **V4 slice 2 — Apathetic Resistance (IMPLEMENTED + TESTED).** Added **`critDmg`** to the `stat_modifier` stat union, kept it **continuous** in `statModifier`, and routed `actor.critDmg` through that ONE path at the crit resolution site — so a Crit-DMG status enters the **confirmed** `1 + Crit DMG` multiplier (U1/U19) with no parallel crit path. Added the `apathetic_resistance` status (Crit DMG **+25%**, 2 turns, `purgeable: false` — the source states "cannot be cleansed"). Duration follows the in-game-**VALIDATED** U7 self-applied tick rule (inherited, not re-derived). | `src/model/types.ts`, `src/engine/statuses.ts`, `src/engine/simulation.ts`, `src/data/statuses.ts`, `src/test/apathetic-resistance.test.ts` (new), `docs/research.md` §3.10 + §3.25 (new), `docs/dolls/vector.md`, `docs/project.md` | engine **692 pass / 0 fail** (+7 new); UI typecheck/tests/build green; **CLI output byte-identical**; `git diff --check` clean; scratch probe file removed | uncommitted (§10) |
+| 12 | **V4 slice 2 — Apathetic Resistance (IMPLEMENTED + TESTED).** Added **`critDmg`** to the `stat_modifier` stat union, kept it **continuous** in `statModifier`, and routed `actor.critDmg` through that ONE path at the crit resolution site — so a Crit-DMG status enters the **confirmed** `1 + Crit DMG` multiplier (U1/U19) with no parallel crit path. Added the `apathetic_resistance` status (Crit DMG **+25%**, 2 turns, `purgeable: false` — the source states "cannot be cleansed"). Duration follows the in-game-**VALIDATED** U7 self-applied tick rule (inherited, not re-derived). | `src/model/types.ts`, `src/engine/statuses.ts`, `src/engine/simulation.ts`, `src/data/statuses.ts`, `src/test/apathetic-resistance.test.ts` (new), `docs/research.md` §3.10 + §3.25 (new), `docs/dolls/vector.md`, `docs/project.md` | engine **692 pass / 0 fail** (+7 new); UI typecheck/tests/build green; **CLI output byte-identical**; `git diff --check` clean; scratch probe file removed | `95717b0` (pushed) |
+| 13 | **V4 slice 3 — per-element gate `whenElement` (IMPLEMENTED + TESTED).** Added the optional `whenElement?: (Element \| null)[]` field to the `damage_modifier` union member and consumed it in **three** places (`additiveDealtBonus`, `additiveTakenBonus`, `multiplicativeTakenMods`) so a declared gate is **never silently ignored** regardless of scope or mode. Semantics are the SAME OR-list as the existing attachment-set / Remolder element gates; `null` matches a phase-less hit. Motivated by Accelerant (Burn dmg *dealt* +10%) and Overheat Combustion V1 (Burn dmg *taken* +30%) — **neither status is implemented by this**; it supplies their element gate only. | `src/model/types.ts`, `src/engine/statuses.ts`, `src/test/element-gate.test.ts` (new), `docs/research.md` §3.26 (new), `docs/dolls/vector.md`, `docs/project.md` | engine **701 pass / 0 fail** (+9 new); UI typecheck/tests/build green; **CLI output byte-identical**; `git diff --check` clean | uncommitted (§10) |
 
 **Detail — the documentation-drift cleanup (`8d8ef61`):** the task and its outcome are also
 recorded here because future sessions should not re-fix them.
@@ -864,7 +866,7 @@ data-driven dispatch, registry is a one-line change.
 | ~~V1~~ | ~~**Base stats** (ATK/HP/DEF/critRate/critDmg)~~ | **RESOLVED 2026-10-09** — user-provided character sheet: **HP 1819 · ATK 748 · DEF 569 · Stability 10 · Crit Rate 20% · Crit DMG 120% · Movement 6**; recorded in `docs/dolls/vector.md` §3 | — (obtained) |
 | ~~V2~~ | ~~**The V5 extra Confectance slots + the turn-start drain**~~ | **ENGINE IMPLEMENTED + TESTED 2026-10-09.** The generic capability exists: `turn_start_confectance_drain` (`atkPct` + `extraSlots` + `perExtraSlotAtkPct`), a SECOND `extraConfectance` pool filled by gains beyond `confectanceMax`, and a round-scoped `roundAtkPct` folded into the existing in-combat ATK% bucket. **`confectanceMax` (U9 = 6) unchanged.** Semantics confirmed with the user: overflow fills the extras; additive ⇒ **+10/+20/+30%** for 0/1/2; the drain consumes both pools. **Remaining work is Vector's own DATA** (her passive's values), not engine code | — (capability done; 8 tests in `src/test/confectance-drain.test.ts`) |
 | V3 | **Burn/Incineration tiles** | Foundational to Vector's kit (Dead End Meltdown, Searing Finale, FK1, passive V5); the grid has **no tile-effect system** | design/evidence step |
-| V4 | **The remaining 6 undefined statuses + the engine vocabulary they need** — inventory in `docs/dolls/vector.md` **§7.1** | **EVIDENCE DOCUMENTED; slices 1–2 DONE.** `extra_command` (§3.24) and `apathetic_resistance` (§3.25) are **IMPLEMENTED + TESTED 2026**, and `critDmg` is now a valid `stat_modifier` stat. Still not implemented: 5 reusable vocabulary additions (**per-element damage gate — decided: a proper `whenElement`**; start-of-action status tick; count-by-classification scaling; all-allies targeting; support-trigger vocabulary), 1 new mechanic (**skill denial** — `Overheat`), and the V3-coupled tile clauses | definitions obtained; behaviour still needs in-game validation |
+| V4 | **The remaining 6 undefined statuses + the engine vocabulary they need** — inventory in `docs/dolls/vector.md` **§7.1** | **EVIDENCE DOCUMENTED; slices 1–3 DONE.** `extra_command` (§3.24), `apathetic_resistance` (§3.25) and the **`whenElement` gate** (§3.26) are **IMPLEMENTED + TESTED 2026**; `critDmg` is a valid `stat_modifier` stat. Still not implemented: 4 reusable vocabulary additions (**start-of-action status tick**; count-by-classification scaling; all-allies targeting; support-trigger vocabulary), 1 new mechanic (**skill denial** — `Overheat`), and the V3-coupled tile clauses | definitions obtained; behaviour still needs in-game validation |
 | V5 | **Signature weapon shape gaps** (Imprint condition, weapon ATK endpoints, trait pool) | Not representable in today's `WeaponDef`/`Imprint` shapes | source + judgement |
 
 **Recommended order:** base stats are IN; **V2 (the Confectance-drain capability) is IMPLEMENTED +
@@ -1000,12 +1002,11 @@ to be written as data on her passive.
 with the effect names independently resolved. The engine has **no tile system**, so V3 remains a
 design/implementation task.
 
-**V4 (statuses) — slices 1–2 IMPLEMENTED; evidence documented for the rest.**
-**Extra Command** (`docs/research.md` §3.24) and **Apathetic Resistance** (§3.25) are **DONE** — 6 and
-7 new tests respectively. The second slice added **`critDmg`** to the `stat_modifier` stat union,
-routed through the ONE `statModifier` path into the confirmed `1 + Crit DMG` multiplier. The remaining
-V4 work is documented in `docs/dolls/vector.md` §7.1 — **6 statuses still undefined**, needing 5
-reusable vocabulary additions, 1 new mechanic (skill denial), and the V3-coupled tile clauses.
+**V4 (statuses) — slices 1–3 IMPLEMENTED; evidence documented for the rest.**
+**Extra Command** (§3.24), **Apathetic Resistance** (§3.25) and the **`whenElement` per-element gate**
+(§3.26) are **DONE** — 6, 7 and 9 new tests respectively. The remaining V4 work is documented in
+`docs/dolls/vector.md` §7.1 — **6 statuses still undefined**, needing 4 reusable vocabulary additions,
+1 new mechanic (skill denial), and the V3-coupled tile clauses.
 
 **Why a decision is next:** the data-only portion of Vector is ready, but implementing a *partial* kit
 would silently approximate mechanics the engine does not model — which the project rules forbid
@@ -1015,8 +1016,8 @@ modelable today and record the rest as inert/unmodeled, exactly as the 7 inert a
 
 **Also outstanding (nothing here is committed):**
 
-- **This V4 slice (Apathetic Resistance + `critDmg`) is uncommitted** (§7.1 item 12) — awaiting the
-  user's authorization.
+- **This V4 slice (the `whenElement` gate) is uncommitted** (§7.1 item 13) — awaiting the user's
+  authorization.
 - **Vector's assets are placed but NOT wired** (`assets.ts` untouched) — backlog **B5**.
 - Per the §1.4 policy the §2 snapshot is refreshed at the start of the next task or when wrapping up —
   not by a separate commit after every commit.
