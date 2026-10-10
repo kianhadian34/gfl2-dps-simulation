@@ -117,6 +117,21 @@ export interface UnitState {
   exposed: boolean;
   exposedRoundsLeft: number;
   confectance: number;
+  /**
+   * FILLED extra Confectance slots (2026 — Vector's Perception Block Lv.3/V5): a SECOND pool
+   * SEPARATE from `confectance`. Confectance gains beyond `confectanceMax` flow here, up to
+   * `extraConfectanceMax` (see `gainConfectance`). 0 for every character that does not declare
+   * `turn_start_confectance_drain.extraSlots`. The normal gauge and its cap (U9 = 6) are untouched.
+   */
+  extraConfectance: number;
+  /** Extra-slot CAPACITY (0 = the mechanic is absent). Resolved once from the passive's `turn_start_confectance_drain.extraSlots`. */
+  extraConfectanceMax: number;
+  /**
+   * ROUND-SCOPED ATK% granted by an at-max Confectance drain (2026, Vector clause 4/5). Reset at
+   * each round start; folded into the EXISTING in-combat ATK% bucket by `statModifier` (one more
+   * source into the same bucket — never a parallel multiplier). 0 = none.
+   */
+  roundAtkPct: number;
   cooldowns: Map<string, number>;
   statuses: ActiveStatus[];
   supportQuota: number;
@@ -616,6 +631,12 @@ function makeDoll(
   const passiveLevel = effectiveAbilityLevel(def, "passive", config);
   const passiveEffectsList = resolvePassiveEffects(def, passiveLevel);
   const supportMax = supportAttackQuota(passiveEffectsList);
+  // EXTRA CONFECTANCE SLOTS (2026): the largest `extraSlots` any resolved drain effect declares
+  // (0 for every character without the mechanic). A SEPARATE pool, never folded into confectanceMax.
+  const extraConfectanceMax = passiveEffectsList.reduce(
+    (m, e) => (e.kind === "turn_start_confectance_drain" ? Math.max(m, e.extraSlots ?? 0) : m),
+    0,
+  );
   const { skills, levels } = resolveAbilitySet(def, config);
   return {
     kind: "doll",
@@ -674,6 +695,9 @@ function makeDoll(
     exposed: false,
     exposedRoundsLeft: 0,
     confectance,
+    extraConfectance: 0,
+    extraConfectanceMax,
+    roundAtkPct: 0,
     cooldowns: new Map(),
     statuses: [],
     supportQuota: supportMax,
@@ -718,6 +742,9 @@ function makeDummy(d: Scenario["dummy"]): UnitState {
     exposed: false,
     exposedRoundsLeft: 0,
     confectance: 0,
+    extraConfectance: 0,
+    extraConfectanceMax: 0,
+    roundAtkPct: 0,
     cooldowns: new Map(),
     statuses: [],
     supportQuota: 0,

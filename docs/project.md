@@ -205,12 +205,12 @@ summary alone.
 | Item | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | `ca21212847dfc867c41d09e65f2c21dd6fbec19e` |
-| `origin/main` | `ca21212847dfc867c41d09e65f2c21dd6fbec19e` (in sync) |
-| Working tree | in progress: Vector source record (`docs/dolls/vector.md`) + 19 asset files — **uncommitted** (§7.1 item 7) |
-| Untracked | `.reasonix/` (host-managed session artifacts — **never stage**) |
+| HEAD | `629743eeef93c2f20da85d825d4de43ea09a0d8e` |
+| `origin/main` | `629743eeef93c2f20da85d825d4de43ea09a0d8e` (in sync) |
+| Working tree | in progress: the **V2 Confectance-drain engine capability** (5 engine/model files + 1 test + docs) — **uncommitted** (§7.1 item 9) |
+| Untracked | `.reasonix/` (host-managed session artifacts — **never stage**) and `src/test/confectance-drain.test.ts` |
 | Engine build | `npm run build` → exit 0 |
-| Engine tests | **671 pass · 0 fail · 0 skipped** across **95 test files** |
+| Engine tests | **679 pass · 0 fail · 0 skipped** across **96 test files** |
 | UI typecheck | exit 0 |
 | UI tests | **286 pass · 0 fail** |
 | UI build | exit 0 |
@@ -504,7 +504,8 @@ scope is invented or expanded.
 | Stability / break / Exposed / recovery | `engine/stability.ts` | yes | **Validated** (timing) | 2-turn recovery |
 | Status system (durations, stacks, replace/block, cleanse) | `engine/statuses.ts` | yes | **Validated** (multiple) | generic; 28 status ids in `data/statuses.ts` |
 | Cooldowns | `engine/cooldowns.ts` | yes | **Validated** (U11) | `nextOwnTurnEnd` |
-| Confectance | `engine/resources.ts` | yes | **Validated** (U9) | start 3 / max 6 |
+| Confectance | `engine/resources.ts` | yes | **Validated** (U9) | start 3 / max 6; **extra-slot pool is SEPARATE** (never raises the cap) |
+| Turn-start Confectance drain (+ extra slots) | `simulation.ts`, `resources.ts`, `statuses.ts`, `model/types.ts` | yes | **[GAME]** (mechanic, user-provided 2026-10-09) + `[TEST]` (8 tests) | generic `turn_start_confectance_drain`; a second extra-slot pool; round-scoped ATK% folded into the existing in-combat ATK% bucket. **NOT in-game validated.** |
 | Determinism / seeded RNG | `engine/rng.ts` | yes | engine guarantee | `determinism.test.ts` |
 | Effect provenance | `simulation.ts`, `state.ts`, `model/runtime.ts` | yes | **Validated** | `effectSources` + `effectSourceRefs` |
 | Grid / positioning (core) | `engine/grid.ts`, `docs/grid.md` | yes (core) | **Validated** (core rules only) | height interaction Not Tested; **elemental tiles NOT modeled** (Burn family documented in `docs/research.md` §3.23) |
@@ -771,7 +772,8 @@ workflow and owning documents.
 | 5 | **Scope clarification: additional, not replacement.** Made explicit that maintaining this document is an ADDITIONAL requirement on top of existing duties — the full workflow (§3.5) and the owning documents still apply. Added §1.5 (documentation ownership map: which file owns which subject) and the `Document`-step clarification in §3.5; strengthened §1.1, §1.2 and §1.4 (rule 5 + a "summarize and point, do not duplicate" clause). No requirement removed or weakened. | `docs/project.md` | `git diff --check` clean; no source/test change; docs-only | `0670d2b` (pushed) |
 | 6 | **Snapshot refresh** — corrected the three self-referential statements left stale by committing items 4–5 (§2 working-tree row, §7.1 commit columns, §10 open state) and recorded the no-per-commit-refresh policy in §1.4. | `docs/project.md` | `git diff --check` clean; docs-only | `ca21212` (pushed) |
 | 7 | **Vector source record (documentation only).** Read Qiongjiu's `CharacterDef` to map the data schema, then transcribed Vector's kit from `dandegate.net/dolls/vector` into a new per-doll record. Verified each factual claim against the repo (status list, grid config, cooldown model, Confectance cap, `AffinityKeyDef`/`WeaponDef`/`imprint` shapes) and marked every gap as `[UNKNOWN]`/not-implemented rather than assuming. Downloaded 23 CDN assets and placed 19 into the asset tree (18 character + 1 weapon; **placed, not wired**). **Base stats then supplied by the user** (`[GAME]`: HP 1819 / ATK 748 / DEF 569 / Stab 10 / CR 20% / CDMG 120% / Move 6) and recorded — the one data blocker, resolved; the general fact "base Crit Rate is 20% for ALL characters" was recorded in its **owning** document `docs/research.md` §3.8. **Confectance >6 — RESOLVED [GAME]:** the user's earlier "might be a system allowing >6" hypothesis was then fully explained (2026-10-09): at **Fortification V5** Vector gains **2 Confectance slots SEPARATE from her normal 6**, and those extras are what her passive Lv.3 clause counts (+10%/+20% ATK). **U9's cap of 6 is unchanged** — the normal gauge never overflows; the engine must **not** raise `confectanceMax`. Recorded in `docs/dolls/vector.md` §4.5/§7 and `docs/research.md` §3.12. | `docs/dolls/vector.md` (new), `docs/research.md` §3.8 + §3.12, `ui/src/renderer/public/assets/characters/vector/**` (18), `ui/src/renderer/public/assets/weapons/banshees-whisper/**` (1), `docs/project.md` | claims verified by direct repo inspection; **no code/tests changed**; in-game validation **N/A** (docs-only) | `637bec5` (pushed) |
-| 8 | **Elemental tiles (Burn family) documented (V3 prep).** Read the dandegate community guide "Elemental Tile Transformation" and recorded **Burn-related tiles only** in the mechanics doc: the Tile Upgrade / Polyphase Fusion layer, the base Burn tile (**Incineration → Flashover II → III**), and every Burn-containing fusion (**Scalding Vapors**, **Venomfire**, **Smoldering Suspire**, and the CN-only **Crackling Flare**) with their Lv2/Lv3 deltas. **Effect names independently resolved** from `dandegate.net/effects/<uuid>` records (10 uuids → names; only **Overburn** exists in this repo). Source is a **community guide (hierarchy level 5)**, labelled `[SOURCE]` / `Not Tested`; non-Burn tiles deliberately out of scope. **Nothing implemented.** | `docs/research.md` §3.23 (new), `docs/dolls/vector.md` (G1 cross-ref), `docs/project.md` | **no code/tests changed**; docs-only; in-game validation **N/A** | uncommitted (§10) |
+| 8 | **Elemental tiles (Burn family) documented (V3 prep).** Read the dandegate community guide "Elemental Tile Transformation" and recorded **Burn-related tiles only** in the mechanics doc: the Tile Upgrade / Polyphase Fusion layer, the base Burn tile (**Incineration → Flashover II → III**), and every Burn-containing fusion (**Scalding Vapors**, **Venomfire**, **Smoldering Suspire**, and the CN-only **Crackling Flare**) with their Lv2/Lv3 deltas. **Effect names independently resolved** from `dandegate.net/effects/<uuid>` records (10 uuids → names; only **Overburn** exists in this repo). Source is a **community guide (hierarchy level 5)**, labelled `[SOURCE]` / `Not Tested`; non-Burn tiles deliberately out of scope. **Nothing implemented.** | `docs/research.md` §3.23 (new), `docs/dolls/vector.md` (G1 cross-ref), `docs/project.md` | **no code/tests changed**; docs-only; in-game validation **N/A** | `629743e` (pushed) |
+| 9 | **V2 — turn-start Confectance drain engine capability (IMPLEMENTED + TESTED).** Added the generic `turn_start_confectance_drain` `PassiveEffect` (`atkPct`, `extraSlots`, `perExtraSlotAtkPct`), a SECOND `extraConfectance` pool that `gainConfectance` fills from gains beyond `confectanceMax`, `drainAllConfectance`, and a turn-start trigger granting a round-scoped `UnitState.roundAtkPct` folded into the **existing** in-combat ATK% bucket (`statModifier`). **`confectanceMax` (U9 = 6) is UNCHANGED** — verified by a guard test. Semantics confirmed with the user: overflow fills the extras; clause 5 is additive on clause 4 → **+10/+20/+30% for 0/1/2 filled extras**; the drain consumes both pools. **No character ids anywhere.** | `src/model/types.ts`, `src/engine/resources.ts`, `src/engine/state.ts`, `src/engine/statuses.ts`, `src/engine/simulation.ts`, `src/test/confectance-drain.test.ts` (new), `docs/research.md` §3.12, `docs/dolls/vector.md`, `docs/project.md` | engine **679 pass / 0 fail** (+8 new); UI typecheck/tests/build green; **CLI output byte-identical** on `examples/qiongjiu-dummy.json` (no regression for existing characters); `git diff --check` clean | uncommitted (§10) |
 
 **Detail — the documentation-drift cleanup (`8d8ef61`):** the task and its outcome are also
 recorded here because future sessions should not re-fix them.
@@ -855,14 +857,16 @@ data-driven dispatch, registry is a one-line change.
 | # | Blocker | Why it blocks | Evidence needed |
 |---|---|---|---|
 | ~~V1~~ | ~~**Base stats** (ATK/HP/DEF/critRate/critDmg)~~ | **RESOLVED 2026-10-09** — user-provided character sheet: **HP 1819 · ATK 748 · DEF 569 · Stability 10 · Crit Rate 20% · Crit DMG 120% · Movement 6**; recorded in `docs/dolls/vector.md` §3 | — (obtained) |
-| V2 | **The V5 extra Confectance slots + the turn-start drain** — Vector's passive (Lv.3, at **V5**) grants **2 Confectance slots SEPARATE from the normal 6**, read by clause 5 for **+10% (1 slot) / +20% (2 slots)**; clause 4's turn-start drain consumes the gauge for +10% ATK | **Mechanic RESOLVED [GAME]** (user-provided 2026-10-09). **U9 unchanged** — the normal gauge stays capped at 6; the extras are a separate resource. Engine work: a **second, V5-gated resource** + the turn-start drain (the engine's at-max check exists but is **Ultimate-scoped**). **Do NOT raise `confectanceMax` to 8** | in-game sheet not needed — mechanic known; needs engine implementation. A controlled run would move the arithmetic to `Validated` |
+| ~~V2~~ | ~~**The V5 extra Confectance slots + the turn-start drain**~~ | **ENGINE IMPLEMENTED + TESTED 2026-10-09.** The generic capability exists: `turn_start_confectance_drain` (`atkPct` + `extraSlots` + `perExtraSlotAtkPct`), a SECOND `extraConfectance` pool filled by gains beyond `confectanceMax`, and a round-scoped `roundAtkPct` folded into the existing in-combat ATK% bucket. **`confectanceMax` (U9 = 6) unchanged.** Semantics confirmed with the user: overflow fills the extras; additive ⇒ **+10/+20/+30%** for 0/1/2; the drain consumes both pools. **Remaining work is Vector's own DATA** (her passive's values), not engine code | — (capability done; 8 tests in `src/test/confectance-drain.test.ts`) |
 | V3 | **Burn/Incineration tiles** | Foundational to Vector's kit (Dead End Meltdown, Searing Finale, FK1, passive V5); the grid has **no tile-effect system** | design/evidence step |
 | V4 | **7+ new statuses** (Overheat Combustion, Smolder, Overheat, Accelerant, Incineration, Extra Command, Apathetic Resistance, Emergency Support) | None exist; each needs a definition + evidence | source texts (have) + in-game behavior |
 | V5 | **Signature weapon shape gaps** (Imprint condition, weapon ATK endpoints, trait pool) | Not representable in today's `WeaponDef`/`Imprint` shapes | source + judgement |
 
-**Recommended order:** base stats are IN. Next, decide scope on V2–V4 with the user, since each is
-engine-scale work rather than data entry. Do **not** implement a partial kit that silently
-approximates an unmodeled mechanic (§1.4 / the anti-approximation rule).
+**Recommended order:** base stats are IN, and **V2 (the Confectance-drain capability) is now
+IMPLEMENTED + TESTED**. Remaining for Vector: **V3** (Burn/Incineration tiles — no tile system exists;
+the tile rules are documented in `docs/research.md` §3.23) and **V4** (7+ new statuses) are
+engine-scale work rather than data entry; **V5** is a weapon-shape decision. Do **not** implement a
+partial kit that silently approximates an unmodeled mechanic (§1.4 / the anti-approximation rule).
 
 ### 8.2 Active tasks
 
@@ -870,7 +874,7 @@ approximates an unmodeled mechanic (§1.4 / the anti-approximation rule).
 |---|---|---|---|---|---|
 | B1 | `docs/schemas.md` header/status still says "Proposed … proposal, awaiting approval" | Low | — | repo inspection only (the file already self-notes the proposal-era content at line 54) | **Open** — deliberately out of previous tasks' scope |
 | B3 | Resolve the Apex secondary-effect scaling question | — | user's call | in-game tooltip read | **DEFERRED — Apex is WIP** (user decision, 2026-10-09) |
-| B4 | Vector implementation (see §8.1 V2–V5) | High | V2–V5 scope decision | then Evidence → Test → In-Game Validation | **Base stats IN (V1 resolved, `[GAME]`); BLOCKED on the V2–V4 engine-scale work and a scope decision** |
+| B4 | Vector implementation (see §8.1 V3–V5) | High | V3–V5 scope decision | then Evidence → Test → In-Game Validation | **Base stats IN · V2 capability DONE; BLOCKED on the V3/V4 engine-scale work and a scope decision** |
 | B5 | Wire the 19 placed Vector assets into `assets.ts` (`KNOWN_ENTITY_IDS` + `SUPPLIED_ASSET_FILES` → `supplied: true`) | Low | — | none (files are placed) | **Open** — assets are placed but NOT wired; deliberately out of the docs-only task |
 
 **Closed earlier this session:** B2 (commit `docs/project.md`) — completed as `98c4fab`; preserved in
@@ -934,11 +938,13 @@ installers beyond plain Windows dev builds.
 - The 7 inert attachment sets' mechanics (gates reference undefined statuses; **Phase Boost** /
   **Area Defense II** are referenced but not defined).
 - Ultimate-Pursuit stacking details.
-- ~~**Can Confectance exceed its max of 6?**~~ **RESOLVED 2026-10-09 [GAME]:** yes, but as a
-  **SEPARATE resource** — at **V5** Vector gains **2 Confectance slots separate from the normal 6**,
-  read by her passive Lv.3 clause for **+10%/+20% ATK**. **U9's cap of 6 is unchanged** (the normal
-  gauge never overflows). Recorded in `docs/dolls/vector.md` §4.5/§7 and `docs/research.md` §3.12;
-  engine representation **not yet built**. **Do not raise `confectanceMax`.**
+- ~~**Can Confectance exceed its max of 6?**~~ **RESOLVED + IMPLEMENTED 2026-10-09 [GAME]:** yes, but
+  as a **SEPARATE resource** — at **V5** Vector gains **2 Confectance slots separate from the normal 6**,
+  read by her passive Lv.3 clause (additive) for **+10%/+20%/+30% ATK** at 0/1/2 filled. **U9's cap of
+  6 is unchanged** (the normal gauge never overflows). Recorded in `docs/dolls/vector.md` §4.5/§7 and
+  `docs/research.md` §3.12; the **generic engine capability is implemented + tested**
+  (`turn_start_confectance_drain`, `src/test/confectance-drain.test.ts`). **`confectanceMax` is never
+  raised.**
 - Live level cap / endgame stat magnitudes (U13).
 - Element DoT definitions (U16).
 - The term "Nixie/交换机" (U18) — needs user clarification, not code.
@@ -969,36 +975,34 @@ installers beyond plain Windows dev builds.
 
 ## 10. Next Action
 
-**The single most appropriate next action: scope Vector's implementation with the user.** Her
-source record is complete and the **only data blocker (base stats) is resolved** (`[GAME]`: HP 1819 ·
-ATK 748 · DEF 569 · Stability 10 · Crit Rate 20% · Crit DMG 120% · Movement 6). What remains
-(`docs/dolls/vector.md` §7 V2–V5) is **engine-scale work, not data entry**: Burn/Incineration tiles,
-7+ new statuses, and the turn-start "at max Confectance" drain.
+**The single most appropriate next action: scope Vector's remaining engine work with the user.** Her
+source record is complete, the **only data blocker (base stats) is resolved** (`[GAME]`: HP 1819 ·
+ATK 748 · DEF 569 · Stability 10 · Crit Rate 20% · Crit DMG 120% · Movement 6), and **V2 is now
+IMPLEMENTED + TESTED**. What remains (`docs/dolls/vector.md` §7 V3–V5) is **engine-scale work, not data
+entry**: Burn/Incineration tiles and 7+ new statuses.
 
-**V3 (tiles) is now documented** — `docs/research.md` §3.23 records the Burn-family tile rules
+**V2 — DONE (engine capability).** The generic `turn_start_confectance_drain` mechanism is implemented
+and covered by 8 tests (`src/test/confectance-drain.test.ts`): a second extra-slot Confectance pool,
+the turn-start drain, and a round-scoped ATK% folded into the existing in-combat ATK% bucket.
+**`confectanceMax` (U9 = 6) is unchanged** — pinned by a guard test. Only **Vector's own values** remain
+to be written as data on her passive.
+
+**V3 (tiles) is documented but not built** — `docs/research.md` §3.23 records the Burn-family tile rules
 (base **Incineration → Flashover II → III**; fusions **Scalding Vapors**, **Venomfire**,
 **Smoldering Suspire**, CN-only **Crackling Flare**) from a community guide, `[SOURCE]`/`Not Tested`,
-with the effect names independently resolved. **Still nothing implemented** — the engine has no tile
-system, so V3 remains a design/implementation task, not a data task.
+with the effect names independently resolved. The engine has **no tile system**, so V3 remains a
+design/implementation task.
 
-**Clarified and RESOLVED 2026-10-09 (user, in-game evidence):** the Confectance cap is **6 for the
-normal gauge and unchanged** (U9 remains validated) — V2 was never a cap contradiction. The earlier
-"above index 6" hypothesis is now explained: at **Fortification V5** Vector gains **2 Confectance
-slots SEPARATE from the normal 6**, and those extra slots are what her passive Lv.3 clause counts
-(**1 → +10% ATK, 2 → +20%**). So the mechanic is **known**; what remains is **engine
-implementation** — a second, V5-gated resource plus the turn-start drain. **The engine must not
-raise `confectanceMax` to 8** (that would wrongly uncap the normal gauge).
-
-**Why this is next:** the data-only portion of Vector is ready, but implementing a *partial* kit
+**Why a decision is next:** the data-only portion of Vector is ready, but implementing a *partial* kit
 would silently approximate mechanics the engine does not model — which the project rules forbid
-(`§1.4`; "never invent game mechanics"). So the correct next step is a decision, not code:
+(`§1.4`; "never invent game mechanics"). So the next step is a scope decision, not code:
 either (a) extend the engine for tiles/statuses, or (b) implement only the subset that is honestly
 modelable today and record the rest as inert/unmodeled, exactly as the 7 inert attachment sets are.
 
 **Also outstanding (nothing here is committed):**
 
-- `docs/dolls/vector.md` (new) + 19 placed asset files + this document's updates are
-  **uncommitted** (§7.1 item 7) — awaiting the user's authorization.
+- The **V2 engine change** (5 engine/model files + `src/test/confectance-drain.test.ts` + doc updates)
+  is **uncommitted** (§7.1 item 9) — awaiting the user's authorization.
 - **Vector's assets are placed but NOT wired** (`assets.ts` untouched) — backlog **B5**.
 - `docs/project.md`'s own snapshot is at `ca21212`; the §7.1 item 6 commit is recorded, item 7 is
   pending. Per the §1.4 policy the snapshot is refreshed at the start of the next task or when

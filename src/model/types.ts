@@ -283,6 +283,33 @@ export type PassiveEffect =
       gainPerEvent: number;
       maxStacks: number;
       requiresElements?: (Element | null)[];
+    }
+  | {
+      /**
+       * TURN-START CONFECTANCE DRAIN (2026, Vector's Perception Block Lv.1/Lv.3 — the passive's
+       * clause 4 + clause 5). At the holder's OWN turn start, if the normal Confectance gauge is
+       * at maximum, the holder CONSUMES the whole gauge and gains a round-scoped ATK% bonus.
+       *
+       * Extra slots (clause 5, Lv.3 only): `extraSlots` grants a SECOND Confectance pool SEPARATE
+       * from `confectanceMax` — Confectance gains beyond the normal maximum flow into it (see
+       * `gainConfectance`). Each FILLED extra slot adds `perExtraSlotAtkPct` on top of `atkPct`,
+       * up to `extraSlots`.
+       *
+       * Levels come from the passive's own `levels` map (Lv.1 declares only `atkPct`; Lv.3 adds the
+       * extra slots) — this kind carries NO level gate of its own.
+       *
+       * Evidence (Vector, 2026): clause 4 = +10% at max (Lv.1+); clause 5 = +10% per extra slot up
+       * to +20% (Lv.3/V5), ADDITIVE on clause 4 ⇒ totals +10% / +20% / +30% for 0 / 1 / 2 filled
+       * extra slots (user-provided in-game evidence, 2026-10-09). `confectanceMax` (U9, 6) is
+       * UNCHANGED — the extras are a separate pool, never an overflow of the normal cap.
+       */
+      kind: "turn_start_confectance_drain";
+      /** Round-scoped ATK% granted (fraction; 0.10 = +10%) when the gauge is at max at the holder's turn start. */
+      atkPct: number;
+      /** Number of EXTRA Confectance slots this grants (a pool separate from `confectanceMax`). Absent/0 = none. */
+      extraSlots?: number;
+      /** Round-scoped ATK% granted PER FILLED extra slot (additive on `atkPct`, capped at `extraSlots`). */
+      perExtraSlotAtkPct?: number;
     };
 
 /**

@@ -406,10 +406,40 @@ further increases the attack by 10%, up to 20%"* (`docs/dolls/vector.md` §4.5).
 at **V5** the doll gains **2 extra Confectance Index slots SEPARATE from the normal 6**; those 2
 extra slots are what the clause counts (1 → +10%, 2 → +20%). **The normal gauge's cap remains 6 and
 U9 is unchanged** — the extra slots are a distinct, character-and-Fortification-gated resource, not
-an overflow of the ordinary gauge. **Do not implement it by raising `confectanceMax`.** Engine
-representation (a second resource) is **not yet built**; see `docs/dolls/vector.md` §7 G4/G4b.
+an overflow of the ordinary gauge. **Never implement it by raising `confectanceMax`.** The engine
+representation is **implemented** — see the block immediately below.
 *(This is user-provided evidence — level 1 in the source hierarchy; a controlled run would move the
 per-point arithmetic to `Validated`.)*
+
+**IMPLEMENTED + TESTED (2026) — the generic turn-start Confectance drain.** The mechanic above is now
+an engine capability, **fully data-driven with no character ids**:
+
+- **`PassiveEffect` kind `turn_start_confectance_drain`** (`src/model/types.ts`): `atkPct` (round-scoped
+  ATK% granted when the gauge is at max at the holder's OWN turn start), plus `extraSlots` and
+  `perExtraSlotAtkPct` (the clause-5 clause — additive per FILLED extra slot, capped at `extraSlots`).
+  **Leveling comes from the passive's own `levels` map** (Lv.1 declares only `atkPct`; Lv.3 adds the
+  extra slots) — the kind carries no level gate of its own.
+- **A SECOND resource** (`UnitState.extraConfectance` / `extraConfectanceMax`, resolved from the
+  passive's `extraSlots`): `gainConfectance` (`src/engine/resources.ts`) now routes gains that exceed
+  `confectanceMax` into it. **`confectanceMax` is NEVER raised** — U9 holds. `drainAllConfectance`
+  empties both pools.
+- **The trigger** (`applyTurnStartConfectanceDrain`, `src/engine/simulation.ts`) runs at each unit's
+  turn start: at max ⇒ consume both pools ⇒ set the round-scoped ATK%. The bonus is **`UnitState.roundAtkPct`,
+  cleared at every round start** ("until the end of the round") and folded into the **EXISTING in-combat
+  ATK% bucket by `statModifier`** (`src/engine/statuses.ts`) — one more source in that bucket, never a
+  parallel multiplier.
+
+**Semantics settled with the user (2026-10-09, in-game evidence):** (1) **filling** — Confectance gains
+beyond 6 flow into the extra slots (effective capacity 8 in two tiers); (2) **additive** — clause 5 is
+on top of clause 4, so **0/1/2 filled extras give +10% / +20% / +30%**; (3) the drain consumes **both**
+pools (the source says "consumes ALL points of Confectance Index", and clause 5 itself calls the extras
+"points of Confectance Index above the maximum").
+
+**Evidence status:** the *mechanism* is `[GAME]` (user-provided, source hierarchy level 1) and the
+*engine implementation* is covered by automated tests (`src/test/confectance-drain.test.ts`, 8 tests:
+clause 4, the below-max no-op, additive +10/20/30, the extra-pool cap, round-scoping, V-rank gating, the
+U9 guard, and a no-effect control). **It is NOT in-game validated** — a controlled in-game run would
+move the arithmetic from user-provided evidence to `Validated`.
 
 **Unknowns** — per-doll gain tables (outside Qiongjiu's confirmed +1 per damage event), kill bonus. (U10 — generic Confectance damage bonus: **DISPROVEN**, not modeled.) (Cap 6 and battle-start 3 are CONFIRMED for Qiongjiu with no keys; engine defaults updated — overrides remain available for alternative testing.)
 

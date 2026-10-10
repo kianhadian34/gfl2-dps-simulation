@@ -305,11 +305,16 @@ attack by 10%, up to 20%"* — with **1 point → +10%** and **2 points → +20%
 controlled test** — a controlled run would move it from user-provided evidence to `Validated`, but
 the mechanic itself is no longer open.
 
-**Implementation implication (not yet built):** the engine models Confectance as **one** capped pool
-(`confectanceMax`, hard `Math.min`). Vector's V5 state needs an **additional separate 2-slot
-resource**, gated on the passive being **Lv.3**, plus a turn-start read of how many of those slots
-are filled. **This is new engine capability — do not approximate it by raising `confectanceMax` to
-8**, which would be wrong (the normal gauge must stay capped at 6).
+**Implementation (IMPLEMENTED 2026 — engine capability):** the engine now models this GENERICALLY. A
+`turn_start_confectance_drain` `PassiveEffect` (`atkPct` + `extraSlots` + `perExtraSlotAtkPct`) fires at
+the holder's own turn start; `UnitState.extraConfectance` / `extraConfectanceMax` is a SECOND pool that
+`gainConfectance` fills from gains beyond `confectanceMax`; the granted ATK% is round-scoped
+(`UnitState.roundAtkPct`, cleared each round) and folded into the existing in-combat ATK% bucket.
+**`confectanceMax` stays 6 (U9)** — the extras are a separate pool, never a raised cap. Covered by
+`src/test/confectance-drain.test.ts` (8 tests). Semantics confirmed with the user (2026-10-09): overflow
+fills the extras; clause 5 is additive on clause 4 ⇒ **0/1/2 filled extras = +10%/+20%/+30%**; the drain
+consumes both pools. **Vector's own values are still data to be set on her passive** (§7 G4b) — the
+capability exists, her kit does not.
 
 **Incidental finding (factual, from the code):** the existing at-max condition is written
 `beforeConfectance >= state.config.confectanceMax` (`src/engine/simulation.ts:790`) — **`>=`, not
@@ -422,9 +427,9 @@ Recorded so implementation is **scoped honestly** rather than approximated. None
 |---|---|---|---|
 | G1 | **Burn tiles / Incineration tiles** (a ground-tile effect that persists, deals Burn, and grants immunity/effects) | **Not modeled.** Grid has terrain/height only; no tile effects. **The tile rules themselves are now documented** (Burn family only) in `docs/research.md` §3.23 — a community-guide transcription, `Not Tested`. | `src/engine/grid.ts`, `docs/grid.md`, `docs/research.md` §3.23 |
 | G2 | **Overheat Combustion**, **Smolder**, **Overheat**, **Accelerant**, **Apathetic Resistance**, **Extra Command**, **Emergency Support**, **Incineration** | **Not defined.** Only `overburn`, `damage_up_ii`, `blazing_assault_ii`, etc. exist. These are new statuses. | `src/data/statuses.ts` |
-| G3 | **"consumes ALL Confectance at max to gain +10% ATK for the round"** (+ per-point-above-max scaling) | **Not modeled.** Qiongjiu's at-max hook is a one-shot **Ultimate-scoped** branch (`onCastAtMaxConfectance`), not a **turn-start drain** available to any skill. Vector's is turn-start and consumes the whole gauge. | `src/engine/simulation.ts` |
-| G4 | **Turn-start "at max Confectance" trigger** (Vector's passive clause 4) | **Partly modeled.** The engine checks `beforeConfectance >= confectanceMax` **only on an Ultimate cast**. Vector's check is at **turn start** and applies to her whole kit. The *condition* exists; the *timing/scope* does not. | `src/engine/simulation.ts` |
-| G4b | **The 2 EXTRA Confectance slots** (V5-only, separate from the normal 6) that clause 5 reads | **Not modeled.** The engine has **one** capped Confectance pool (`confectanceMax`, hard `Math.min`). Vector's V5 state needs a **separate 2-slot resource** gated on the passive being Lv.3, plus a turn-start count of filled extra slots. **Do NOT approximate by raising `confectanceMax` to 8** — the normal gauge must stay capped at 6 (U9). | `src/engine/resources.ts`, `state.ts` |
+| ~~G3~~ | ~~"consumes ALL Confectance at max to gain +10% ATK for the round"~~ | **IMPLEMENTED (2026)** — generic `PassiveEffect` kind `turn_start_confectance_drain` (`atkPct`), fired at the holder's own turn start and granted as a **round-scoped** `UnitState.roundAtkPct` folded into the existing in-combat ATK% bucket. | `src/model/types.ts`, `src/engine/simulation.ts`, `src/engine/statuses.ts` |
+| ~~G4~~ | ~~Turn-start "at max Confectance" trigger~~ | **IMPLEMENTED (2026)** — `applyTurnStartConfectanceDrain` runs at each unit's turn start; the pre-existing `onCastAtMaxConfectance` hook (Ultimate-scoped) is untouched. | `src/engine/simulation.ts` |
+| ~~G4b~~ | ~~The 2 EXTRA Confectance slots (V5-only, separate from the normal 6)~~ | **IMPLEMENTED (2026)** — `UnitState.extraConfectance` / `extraConfectanceMax` (a SECOND pool); `gainConfectance` routes gains beyond `confectanceMax` into it. **`confectanceMax` is unchanged (U9)**. Clause 5 = additive per FILLED extra slot ⇒ **+10/+20/+30% for 0/1/2**. Values are data (`extraSlots`, `perExtraSlotAtkPct`), still to be set on Vector's own passive. | `src/engine/resources.ts`, `src/engine/state.ts`, `src/model/types.ts` |
 | G5 | **Fixed damage equal to 50%/80% of ATK to an AoE area around the target** (conditional on a Burn debuff) | **Partly modeled.** `fixedDamage` exists (absolute) and `percentOfAtk` exists for *statuses*; an ability-sourced **percent-of-ATK fixed AoE** is new. | `src/engine/damage.ts`, `simulation.ts` |
 | G6 | **Support Attacks that "deal Burn damage"** as a distinct category (Vector *increases their count*) | **Not modeled.** Qiongjiu's support is phase-less; "count of Support Attacks dealing Burn damage" is a new concept. | `src/engine/simulation.ts` |
 | G7 | **Cooldown reduction** (Expansion Key: −1 turn on an Ultimate) | **Not modeled.** `setCooldown` only sets absolute values. | `src/engine/cooldowns.ts` |
@@ -531,12 +536,14 @@ weapon.
    evidence.
 3. **Untile/tile mechanics** (G1, G9) — Burn/Incineration tiles are foundational to Vector's kit
    and the engine has no tile system.
-4. **Turn-start "at max Confectance" drain** (G3, G4) — the *condition* exists but is Ultimate-scoped;
-   Vector's is turn-start and consumes the whole gauge.
-5. **The 2 extra V5 Confectance slots** (G4b) — **mechanic now understood** (separate 2-slot resource
-   at V5, read by clause 5 for +10%/+20%); needs **new engine capability** for a second resource —
-   **do not** raise `confectanceMax`.
-6. **Weapon-mechanic shape gaps** (§9) — Imprint target-type/condition, weapon atk endpoints.
+4. ~~**Turn-start "at max Confectance" drain** and **the 2 extra V5 slots** (G3, G4, G4b)~~ —
+   **ENGINE IMPLEMENTED + TESTED 2026** (`turn_start_confectance_drain`; a separate extra-slot pool;
+   a round-scoped `roundAtkPct`). Not Vector-specific: her own values become **data** on her passive
+   when her kit is written. See §4.5.
+5. **Weapon-mechanic shape gaps** (§9) — Imprint target-type/condition, weapon atk endpoints.
+
+**What remains for Vector is her kit data** (passive/tiles/statuses/weapon) — the V2 capability itself
+is done.
 
 **Vector's base stats are `Validated`; nothing else here is.** The base stats are an in-game
 character-sheet read (`Validated` under the project standard, the same basis as Qiongjiu's own base

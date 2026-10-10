@@ -273,6 +273,11 @@ export function tierValue(tiers: Record<number, number>, stacks: number): number
  * 2222.95 → 2223); CritRate stays continuous (no established integer rule).
  * Only the stat fields declared by the type are consumed; character/weapon
  * data and out-of-combat panel rules are untouched.
+ *
+ * SOURCES (2026): status `stat_modifier` effects are the primary source. A round-scoped
+ * `unit.roundAtkPct` (an at-max Confectance drain — `turn_start_confectance_drain`) is folded into
+ * the SAME percentage bucket for ATK — one more source in the existing bucket, never a parallel
+ * multiplier. It is 0 for every unit that does not drain.
  */
 export function statModifier(
   unit: UnitState,
@@ -291,6 +296,9 @@ export function statModifier(
       else pct += e.value * s.stacks;
     }
   }
+  // Round-scoped ATK% from an at-max Confectance drain — one more source in the SAME percentage
+  // bucket (never a parallel multiplier). 0 for every unit that does not drain.
+  if (stat === "atk" && unit.roundAtkPct !== 0) pct += unit.roundAtkPct;
   // No modifiers → preserve the exact base/panel value (no spurious rounding).
   if (flat === 0 && pct === 0) return base;
   const combined = (base + flat) * (1 + pct);

@@ -4,7 +4,7 @@ import type { LogEvent, SimulationResult } from "../model/runtime.js";
 import type { Registry } from "../data/registry.js";
 import { rollHit } from "./damage.js";
 import { cooldownRemaining, setCooldown, tickCooldowns } from "./cooldowns.js";
-import { gainConfectance, spendConfectance } from "./resources.js";
+import { drainAllConfectance, gainConfectance, spendConfectance } from "./resources.js";
 import { attackHeightEffect, bossFootprintTiles, legalDestinations, moveCost, resolveCardinalRayTarget, resolveCardinalRayTargets, tileKey, unitDistance, type GridState } from "./grid.js";
 import {
   additiveDealtBonus,
@@ -140,6 +140,35 @@ function targetPassiveTakenMods(target: UnitState): TakenMods {
 function beginUnitRound(doll: UnitState): void {
   doll.actionBudget = 1; // one main action per round (research §3.15)
   doll.supportQuota = doll.def ? supportAttackQuota(doll.passives) : 0;
+}
+
+/**
+ * TURN-START CONFECTANCE DRAIN (2026 — Vector's Perception Block clauses 4/5, GENERIC).
+ *
+ * At the holder's OWN turn start: if the NORMAL Confectance gauge is at `confectanceMax`, the holder
+ * consumes BOTH pools and gains a ROUND-SCOPED ATK% bonus — clause 4's `atkPct`, plus clause 5's
+ * `perExtraSlotAtkPct` for each FILLED extra slot (capped at that effect's `extraSlots`; additive, so
+ * Vector's 0/1/2 filled extras give +10% / +20% / +30%). The bonus lands in the EXISTING in-combat
+ * ATK% bucket (`unit.roundAtkPct`, folded by `statModifier`) and is cleared at the next round start.
+ *
+ * The extra-slot pool is SEPARATE from the normal gauge — `confectanceMax` (U9 = 6) is NEVER raised.
+ * Effect leveling comes from the passive's own `levels` map (Lv.1 declares only `atkPct`); there is no
+ * character id anywhere here.
+ */
+function applyTurnStartConfectanceDrain(state: SimulationState, unit: UnitState): void {
+  const drains = unit.passives.filter(
+    (e): e is Extract<PassiveEffect, { kind: "turn_start_confectance_drain" }> => e.kind === "turn_start_confectance_drain",
+  );
+  if (drains.length === 0) return;
+  // "if Confectance Index is at maximum" — the NORMAL gauge (the extra pool is a separate resource).
+  if (unit.confectance < state.config.confectanceMax) return;
+  let atkPct = 0;
+  for (const e of drains) {
+    const filledExtras = Math.min(unit.extraConfectance, e.extraSlots ?? 0);
+    atkPct += e.atkPct + filledExtras * (e.perExtraSlotAtkPct ?? 0);
+  }
+  drainAllConfectance(unit);
+  unit.roundAtkPct += atkPct;
 }
 
 /** Match the attack's element AND ammo type against the target's exposed weaknesses: +10% damage and +2 stability each (research §3.5 / U20 / 2026 ammo dimension). */
@@ -1263,11 +1292,13 @@ export function simulate(scenario: Scenario, registry: Registry): SimulationResu
   for (let round = 1; round <= scenario.turns; round++) {
     state.round = round;
     // Vanguard "Shock and Awe" (2026) + Support once-per-turn recovery: per-turn trackers reset
-    // each round.
+    // each round. The round-scoped ATK% from an at-max Confectance drain is cleared here too —
+    // it lasts "until the end of the round" (no damage occurs between round end and this point).
     for (const u of state.units) {
       u.lastStabilityTurn = -1;
       u.lastHealTurn = -1;
       u.lastStabilityRecoveryTurn = -1;
+      u.roundAtkPct = 0;
     }
     // PER-ROUND ACTION ORDER (2026): `roundOrder[round]` (a permutation of the team) when
     // present, else the team order. Missing/duplicate/mistyped members are a clear error —
@@ -1280,6 +1311,9 @@ export function simulate(scenario: Scenario, registry: Registry): SimulationResu
     for (const uid of order) {
       const doll = byId.get(uid)!;
       beginUnitRound(doll);
+      // TURN-START CONFECTANCE DRAIN (2026, Vector clause 4/5): an at-max gauge is consumed at the
+      // holder's own turn start for a round-scoped ATK% bonus. No-op for units without the effect.
+      applyTurnStartConfectanceDrain(state, doll);
       // GRID (2026): movement occurs BEFORE the action; action → move is impossible
       // (moves are only applied here); a unit may move and then voluntarily end its turn.
       if (applyScriptedMove(state, doll, round)) {
