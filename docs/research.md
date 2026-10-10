@@ -1481,7 +1481,6 @@ membership is pure distance).
 ---
 
 ### 3.33 Holder-side (enemy-side) area targeting — DEFERRED, blocked on the MVP enemy model (2026, recorded only)
-
 **Mechanic** — a status on an **enemy** whose fixed damage also hits **that enemy's nearby allies**:
 *"the holder and allies within 1 tile"* (Overburn) / *"this unit and all allied units within a
 1-tile area"* (Overheat Combustion; **V1** → 3×3).
@@ -1528,6 +1527,51 @@ MVP scope, which is why this section is deferred rather than scheduled.
 **Unknowns / not claimed** — whether the real game's enemy-side area uses the same metric/shape as
 the caster-side one; whether the area includes only enemies or also allies of the applier; and
 whether an enemy-side area could ever matter in a single-enemy fight (currently: no).
+
+---
+
+### 3.34 FK4 secondary (line) damage is counted in the totals — BUG FIX (2026, IMPLEMENTED + TESTED)
+
+**What was wrong.** Fixed Key 4 (Point of Vulnerability) turns Guide to Victory into a cardinal
+line: the FIRST enemy takes 100%, every SUBSEQUENT enemy `ceil(normal × 0.70)`. The secondary hits
+were computed correctly and logged as events — but `guideLineSecondaryHits` only pushed them to
+`state.log` and **never accumulated them**. So the secondary damage was **absent from `totals.damage`,
+`byCharacter` and `bySource`**: the simulator computed real damage to real targets and then silently
+omitted it from every reported number.
+
+**Measured (before the fix).** Same cast, same seed, only the number of line enemies varying:
+
+| Line enemies | Primary | Secondary (logged) | `totals.damage` |
+|---|---|---|---|
+| 0 | 609 | 0 | 1003 |
+| 1 | 609 | 427 | **1003** |
+| 2 | 609 | 854 | **1003** |
+
+The total never moved. **No test caught it**: `fk4-point-of-vulnerability.test.ts` asserted each
+event's `finalDamage` but never asserted `totals` for a line scenario — the events were right, the
+aggregate was wrong.
+
+**Fix.** `guideLineSecondaryHits` now RETURNS the total secondary damage, and each hit is folded into
+`state.accum` as it is logged. Two deliberate choices:
+- **No extra action.** The secondary hits belong to the SAME cast that already counted as one action,
+  so `totals.actions` must not increase. `accumulate()` would have added an action, so the damage is
+  added directly (the line cast stays **1 action** for any number of targets).
+- **Same source bucket.** The damage lands under the PRIMARY's `SourceKind` (the active skill), not
+  `"passive"` — otherwise `bySource` would misattribute it.
+
+**Verified after the fix:** each additional line enemy adds **exactly** its secondary damage to the
+totals (0 → 1003, 1 → 1430, 2 → 1857), `actions` stays 1, and `bySource.active` = 609 + 854 = 1463.
+A **mutation check** confirmed the two new regression tests FAIL when the accumulation is removed
+and pass when it is present — they genuinely pin the bug rather than merely describing the code.
+
+**Evidence status** — the *line behaviour and the 100%/70% split* were already **Validated in-game
+2026** (checklist row 42); this fix does not change any of that, it corrects only how the resulting
+damage is AGGREGATED. The aggregation itself is an engine-accounting matter, covered by tests.
+
+**Unknowns / not claimed** — whether the game's own damage report counts line secondaries the same
+way (the simulator's totals are its own reporting convention); and whether any OTHER multi-target
+path has the same omission (checked: the reactive-damage path returns its total to its caller, and
+the status-tick path already calls `accumulateDamage` — FK4's line was the only silent one found).
 
 ---
 

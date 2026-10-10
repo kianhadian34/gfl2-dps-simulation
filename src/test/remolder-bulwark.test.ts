@@ -178,7 +178,7 @@ function gridWith(enemyCoords: { x: number; y: number }[]) {
     size: 15,
     units: [{ unitId: "u", coord: at(2, 2) }],
     boss: { center: at(7, 7), footprintSide: 3 },
-    enemyUnits: enemyCoords.map((coord, i) => ({ unitId: `e${i}`, coord, hp: 100, defense: 0, stability: 10 })),
+    enemyUnits: enemyCoords.map((coord, i) => ({ unitId: `e${i}`, coord, defense: 0 })),
   });
 }
 test("B15: Breakout Countermeasures — >=2 enemies within 3 tiles (enemy-count gate)", () => {

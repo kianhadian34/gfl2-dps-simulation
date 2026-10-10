@@ -108,18 +108,26 @@ export interface GridConfig {
   units: UnitPlacement[];
   boss: BossPlacement;
   /**
-   * Additional single-tile ENEMY targets on the grid (Fixed Key 4: Point of Vulnerability line
-   * validation; MVP the training dummy is the boss enemy). Each is a 1×1 enemy with its own
-   * DEF/stability/element weaknesses — hit by line attacks only; no statuses, no AWU.
+   * Additional single-tile ENEMY targets on the grid — LINE-ATTACK PROPS (Fixed Key 4: Point of
+   * Vulnerability; the MVP training dummy is the boss enemy). Each is a 1×1 enemy placed at a tile
+   * and hit by cardinal line attacks only.
+   *
+   * They are **props, not combatants** (2026): the engine reads ONLY their POSITION, `defense` and
+   * `weaknesses` — enough to resolve a hit. There is **no HP tracking, no stability, no death and
+   * no removal**: a line enemy can never be damaged to 0 or break, so no such fields exist. They DO
+   * carry statuses (per-enemy `GridState.enemyStatuses`, e.g. a secondary Guide target receiving
+   * Overburn) — the earlier "no statuses" note here was stale and is corrected.
+   *
+   * Making them real combatants (HP/death/stability) is a recorded, deferred gap — it is also what
+   * blocks holder-side area targeting (`docs/research.md` §3.33; `docs/dolls/vector.md` G14/G15).
    */
   enemyUnits?: Array<{
     unitId: string;
     coord: GridCoord;
-    hp: number;
+    /** Per-enemy DEF for the hit (each line target has its own). */
     defense: number;
-    stability: number;
+    /** Per-enemy element weaknesses (the hit's own weakness multiplier). */
     weaknesses?: Element[];
-    weaknessTags?: string[];
   }>;
   /** Terrain: tiles elevated to High Ground (default Ground). */
   highTiles?: GridCoord[];

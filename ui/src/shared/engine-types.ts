@@ -414,8 +414,8 @@ export interface GridConfigView {
   size: number;
   units: UnitPlacementView[];
   boss: BossPlacementView;
-  /** Additional single-tile enemy line targets (Fixed Key 4: Point of Vulnerability). */
-  enemyUnits?: Array<{ unitId: string; coord: GridCoordView; hp: number; defense: number; stability: number; weaknesses?: Element[]; weaknessTags?: string[] }>;
+  /** Additional single-tile enemy LINE targets (Fixed Key 4: Point of Vulnerability). Props, not combatants: the engine reads only position/defense/weaknesses (no HP/stability/death — see the engine's GridConfig doc). */
+  enemyUnits?: Array<{ unitId: string; coord: GridCoordView; defense: number; weaknesses?: Element[] }>;
   highTiles?: GridCoordView[];
   ladders?: LadderView[];
   blockedTiles?: { coord: GridCoordView }[];

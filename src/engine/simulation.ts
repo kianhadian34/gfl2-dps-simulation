@@ -270,6 +270,11 @@ function conditionalDealtBonus(actor: UnitState, target: UnitState, when: "targe
  * statuses (Overburn) through the generic status system, and V2's guaranteed crit applies per
  * target (each secondary carries its own statuses). Deterministic: `critRate` 0/1 short-circuit
  * the RNG (no stream consumption).
+ *
+ * The secondary hits are REAL damage to REAL targets, so this function ALSO folds them into the
+ * reported totals — they belong to the SAME action (the cast that already counted once), which is
+ * why they are accumulated WITHOUT another action increment. Before 2026 this damage was computed
+ * and logged but never reached the totals, so every FK4 line hit under-reported total damage.
  */
 function guideLineSecondaryHits(
   state: SimulationState,
@@ -347,6 +352,17 @@ function guideLineSecondaryHits(
       statusTick: undefined,
       confectance: undefined,
     };
+    // Fold the secondary hit into the reported totals (2026 fix). It is real damage to a real
+    // target; `accumulate` would wrongly add an ACTION, so the damage is added directly under the
+    // SAME action/source the cast already reported. `bySource` stays consistent with the primary.
+    const secondaryDmg = secEv.finalDamage;
+    state.accum.damage += secondaryDmg;
+    const charAcc = state.accum.byCharacter.get(actor.id) ?? { damage: 0, actions: 0 };
+    charAcc.damage += secondaryDmg;
+    state.accum.byCharacter.set(actor.id, charAcc);
+    const srcAcc = state.accum.bySource.get(ev.source) ?? { damage: 0, actions: 0 };
+    srcAcc.damage += secondaryDmg;
+    state.accum.bySource.set(ev.source, srcAcc);
     state.log.push(secEv);
   }
 }
