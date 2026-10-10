@@ -362,7 +362,7 @@ These 13 outcomes are the **COMPLETE Trait pool — VALIDATED in-game (2026)**: 
 - "不可驱散" (un-dispellable) flag exists: CONFIRMED.
 - Official control-type set: taunt/evasion/lure/stun: CONFIRMED (out of MVP scope, but note).
 
-**Implementation interpretation** — generic `Status` records: `id, stacks, maxStacks, duration (big-rounds), tickAt (actionEnd|roundEnd|ownTurnStart), instanceKey (caster), purgeable, statMods[], dmgMods[], stabilityMods[], hooks[]`. DoT/status-sourced fixed damage uses the EFFECT APPLIER's ATK at cast time and does **not** crit or use DEF (fixed-damage branch) — **VALIDATED 2026 (Overburn: 10% of the applier's ATK, ceiled; triggers immediately on gain, then at the end of each of the HOLDER's next two actions, then expires — sequence 198/198/198 = 594 at 1974 ATK; fixed damage bypasses ordinary Damage Reduction — 1949 → 195 vs an 80% DR effect)**. Final DMG modifiers (validated 2026): fixed damage is multiplied by **(1 + Σ Fixed DMG Buffs) × (1 − Σ Final DMG Reduction)** on the UNROUNDED value, then ceiled — implemented (2026) at both fixed-damage sites (status-sourced `applyStatusFixedDamage` and skill-sourced absolute fixed via `rollHit`). **Ownership confirmed (2026): Fixed DMG Buffs are buffs on the attacking unit/applier (the validated +10% Fixed DMG Key); Final DMG Reduction is a buff on the target being attacked (visible on the target) — matching the engine's applier-side buff / holder-side reduction sourcing.** (Terminology reclassified 2026: the earlier project label "Final DMG Increase" is the source's "Fixed DMG Buff"/"Fixed DMG Buffs"; there is no separate Final DMG Increase mechanic.) Ordinary Damage Increase/Reduction never enter this product.. **Stat modifiers (2026, engine):** the declared `stat_modifier` effect (`atk | def | hp | critRate`, `flat | pct`) is now CONSUMED: effective stat = `(base + Σflat) × (1 + Σpct)`, with ATK/HP/DEF rounded UP (validated ATK Up II: 1933 × 1.15 = 2222.95 → 2223) and CritRate continuous. Applied at hit time to the attacker's ATK/CritRate and the defender's DEF (`statModifier` in `src/engine/statuses.ts`, consumed in `dealDamageHit`). If no modifiers are active, the exact panel/base stat is preserved. HP is supported by the helper but currently has no combat consumer in the MVP. Fixed-damage applier ATK remains the panel value (per the source's "does not include conditional buffs"). **DEF Down II VALIDATED in-game (2026):** percentage DEF reduction is a `stat_modifier` (`def` pct, −30%): dummy DEF 5000 → 3500 = `5000 × (1 − 0.30)` — applied directly to the target's effective DEF (not a `damage_modifier: taken`/reduction mechanic); covered by `stat-modifier-validation.test.ts`. **Duration model (U7):** decrement at the recipient's own action end — CONFIRMED (in-game 2026-09-03); **self-applied buffs also tick at the END of the same casting action (VALIDATED 2026, Fortification Protocol / Positive Charge 3 → 2)**; the stationary target takes a minimal pass-turn each round so target-side `ownActionEnd` statuses tick naturally (§3.16).
+**Implementation interpretation** — generic `Status` records: `id, stacks, maxStacks, duration (big-rounds), tickAt (actionEnd|roundEnd|ownTurnStart), instanceKey (caster), purgeable, statMods[], dmgMods[], stabilityMods[], hooks[]`. DoT/status-sourced fixed damage uses the EFFECT APPLIER's ATK at cast time and does **not** crit or use DEF (fixed-damage branch) — **VALIDATED 2026 (Overburn: 10% of the applier's ATK, ceiled; triggers immediately on gain, then at the end of each of the HOLDER's next two actions, then expires — sequence 198/198/198 = 594 at 1974 ATK; fixed damage bypasses ordinary Damage Reduction — 1949 → 195 vs an 80% DR effect)**. Final DMG modifiers (validated 2026): fixed damage is multiplied by **(1 + Σ Fixed DMG Buffs) × (1 − Σ Final DMG Reduction)** on the UNROUNDED value, then ceiled — implemented (2026) at both fixed-damage sites (status-sourced `applyStatusFixedDamage` and skill-sourced absolute fixed via `rollHit`). **Ownership confirmed (2026): Fixed DMG Buffs are buffs on the attacking unit/applier (the validated +10% Fixed DMG Key); Final DMG Reduction is a buff on the target being attacked (visible on the target) — matching the engine's applier-side buff / holder-side reduction sourcing.** (Terminology reclassified 2026: the earlier project label "Final DMG Increase" is the source's "Fixed DMG Buff"/"Fixed DMG Buffs"; there is no separate Final DMG Increase mechanic.) Ordinary Damage Increase/Reduction never enter this product.. **Stat modifiers (2026, engine):** the declared `stat_modifier` effect (`atk | def | hp | critRate | critDmg`, `flat | pct`) is now CONSUMED: effective stat = `(base + Σflat) × (1 + Σpct)`, with ATK/HP/DEF rounded UP (validated ATK Up II: 1933 × 1.15 = 2222.95 → 2223) and the CRIT stats (`critRate`, `critDmg`) CONTINUOUS — the integer-panel rounding rule applies to ATK/HP/DEF only. Applied at hit time to the attacker's ATK/CritRate/**CritDmg** and the defender's DEF (`statModifier` in `src/engine/statuses.ts`, consumed in `dealDamageHit`). If no modifiers are active, the exact panel/base stat is preserved. HP is supported by the helper but currently has no combat consumer in the MVP. Fixed-damage applier ATK remains the panel value (per the source's "does not include conditional buffs"). **`critDmg` (added 2026 — Apathetic Resistance):** a Crit-DMG status enters the CONFIRMED crit multiplier `1 + Crit DMG` (U1/U19) through the same `statModifier` call — one more source in that stat, never a parallel crit path or a new bucket. The buff's Crit DMG is a FRACTION (`0.25` = +25%, the repo convention where `0.2` = the displayed 120%). **DEF Down II VALIDATED in-game (2026):** percentage DEF reduction is a `stat_modifier` (`def` pct, −30%): dummy DEF 5000 → 3500 = `5000 × (1 − 0.30)` — applied directly to the target's effective DEF (not a `damage_modifier: taken`/reduction mechanic); covered by `stat-modifier-validation.test.ts`. **Duration model (U7):** decrement at the recipient's own action end — CONFIRMED (in-game 2026-09-03); **self-applied buffs also tick at the END of the same casting action (VALIDATED 2026, Fortification Protocol / Positive Charge 3 → 2)**; the stationary target takes a minimal pass-turn each round so target-side `ownActionEnd` statuses tick naturally (§3.16).
 
 **Unknowns** — status-specific timings/stacking beyond the observed default (statuses with their own tick/stacking text); full element-DoT definitions for the five phase elements (only burn & corrosion are textually documented).
 
@@ -1026,6 +1026,48 @@ allows it structurally — a chain would need evidence before being relied upon)
 **Out of scope** — the wider "extra actions" topic in `docs/validation-checklist.md` §2 (that entry
 covers enemy turns / additional-action systems generally); this section records only the
 **Extra Command** grant, as implemented.
+
+---
+
+### 3.25 Apathetic Resistance — Crit DMG buff (2026, IMPLEMENTED + TESTED)
+
+**Mechanic** — a self-buff that raises the holder's **Crit DMG by 25% for 2 turns**.
+
+**Source** — Vector's **Searing Finale Lv.3 (V6)**: *"Vector gains Apathetic Resistance, lasting for
+2 turns."* The game's own effect record (`dandegate.net/effects/8980f1fb-…`) reads: *"Critical damage
+is increased by 25%. Considered a Buff, cannot be cleansed."* Duration (2 turns) and the value (25%)
+additionally confirmed by the project owner (2026-10-09). Source class: secondary (community
+database) + user-provided — **not in-game validated**.
+
+**Confidence** — `[SOURCE]`/`[GAME]` for the values; the **engine implementation** is covered by
+automated tests. **NOT in-game validated.**
+
+**Implementation interpretation** — a plain `stat_modifier` on `critDmg`, which required extending
+the stat union:
+- **`critDmg` added to `StatusEffect`'s `stat_modifier` stat union** (`src/model/types.ts`), so any
+  status can modify Crit DMG through the SAME generic stat path.
+- **`statModifier`** (`src/engine/statuses.ts`) accepts `critDmg` and keeps it **CONTINUOUS** — the
+  validated integer-panel rounding rule (ATK/HP/DEF) does **not** apply to the crit stats.
+- **The crit resolution site** (`dealDamageHit`, `src/engine/simulation.ts`) now reads BOTH crit
+  stats through `statModifier`, so the buff enters the **CONFIRMED** crit multiplier `1 + Crit DMG`
+  (U1/U19) — one more source in that stat, **no parallel crit path, no new bucket**.
+- **The status** (`src/data/statuses.ts`): `apathetic_resistance`, `category: "buff"`,
+  `durationRounds: 2`, `purgeable: false` (the source states "cannot be cleansed" — an explicit
+  immunity), effect `[{ kind: "stat_modifier", stat: "critDmg", mode: "flat", value: 0.25 }]`.
+
+**Value convention** — Crit DMG is a FRACTION: `0.25` = the +25% the source states, matching the
+repo's established `0.2` = the displayed "120% Crit DMG" (the multiplier is `1 + critDmg`).
+
+**Duration timing** — the buff is **self-applied**, so the established, in-game-VALIDATED **U7
+self-applied rule** governs (§3.10): it ticks at the END of the **same casting action**. With
+`durationRounds: 2` it therefore covers the rest of the casting turn plus the holder's NEXT turn,
+then expires. **This is inherited generic behaviour, not a re-derivation** — pinned by
+`status-timing.test.ts` and exercised by `apathetic-resistance.test.ts`.
+
+**Unknowns / not claimed** — **stacking** (the source states none; `stackable: false` with no
+invented cap); whether the buff interacts with the **Crit-Rate overflow conversion** passive
+(independent stats — no interaction is claimed); and any **cleansing** interaction beyond the stated
+immunity.
 
 ---
 

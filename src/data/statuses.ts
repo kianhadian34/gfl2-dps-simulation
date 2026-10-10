@@ -468,6 +468,25 @@ export const STATUS_DEFS: StatusDef[] = [
     verified: false,
     note: "Vector's Searing Finale Lv.1 — 'Vector gains Extra Command'. Semantics confirmed with the project owner 2026-10-09: the holder acts again (e.g. Ultimate, then Skill 1/2 or Basic) and CANNOT move during the extra action. One extra action per stack; the engine consumes one instance per extra action. NOT in-game validated.",
   },
+  {
+    id: "apathetic_resistance",
+    name: "Apathetic Resistance",
+    // The source record classifies it "Considered a Buff".
+    category: "buff",
+    // Stacking is not stated by the source; `stackable: false` + no `maxStacks` (the type's rule:
+    // never invent a cap) keeps exactly one instance, which is all the evidence supports.
+    stackable: false,
+    durationRounds: 2,
+    tickAt: "ownActionEnd",
+    // The source record states "cannot be cleansed" — an explicit immunity, unlike Extra Command.
+    purgeable: false,
+    // +25% Crit DMG as a FRACTION (0.25), flat — the same shape as the +10% Crit Rate trait buff.
+    // Enters the confirmed crit multiplier `1 + Crit DMG` through the ONE statModifier path.
+    effects: [{ kind: "stat_modifier", stat: "critDmg", mode: "flat", value: 0.25 }],
+    playerDescription: "Critical Damage +25% for 2 turns.",
+    verified: true,
+    note: "Vector's Searing Finale Lv.3 (V6) — 'Vector gains Apathetic Resistance, lasting for 2 turns'. Value from the game's own effect record ('Critical damage is increased by 25%. Considered a Buff, cannot be cleansed.') plus user-provided in-game evidence (2 turns, 25%). NOT tested in a controlled in-game run.",
+  },
 ];
 
 export function statusMap(): Map<string, StatusDef> {

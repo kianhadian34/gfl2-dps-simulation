@@ -597,8 +597,15 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   const reductionMult = mult * red * targetMods.multiplicative;
   // Confirmed rule (U1 + U19): crit multiplier = 1 + attacker Crit DMG, where Crit DMG
   // includes any passive overflow conversion; effective Crit Rate caps at 100%.
+  // Both crit stats read through the ONE `statModifier` path, so a status `stat_modifier`
+  // (e.g. Apathetic Resistance: Crit DMG +25%) enters the same confirmed multiplier — one more
+  // source in that stat, never a parallel crit path.
   // configOverrides.critMultiplier is a test-only alternative hypothesis.
-  const crit = resolveCritStats(statModifier(actor, state.statusRegistry, "critRate", actor.critRate), actor.critDmg, passiveEffects(actor));
+  const crit = resolveCritStats(
+    statModifier(actor, state.statusRegistry, "critRate", actor.critRate),
+    statModifier(actor, state.statusRegistry, "critDmg", actor.critDmg),
+    passiveEffects(actor),
+  );
   // Guide V2 (VALIDATED 2026): the target already carries `guaranteedCritWhenHasStatus` at
   // attack resolution ⇒ this attack's Crit Rate is +100% (always critical). Enforced through
   // the EXISTING crit machinery (rate = 1 ≤ the 100% cap ⇒ a normal crit with zero overflow,

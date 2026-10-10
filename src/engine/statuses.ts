@@ -270,7 +270,8 @@ export function tierValue(tiers: Record<number, number>, stacks: number): number
  * Effective combat stat from active `stat_modifier` status effects (2026):
  *   effective = (baseStat + Σ flat) × (1 + Σ pct)
  * ATK/HP/DEF are rounded UP (validated 2026 — e.g. ATK Up II: 1933 × 1.15 =
- * 2222.95 → 2223); CritRate stays continuous (no established integer rule).
+ * 2222.95 → 2223); CritRate and CritDmg stay continuous (no established integer rule — the
+ * integer-panel rounding applies to ATK/HP/DEF only).
  * Only the stat fields declared by the type are consumed; character/weapon
  * data and out-of-combat panel rules are untouched.
  *
@@ -282,7 +283,7 @@ export function tierValue(tiers: Record<number, number>, stacks: number): number
 export function statModifier(
   unit: UnitState,
   statusRegistry: Map<string, EffectiveStatusDef>,
-  stat: "atk" | "def" | "hp" | "critRate",
+  stat: "atk" | "def" | "hp" | "critRate" | "critDmg",
   base: number,
 ): number {
   let flat = 0;
@@ -302,7 +303,8 @@ export function statModifier(
   // No modifiers → preserve the exact base/panel value (no spurious rounding).
   if (flat === 0 && pct === 0) return base;
   const combined = (base + flat) * (1 + pct);
-  return stat === "critRate" ? combined : Math.ceil(Math.round(combined * 1e6) / 1e6);
+  // Crit stats stay continuous; ATK/HP/DEF follow the validated integer-panel rule.
+  return stat === "critRate" || stat === "critDmg" ? combined : Math.ceil(Math.round(combined * 1e6) / 1e6);
 }
 
 /**

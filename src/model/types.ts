@@ -1122,7 +1122,17 @@ export interface AttachmentLoadout {
 }
 
 export type StatusEffect =
-  | { kind: "stat_modifier"; stat: "atk" | "def" | "hp" | "critRate"; mode: "flat" | "pct"; value: number }
+  | {
+      kind: "stat_modifier";
+      /**
+       * `critRate` and `critDmg` are FRACTIONS (0.2 = 120% displayed), added by `flat` or scaled by
+       * `pct` exactly like the other stats; they stay CONTINUOUS (the integer-panel rounding rule
+       * applies to ATK/HP/DEF only). `critDmg` enters the confirmed crit multiplier `1 + Crit DMG`.
+       */
+      stat: "atk" | "def" | "hp" | "critRate" | "critDmg";
+      mode: "flat" | "pct";
+      value: number;
+    }
   | {
       kind: "damage_modifier";
       scope: "dealt" | "taken";

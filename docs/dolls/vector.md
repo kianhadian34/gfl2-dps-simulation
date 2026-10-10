@@ -237,6 +237,12 @@ so it is implementable ahead of V3.
 > 15%** and **every Burn buff increases damage dealt by 5%**. Vector gains **Apathetic Resistance**,
 > lasting for **2 turns**.
 
+**"Apathetic Resistance" — IMPLEMENTED 2026.** Crit DMG **+25% for 2 turns**, un-cleansable — the
+`apathetic_resistance` status. Note the V6 line also raises **Accelerant's own** crit damage by 15%
+(an Accelerant upgrade, not this buff) and needs the Burn-buff count-scaling gate, still a V4 gap.
+Full semantics: `docs/research.md` **§3.25**. This clause needs **no tile system**, so it is
+implementable ahead of V3.
+
 **Note the Ultimate here IS damaging** (60% AoE) — it is *not* a buff-only ultimate like Qiongjiu's.
 It carries an explicit Burn phase, a Stability value (1), and a cooldown (4).
 
@@ -478,11 +484,11 @@ not prose transcription. Source class: **secondary (community database)** — hi
 | 6 | **Accelerant** | Attack/Buff/Burn | ❌ | *Burn damage dealt* **+10%**, plus 1 instance of **fixed dmg 20% of ATK** (cannot be cleansed) · **V2:** **+30%** · **V6:** *per Burn buff* **+5% dealt**, **+30%**, **crit dmg +15%**, fixed 20% |
 | 7 | **Extra Command** | — | **✅ `extra_command` (IMPLEMENTED 2026)** | "Commands other than movement can be executed." — an **extra main action** in the same unit-turn, no movement |
 | 8 | **Emergency Support** | — | ❌ | "Performs a Support Attack." |
-| 9 | **Apathetic Resistance** | Attack/Buff | ❌ | **Crit damage +25%** (cannot be cleansed) |
+| 9 | **Apathetic Resistance** | Attack/Buff | **✅ `apathetic_resistance` (IMPLEMENTED 2026)** | **Crit damage +25%**, 2 turns (cannot be cleansed) |
 | 10 | **Incineration** | Burn/Debuff | ❌ | the **Burn tile**: Burn weakness; applies **Overburn + Conflagration** to enemies remaining in the area at action end, 2 turns |
 
-**Score: 2 of 10 existed; 3 of 10 now exist** (`overburn`, `blazing_assault_ii`, and
-`extra_command` — the last IMPLEMENTED 2026, see §3.24 of `docs/research.md`).
+**Score: 2 of 10 existed; 4 of 10 now exist** (`overburn`, `blazing_assault_ii`, `extra_command` and
+`apathetic_resistance` — the last two IMPLEMENTED 2026; see `docs/research.md` §3.24/§3.25).
 
 #### Two record corrections this inventory forces
 
@@ -502,7 +508,7 @@ not prose transcription. Source class: **secondary (community database)** — hi
 
 | Gap | Engine today | Needed by |
 |---|---|---|
-| **`critDmg` on `stat_modifier`** | stats are `atk \| def \| hp \| critRate` only | Apathetic Resistance; Accelerant V6 |
+| ~~**`critDmg` on `stat_modifier`**~~ | ~~stats are `atk \| def \| hp \| critRate` only~~ — **DONE 2026** | ~~Apathetic Resistance~~; **still needed by Accelerant V6** (+15% Crit DMG) |
 | **Per-element gate on a damage modifier** | `damage_modifier.whenPhase` is only *phase vs phase-less*; only `stack_tier_modifier.when.element` is per-element | Overheat Combustion V1 (Burn dmg *taken* +30%); Accelerant (*dealt* +10%) |
 | **Start-of-action status tick** | `tickAt` is `ownActionEnd \| roundEnd` only | Overheat Combustion (fires at the holder's action **start**) |
 | **Count-by-classification scaling** ("for every Burn debuff/buff") | no such scaling exists | Smolder V4 (+3% taken per Burn debuff); Accelerant V6 (+5% dealt per Burn buff) |
@@ -515,8 +521,16 @@ not prose transcription. Source class: **secondary (community database)** — hi
 |---|---|
 | **Skill denial / "Command Prohibition"** — nothing blocks ability use; `pickAction` needs a gate | Overheat |
 | **Per-attack extra fixed-damage instance** (not a status tick) | Accelerant |
-| **Extra actions** — explicitly **out of MVP scope** (`docs/validation-checklist.md` §2) | Extra Command |
-| ~~**Extra Command — extra main actions**~~ | **IMPLEMENTED 2026** — `StatusEffect` kind `extra_action` + the `extra_command` status + an action loop in the turn loop. See `docs/research.md` §3.24. |
+
+**Resolved in this batch (no longer gaps):**
+- ~~**`critDmg` on `stat_modifier`**~~ — **IMPLEMENTED 2026**: added to the stat union and routed
+  through the ONE `statModifier` path into the confirmed `1 + Crit DMG` multiplier. Unblocked
+  **Apathetic Resistance**. See `docs/research.md` §3.25.
+- ~~**Apathetic Resistance** (Crit DMG +25%, 2 turns)~~ — **IMPLEMENTED 2026** as the
+  `apathetic_resistance` status. `docs/research.md` §3.25.
+- ~~**Extra Command** (extra main actions)~~ — **IMPLEMENTED 2026** via the `extra_action` status
+  effect and an action loop. `docs/research.md` §3.24. *(The **wider** additional-action /
+  enemy-turn topic remains out of MVP scope — `docs/validation-checklist.md` §2.)*
 
 **d) V3-coupled (tiles) — belongs to V3, not V4:** **Incineration** itself, plus the
 tile-*generation* clauses of Smolder and Overheat Combustion V5. Vector's tiles also apply
@@ -612,12 +626,12 @@ weapon.
 **Blocking (must be resolved before implementation):**
 
 1. ~~**Base stats** (§3) — in-game character sheet required.~~ **RESOLVED 2026-10-09.**
-2. **New statuses** (G2) — **7 of Vector's 10 referenced effects remain undefined** (`overburn`,
-   `blazing_assault_ii`, and now `extra_command` exist); the authoritative inventory, their upgrade
-   variants, and the exact capability gaps are recorded in **§7.1**.
-   Several need new engine vocabulary (`critDmg` stat, per-element damage gate, start-of-action tick,
-   count-by-classification scaling, all-allies targeting), one needs a genuinely new mechanic (skill
-   denial), and the V3-coupled tile clauses remain.
+2. **New statuses** (G2) — **6 of Vector's 10 referenced effects remain undefined** (`overburn`,
+   `blazing_assault_ii`, `extra_command`, and now `apathetic_resistance` exist); the authoritative
+   inventory, their upgrade variants, and the exact capability gaps are recorded in **§7.1**.
+   Remaining vocabulary needs: per-element damage gate, start-of-action tick,
+   count-by-classification scaling, all-allies targeting, support-trigger vocabulary; plus one
+   genuinely new mechanic (skill denial) and the V3-coupled tile clauses.
 3. **Untile/tile mechanics** (G1, G9) — Burn/Incineration tiles are foundational to Vector's kit
    and the engine has no tile system.
 4. ~~**Turn-start "at max Confectance" drain** and **the 2 extra V5 slots** (G3, G4, G4b)~~ —
