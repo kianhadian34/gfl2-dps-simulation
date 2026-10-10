@@ -239,7 +239,8 @@ so it is implementable ahead of V3.
 
 **"Apathetic Resistance" — IMPLEMENTED 2026.** Crit DMG **+25% for 2 turns**, un-cleansable — the
 `apathetic_resistance` status. Note the V6 line also raises **Accelerant's own** crit damage by 15%
-(an Accelerant upgrade, not this buff) and needs the Burn-buff count-scaling gate, still a V4 gap.
+(an Accelerant upgrade, not this buff); the Burn-buff count-scaling it needs is now **DONE 2026**
+(`docs/research.md` §3.29 — Accelerant itself is still undefined).
 Full semantics: `docs/research.md` **§3.25**. This clause needs **no tile system**, so it is
 implementable ahead of V3.
 
@@ -479,9 +480,9 @@ not prose transcription. Source class: **secondary (community database)** — hi
 | 1 | **Overburn** | Burn/Debuff | ✅ `overburn` | fixed dmg **10%** of applier ATK, on gain + at action end, to the holder *and allies within 1 tile* |
 | 2 | **Blazing Assault II** | Attack/Buff/Burn | ✅ `blazing_assault_ii` | **ATK +15%** |
 | 3 | **Overheat Combustion** | Burn/Debuff | ❌ *(its **tick point** is supported — `ownActionStart` §3.27; its **"all allied units within a 1-tile area"** clause needs AREA targeting, which `all_allies` (§3.28) does **not** provide — that is the whole team, not a 1-tile radius)* | fixed dmg **20%** of applier ATK, on gain + **at the start of the holder's action**, to the holder *and allies within a 1-tile area* · **V1:** *Burn damage taken* **+30%**, area → **3×3** · **V5:** Burn dmg taken +30%, area 3×3, **30%**, and **at action end generates Incineration tiles within 1 tile** |
-| 4 | **Smolder** | Burn/Debuff | ❌ | **on taking Burn damage** → generates **Incineration tiles within 3 tiles**, 2 turns (cannot be cleansed) · **V4:** *for every Burn debuff*, **damage taken +3%** |
+| 4 | **Smolder** | Burn/Debuff | ❌ *(its **V4 count clause** "for every Burn debuff, damage taken +3%" is now **supported** — `damage_modifier.perMatching` §3.29; its tile generation is not)* | **on taking Burn damage** → generates **Incineration tiles within 3 tiles**, 2 turns (cannot be cleansed) · **V4:** *for every Burn debuff*, **damage taken +3%** |
 | 5 | **Overheat** | Burn/Debuff | ❌ | **"Command Prohibition, disallows the use of active skills."** |
-| 6 | **Accelerant** | Attack/Buff/Burn | ❌ | *Burn damage dealt* **+10%**, plus 1 instance of **fixed dmg 20% of ATK** (cannot be cleansed) · **V2:** **+30%** · **V6:** *per Burn buff* **+5% dealt**, **+30%**, **crit dmg +15%**, fixed 20% |
+| 6 | **Accelerant** | Attack/Buff/Burn | ❌ *(its **V6 count clause** "per Burn buff, damage dealt +5%" is now **supported** — `damage_modifier.perMatching` §3.29; its fixed-damage instance is not. NOTE: its **Burn affiliation** is now declared as `StatusDef.element` on other statuses, not on Accelerant itself — Accelerant is still undefined)* | *Burn damage dealt* **+10%**, plus 1 instance of **fixed dmg 20% of ATK** (cannot be cleansed) · **V2:** **+30%** · **V6:** *per Burn buff* **+5% dealt**, **+30%**, **crit dmg +15%**, fixed 20% |
 | 7 | **Extra Command** | — | **✅ `extra_command` (IMPLEMENTED 2026)** | "Commands other than movement can be executed." — an **extra main action** in the same unit-turn, no movement |
 | 8 | **Emergency Support** | — | ❌ | "Performs a Support Attack." |
 | 9 | **Apathetic Resistance** | Attack/Buff | **✅ `apathetic_resistance` (IMPLEMENTED 2026)** | **Crit damage +25%**, 2 turns (cannot be cleansed) |
@@ -511,7 +512,7 @@ not prose transcription. Source class: **secondary (community database)** — hi
 | ~~**`critDmg` on `stat_modifier`**~~ | ~~stats are `atk \| def \| hp \| critRate` only~~ — **DONE 2026** | ~~Apathetic Resistance~~; **still needed by Accelerant V6** (+15% Crit DMG) |
 | ~~**Per-element gate on a damage modifier**~~ | ~~`damage_modifier.whenPhase` is only *phase vs phase-less*; only `stack_tier_modifier.when.element` is per-element~~ — **DONE 2026** (`whenElement`, both scopes + both modes; `docs/research.md` §3.26) | ~~Overheat Combustion V1 (Burn dmg *taken* +30%)~~; ~~Accelerant (*dealt* +10%)~~ — **the gate is done; those statuses still need other pieces** (see below) |
 | ~~**Start-of-action status tick**~~ | ~~`tickAt` is `ownActionEnd \| roundEnd` only~~ — **DONE 2026** (`ownActionStart`, a third point; `docs/research.md` §3.27) | ~~Overheat Combustion (fires at the holder's action **start**)~~ — **the tick point is done; that status still needs other pieces** (see below) |
-| **Count-by-classification scaling** ("for every Burn debuff/buff") | no such scaling exists | Smolder V4 (+3% taken per Burn debuff); Accelerant V6 (+5% dealt per Burn buff) |
+| ~~**Count-by-classification scaling** ("for every Burn debuff/buff")~~ | ~~no such scaling exists~~ — **DONE 2026** (`damage_modifier.perMatching` + `StatusDef.element`; `docs/research.md` §3.29) | ~~Smolder V4 (+3% taken per Burn debuff); Accelerant V6 (+5% dealt per Burn buff)~~ — **the scaling is done; both statuses still need their other pieces** (Smolder needs tile generation; Accelerant needs its fixed-damage instance). Both clauses are **Not Tested** (the self-counting question in §3.29 is open) |
 | **Support-trigger vocabulary** | the only trigger is `onAllySingleTargetHit` | Emergency Support / FK6 |
 | ~~**All-allies status targeting**~~ | ~~`StatusApplySpec.target` is `self \| target`~~ — **DONE 2026** (`all_allies`, every team member incl. the caster; `docs/research.md` §3.28) | ~~Ultimate applies Accelerant + Blazing Assault II to **all allies**~~ — **the targeting is done; those statuses still need their own definitions** (Accelerant needs the Burn-dealt gate + a fixed instance; Blazing Assault II already exists) |
 
@@ -643,10 +644,10 @@ weapon.
 2. **New statuses** (G2) — **6 of Vector's 10 referenced effects remain undefined** (`overburn`,
    `blazing_assault_ii`, `extra_command`, and now `apathetic_resistance` exist); the authoritative
    inventory, their upgrade variants, and the exact capability gaps are recorded in **§7.1**.
-   Remaining vocabulary needs: count-by-classification scaling and support-trigger vocabulary; plus
-   one genuinely new mechanic (skill denial) and the V3-coupled tile clauses.
-   *(The **per-element gate**, the **start-of-action tick** and **all-allies targeting** are now DONE
-   — §7.1.)*
+   Remaining vocabulary needs: **support-trigger vocabulary**; plus one genuinely new mechanic
+   (skill denial) and the V3-coupled tile clauses.
+   *(The **per-element gate**, the **start-of-action tick**, **all-allies targeting** and
+   **count-by-classification scaling** are now DONE — §7.1.)*
 3. **Untile/tile mechanics** (G1, G9) — Burn/Incineration tiles are foundational to Vector's kit
    and the engine has no tile system.
 4. ~~**Turn-start "at max Confectance" drain** and **the 2 extra V5 slots** (G3, G4, G4b)~~ —

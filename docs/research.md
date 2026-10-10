@@ -1202,6 +1202,70 @@ conflate them).
 
 ---
 
+### 3.29 Count-by-classification scaling (`damage_modifier.perMatching`) — 2026, IMPLEMENTED + TESTED
+
+**Mechanic** — a damage modifier may scale by **how many statuses of a given element + buff/debuff
+classification are active on the unit being scanned**: *"for every Burn debuff …"*, *"every Burn
+buff …"*.
+
+**Source** — Vector's two clauses:
+- **Smolder V4** — *"Each **Burn debuff** increases damage taken by **3%**"* (TAKEN side).
+- **Accelerant V6** — *"every **Burn buff** increases damage dealt by **5%**"* (DEALT side).
+
+Neither status is **implemented here** — this section records the **vocabulary** they need. It is
+deliberately generic (element + category), with no Vector- or Burn-specific branch in the engine.
+
+**Implementation interpretation** — `damage_modifier` gained an optional
+`perMatching?: { element: Element; category: "buff" | "debuff" }`. When present, the modifier's
+`value` is multiplied by the **count** returned by the new generic helper
+`countMatchingStatuses(unit, statusRegistry, match)` (`src/engine/statuses.ts`):
+
+- **The count is over the unit the modifier already scans**, so no new scanning target exists.
+  `additiveDealtBonus` scans the **holder's** own statuses ⇒ Accelerant V6 counts **the holder's**
+  Burn buffs. `additiveTakenBonus` / `multiplicativeTakenMods` scan the **target's** own statuses
+  ⇒ Smolder V4 counts **the target's** Burn debuffs.
+- **Counted PER STATUS, never per stack.** The wording is "every Burn buff" / "each Burn debuff",
+  so a single 3-stack Burn debuff is **ONE** Burn debuff (not three). This is distinct from the
+  existing `stacks` multiplier, which still applies to the base value: the total is
+  `value × stacks × count`.
+- **NO self-exclusion.** The source states no exception, so a status that is **itself** classified
+  Burn counts toward its own clause — Accelerant is *"Attack/Buff/Burn"*, so Accelerant alone
+  yields **+5%**; Smolder is *"Burn/Debuff"*, so Smolder alone yields **+3%**. (Project owner,
+  2026-10-10: literal reading over an invented "other than itself" rule.) **The numeric outcome of
+  that self-counting is NOT in-game validated** — see the unknowns below.
+- **Honored on BOTH scopes and BOTH modes** — including the multiplicative branch
+  (`value ^ (stacks × count)`), so a declared `perMatching` is never silently ignored.
+- **Absent `perMatching` = existing behavior** (value applies once); a count of 0 contributes 0.
+
+**Classification data — `StatusDef.element` (2026).** The count needs a machine-readable element
+**classification**, which did not exist. `StatusDef` gained `element?: Element | null`
+("element affiliation"), kept deliberately **separate** from the existing `phase` field:
+- `phase` answers one narrow, already-VALIDATED question — *"is this a Phase-attribute **debuff**?"*
+  — and is consumed by the attachment-set `targetPhaseDebuff` gate (Phase Strike). Overloading it
+  for Burn **buffs** would make an ATK buff satisfy that gate and regress it.
+- `element` is the broader tag a status carries **regardless of direction**: Blazing Assault II is
+  an ATK **buff** that is nonetheless a **Burn** status (*"Attack/Buff/Burn"*).
+- **Populated only where the source record states the classification** — Vector's status inventory
+  **Tags** column (`docs/dolls/vector.md` §7.1). Currently **exactly two** statuses:
+  `overburn` (*"Burn/Debuff"*) and `blazing_assault_ii` (*"Attack/Buff/Burn"*). Every other status
+  has no affiliation (**do not invent one**) — asserted by test.
+
+**Evidence status** — the *clause semantics* are `[SOURCE]` (secondary, community database,
+hierarchy level 5); the *implementation* is covered by automated tests. **NOT in-game validated.**
+Covered by `src/test/count-by-classification.test.ts` (14 tests: dealt + taken counts, per-status
+not per-stack, element AND category must both match, self-counting, the multiplicative branch,
+no-`perMatching` and zero-match controls, the helper, the two-status production-data guard, the
+`element`-vs-`phase` separation guard, and a fixture-leak guard).
+
+**Unknowns / not claimed** — whether the self-counting status really contributes its own +5%/+3%
+(needs in-game testing; the literal wording says yes, an "other than itself" rule would say no);
+whether the count is evaluated **at the moment of the hit** (the implementation reads live status
+state) or snapshotted at application; whether **non-Burn** elements ever use this scaling (the
+vocabulary is generic, the data is not); and whether Smolder's *tile-generation* clause or
+Accelerant's *fixed-damage instance* (both still unimplemented) interact with the count.
+
+---
+
 ## 4. Uncertainty register
 
 Every mechanic that is still uncertain, with impact and resolution path. **None of these should be hardcoded as facts in the engine — all are config defaults pending the in-game test plan (§5).**

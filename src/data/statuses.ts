@@ -98,6 +98,10 @@ export const STATUS_DEFS: StatusDef[] = [
     // target carrying it satisfies the Phase Strike `targetPhaseDebuff` gate. No other status is
     // given a phase attribute (unestablished — do not invent).
     phase: "burn",
+    // ELEMENT AFFILIATION (2026): Overburn is a *Burn* status (Vector's status inventory Tags
+    // column, `docs/dolls/vector.md` §7.1 — "Burn/Debuff"). Distinct from `phase` above: this is
+    // the classification the count-by-classification scaling ("for every Burn debuff") consumes.
+    element: "burn",
     note: "Validated in-game (2026): applier-ATK 1974 → 198 per trigger; sequence apply + holder action-end ×2 = 594, then expires (see docs/research.md §3.10)",
   },
   {
@@ -246,6 +250,12 @@ export const STATUS_DEFS: StatusDef[] = [
     purgeable: true,
     effects: [{ kind: "stat_modifier", stat: "atk", mode: "pct", value: 0.15 }],
     playerDescription: "Increases ATK by 15%.",
+    // ELEMENT AFFILIATION (2026): Blazing Assault II is classified as a *Burn* status even though
+    // it is a BUFF (Vector's status inventory Tags column, `docs/dolls/vector.md` §7.1 —
+    // "Attack/Buff/Burn"). This is why `element` is separate from `phase`: `phase` is a validated
+    // Phase-attribute-DEBUFF marker consumed by the Phase Strike gate, and overloading it here
+    // would make this ATK buff satisfy that gate.
+    element: "burn",
     verified: true,
     note: "Fixed Key 5 Necessary Adjustments self-buff (VALIDATED in-game 2026: +15% ATK, Burn-buff classification, 2 turns; the triggering Common Rail already uses the +15% ATK).",
   },

@@ -174,9 +174,13 @@ export function additiveDealtBonus(
         // must be in the list. `null` in the list matches a phase-less hit — the same OR-list
         // semantics as the attachment-set / Remolder element gates.
         if (e.whenElement !== undefined && !e.whenElement.includes(element)) continue;
+        // COUNT-BY-CLASSIFICATION (2026, "every Burn buff increases damage dealt by 5%" —
+        // Accelerant V6): the value applies ONCE PER MATCHING STATUS on the HOLDER (this side
+        // scans the holder's own statuses), so `value × count`. Absent = no scaling.
+        const countMult = e.perMatching ? countMatchingStatuses(unit, statusRegistry, e.perMatching) : 1;
         // scaleWithStacks === false → the bonus applies ONCE per status (Support Boost I:
         // stacks are remaining activations, NOT a magnitude multiplier — VALIDATED 2026).
-        sum += def.scaleWithStacks === false ? e.value : e.value * s.stacks;
+        sum += (def.scaleWithStacks === false ? e.value : e.value * s.stacks) * countMult;
       }
       if (e.kind === "stack_tier_modifier" && e.scope === "dealt") {
         if (e.when && e.when.element && !e.when.element.includes(element)) continue;
@@ -186,6 +190,32 @@ export function additiveDealtBonus(
   }
   // PATTERN REMOLDER (2026): permanent modifiers enter the SAME additive DMG% dealt bucket.
   return sum + remolderDealtBonus(unit, { element, supportAttack: ctx.supportAttack, targetExposed: ctx.targetExposed, isAoE: ctx.isAoE ?? false, skillType: ctx.skillType ?? "basic", isBoss: ctx.isBoss ?? false, distance: ctx.distance });
+}
+
+/**
+ * Count the unit's ACTIVE statuses matching an element affiliation + buff/debuff category
+ * (2026) — the generic "for every Burn debuff" / "per Burn buff" count used by
+ * `damage_modifier.perMatching`. Counted PER STATUS, never per stack: a 3-stack Burn debuff
+ * is ONE Burn debuff, matching the wording. Classification is read purely from data
+ * (`StatusDef.element` + `StatusDef.category`) — no ids, names, or character branches.
+ *
+ * NO self-exclusion: the wording is "every Burn buff" / "each Burn debuff" with no exception,
+ * so a status that is itself classified Burn counts toward its own clause (Accelerant is
+ * "Attack/Buff/Burn", so Accelerant alone ⇒ +5%; Smolder is "Burn/Debuff", so Smolder alone
+ * ⇒ +3%). Assumption-free literal reading — the numeric outcome is Not Tested.
+ */
+export function countMatchingStatuses(
+  unit: UnitState,
+  statusRegistry: Map<string, EffectiveStatusDef>,
+  match: { element: Element; category: "buff" | "debuff" },
+): number {
+  let count = 0;
+  for (const s of unit.statuses) {
+    const def = statusRegistry.get(s.statusId);
+    if (!def) continue;
+    if (def.element === match.element && def.category === match.category) count += 1;
+  }
+  return count;
 }
 
 /** Σ additive damage-taken bonuses from the target's own statuses (tier effects gated on the hit element). */
@@ -205,7 +235,11 @@ export function additiveTakenBonus(
         // hit's element must be in the list (`null` = phase-less) — the same OR-list semantics as
         // the dealt-side gate and the attachment-set / Remolder element gates.
         if (e.whenElement !== undefined && !e.whenElement.includes(element)) continue;
-        sum += e.value * s.stacks;
+        // COUNT-BY-CLASSIFICATION (2026, "each Burn debuff increases damage taken by 3%" —
+        // Smolder V4): the value applies ONCE PER MATCHING STATUS on the TARGET (this side
+        // scans the target's own statuses), so `value × count`. Absent = no scaling.
+        const countMult = e.perMatching ? countMatchingStatuses(unit, statusRegistry, e.perMatching) : 1;
+        sum += e.value * s.stacks * countMult;
       }
       if (e.kind === "stack_tier_modifier" && e.scope === "taken") {
         if (e.when && e.when.element && !e.when.element.includes(element)) continue;
@@ -365,7 +399,10 @@ export function multiplicativeTakenMods(
         // PER-ELEMENT gate (2026): honored on the multiplicative branch too, so a `whenElement`
         // is never silently ignored regardless of `mode`.
         if (e.whenElement !== undefined && !e.whenElement.includes(incomingElement)) continue;
-        mult *= Math.pow(e.value, s.stacks);
+        // COUNT-BY-CLASSIFICATION (2026): honored on the multiplicative branch too, so a
+        // `perMatching` is never silently ignored regardless of `mode` — `value ^ (stacks × count)`.
+        const countMult = e.perMatching ? countMatchingStatuses(unit, statusRegistry, e.perMatching) : 1;
+        mult *= Math.pow(e.value, s.stacks * countMult);
       }
       // Area Defense I / Targeted Attack Defense I (VALIDATED in-game tooltips 2026):
       // `whenIncomingCategory: "aoe"` reduces only AoE hits, `"targeted"` only TARGETED

@@ -1165,6 +1165,22 @@ export type StatusEffect =
        * values are the engine's existing `Element` union plus `null`.
        */
       whenElement?: (Element | null)[];
+      /**
+       * COUNT-BY-CLASSIFICATION scaling (2026) — "for every <element> <category>". The modifier's
+       * `value` is multiplied by the number of statuses ACTIVE ON THE SAME UNIT as the one being
+       * scanned that match this classification. Vector's clauses: Smolder V4 ("each Burn debuff
+       * increases damage taken by 3%" — TAKEN side, so the count scans the TARGET's statuses) and
+       * Accelerant V6 ("every Burn buff increases damage dealt by 5%" — DEALT side, so the count
+       * scans the HOLDER's statuses). Both sides already scan "the unit's own statuses", so the
+       * count is over that same unit — no new scanning target.
+       *
+       * Counted PER STATUS, never per stack (a 3-stack Burn debuff is ONE Burn debuff), matching
+       * the wording "every Burn debuff". Element matches `StatusDef.element`; the classification
+       * matches `StatusDef.category`. NO self-exclusion — the wording states no exception, so a
+       * status that is itself classified Burn counts toward its own clause. Absent = no count
+       * scaling (value applies once, existing behavior). Never inferred from ids or names.
+       */
+      perMatching?: { element: Element; category: "buff" | "debuff" };
     }
   | { kind: "damage_reduction"; value: number; whenIncomingCategory?: "aoe" | "targeted" }
   | {
@@ -1330,6 +1346,20 @@ export interface StatusDef {
    * it carries an active status whose definition has a non-null `phase`.
    */
   phase?: Element | null;
+  /**
+   * ELEMENT AFFILIATION (2026) — the status's declared element CLASSIFICATION, distinct from
+   * `phase` above. `phase` answers one narrow validated question ("is this a Phase-attribute
+   * DEBUFF?", consumed by the Phase Strike gate); `element` is the broader element tag a status
+   * carries regardless of buff/debuff direction — e.g. Blazing Assault II is an ATK BUFF that is
+   * nonetheless a *Burn* status. Absent = no element affiliation (the default; do not invent one).
+   *
+   * Consumed by the generic count-by-classification scaling on `damage_modifier.perMatching`
+   * ("for every Burn debuff …", "per Burn buff …"). Only populated where the source record
+   * states the classification (Vector's status inventory Tags column, `docs/dolls/vector.md` §7.1).
+   * Kept SEPARATE from `phase` on purpose: overloading `phase` for Burn buffs would change the
+   * Phase Strike gate's meaning and regress it.
+   */
+  element?: Element | null;
 }
 
 /**
