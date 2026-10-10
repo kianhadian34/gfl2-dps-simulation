@@ -450,6 +450,24 @@ export const STATUS_DEFS: StatusDef[] = [
     note: "Golden Melody Trait outcome #13 (validated in-game 2026).",
     deferredNote: "RECORDED-ONLY: the engine has no mobility mechanic.",
   },
+  {
+    id: "extra_command",
+    name: "Extra Command",
+    // A "state" rather than a buff/debuff: it is an action-economy grant, not a stat/damage
+    // modifier, and the game's own record carries no Attack/Buff tags for it.
+    category: "state",
+    stackable: true,
+    durationRounds: null,
+    tickAt: "ownActionEnd",
+    // The source states no cleanse interaction for Extra Command, and the game's records mark
+    // several Vector effects "cannot be cleansed" but NOT this one — so nothing is claimed.
+    // Pending evidence the default (cleansable) stands rather than inventing an immunity.
+    purgeable: true,
+    effects: [{ kind: "extra_action" }],
+    playerDescription: "The holder may perform one additional main action after its current action.",
+    verified: false,
+    note: "Vector's Searing Finale Lv.1 — 'Vector gains Extra Command'. Semantics confirmed with the project owner 2026-10-09: the holder acts again (e.g. Ultimate, then Skill 1/2 or Basic) and CANNOT move during the extra action. One extra action per stack; the engine consumes one instance per extra action. NOT in-game validated.",
+  },
 ];
 
 export function statusMap(): Map<string, StatusDef> {

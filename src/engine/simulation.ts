@@ -171,6 +171,30 @@ function applyTurnStartConfectanceDrain(state: SimulationState, unit: UnitState)
   unit.roundAtkPct += atkPct;
 }
 
+/**
+ * EXTRA COMMAND (2026, generic — Vector's Searing Finale grants it).
+ *
+ * Consume ONE instance of an `extra_action` status from the holder. Returns the consumed status id
+ * when an extra main action is now available, else null. Consumption is PER ACTION: a status with N
+ * stacks grants N extra actions; the status is removed when its last instance is consumed (the
+ * caller records it in the event's `statusesExpired`, like the other consumption path). Data-driven
+ * — any status carrying `{ kind: "extra_action" }` behaves this way; no character or skill ids.
+ *
+ * The extra action is an ACTION ONLY: the turn loop applies movement once, at the pre-action point
+ * of the unit-turn, so an extra action can never move (confirmed with the project owner 2026-10-09).
+ */
+function consumeExtraAction(state: SimulationState, unit: UnitState): string | null {
+  for (const s of [...unit.statuses]) {
+    const def = state.statusRegistry.get(s.statusId);
+    if (!def || !def.effects.some((e) => e.kind === "extra_action")) continue;
+    const left = s.stacks - 1;
+    if (left <= 0) unit.statuses = unit.statuses.filter((x) => x !== s);
+    else s.stacks = left;
+    return s.statusId;
+  }
+  return null;
+}
+
 /** Match the attack's element AND ammo type against the target's exposed weaknesses: +10% damage and +2 stability each (research §3.5 / U20 / 2026 ammo dimension). */
 function exploitedWeaknesses(target: UnitState, skill: SkillDefVariant): { weaknesses: string[]; mult: number; ammoExploited: boolean } {
   // Absent `element` (an ability with no attack phase attribute) behaves as phase-less here; in
@@ -1323,22 +1347,39 @@ export function simulate(scenario: Scenario, registry: Registry): SimulationResu
           continue;
         }
       }
-      const { slot, k } = pickAction(state, doll);
-      // V5 (VALIDATED in-game 2026): immediately BEFORE an ally's damaging main action that will
-      // trigger the support owner's Support Action, apply the owner's `beforeSupportTrigger`
-      // statuses — Damage Up II to the owner (Qiongjiu) and to the triggering ally — so the
-      // triggering attack and the ensuing Support Action both benefit. Uses the EXISTING trigger
-      // sequence; no new trigger; no Confectance coupling.
-      const preApplied = applyBeforeSupportTriggerStatuses(state, doll, slot);
-      const ev = resolveMainAction(state, doll, slot, k, ++turn);
-      for (const p of preApplied) {
-        ev.statusesApplied.push(p.statusId);
-        (ev.appliedSources ??= []).push({ statusId: p.statusId, source: p.source });
+      // ACTION LOOP (2026): one main action per unit-turn, plus ONE MORE for each EXTRA COMMAND the
+      // holder carries (`extra_action` status — e.g. Vector's Ultimate grants it). `actionBudget`
+      // starts at 1; an extra action adds 1 to it. Movement happens ONLY before this loop, so an
+      // extra action can never move (confirmed with the project owner 2026-10-09). The unit's
+      // end-of-action tick (durations, cooldowns, Trait) runs ONCE, after ALL its actions.
+      while (doll.actionBudget > 0) {
+        doll.actionBudget -= 1;
+        const { slot, k } = pickAction(state, doll);
+        // V5 (VALIDATED in-game 2026): immediately BEFORE an ally's damaging main action that will
+        // trigger the support owner's Support Action, apply the owner's `beforeSupportTrigger`
+        // statuses — Damage Up II to the owner (Qiongjiu) and to the triggering ally — so the
+        // triggering attack and the ensuing Support Action both benefit. Uses the EXISTING trigger
+        // sequence; no new trigger; no Confectance coupling.
+        const preApplied = applyBeforeSupportTriggerStatuses(state, doll, slot);
+        const ev = resolveMainAction(state, doll, slot, k, ++turn);
+        for (const p of preApplied) {
+          ev.statusesApplied.push(p.statusId);
+          (ev.appliedSources ??= []).push({ statusId: p.statusId, source: p.source });
+        }
+        // Trigger fidelity (2026): Support Action fires only when an ally's action actually
+        // dealt damage to an enemy (source fact: "receives targeted damage from an ally") —
+        // a non-damaging ally action (e.g. a 0-damage ultimate) must NOT trigger it.
+        if (ev.finalDamage > 0) fireSupportAttacks(state, doll, turn);
+        // EXTRA COMMAND: grant the extra action AFTER the action resolved, so a skill's own grant
+        // is available immediately (Vector: Ultimate → act again). No move occurs in between.
+        const grantedBy = consumeExtraAction(state, doll);
+        if (grantedBy !== null) {
+          doll.actionBudget += 1;
+          // Record the consumption on the event that granted it (same channel as the other
+          // consumption path), so the log explains why a second action follows.
+          (ev.statusesExpired ??= []).push(grantedBy);
+        }
       }
-      // Trigger fidelity (2026): Support Action fires only when an ally's action actually
-      // dealt damage to an enemy (source fact: "receives targeted damage from an ally") —
-      // a non-damaging ally action (e.g. a 0-damage ultimate) must NOT trigger it.
-      if (ev.finalDamage > 0) fireSupportAttacks(state, doll, turn);
       endOfOwnTurn(state, doll);
     }
     // Dummy pass-turn (validated 2026): the stationary dummy advances through a

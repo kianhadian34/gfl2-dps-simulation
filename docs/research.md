@@ -965,10 +965,67 @@ points**.
 - **Not implemented.** The engine has **no tile system at all** (`docs/grid.md` — terrain is
   height/blocked/ladder only; `GridConfig` carries no tile-effect field). Nothing above is modeled.
 - **Non-Burn tiles and fusions** are out of scope for this section (see the scope note above).
+- **The Burn-DEBUFF family is separate from Burn TILES.** Effects such as **Overburn**,
+  **Overheat Combustion**, **Smolder**, and **Overheat** are game **status effects**, not tile
+  effects — they are *applied by* skills/keys and some of them *generate* tiles. Their authoritative
+  inventory (with upgrade variants and the engine gaps they need) is recorded per-character in
+  **`docs/dolls/vector.md` §7.1**, not here — this section owns the **tile rules** only. Do not
+  conflate the two.
 - **"Burn and Electric Boost … points"** uses the same "Boost/points" vocabulary as the Apex
   All-Element Boost — the relationship between those is **[UNKNOWN]** here.
 - **The guide covers 7 of the 10 phase pairs** (8 including the CN-only Burn+Electric);
   **Corrosion+Freeze** and **Electric+Freeze** are not listed.
+
+---
+
+### 3.24 Extra Command — extra main actions (2026, IMPLEMENTED + TESTED)
+
+**Mechanic** — a unit may perform **additional main actions** in the same unit-turn when an effect
+grants it ("Extra Command").
+
+**Source** — Vector's **Searing Finale Lv.1** (*"Vector gains Extra Command"*); the effect's own
+record (`dandegate.net/effects/c1feeb2a-…`) reads *"Commands other than movement can be executed."*
+Semantics confirmed with the project owner (2026-10-09):
+- the holder acts **again right after** its current action (e.g. Ultimate → then Skill 1, Skill 2, or
+  Basic);
+- the holder **CANNOT MOVE** during the extra action;
+- **one extra action per stack** — the engine consumes one instance per extra action.
+
+**Confidence** — the mechanic's semantics are `[GAME]`-confirmed by the project owner (source
+hierarchy level 1); the **engine implementation** is covered by automated tests. **NOT in-game
+validated** — a controlled in-game run would move it to `Validated`.
+
+**Implementation interpretation** — data-driven and generic; **no character or skill ids**:
+- **`StatusEffect` kind `extra_action`** (`src/model/types.ts`) — the effect IS the grant (no numeric
+  value). Any status carrying it grants extra actions.
+- **`StatusDef` `extra_command`** (`src/data/statuses.ts`) — `category: "state"`, `stackable: true`,
+  `durationRounds: null` (no stated duration → none invented), effect `[{ kind: "extra_action" }]`.
+  `category: "state"` is deliberate: it is an **action-economy** grant, not a stat/damage modifier,
+  and the game's own record carries **no Attack/Buff tags** for it. A side effect that matters:
+  `category: "buff"` is what triggers the weapon Charging counter, so a `"state"` classification
+  correctly does **not** count Extra Command as a buff gain.
+- **The turn loop** (`src/engine/simulation.ts`) now runs an **action loop**: `actionBudget` starts
+  at **1** (one main action per unit-turn) and an extra action **adds 1** to it. The pre-existing
+  `UnitState.actionBudget` field was previously set-but-never-read; it now drives this loop — no new
+  state was added. `consumeExtraAction` removes one instance and the caller records it in the
+  event's `statusesExpired` (the same consumption channel as Support Boost), so the log explains the
+  follow-up action.
+- **Movement is impossible in an extra action by construction**: the turn loop applies movement
+  once, at the pre-action point of the unit-turn, before the action loop. No extra guard is needed.
+- **The end-of-action tick runs ONCE per unit-turn, after ALL actions** — status durations,
+  cooldowns and the weapon Trait all tick after the last action, so a 1-turn buff granted by the
+  granting skill is still active for the extra action (pinned by a test).
+
+**Unknowns / not claimed** — the **exact duration** of the Extra Command status (the source states
+none; modeled as no duration rather than inventing one); whether it can be **cleansed** (the game's
+records mark several Vector effects "cannot be cleansed" but **not** this one — the default
+cleansable stands, pending evidence); whether it interacts with **movement modifiers** or
+**out-of-turn** rules; whether an extra action can itself **grant** another extra action (the engine
+allows it structurally — a chain would need evidence before being relied upon).
+
+**Out of scope** — the wider "extra actions" topic in `docs/validation-checklist.md` §2 (that entry
+covers enemy turns / additional-action systems generally); this section records only the
+**Extra Command** grant, as implemented.
 
 ---
 

@@ -205,12 +205,12 @@ summary alone.
 | Item | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | `629743eeef93c2f20da85d825d4de43ea09a0d8e` |
-| `origin/main` | `629743eeef93c2f20da85d825d4de43ea09a0d8e` (in sync) |
-| Working tree | in progress: the **V2 Confectance-drain engine capability** (5 engine/model files + 1 test + docs) — **uncommitted** (§7.1 item 9) |
-| Untracked | `.reasonix/` (host-managed session artifacts — **never stage**) and `src/test/confectance-drain.test.ts` |
+| HEAD | `437cee268db10ccff591fa89c260ba31da185e9b` |
+| `origin/main` | `437cee268db10ccff591fa89c260ba31da185e9b` (in sync) |
+| Working tree | in progress: **V4 slice 1 — Extra Command (IMPLEMENTED)** + the uncommitted V4 evidence docs — **uncommitted** (§7.1 items 10–11) |
+| Untracked | `.reasonix/` (host-managed session artifacts — **never stage**) and `src/test/extra-command.test.ts` |
 | Engine build | `npm run build` → exit 0 |
-| Engine tests | **679 pass · 0 fail · 0 skipped** across **96 test files** |
+| Engine tests | **685 pass · 0 fail · 0 skipped** across **97 test files** |
 | UI typecheck | exit 0 |
 | UI tests | **286 pass · 0 fail** |
 | UI build | exit 0 |
@@ -506,6 +506,7 @@ scope is invented or expanded.
 | Cooldowns | `engine/cooldowns.ts` | yes | **Validated** (U11) | `nextOwnTurnEnd` |
 | Confectance | `engine/resources.ts` | yes | **Validated** (U9) | start 3 / max 6; **extra-slot pool is SEPARATE** (never raises the cap) |
 | Turn-start Confectance drain (+ extra slots) | `simulation.ts`, `resources.ts`, `statuses.ts`, `model/types.ts` | yes | **[GAME]** (mechanic, user-provided 2026-10-09) + `[TEST]` (8 tests) | generic `turn_start_confectance_drain`; a second extra-slot pool; round-scoped ATK% folded into the existing in-combat ATK% bucket. **NOT in-game validated.** |
+| Extra Command (extra main actions) | `model/types.ts`, `data/statuses.ts`, `simulation.ts` | yes | **[GAME]** (semantics, user-provided 2026-10-09) + `[TEST]` (6 tests) | generic `extra_action` status effect + the `extra_command` status + an action loop (`actionBudget`); no move in an extra action; tick once per unit-turn. **NOT in-game validated.** |
 | Determinism / seeded RNG | `engine/rng.ts` | yes | engine guarantee | `determinism.test.ts` |
 | Effect provenance | `simulation.ts`, `state.ts`, `model/runtime.ts` | yes | **Validated** | `effectSources` + `effectSourceRefs` |
 | Grid / positioning (core) | `engine/grid.ts`, `docs/grid.md` | yes (core) | **Validated** (core rules only) | height interaction Not Tested; **elemental tiles NOT modeled** (Burn family documented in `docs/research.md` §3.23) |
@@ -604,7 +605,7 @@ been created. Do not read the per-doll doc as registry presence.
 
 | Doll | Record | Status |
 |---|---|---|
-| Vector | `docs/dolls/vector.md` | **SOURCE DATA ONLY** — kit, Fortification map, 9 keys, Remolder flats, signature weapon transcribed; **base stats resolved** (`[GAME]`: HP 1819 / ATK 748 / DEF 569 / Stab 10 / CR 20% / CDMG 120% / Move 6); **no engine/registry/UI changes**; 13 recorded implementation gaps |
+| Vector | `docs/dolls/vector.md` | **SOURCE DATA ONLY** — kit, Fortification map, 9 keys, Remolder flats, signature weapon transcribed; **base stats resolved** (`[GAME]`: HP 1819 / ATK 748 / DEF 569 / Stab 10 / CR 20% / CDMG 120% / Move 6); **authoritative status/effect inventory in §7.1** (10 effects referenced, **3 exist / 7 missing**, with the exact capability gaps); **one status implemented** (`extra_command`, §3.24) — no registry/UI changes |
 
 ---
 
@@ -773,7 +774,9 @@ workflow and owning documents.
 | 6 | **Snapshot refresh** — corrected the three self-referential statements left stale by committing items 4–5 (§2 working-tree row, §7.1 commit columns, §10 open state) and recorded the no-per-commit-refresh policy in §1.4. | `docs/project.md` | `git diff --check` clean; docs-only | `ca21212` (pushed) |
 | 7 | **Vector source record (documentation only).** Read Qiongjiu's `CharacterDef` to map the data schema, then transcribed Vector's kit from `dandegate.net/dolls/vector` into a new per-doll record. Verified each factual claim against the repo (status list, grid config, cooldown model, Confectance cap, `AffinityKeyDef`/`WeaponDef`/`imprint` shapes) and marked every gap as `[UNKNOWN]`/not-implemented rather than assuming. Downloaded 23 CDN assets and placed 19 into the asset tree (18 character + 1 weapon; **placed, not wired**). **Base stats then supplied by the user** (`[GAME]`: HP 1819 / ATK 748 / DEF 569 / Stab 10 / CR 20% / CDMG 120% / Move 6) and recorded — the one data blocker, resolved; the general fact "base Crit Rate is 20% for ALL characters" was recorded in its **owning** document `docs/research.md` §3.8. **Confectance >6 — RESOLVED [GAME]:** the user's earlier "might be a system allowing >6" hypothesis was then fully explained (2026-10-09): at **Fortification V5** Vector gains **2 Confectance slots SEPARATE from her normal 6**, and those extras are what her passive Lv.3 clause counts (+10%/+20% ATK). **U9's cap of 6 is unchanged** — the normal gauge never overflows; the engine must **not** raise `confectanceMax`. Recorded in `docs/dolls/vector.md` §4.5/§7 and `docs/research.md` §3.12. | `docs/dolls/vector.md` (new), `docs/research.md` §3.8 + §3.12, `ui/src/renderer/public/assets/characters/vector/**` (18), `ui/src/renderer/public/assets/weapons/banshees-whisper/**` (1), `docs/project.md` | claims verified by direct repo inspection; **no code/tests changed**; in-game validation **N/A** (docs-only) | `637bec5` (pushed) |
 | 8 | **Elemental tiles (Burn family) documented (V3 prep).** Read the dandegate community guide "Elemental Tile Transformation" and recorded **Burn-related tiles only** in the mechanics doc: the Tile Upgrade / Polyphase Fusion layer, the base Burn tile (**Incineration → Flashover II → III**), and every Burn-containing fusion (**Scalding Vapors**, **Venomfire**, **Smoldering Suspire**, and the CN-only **Crackling Flare**) with their Lv2/Lv3 deltas. **Effect names independently resolved** from `dandegate.net/effects/<uuid>` records (10 uuids → names; only **Overburn** exists in this repo). Source is a **community guide (hierarchy level 5)**, labelled `[SOURCE]` / `Not Tested`; non-Burn tiles deliberately out of scope. **Nothing implemented.** | `docs/research.md` §3.23 (new), `docs/dolls/vector.md` (G1 cross-ref), `docs/project.md` | **no code/tests changed**; docs-only; in-game validation **N/A** | `629743e` (pushed) |
-| 9 | **V2 — turn-start Confectance drain engine capability (IMPLEMENTED + TESTED).** Added the generic `turn_start_confectance_drain` `PassiveEffect` (`atkPct`, `extraSlots`, `perExtraSlotAtkPct`), a SECOND `extraConfectance` pool that `gainConfectance` fills from gains beyond `confectanceMax`, `drainAllConfectance`, and a turn-start trigger granting a round-scoped `UnitState.roundAtkPct` folded into the **existing** in-combat ATK% bucket (`statModifier`). **`confectanceMax` (U9 = 6) is UNCHANGED** — verified by a guard test. Semantics confirmed with the user: overflow fills the extras; clause 5 is additive on clause 4 → **+10/+20/+30% for 0/1/2 filled extras**; the drain consumes both pools. **No character ids anywhere.** | `src/model/types.ts`, `src/engine/resources.ts`, `src/engine/state.ts`, `src/engine/statuses.ts`, `src/engine/simulation.ts`, `src/test/confectance-drain.test.ts` (new), `docs/research.md` §3.12, `docs/dolls/vector.md`, `docs/project.md` | engine **679 pass / 0 fail** (+8 new); UI typecheck/tests/build green; **CLI output byte-identical** on `examples/qiongjiu-dummy.json` (no regression for existing characters); `git diff --check` clean | uncommitted (§10) |
+| 9 | **V2 — turn-start Confectance drain engine capability (IMPLEMENTED + TESTED).** Added the generic `turn_start_confectance_drain` `PassiveEffect` (`atkPct`, `extraSlots`, `perExtraSlotAtkPct`), a SECOND `extraConfectance` pool that `gainConfectance` fills from gains beyond `confectanceMax`, `drainAllConfectance`, and a turn-start trigger granting a round-scoped `UnitState.roundAtkPct` folded into the **existing** in-combat ATK% bucket (`statModifier`). **`confectanceMax` (U9 = 6) is UNCHANGED** — verified by a guard test. Semantics confirmed with the user: overflow fills the extras; clause 5 is additive on clause 4 → **+10/+20/+30% for 0/1/2 filled extras**; the drain consumes both pools. **No character ids anywhere.** | `src/model/types.ts`, `src/engine/resources.ts`, `src/engine/state.ts`, `src/engine/statuses.ts`, `src/engine/simulation.ts`, `src/test/confectance-drain.test.ts` (new), `docs/research.md` §3.12, `docs/dolls/vector.md`, `docs/project.md` | engine **679 pass / 0 fail** (+8 new); UI typecheck/tests/build green; **CLI output byte-identical** on `examples/qiongjiu-dummy.json` (no regression for existing characters); `git diff --check` clean | `437cee2` (pushed) |
+| 10 | **V4 — status/effect inventory documented (evidence only).** Resolved **all 10** effect IDs Vector's kit references against the site's own effect records (`dandegate.net/effects/<uuid>`, `effectDetails` incl. every upgrade variant) and recorded the authoritative inventory in `docs/dolls/vector.md` **§7.1**: **2 exist** (`overburn`, `blazing_assault_ii`) / **8 missing**, each with its definition, tags, and upgrade variants. Classified the gaps: 6 reusable vocabulary additions, 3 genuinely new mechanics (one — extra actions — **out of MVP scope**), and the V3-coupled tile clauses. **Two record corrections recorded:** `Overheat Combustion` is a distinct Burn-debuff effect (resolves the V3-era ambiguity) and `Overheat` is a *third* distinct effect = **skill denial**. Design decision recorded with the user: add a **proper `whenElement`** gate to `damage_modifier` (not reuse `stack_tier_modifier`). **No code changed.** | `docs/dolls/vector.md` §7.1 + §7/G2 + §10, `docs/research.md` §3.23.6 (cross-ref), `docs/project.md` | **docs only — no code/tests changed**; `git diff --check` clean; in-game validation **N/A** | uncommitted (§10) |
+| 11 | **V4 slice 1 — Extra Command (IMPLEMENTED + TESTED).** Added the generic `extra_action` `StatusEffect` kind + the `extra_command` status (`category: "state"`) + an **action loop** in the turn loop driven by the previously-vestigial `UnitState.actionBudget`. Semantics confirmed with the user: the holder acts again in the same unit-turn (e.g. Ultimate → Skill 1/2 or Basic), **cannot move** during the extra action, **one extra action per stack**; the end-of-action tick runs **once**, after all actions. Data-driven — no character or skill ids. | `src/model/types.ts`, `src/data/statuses.ts`, `src/engine/simulation.ts`, `src/test/extra-command.test.ts` (new), `docs/research.md` §3.24 (new), `docs/dolls/vector.md`, `docs/project.md` | engine **685 pass / 0 fail** (+6 new); UI typecheck/tests/build green; **CLI output byte-identical** on `examples/qiongjiu-dummy.json`; `git diff --check` clean | uncommitted (§10) |
 
 **Detail — the documentation-drift cleanup (`8d8ef61`):** the task and its outcome are also
 recorded here because future sessions should not re-fix them.
@@ -859,12 +862,13 @@ data-driven dispatch, registry is a one-line change.
 | ~~V1~~ | ~~**Base stats** (ATK/HP/DEF/critRate/critDmg)~~ | **RESOLVED 2026-10-09** — user-provided character sheet: **HP 1819 · ATK 748 · DEF 569 · Stability 10 · Crit Rate 20% · Crit DMG 120% · Movement 6**; recorded in `docs/dolls/vector.md` §3 | — (obtained) |
 | ~~V2~~ | ~~**The V5 extra Confectance slots + the turn-start drain**~~ | **ENGINE IMPLEMENTED + TESTED 2026-10-09.** The generic capability exists: `turn_start_confectance_drain` (`atkPct` + `extraSlots` + `perExtraSlotAtkPct`), a SECOND `extraConfectance` pool filled by gains beyond `confectanceMax`, and a round-scoped `roundAtkPct` folded into the existing in-combat ATK% bucket. **`confectanceMax` (U9 = 6) unchanged.** Semantics confirmed with the user: overflow fills the extras; additive ⇒ **+10/+20/+30%** for 0/1/2; the drain consumes both pools. **Remaining work is Vector's own DATA** (her passive's values), not engine code | — (capability done; 8 tests in `src/test/confectance-drain.test.ts`) |
 | V3 | **Burn/Incineration tiles** | Foundational to Vector's kit (Dead End Meltdown, Searing Finale, FK1, passive V5); the grid has **no tile-effect system** | design/evidence step |
-| V4 | **7+ new statuses** (Overheat Combustion, Smolder, Overheat, Accelerant, Incineration, Extra Command, Apathetic Resistance, Emergency Support) | None exist; each needs a definition + evidence | source texts (have) + in-game behavior |
+| V4 | **The remaining 7 undefined statuses + the engine vocabulary they need** — inventory in `docs/dolls/vector.md` **§7.1** | **EVIDENCE DOCUMENTED; slice 1 DONE.** `extra_command` (**Extra Command**) is **IMPLEMENTED + TESTED 2026** (see `docs/research.md` §3.24). Still not implemented: 6 reusable vocabulary additions (`critDmg` stat; **per-element damage gate — decided: a proper `whenElement`**; start-of-action status tick; count-by-classification scaling; all-allies targeting; support-trigger vocabulary), 1 new mechanic (**skill denial** — `Overheat`), and the V3-coupled tile clauses. **Extra actions are no longer a blocker** (Extra Command is done) | definitions obtained; behaviour still needs in-game validation |
 | V5 | **Signature weapon shape gaps** (Imprint condition, weapon ATK endpoints, trait pool) | Not representable in today's `WeaponDef`/`Imprint` shapes | source + judgement |
 
-**Recommended order:** base stats are IN, and **V2 (the Confectance-drain capability) is now
-IMPLEMENTED + TESTED**. Remaining for Vector: **V3** (Burn/Incineration tiles — no tile system exists;
-the tile rules are documented in `docs/research.md` §3.23) and **V4** (7+ new statuses) are
+**Recommended order:** base stats are IN; **V2 (the Confectance-drain capability) is IMPLEMENTED +
+TESTED**; **V4's evidence is DOCUMENTED** (`docs/dolls/vector.md` §7.1 — nothing implemented yet).
+Remaining for Vector: **V3** (Burn/Incineration tiles — no tile system exists; the tile rules are
+documented in `docs/research.md` §3.23) and **V4** (the status vocabulary + definitions) are
 engine-scale work rather than data entry; **V5** is a weapon-shape decision. Do **not** implement a
 partial kit that silently approximates an unmodeled mechanic (§1.4 / the anti-approximation rule).
 
@@ -920,7 +924,7 @@ correct. **Reading the tooltip alone suffices — no combat run needed.**
 
 APL/auto-AI · movement/positioning beyond the core grid rules · **Cover — explicitly deferred**
 (incl. the 35/30/25/20% cover reductions and the stability-cover 60% reduction) · maps ·
-enemy turns/AI · DoT for unverified elements · extra actions · durations > 7 turns.
+enemy turns/AI · DoT for unverified elements · **the wider additional-action topic** (enemy/extra-action *systems*; **Extra Command's extra main action IS implemented** — `docs/research.md` §3.24) · durations > 7 turns.
 
 **Grid (`docs/grid.md`):** diagonal corner-squeezing, Ground→High Ground combat, detailed LOS,
 height beyond Ground/High, unconfirmed movement modifiers.
@@ -977,9 +981,10 @@ installers beyond plain Windows dev builds.
 
 **The single most appropriate next action: scope Vector's remaining engine work with the user.** Her
 source record is complete, the **only data blocker (base stats) is resolved** (`[GAME]`: HP 1819 ·
-ATK 748 · DEF 569 · Stability 10 · Crit Rate 20% · Crit DMG 120% · Movement 6), and **V2 is now
-IMPLEMENTED + TESTED**. What remains (`docs/dolls/vector.md` §7 V3–V5) is **engine-scale work, not data
-entry**: Burn/Incineration tiles and 7+ new statuses.
+ATK 748 · DEF 569 · Stability 10 · Crit Rate 20% · Crit DMG 120% · Movement 6), **V2 is now
+IMPLEMENTED + TESTED**, and **V4's evidence is documented**. What remains
+(`docs/dolls/vector.md` §7 V3–V5) is **engine-scale work, not data entry**: Burn/Incineration tiles
+and the 8 undefined statuses plus the vocabulary they need.
 
 **V2 — DONE (engine capability).** The generic `turn_start_confectance_drain` mechanism is implemented
 and covered by 8 tests (`src/test/confectance-drain.test.ts`): a second extra-slot Confectance pool,
@@ -993,6 +998,13 @@ to be written as data on her passive.
 with the effect names independently resolved. The engine has **no tile system**, so V3 remains a
 design/implementation task.
 
+**V4 (statuses) — slice 1 IMPLEMENTED; evidence documented for the rest.**
+**Extra Command is DONE** (`docs/research.md` §3.24): the generic `extra_action` status effect plus an
+action loop in the turn loop, so a holder can act again in the same unit-turn (no movement, one extra
+action per stack). 6 new tests. The remaining V4 work is documented in `docs/dolls/vector.md` §7.1 —
+**7 statuses still undefined**, needing 6 reusable vocabulary additions, 1 new mechanic (skill
+denial), and the V3-coupled tile clauses.
+
 **Why a decision is next:** the data-only portion of Vector is ready, but implementing a *partial* kit
 would silently approximate mechanics the engine does not model — which the project rules forbid
 (`§1.4`; "never invent game mechanics"). So the next step is a scope decision, not code:
@@ -1001,12 +1013,11 @@ modelable today and record the rest as inert/unmodeled, exactly as the 7 inert a
 
 **Also outstanding (nothing here is committed):**
 
-- The **V2 engine change** (5 engine/model files + `src/test/confectance-drain.test.ts` + doc updates)
-  is **uncommitted** (§7.1 item 9) — awaiting the user's authorization.
+- **Both the V4 evidence docs AND this Extra Command slice are uncommitted** (§7.1 items 10–11) —
+  awaiting the user's authorization.
 - **Vector's assets are placed but NOT wired** (`assets.ts` untouched) — backlog **B5**.
-- `docs/project.md`'s own snapshot is at `ca21212`; the §7.1 item 6 commit is recorded, item 7 is
-  pending. Per the §1.4 policy the snapshot is refreshed at the start of the next task or when
-  wrapping up — not by a separate commit after every commit.
+- Per the §1.4 policy the §2 snapshot is refreshed at the start of the next task or when wrapping up —
+  not by a separate commit after every commit.
 
 **This section must be updated whenever the priority changes.**
 

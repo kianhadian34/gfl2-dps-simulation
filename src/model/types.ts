@@ -1221,6 +1221,21 @@ export type StatusEffect =
       kind: "fixed_dmg_modifier";
       mode: "buff" | "reduction";
       value: number;
+    }
+  | {
+      /**
+       * EXTRA COMMAND (2026, Vector's Searing Finale Lv.1 — "Vector gains Extra Command").
+       * While the holder carries a status with this effect, it may perform ONE ADDITIONAL main
+       * action after its current action, within the SAME unit-turn. Consumption is PER ACTION
+       * (one extra action per stack): the engine consumes one instance each time it grants the
+       * extra action, and the status is removed when no instance remains.
+       *
+       * Movement: the extra action is an ACTION ONLY — no move occurs during it (moves are applied
+       * at the pre-action point of the turn loop, which runs once per unit-turn).
+       *
+       * No numeric value: the effect IS the grant. Data-driven; no character/skill ids anywhere.
+       */
+      kind: "extra_action";
     };
 
 export interface StatusDef {

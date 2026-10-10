@@ -222,6 +222,11 @@ Overheat 1t. (**Source typo preserved:** the original reads "convectance Index" 
 > for **2 turns**. Applies **Accelerant** to all allied units, lasting for **2 turns**. Vector gains
 > **Extra Command**.
 
+**"Extra Command" — IMPLEMENTED 2026.** It is an **extra main action** in the same unit-turn (no
+movement) — the `extra_command` status carrying the generic `extra_action` effect. Full semantics,
+implementation and unknowns: `docs/research.md` **§3.24**. Note this clause needs **no tile system**,
+so it is implementable ahead of V3.
+
 **Lv.2 upgrade (V2) [SOURCE]:**
 > The effect of **Accelerant** changes: When dealing **Burn damage**, damage is increased by **20%**.
 > Applies **Blazing Assault II** to all allied units for **2 turns**. Cleanses **2 debuffs** from all
@@ -426,7 +431,7 @@ Recorded so implementation is **scoped honestly** rather than approximated. None
 | # | Mechanic Vector needs | Engine status | Where |
 |---|---|---|---|
 | G1 | **Burn tiles / Incineration tiles** (a ground-tile effect that persists, deals Burn, and grants immunity/effects) | **Not modeled.** Grid has terrain/height only; no tile effects. **The tile rules themselves are now documented** (Burn family only) in `docs/research.md` §3.23 — a community-guide transcription, `Not Tested`. | `src/engine/grid.ts`, `docs/grid.md`, `docs/research.md` §3.23 |
-| G2 | **Overheat Combustion**, **Smolder**, **Overheat**, **Accelerant**, **Apathetic Resistance**, **Extra Command**, **Emergency Support**, **Incineration** | **Not defined.** Only `overburn`, `damage_up_ii`, `blazing_assault_ii`, etc. exist. These are new statuses. | `src/data/statuses.ts` |
+| G2 | **The 8 undefined statuses Vector's kit needs** — see the authoritative inventory in **§7.1** | **Not defined.** Only `overburn` and `blazing_assault_ii` of her 10 referenced effects exist. Each needs a definition **and** several need new engine vocabulary — the full mapping is in §7.1. | `src/data/statuses.ts`, `src/model/types.ts` |
 | ~~G3~~ | ~~"consumes ALL Confectance at max to gain +10% ATK for the round"~~ | **IMPLEMENTED (2026)** — generic `PassiveEffect` kind `turn_start_confectance_drain` (`atkPct`), fired at the holder's own turn start and granted as a **round-scoped** `UnitState.roundAtkPct` folded into the existing in-combat ATK% bucket. | `src/model/types.ts`, `src/engine/simulation.ts`, `src/engine/statuses.ts` |
 | ~~G4~~ | ~~Turn-start "at max Confectance" trigger~~ | **IMPLEMENTED (2026)** — `applyTurnStartConfectanceDrain` runs at each unit's turn start; the pre-existing `onCastAtMaxConfectance` hook (Ultimate-scoped) is untouched. | `src/engine/simulation.ts` |
 | ~~G4b~~ | ~~The 2 EXTRA Confectance slots (V5-only, separate from the normal 6)~~ | **IMPLEMENTED (2026)** — `UnitState.extraConfectance` / `extraConfectanceMax` (a SECOND pool); `gainConfectance` routes gains beyond `confectanceMax` into it. **`confectanceMax` is unchanged (U9)**. Clause 5 = additive per FILLED extra slot ⇒ **+10/+20/+30% for 0/1/2**. Values are data (`extraSlots`, `perExtraSlotAtkPct`), still to be set on Vector's own passive. | `src/engine/resources.ts`, `src/engine/state.ts`, `src/model/types.ts` |
@@ -453,6 +458,81 @@ Recorded so implementation is **scoped honestly** rather than approximated. None
   record, so this is plausible; **verify** rather than assume either way.
 - **`remolderSetBonuses` for Vector** — the source gives only the category *totals*, not the set
   bonus definitions.
+
+### 7.1 Status / effect inventory (V4) — authoritative
+
+**Provenance.** Vector's pages (`/dolls/vector/skills`, `/keys`) reference exactly **10 effect IDs**.
+Each was resolved against the site's own effect record — `https://dandegate.net/effects/<uuid>`,
+whose embedded `effectDetails` carries the **main text plus every upgrade variant** (`mainDetails` +
+`upgrades[] { upgradeName, upgradeDetails }`). So the text below is the **site's structured record**,
+not prose transcription. Source class: **secondary (community database)** — hierarchy level 5.
+**Everything here is `[SOURCE]` / `Not Tested`.**
+
+| # | Effect | Tags | In repo? | Definition (site record) |
+|---|---|---|---|---|
+| 1 | **Overburn** | Burn/Debuff | ✅ `overburn` | fixed dmg **10%** of applier ATK, on gain + at action end, to the holder *and allies within 1 tile* |
+| 2 | **Blazing Assault II** | Attack/Buff/Burn | ✅ `blazing_assault_ii` | **ATK +15%** |
+| 3 | **Overheat Combustion** | Burn/Debuff | ❌ | fixed dmg **20%** of applier ATK, on gain + **at the start of the holder's action**, to the holder *and allies within a 1-tile area* · **V1:** *Burn damage taken* **+30%**, area → **3×3** · **V5:** Burn dmg taken +30%, area 3×3, **30%**, and **at action end generates Incineration tiles within 1 tile** |
+| 4 | **Smolder** | Burn/Debuff | ❌ | **on taking Burn damage** → generates **Incineration tiles within 3 tiles**, 2 turns (cannot be cleansed) · **V4:** *for every Burn debuff*, **damage taken +3%** |
+| 5 | **Overheat** | Burn/Debuff | ❌ | **"Command Prohibition, disallows the use of active skills."** |
+| 6 | **Accelerant** | Attack/Buff/Burn | ❌ | *Burn damage dealt* **+10%**, plus 1 instance of **fixed dmg 20% of ATK** (cannot be cleansed) · **V2:** **+30%** · **V6:** *per Burn buff* **+5% dealt**, **+30%**, **crit dmg +15%**, fixed 20% |
+| 7 | **Extra Command** | — | **✅ `extra_command` (IMPLEMENTED 2026)** | "Commands other than movement can be executed." — an **extra main action** in the same unit-turn, no movement |
+| 8 | **Emergency Support** | — | ❌ | "Performs a Support Attack." |
+| 9 | **Apathetic Resistance** | Attack/Buff | ❌ | **Crit damage +25%** (cannot be cleansed) |
+| 10 | **Incineration** | Burn/Debuff | ❌ | the **Burn tile**: Burn weakness; applies **Overburn + Conflagration** to enemies remaining in the area at action end, 2 turns |
+
+**Score: 2 of 10 existed; 3 of 10 now exist** (`overburn`, `blazing_assault_ii`, and
+`extra_command` — the last IMPLEMENTED 2026, see §3.24 of `docs/research.md`).
+
+#### Two record corrections this inventory forces
+
+1. **`Overheat Combustion` is a real, distinct effect** (Burn/Debuff, uuid `e64fa51b`) — **not**
+   Overburn, Conflagration, or Combustion. This **resolves** the V3-era open question ("Vector's
+   Overheat Combustion does not appear in the Burn-tile text"): it is a separate game effect, not a
+   tile effect.
+2. **`Overheat` is a THIRD distinct effect** (uuid `7d900a53`) — and it is **skill denial**. The
+   V3-era reading of Skill 2 Lv.2 as "Applies Overheat" is correct; it is **not** an abbreviation of
+   Overheat Combustion.
+
+#### The capability gaps, by kind (nothing here is implemented)
+
+**a) Data-only definitions: none.** Every missing status needs something the union cannot express.
+
+**b) Small, reusable vocabulary additions:**
+
+| Gap | Engine today | Needed by |
+|---|---|---|
+| **`critDmg` on `stat_modifier`** | stats are `atk \| def \| hp \| critRate` only | Apathetic Resistance; Accelerant V6 |
+| **Per-element gate on a damage modifier** | `damage_modifier.whenPhase` is only *phase vs phase-less*; only `stack_tier_modifier.when.element` is per-element | Overheat Combustion V1 (Burn dmg *taken* +30%); Accelerant (*dealt* +10%) |
+| **Start-of-action status tick** | `tickAt` is `ownActionEnd \| roundEnd` only | Overheat Combustion (fires at the holder's action **start**) |
+| **Count-by-classification scaling** ("for every Burn debuff/buff") | no such scaling exists | Smolder V4 (+3% taken per Burn debuff); Accelerant V6 (+5% dealt per Burn buff) |
+| **Support-trigger vocabulary** | the only trigger is `onAllySingleTargetHit` | Emergency Support / FK6 |
+| **All-allies status targeting** | `StatusApplySpec.target` is `self \| target` | Ultimate applies Accelerant + Blazing Assault II to **all allies**; cleanses 2 debuffs from **all allies** |
+
+**c) Genuinely new mechanics:**
+
+| Gap | Needed by |
+|---|---|
+| **Skill denial / "Command Prohibition"** — nothing blocks ability use; `pickAction` needs a gate | Overheat |
+| **Per-attack extra fixed-damage instance** (not a status tick) | Accelerant |
+| **Extra actions** — explicitly **out of MVP scope** (`docs/validation-checklist.md` §2) | Extra Command |
+| ~~**Extra Command — extra main actions**~~ | **IMPLEMENTED 2026** — `StatusEffect` kind `extra_action` + the `extra_command` status + an action loop in the turn loop. See `docs/research.md` §3.24. |
+
+**d) V3-coupled (tiles) — belongs to V3, not V4:** **Incineration** itself, plus the
+tile-*generation* clauses of Smolder and Overheat Combustion V5. Vector's tiles also apply
+**Conflagration**, **Combustion**, and **Combustion II** — three further undefined statuses that are
+tile-side (`docs/research.md` §3.23).
+
+#### Design decisions recorded (V4, decided with the user 2026-10-09)
+
+- **Element gate:** add a **proper `whenElement`** to `damage_modifier` (dealt + taken), mirroring the
+  existing `whenPhase` / `whenCategory` gates — **not** folding it into `stack_tier_modifier`. (The
+  latter *can* express an element-gated flat bonus via a single-tier `tiers` map, but that kind is a
+  per-stack tier table; using it for a flat modifier would be an abuse.)
+- **Scope:** **documentation first** — record this evidence before implementing anything.
+- **Already-available note for future implementation:** `StatusDef.phase` (an element attribute) exists
+  and Overburn carries `phase: "burn"`, but it is consumed **only** by the attachment-set Phase Strike
+  gate — it is *not* a general element gate for modifiers. Do not conflate the two.
 
 ---
 
@@ -532,8 +612,12 @@ weapon.
 **Blocking (must be resolved before implementation):**
 
 1. ~~**Base stats** (§3) — in-game character sheet required.~~ **RESOLVED 2026-10-09.**
-2. **New statuses** (G2) — 7+ statuses undefined in the repo; each needs its own definition +
-   evidence.
+2. **New statuses** (G2) — **7 of Vector's 10 referenced effects remain undefined** (`overburn`,
+   `blazing_assault_ii`, and now `extra_command` exist); the authoritative inventory, their upgrade
+   variants, and the exact capability gaps are recorded in **§7.1**.
+   Several need new engine vocabulary (`critDmg` stat, per-element damage gate, start-of-action tick,
+   count-by-classification scaling, all-allies targeting), one needs a genuinely new mechanic (skill
+   denial), and the V3-coupled tile clauses remain.
 3. **Untile/tile mechanics** (G1, G9) — Burn/Incineration tiles are foundational to Vector's kit
    and the engine has no tile system.
 4. ~~**Turn-start "at max Confectance" drain** and **the 2 extra V5 slots** (G3, G4, G4b)~~ —
@@ -543,7 +627,7 @@ weapon.
 5. **Weapon-mechanic shape gaps** (§9) — Imprint target-type/condition, weapon atk endpoints.
 
 **What remains for Vector is her kit data** (passive/tiles/statuses/weapon) — the V2 capability itself
-is done.
+is done. **V4's evidence is now documented (§7.1); nothing is implemented.**
 
 **Vector's base stats are `Validated`; nothing else here is.** The base stats are an in-game
 character-sheet read (`Validated` under the project standard, the same basis as Qiongjiu's own base
