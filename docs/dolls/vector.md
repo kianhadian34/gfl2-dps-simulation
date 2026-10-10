@@ -649,7 +649,9 @@ weapon.
    inventory, their upgrade variants, and the exact capability gaps are recorded in **§7.1**.
    Remaining vocabulary needs: **none** — the reusable set is complete. What remains is the
    V3-coupled tile clauses, **holder-side (enemy-side) area targeting** (DEFERRED — §3.33), and the
-   per-effect **area SHAPE decision** (Not Tested).
+   per-effect **area SHAPE decision** — **RESOLVED 2026** from the game's own range-map targeting
+   diagrams (numeric ⇒ diamond, `NxN` ⇒ square); provenance is a community database, so the strict
+   state stays **Not Tested** pending our own in-game check.
    *(The **per-element gate**, the **start-of-action tick**, **all-allies targeting**,
    **count-by-classification scaling**, the **enemy-status support trigger**, **skill denial** and
    **caster-side area/radius targeting** are now DONE — §7.1.)*

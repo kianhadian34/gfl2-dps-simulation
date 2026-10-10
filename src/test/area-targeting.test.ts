@@ -19,7 +19,10 @@ import type { CharacterDef, Scenario, StatusDef } from "../model/types.js";
  *    asserted as the real game's behavior:
  *      - `manhattan` = a diamond (radius 1 ⇒ origin + 4 orthogonal = 5 tiles)
  *      - `square`    = a Chebyshev block (radius 1 ⇒ a full 3×3 = 9 tiles)
- *    Choosing a shape is DATA per effect, and is **Not Tested**.
+ *    Which shape an effect uses is decided by its SOURCE WORDING (resolved 2026 from the game's own
+ *    range-map targeting diagrams; docs/research.md §3.32): numeric areas ("within N tiles") are
+ *    diamonds, `NxN` areas ("3x3") are squares. Provenance is a community database, so the strict
+ *    project state remains Not Tested pending our own in-game confirmation.
  *
  * 2. THE RECIPIENT RESOLUTION (through the real simulate path): the placed allies inside the area
  *    around the ACTOR, including the actor itself; enemies never; and an HONEST ERROR when used

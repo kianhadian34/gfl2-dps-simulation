@@ -22,13 +22,15 @@ unimplemented).
 - Range origin: the unit's own tile for 1×1; the **boss center tile** for 3×3.
 - No Euclidean distance.
 
-### Area / radius (2026; the SHAPE choice is Not Tested)
+### Area / radius (2026; shape resolved from the game's own targeting diagrams)
 - **`AreaShape`** models area targeting as one of two explicit shapes — `"manhattan"` (a diamond,
-  `|dx|+|dy| ≤ radius`) or `"square"` (a Chebyshev block, `max(|dx|,|dy|) ≤ radius`). Both exist
-  because the source text uses what may be **two different metrics** (*"within a 1-tile area"* vs
-  *"area is increased to 3×3"*); at radius 1 the diamond is 5 tiles and the square is 9.
-- **The engine asserts NEITHER shape as any effect's real behavior** — the per-effect choice is
-  data and is **Not Tested**. Full rationale: `docs/research.md` §3.32.
+  `|dx|+|dy| ≤ radius`) or `"square"` (a Chebyshev block, `max(|dx|,|dy|) ≤ radius`). At radius 1
+  the diamond is 5 tiles and the square is 9.
+- **Which shape to use is decided by the source wording** (resolved 2026 from the game's own
+  **range-map targeting diagrams**; `docs/research.md` §3.32): **numeric** areas (*"within N
+  tiles"*, *"N-tile radius/area"*) ⇒ **`manhattan`**; **`NxN`** areas (*"3×3"*, *"9×9"*) ⇒
+  **`square`**. Evidence is the game's own UI sprite, but its provenance is a community database,
+  so the strict project state remains **Not Tested** pending our own in-game confirmation.
 - **`areaTiles`** enumerates a shape's tiles (origin-inclusive, clamped, row-major, pure);
   **`allyIdsInArea`** returns the **placed** allied unit ids inside it. `chebyshev()` supplies the
   square metric — distinct from the confirmed Manhattan **range** metric above.

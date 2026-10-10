@@ -83,8 +83,7 @@ export function chebyshev(a: GridCoord, b: GridCoord): number {
 /**
  * Enumerate the TILES of an area of the given `shape` and `radius` centered on `origin`,
  * inclusive of the origin itself, clamped to the battlefield. Pure geometry — no units, no
- * combat rules (see `AreaShape` for why both shapes exist and why neither is asserted as any
- * specific effect's real behavior).
+ * combat rules (see `AreaShape` for why two shapes exist and how the source wording selects one).
  *
  * - `manhattan` ⇒ diamond: |dx|+|dy| ≤ radius (radius 1 = origin + 4 orthogonal = 5 tiles).
  * - `square`    ⇒ Chebyshev block: max(|dx|,|dy|) ≤ radius (radius 1 = a full 3×3 = 9 tiles).

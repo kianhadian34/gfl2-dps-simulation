@@ -1397,20 +1397,37 @@ vocabulary. They are a separate, deferred gap — see **§3.33**.
 
 Neither status is defined here.
 
-**The shape ambiguity, and why BOTH are modeled.** The source text uses what may be **two
-different metrics**, and conflating them silently changes who is hit:
+**The shape question — RESOLVED 2026 (two shape FAMILIES).** The text uses what looked like two
+metrics; the game's own targeting diagrams settle it. **Numeric areas are Manhattan DIAMONDS;
+`NxN` areas are Chebyshev SQUARES.**
 
-| Wording | `manhattan` (diamond) | `square` (Chebyshev block) |
+| Wording family | Shape | At radius 1 |
 |---|---|---|
-| *"within a 1-tile area"* | radius 1 ⇒ origin + **4 orthogonal** = **5** tiles | radius 1 ⇒ a full **3×3** = **9** tiles |
-| *"area is increased to 3×3"* | would need radius 2 (a 13-tile diamond) | radius 1 = exactly 3×3 |
+| numeric — *"within N tiles"*, *"N-tile radius"*, *"N-tile area"* | **`manhattan`** (diamond) | origin + **4 orthogonal** = **5** tiles |
+| `NxN` — *"3×3"*, *"9×9"* | **`square`** (Chebyshev block) | a full **3×3** = **9** tiles |
 
-`docs/grid.md` establishes Manhattan as the confirmed **range** metric, but neither clause is
-phrased as range, and *"3×3"* is unambiguously a **square block**. The repo cannot resolve which
-reading is real, so the engine **does not choose**: `AreaShape = "manhattan" | "square"` makes both
-**expressible**, and the per-effect choice is **DATA** and **Not Tested**. (Precedent for the
-square: `bossFootprintTiles` already treats "3×3" as a Chebyshev block — that is a *footprint*, not
-evidence about targeting areas.)
+**Evidence (2026) — the game's own range-map targeting images.** The community database
+(`dandegate.net`) exposes the game's **range-map sprites** — the targeting diagrams the game itself
+displays — and they are unambiguous:
+
+| Diagram | What it shows |
+|---|---|
+| `Range 1, Area 3x3` | a **3×3 square block**, corners **filled** (not a diamond) |
+| `Range 3x3, Area 3x3` | orange **3×3 square** over a blue **3×3 square** |
+| `Self, Area 9x9` | a large **square block** |
+| `Range 6, Area 1` | a **plus** (origin + 4 orthogonal) — numeric area 1 |
+| `Range 6, Area 3` · `Area 6` · `Range 7, Area 3` · `Area 7` | **diamonds** — every numeric area tested |
+
+This ALSO explains **V1's wording**: *"fixed damage area **is increased to** 3×3"* is a real
+increase — from a numeric 1-tile area (**5** tiles, diamond) to a 3×3 (**9** tiles, square). Under
+the old "everything is Manhattan" reading the phrase would have been incoherent.
+
+**Provenance and confidence.** The *artifact* is the game's own targeting UI, so this is far
+stronger than prose transcription — but the *provenance* is a community database, i.e. **source
+hierarchy level 5**. Per the project's validation rule (tooltips/code/passing tests never confer
+`Validated`), the strict project state remains **Not Tested** pending our own in-game confirmation.
+What has changed is that the shape is no longer an open question: it is a **documented default with
+direct UI evidence**, and `AreaShape` keeps BOTH values because both families genuinely occur.
 
 **Implementation interpretation**
 - **`AreaShape`** (`src/model/grid.ts`): `"manhattan"` (a diamond — `|dx|+|dy| ≤ radius`) or
@@ -1442,8 +1459,9 @@ evidence about targeting areas.)
 
 **Evidence status** — the *clauses* are `[SOURCE]` (secondary, community database, hierarchy level
 5); the *no-grid error rule* and the *shape expressibility decision* are `[GAME]` (project owner,
-2026-10-10). **The shape choice for any effect is Not Tested** — the engine makes both available but
-claims neither. Covered by `src/test/area-targeting.test.ts` (18 tests: the diamond vs square tile
+2026-10-10). **The shape mapping is resolved 2026** (numeric ⇒ diamond, `NxN` ⇒ square, per the
+game's own range-map targeting images — see the Evidence block above); because that provenance is a
+community database, the strict project state remains **Not Tested** pending our own in-game check. Covered by `src/test/area-targeting.test.ts` (18 tests: the diamond vs square tile
 sets including the diagonal difference, origin inclusion, radius 0, the closed-form counts at
 radius 2 (13 vs 25), battlefield clamping at a corner, radius validation, the `chebyshev`-vs-
 `manhattan` distinction, end-to-end recipient resolution through the real simulate path for BOTH
@@ -1451,11 +1469,14 @@ shapes, a distant-ally control, the dummy never being a recipient, the three hon
 (no grid / unplaced actor / missing `allyArea`), a fixture-leak guard, and a guard that no shipped
 spec uses `ally_area` yet).
 
-**Unknowns / not claimed** — which metric the real game uses for either clause (the central Not
-Tested question); whether the area origin is always the **caster** (assumed from *"this unit
-and…"*) or sometimes the target; whether an area effect also catches NON-allied units (only the
-ally variant exists here); whether "3×3" ever means a rectangle rather than a radius-1 block; and
-whether LOS/terrain affects area membership (not modeled — membership is pure distance).
+**Unknowns / not claimed** — ~~which metric the real game uses for either clause~~ **RESOLVED 2026
+via the game's own range-map targeting images** (numeric ⇒ diamond, `NxN` ⇒ square; see the
+Evidence block above) — though the provenance is a community database, so the strict project state
+is still **Not Tested** pending our own in-game confirmation. Still open: whether the area origin is
+always the **caster** (assumed from *"this unit and…"*) or sometimes the target; whether an area
+effect also catches NON-allied units (only the ally variant exists here); whether an `NxN` block is
+ever non-square/rectangular; and whether LOS/terrain affects area membership (not modeled —
+membership is pure distance).
 
 ---
 

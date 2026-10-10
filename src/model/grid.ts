@@ -28,22 +28,22 @@ export type TileHeight = "ground" | "high";
 export const TILE_HEIGHTS: TileHeight[] = ["ground", "high"];
 
 /**
- * AREA SHAPE (2026) — the tile-shape vocabulary an area/radius effect selects on. Two shapes are
- * distinguished because the source text uses what may be two DIFFERENT metrics, and conflating
- * them would silently change who is hit:
+ * AREA SHAPE (2026) — the tile-shape vocabulary an area/radius effect selects on. TWO shape
+ * FAMILIES exist, because the game uses two different metrics and the source text reflects both:
  *
  * - `"manhattan"` / a DIAMOND — tiles whose Manhattan distance (|dx|+|dy|) is ≤ `radius`. At
- *   `radius: 1` this is the origin plus the 4 ORTHOGONAL neighbours (5 tiles). This matches the
- *   confirmed range metric ("skill range is a diamond", `docs/grid.md`) and the wording
- *   *"within a 1-tile area"*.
+ *   `radius: 1` this is the origin plus the 4 ORTHOGONAL neighbours (5 tiles).
  * - `"square"` / a CHEBYSHEV block — tiles whose Chebyshev distance (max(|dx|,|dy|)) is ≤
- *   `radius`. At `radius: 1` this is a full **3×3** block (9 tiles), matching the wording
- *   *"area is increased to 3×3"*.
+ *   `radius`. At `radius: 1` this is a full **3×3** block (9 tiles).
  *
- * NEITHER shape is asserted as the game's real behavior for any specific effect: the per-effect
- * choice is DATA and is **Not Tested** (`docs/research.md` §3.32). This vocabulary exists so both
- * readings are EXPRESSIBLE rather than one being baked into the engine. Only these two shapes are
- * modeled — do not invent others.
+ * WHICH ONE TO USE IS DECIDED BY THE SOURCE WORDING (resolved 2026 from the game's own range-map
+ * targeting diagrams; `docs/research.md` §3.32):
+ *   - numeric areas — *"within N tiles"*, *"N-tile radius"*, *"N-tile area"* ⇒ **`manhattan`**
+ *   - `NxN` areas — *"3×3"*, *"9×9"* ⇒ **`square`**
+ * This is a documented default backed by direct UI evidence, but its provenance is a community
+ * database, so the strict project state remains **Not Tested** pending our own in-game check.
+ *
+ * Only these two shapes are modeled — do not invent others.
  */
 export type AreaShape = "manhattan" | "square";
 
