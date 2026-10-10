@@ -463,7 +463,13 @@ move the arithmetic from user-provided evidence to `Validated`.
 
 **Confidence** — Categories and Qiongjiu-specific rules CONFIRMED; per-doll quotas/conditions PROBABLE; exact trigger-verification sequencing UNKNOWN. **Support Action Stability & no-chaining — VALIDATED in-game (2026):** a Support Action deals **exactly 2 Stability damage**, and **a Support Action cannot trigger another Support Action** — validated example: one targeted attack can cause **3 eligible Dolls to perform Support Actions sequentially**, and those Support Actions do **not** recursively trigger more Support Actions. (Engine: `qiongjiu_support` stabDamage 2; `support_attack` `chainable: false`; covered by `support.test.ts`.) **Support Action range — MVP modeling decision (2026), NOT in-game validated: modeled as 8 tiles (`range: 8` declared on the support skill data); the MVP engine has no range/positioning check (in-range assumed).**
 
-**Implementation interpretation** — event-bus: `onAllySingleTargetHit`, `onDebuffApplied`, `onUnitAttacked`, etc.; passives subscribe with per-round quota counters (reset each round); support attacks emit 0-cost attack events that are themselves **not** trigger sources (guard against chaining).
+**Implementation interpretation** — there is **no general event bus**. Support Actions are driven by the `support_attack` passive effect, whose `trigger` field names **exactly what causes the holder to act**; today there are two values, each with its own precondition and each implemented at the existing post-action point (`fireSupportAttacks`, called once per resolved main action):
+- **`onAllySingleTargetHit`** — ANOTHER unit dealt targeted damage to an enemy. The acting unit is EXCLUDED, and the ally's action must have dealt damage (`finalDamage > 0`). This is the established Qiongjiu trigger (VALIDATED in-game 2026).
+- **`onEnemyStatusApplied`** — an ENEMY gained the status named by `statusId` (2026, Vector's FK6: *"when an enemy unit within range is inflicted with Overburn"*). A REFRESH of an already-held status is not a new infliction and does not fire. Because this trigger names no applier, it **also fires when the holder itself inflicted the status** (project owner, 2026-10-10) — the "another unit acted" rule belongs to `onAllySingleTargetHit` only. It does NOT require the inflicting action to have dealt damage.
+
+Both rules draw on the holder's **per-round** quota (`supportQuota`, reset in `beginUnitRound`); a Support Action consumes no action, no Confectance and no cooldown, and **never chains** — a Support Action's own hits and status applications are not re-dispatched as trigger sources. `onKillStatuses` (a skill-scoped killing-blow hook) and `after_support_status` / `beforeSupportTrigger` (passive/variant hooks) are separate mechanisms, not a bus.
+
+**Correction (2026):** this section previously described an *"event-bus: `onAllySingleTargetHit`, `onDebuffApplied`, `onUnitAttacked`, etc."*. **No such bus exists, and `onDebuffApplied`/`onUnitAttacked` were never implemented** — the wording described an intended architecture, not the code. Corrected here; the two trigger values above are the real state. See §3.30.
 
 **Unknowns** — per-doll details; order between emergency support and support support on the same target.
 
@@ -1263,6 +1269,60 @@ whether the count is evaluated **at the moment of the hit** (the implementation 
 state) or snapshotted at application; whether **non-Burn** elements ever use this scaling (the
 vocabulary is generic, the data is not); and whether Smolder's *tile-generation* clause or
 Accelerant's *fixed-damage instance* (both still unimplemented) interact with the count.
+
+---
+
+### 3.30 Enemy-status support trigger (`support_attack.trigger: "onEnemyStatusApplied"`) — 2026, IMPLEMENTED + TESTED
+
+**Mechanic** — a Support Action whose trigger is **an enemy gaining a status**, rather than an ally
+dealing damage.
+
+**Source** — Vector's **FK6 Negative Motivation**: *"When an enemy unit within range is inflicted
+with **Overburn**, launches **Emergency Support**, dealing **Burn damage equal to 60%** of attack
+and **1 point** of stability damage. Triggers **once per turn**."* (The **Emergency Support** status
+itself — inventory #8, *"Performs a Support Attack."* — is **NOT implemented here**; this section
+records the **trigger vocabulary** their definitions need.)
+
+**Implementation interpretation** — `support_attack.trigger` gained a second value alongside the
+established `onAllySingleTargetHit`. The two are **separate union members**, so
+`trigger: "onEnemyStatusApplied"` **requires** `statusId` at compile time and a missing status can
+never be a silently inert trigger. Both fire at the **existing post-action point** in
+`fireSupportAttacks`, so the quota / no-chaining / logging flow is reused wholesale:
+
+- **What fires it:** an enemy **newly gaining** the declared `statusId`. Detected by snapshotting
+  every enemy's carried status ids *before* the action and diffing *after* — so a **re-application
+  (refresh) of an already-held status is NOT an infliction** and does not fire.
+- **Who may fire it:** **any** holder whose declared `statusId` was inflicted, **including the
+  holder itself** (project owner, 2026-10-10). The trigger names no applier, so the "another unit
+  acted" restriction that governs `onAllySingleTargetHit` deliberately does **not** apply here.
+  Consequence: unlike Qiongjiu's trigger, this one can fire in a solo simulation.
+- **Damage is NOT required.** The ally-hit rule's `finalDamage > 0` fidelity is its own
+  precondition and is **not** inherited — a 0-damage debuff application still fires this trigger.
+- **"Once per turn" = the per-ROUND quota.** Expressed as `perRoundMax: 1` on the holder's
+  `support_attack`; `supportQuota` is reset in `beginUnitRound` (the same limiter as Qiongjiu's
+  3/round and the Ultimate's +1). No new counter was added.
+- **No chaining.** A Support Action's own hit and its own status applications are resolved outside
+  the action loop, so they are not re-dispatched as trigger sources (VALIDATED behaviour inherited
+  from the existing flow, re-asserted for this trigger by test).
+- **Enemy scope:** the training dummy plus any grid line-attack enemies (which keep their own
+  status lists). A **range** check is **not** modeled — the MVP has no range/positioning check for
+  support attacks in general (`docs/research.md` §3.14), and FK6's *"within range"* inherits that.
+
+**Evidence status** — the *trigger shape* is `[SOURCE]` (secondary, community database, hierarchy
+level 5); the *semantics choices* are `[GAME]` (project owner, 2026-10-10). The implementation is
+covered by automated tests. **NOT in-game validated.** Covered by
+`src/test/enemy-status-trigger.test.ts` (10 tests: the core infliction fire with damage + Stability
+asserted, an unrelated-status control, a refresh control, 0-damage independence, self-infliction, an
+**ally-hit control asserting that rule is NOT loosened**, quota bounds, no-chaining, a fixture-leak
+guard, and a guard that no shipped character declares the new trigger yet).
+
+**Unknowns / not claimed** — whether Emergency Support really resolves at the same point as an
+ordinary Support Action (the literal wording ties it to the infliction instant; the implementation
+uses the post-action point, confirmed as a modeling choice); whether *"within range"* is a real
+distance gate; whether the same per-round quota is the correct reading of *"once per turn"* as
+opposed to a per-unit-turn limiter; and how it orders against a simultaneously-eligible
+`onAllySingleTargetHit` support from another unit (the source explicitly leaves ordering
+unestablished — §3.14 Unknowns).
 
 ---
 

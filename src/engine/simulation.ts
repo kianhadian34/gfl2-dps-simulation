@@ -994,18 +994,55 @@ function applyScriptedMove(state: SimulationState, doll: UnitState, round: numbe
 }
 
 /**
- * Support attacks: fired after a doll's main action for every OTHER doll whose
- * passive declares a support attack with quota left (research §3.14). Support
- * attacks consume no action, no Confectance, no cooldown, and never chain
- * (the hit is not re-dispatched through this function).
+ * Enemy units that can be "inflicted" with a status, in a STABLE order: the training dummy
+ * first, then any grid line-attack enemies (FK4-style), which keep their own status lists.
+ * Used by the `onEnemyStatusApplied` support trigger to observe new inflictions.
  */
-function fireSupportAttacks(state: SimulationState, triggerActor: UnitState, turn: number): void {
+function enemyUnitsWithStatuses(state: SimulationState): { id: string; statuses: ActiveStatus[] }[] {
+  const out: { id: string; statuses: ActiveStatus[] }[] = [{ id: state.dummy.id, statuses: state.dummy.statuses }];
+  for (const e of state.grid?.enemyUnits ?? []) {
+    out.push({ id: e.unitId, statuses: state.grid!.enemyStatuses.get(e.unitId) ?? [] });
+  }
+  return out;
+}
+
+/**
+ * Support attacks (research §3.14). Support attacks consume no action, no Confectance and no
+ * cooldown, and never chain (a support hit is not re-dispatched as a trigger through here).
+ *
+ * TWO trigger rules, deliberately different:
+ * - `onAllySingleTargetHit` (the established Qiongjiu trigger, VALIDATED in-game 2026) — fires
+ *   for every OTHER doll when an ally's action actually dealt damage. The acting unit is EXCLUDED.
+ * - `onEnemyStatusApplied` (2026, Vector's FK6) — fires for every doll whose declared `statusId`
+ *   was NEWLY applied to an enemy, INCLUDING when that doll itself inflicted it (the trigger
+ *   names no applier; confirmed with the project owner 2026-10-10). Only the ally-hit rule carries
+ *   the "another unit acted" restriction. `ctx.inflicted` is the set of status ids newly gained by
+ *   any enemy during the action just resolved; a REFRESH of an already-held status is NOT an
+ *   infliction and never appears in it.
+ *
+ * Both rules share the holder's per-ROUND quota (`supportQuota`, reset in `beginUnitRound`), which
+ * is also how FK6's "triggers once per turn" is expressed (`perRoundMax: 1`).
+ */
+function fireSupportAttacks(
+  state: SimulationState,
+  triggerActor: UnitState,
+  turn: number,
+  ctx: { dealtDamage: boolean; inflicted: ReadonlySet<string> },
+): void {
   for (const shooter of state.units) {
-    if (shooter === triggerActor || !shooter.def) continue;
+    if (!shooter.def) continue;
     const eff = shooter.passives.find(
       (e): e is Extract<PassiveEffect, { kind: "support_attack" }> => e.kind === "support_attack",
     );
-    if (!eff || eff.trigger !== "onAllySingleTargetHit") continue;
+    if (!eff) continue;
+    // Which rule is this holder's? Each is evaluated independently, because their preconditions
+    // differ: the ally-hit rule needs DAMAGE, the status rule needs an INFLICTION (not damage).
+    if (eff.trigger === "onAllySingleTargetHit") {
+      if (shooter === triggerActor) continue; // the acting unit never supports its own hit
+      if (!ctx.dealtDamage) continue;
+    } else {
+      if (!ctx.inflicted.has(eff.statusId)) continue; // no matching new infliction
+    }
     if (shooter.supportQuota <= 0) continue;
     const skill = shooter.skills.support;
     if (!skill) continue;
@@ -1412,15 +1449,29 @@ export function simulate(scenario: Scenario, registry: Registry): SimulationResu
         // triggering attack and the ensuing Support Action both benefit. Uses the EXISTING trigger
         // sequence; no new trigger; no Confectance coupling.
         const preApplied = applyBeforeSupportTriggerStatuses(state, doll, slot);
+        // ENEMY-STATUS TRIGGER (2026, Vector's FK6): snapshot each enemy's carried status ids
+        // BEFORE the action, so the post-action diff identifies statuses NEWLY INFLICTED by it.
+        // Kind-based trigger fidelity (2026): Support Action fires only when an ally's action
+        // actually dealt damage to an enemy (source fact: "receives targeted damage from an ally")
+        // — a non-damaging ally action (e.g. a 0-damage ultimate) must NOT trigger it. The
+        // enemy-status trigger has its own precondition (an infliction, damage irrelevant), so
+        // both facts are handed to `fireSupportAttacks` rather than pre-combined here.
+        const statusesBefore = new Set<string>();
+        for (const e of enemyUnitsWithStatuses(state)) {
+          for (const s of e.statuses) statusesBefore.add(`${e.id}\u0000${s.statusId}`);
+        }
         const ev = resolveMainAction(state, doll, slot, k, ++turn);
         for (const p of preApplied) {
           ev.statusesApplied.push(p.statusId);
           (ev.appliedSources ??= []).push({ statusId: p.statusId, source: p.source });
         }
-        // Trigger fidelity (2026): Support Action fires only when an ally's action actually
-        // dealt damage to an enemy (source fact: "receives targeted damage from an ally") —
-        // a non-damaging ally action (e.g. a 0-damage ultimate) must NOT trigger it.
-        if (ev.finalDamage > 0) fireSupportAttacks(state, doll, turn);
+        const inflicted = new Set<string>();
+        for (const e of enemyUnitsWithStatuses(state)) {
+          for (const s of e.statuses) {
+            if (!statusesBefore.has(`${e.id}\u0000${s.statusId}`)) inflicted.add(s.statusId);
+          }
+        }
+        fireSupportAttacks(state, doll, turn, { dealtDamage: ev.finalDamage > 0, inflicted });
         // EXTRA COMMAND: grant the extra action AFTER the action resolved, so a skill's own grant
         // is available immediately (Vector: Ultimate → act again). No move occurs in between.
         const grantedBy = consumeExtraAction(state, doll);

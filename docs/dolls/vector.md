@@ -377,7 +377,7 @@ Qiongjiu's ordering.
 | FK3 | `vector_fk3_dispassionate_support` | Dispassionate Support | 30 | **Before the attack**, cleanses **2 buffs** from the enemy target. |
 | FK4 | `vector_fk4_proliferating_despair` | Proliferating Despair | 30 | Before dealing damage to a **large target** with an **active attack**, additionally deals 1 instance of **fixed damage equal to 15%** of attack. |
 | FK5 | `vector_fk5_unfortunate_jinx` | Unfortunate Jinx | 40 | While on a **Burn tile**, damage taken is reduced by **20%**. At the **end of the action**, Vector restores **2 points** of stability index and **10%** of max HP. |
-| FK6 | `vector_fk6_negative_motivation` | Negative Motivation | 40 | When an enemy unit within range is inflicted with **Overburn**, launches **Emergency Support**, dealing **Burn damage equal to 60%** of attack and **1 point** of stability damage. Triggers **once per turn**. |
+| FK6 | `vector_fk6_negative_motivation` | Negative Motivation | 40 | When an enemy unit within range is inflicted with **Overburn**, launches **Emergency Support**, dealing **Burn damage equal to 60%** of attack and **1 point** of stability damage. Triggers **once per turn**. *(The **trigger** is now engine-supported — `onEnemyStatusApplied` §3.30; the numbers are Vector's data)* |
 
 **Direct precedents in the engine (comparisons only — Vector's versions are their own data):**
 - FK2 mirrors Qiongjiu's FK1 Concentration (`battleStartEffects` +3 Confectance) exactly in shape.
@@ -443,7 +443,7 @@ Recorded so implementation is **scoped honestly** rather than approximated. None
 | ~~G4~~ | ~~Turn-start "at max Confectance" trigger~~ | **IMPLEMENTED (2026)** — `applyTurnStartConfectanceDrain` runs at each unit's turn start; the pre-existing `onCastAtMaxConfectance` hook (Ultimate-scoped) is untouched. | `src/engine/simulation.ts` |
 | ~~G4b~~ | ~~The 2 EXTRA Confectance slots (V5-only, separate from the normal 6)~~ | **IMPLEMENTED (2026)** — `UnitState.extraConfectance` / `extraConfectanceMax` (a SECOND pool); `gainConfectance` routes gains beyond `confectanceMax` into it. **`confectanceMax` is unchanged (U9)**. Clause 5 = additive per FILLED extra slot ⇒ **+10/+20/+30% for 0/1/2**. Values are data (`extraSlots`, `perExtraSlotAtkPct`), still to be set on Vector's own passive. | `src/engine/resources.ts`, `src/engine/state.ts`, `src/model/types.ts` |
 | G5 | **Fixed damage equal to 50%/80% of ATK to an AoE area around the target** (conditional on a Burn debuff) | **Partly modeled.** `fixedDamage` exists (absolute) and `percentOfAtk` exists for *statuses*; an ability-sourced **percent-of-ATK fixed AoE** is new. | `src/engine/damage.ts`, `simulation.ts` |
-| G6 | **Support Attacks that "deal Burn damage"** as a distinct category (Vector *increases their count*) | **Not modeled.** Qiongjiu's support is phase-less; "count of Support Attacks dealing Burn damage" is a new concept. | `src/engine/simulation.ts` |
+| G6 | **Support Attacks that "deal Burn damage"** as a distinct category (Vector *increases their count*) | **Not modeled.** Qiongjiu's support is phase-less; "count of Support Attacks dealing Burn damage" is a new concept. *(Distinct from slice 7, which added the **enemy-status TRIGGER** for a Support Action — §3.30 — not a Burn-damage classification of support hits.)* | `src/engine/simulation.ts` |
 | G7 | **Cooldown reduction** (Expansion Key: −1 turn on an Ultimate) | **Not modeled.** `setCooldown` only sets absolute values. | `src/engine/cooldowns.ts` |
 | G8 | **Allied healing** (Expansion Key heals all allies; FK5 self-heals + stability restore) | **Not modeled** (the engine is attacker + target only; `heal` exists for the holder). | `src/engine/statuses.ts` |
 | G9 | **Damage-taken reduction while standing on a tile** (FK5) | **Not modeled** (no tiles; `damage_reduction` exists but not tile-gated). | — |
@@ -484,7 +484,7 @@ not prose transcription. Source class: **secondary (community database)** — hi
 | 5 | **Overheat** | Burn/Debuff | ❌ | **"Command Prohibition, disallows the use of active skills."** |
 | 6 | **Accelerant** | Attack/Buff/Burn | ❌ *(its **V6 count clause** "per Burn buff, damage dealt +5%" is now **supported** — `damage_modifier.perMatching` §3.29; its fixed-damage instance is not. NOTE: its **Burn affiliation** is now declared as `StatusDef.element` on other statuses, not on Accelerant itself — Accelerant is still undefined)* | *Burn damage dealt* **+10%**, plus 1 instance of **fixed dmg 20% of ATK** (cannot be cleansed) · **V2:** **+30%** · **V6:** *per Burn buff* **+5% dealt**, **+30%**, **crit dmg +15%**, fixed 20% |
 | 7 | **Extra Command** | — | **✅ `extra_command` (IMPLEMENTED 2026)** | "Commands other than movement can be executed." — an **extra main action** in the same unit-turn, no movement |
-| 8 | **Emergency Support** | — | ❌ | "Performs a Support Attack." |
+| 8 | **Emergency Support** | — | ❌ *(its **trigger** — "when an enemy gains a status" — is now **supported**: `support_attack.trigger: "onEnemyStatusApplied"` §3.30; the status itself is not defined)* | "Performs a Support Attack." |
 | 9 | **Apathetic Resistance** | Attack/Buff | **✅ `apathetic_resistance` (IMPLEMENTED 2026)** | **Crit damage +25%**, 2 turns (cannot be cleansed) |
 | 10 | **Incineration** | Burn/Debuff | ❌ | the **Burn tile**: Burn weakness; applies **Overburn + Conflagration** to enemies remaining in the area at action end, 2 turns |
 
@@ -513,7 +513,7 @@ not prose transcription. Source class: **secondary (community database)** — hi
 | ~~**Per-element gate on a damage modifier**~~ | ~~`damage_modifier.whenPhase` is only *phase vs phase-less*; only `stack_tier_modifier.when.element` is per-element~~ — **DONE 2026** (`whenElement`, both scopes + both modes; `docs/research.md` §3.26) | ~~Overheat Combustion V1 (Burn dmg *taken* +30%)~~; ~~Accelerant (*dealt* +10%)~~ — **the gate is done; those statuses still need other pieces** (see below) |
 | ~~**Start-of-action status tick**~~ | ~~`tickAt` is `ownActionEnd \| roundEnd` only~~ — **DONE 2026** (`ownActionStart`, a third point; `docs/research.md` §3.27) | ~~Overheat Combustion (fires at the holder's action **start**)~~ — **the tick point is done; that status still needs other pieces** (see below) |
 | ~~**Count-by-classification scaling** ("for every Burn debuff/buff")~~ | ~~no such scaling exists~~ — **DONE 2026** (`damage_modifier.perMatching` + `StatusDef.element`; `docs/research.md` §3.29) | ~~Smolder V4 (+3% taken per Burn debuff); Accelerant V6 (+5% dealt per Burn buff)~~ — **the scaling is done; both statuses still need their other pieces** (Smolder needs tile generation; Accelerant needs its fixed-damage instance). Both clauses are **Not Tested** (the self-counting question in §3.29 is open) |
-| **Support-trigger vocabulary** | the only trigger is `onAllySingleTargetHit` | Emergency Support / FK6 |
+| ~~**Support-trigger vocabulary**~~ | ~~the only trigger is `onAllySingleTargetHit`~~ — **DONE 2026** (`trigger: "onEnemyStatusApplied"` + `statusId`, a separate union member; `docs/research.md` §3.30). The old wording claiming an *event bus* with `onDebuffApplied`/`onUnitAttacked` was **doc drift** — no bus ever existed; §3.14 is corrected | ~~Emergency Support / FK6~~ — **the trigger is done; Emergency Support itself is still undefined, and FK6's numbers are Vector's data** |
 | ~~**All-allies status targeting**~~ | ~~`StatusApplySpec.target` is `self \| target`~~ — **DONE 2026** (`all_allies`, every team member incl. the caster; `docs/research.md` §3.28) | ~~Ultimate applies Accelerant + Blazing Assault II to **all allies**~~ — **the targeting is done; those statuses still need their own definitions** (Accelerant needs the Burn-dealt gate + a fixed instance; Blazing Assault II already exists) |
 
 **c) Genuinely new mechanics:**
@@ -644,10 +644,10 @@ weapon.
 2. **New statuses** (G2) — **6 of Vector's 10 referenced effects remain undefined** (`overburn`,
    `blazing_assault_ii`, `extra_command`, and now `apathetic_resistance` exist); the authoritative
    inventory, their upgrade variants, and the exact capability gaps are recorded in **§7.1**.
-   Remaining vocabulary needs: **support-trigger vocabulary**; plus one genuinely new mechanic
-   (skill denial) and the V3-coupled tile clauses.
-   *(The **per-element gate**, the **start-of-action tick**, **all-allies targeting** and
-   **count-by-classification scaling** are now DONE — §7.1.)*
+   Remaining vocabulary needs: **none** — the reusable set is complete. What remains is one
+   genuinely new mechanic (skill denial) and the V3-coupled tile clauses.
+   *(The **per-element gate**, the **start-of-action tick**, **all-allies targeting**,
+   **count-by-classification scaling** and the **enemy-status support trigger** are now DONE — §7.1.)*
 3. **Untile/tile mechanics** (G1, G9) — Burn/Incineration tiles are foundational to Vector's kit
    and the engine has no tile system.
 4. ~~**Turn-start "at max Confectance" drain** and **the 2 extra V5 slots** (G3, G4, G4b)~~ —

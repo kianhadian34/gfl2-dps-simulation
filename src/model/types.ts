@@ -244,7 +244,31 @@ export type PassiveEffect =
       skillId: string;
       perRoundMax: number;
       chainable: boolean;
+      /**
+       * `onAllySingleTargetHit` — ANOTHER unit deals targeted damage to an enemy (the established
+       * Qiongjiu trigger, VALIDATED in-game 2026). The acting unit itself is EXCLUDED.
+       */
       trigger: "onAllySingleTargetHit";
+    }
+  | {
+      kind: "support_attack";
+      skillId: string;
+      perRoundMax: number;
+      chainable: boolean;
+      /**
+       * `onEnemyStatusApplied` — an ENEMY gains the status named by `statusId` (2026, Vector's FK6
+       * "when an enemy unit within range is inflicted with Overburn"). A REFRESH of an
+       * already-held status is not a new infliction and does NOT fire.
+       *
+       * Unlike `onAllySingleTargetHit`, this trigger names no applier, so it ALSO fires when the
+       * HOLDER itself inflicted the status (confirmed with the project owner 2026-10-10): the
+       * "another unit acted" rule belongs to the ally-hit trigger only.
+       *
+       * `statusId` is REQUIRED here — modeled as a separate union member so a missing status is a
+       * compile error rather than a silently inert trigger.
+       */
+      trigger: "onEnemyStatusApplied";
+      statusId: string;
     }
   | {
       /**
