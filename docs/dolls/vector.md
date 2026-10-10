@@ -481,7 +481,7 @@ not prose transcription. Source class: **secondary (community database)** — hi
 | 2 | **Blazing Assault II** | Attack/Buff/Burn | ✅ `blazing_assault_ii` | **ATK +15%** |
 | 3 | **Overheat Combustion** | Burn/Debuff | ❌ *(its **tick point** is supported — `ownActionStart` §3.27; its **"all allied units within a 1-tile area"** clause needs AREA targeting, which `all_allies` (§3.28) does **not** provide — that is the whole team, not a 1-tile radius)* | fixed dmg **20%** of applier ATK, on gain + **at the start of the holder's action**, to the holder *and allies within a 1-tile area* · **V1:** *Burn damage taken* **+30%**, area → **3×3** · **V5:** Burn dmg taken +30%, area 3×3, **30%**, and **at action end generates Incineration tiles within 1 tile** |
 | 4 | **Smolder** | Burn/Debuff | ❌ *(its **V4 count clause** "for every Burn debuff, damage taken +3%" is now **supported** — `damage_modifier.perMatching` §3.29; its tile generation is not)* | **on taking Burn damage** → generates **Incineration tiles within 3 tiles**, 2 turns (cannot be cleansed) · **V4:** *for every Burn debuff*, **damage taken +3%** |
-| 5 | **Overheat** | Burn/Debuff | ❌ | **"Command Prohibition, disallows the use of active skills."** |
+| 5 | **Overheat** | Burn/Debuff | ❌ *(its **effect** — "disallow the use of active skills" — is now **supported**: `StatusEffect { kind: "deny_skills" }` §3.31; Overheat itself is not defined)* | **"Command Prohibition, disallows the use of active skills."** |
 | 6 | **Accelerant** | Attack/Buff/Burn | ❌ *(its **V6 count clause** "per Burn buff, damage dealt +5%" is now **supported** — `damage_modifier.perMatching` §3.29; its fixed-damage instance is not. NOTE: its **Burn affiliation** is now declared as `StatusDef.element` on other statuses, not on Accelerant itself — Accelerant is still undefined)* | *Burn damage dealt* **+10%**, plus 1 instance of **fixed dmg 20% of ATK** (cannot be cleansed) · **V2:** **+30%** · **V6:** *per Burn buff* **+5% dealt**, **+30%**, **crit dmg +15%**, fixed 20% |
 | 7 | **Extra Command** | — | **✅ `extra_command` (IMPLEMENTED 2026)** | "Commands other than movement can be executed." — an **extra main action** in the same unit-turn, no movement |
 | 8 | **Emergency Support** | — | ❌ *(its **trigger** — "when an enemy gains a status" — is now **supported**: `support_attack.trigger: "onEnemyStatusApplied"` §3.30; the status itself is not defined)* | "Performs a Support Attack." |
@@ -520,7 +520,7 @@ not prose transcription. Source class: **secondary (community database)** — hi
 
 | Gap | Needed by |
 |---|---|
-| **Skill denial / "Command Prohibition"** — nothing blocks ability use; `pickAction` needs a gate | Overheat |
+| ~~**Skill denial / "Command Prohibition"** — nothing blocks ability use; `pickAction` needs a gate~~ — **DONE 2026** (`StatusEffect { kind: "deny_skills" }`; `slotAvailable` consults `skillDenied`; `docs/research.md` §3.31). Active skills + Ultimate are denied, Basic never is. **The immunity is an ENGINE LAW, not a data flag:** denial never applies to a non-doll unit or an `isBoss` unit — so it is inert against every enemy this simulator fights | ~~Overheat~~ — **the denial is done; Overheat itself is still undefined, and its own values are Vector's data** |
 | **Per-attack extra fixed-damage instance** (not a status tick) | Accelerant |
 
 **Resolved in this batch (no longer gaps):**
@@ -644,10 +644,11 @@ weapon.
 2. **New statuses** (G2) — **6 of Vector's 10 referenced effects remain undefined** (`overburn`,
    `blazing_assault_ii`, `extra_command`, and now `apathetic_resistance` exist); the authoritative
    inventory, their upgrade variants, and the exact capability gaps are recorded in **§7.1**.
-   Remaining vocabulary needs: **none** — the reusable set is complete. What remains is one
-   genuinely new mechanic (skill denial) and the V3-coupled tile clauses.
+   Remaining vocabulary needs: **none** — the reusable set is complete. What remains is the
+   V3-coupled tile clauses and **area/radius targeting**.
    *(The **per-element gate**, the **start-of-action tick**, **all-allies targeting**,
-   **count-by-classification scaling** and the **enemy-status support trigger** are now DONE — §7.1.)*
+   **count-by-classification scaling**, the **enemy-status support trigger** and **skill denial**
+   are now DONE — §7.1.)*
 3. **Untile/tile mechanics** (G1, G9) — Burn/Incineration tiles are foundational to Vector's kit
    and the engine has no tile system.
 4. ~~**Turn-start "at max Confectance" drain** and **the 2 extra V5 slots** (G3, G4, G4b)~~ —

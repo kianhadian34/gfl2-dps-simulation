@@ -1326,6 +1326,57 @@ unestablished — §3.14 Unknowns).
 
 ---
 
+### 3.31 Skill denial — "Command Prohibition" (`StatusEffect: { kind: "deny_skills" }`) — 2026, IMPLEMENTED + TESTED
+
+**Mechanic** — a status that **disallows the use of active skills** while the holder carries it.
+
+**Source** — Vector's **Overheat**: *"Command Prohibition, disallows the use of active skills."*
+The status **Overheat itself is NOT implemented here** — this section records the **vocabulary**
+its definition will need.
+
+**Implementation interpretation** — a new `StatusEffect` member `{ kind: "deny_skills" }` (no
+numeric payload; the effect IS the denial). `slotAvailable` (`src/engine/simulation.ts`) — the
+single action-selection gate that `pickAction` walks — consults the new exported predicate
+`skillDenied(state, unit, slot)`:
+
+- **What is denied:** ACTIVE skills and the **ULTIMATE**. The **BASIC attack is never denied**, so a
+  denied unit always has an action and can never be soft-locked (the existing `pickAction` fallback
+  to Basic covers the empty case). Confirmed with the project owner, 2026-10-10 — the broader
+  reading of "active skills" as "any non-basic ability".
+- **THE IMMUNITY IS A LAW OF THE MECHANIC, NOT A DATA FLAG** (project owner, 2026-10-10). Denial
+  **never** applies to a NON-DOLL unit (`kind !== "doll"` — the training dummy, grid line enemies)
+  or to an **`isBoss`** unit. Crucially the rule is enforced **inside `skillDenied`**, not declared
+  per status, so **no future denial status can bypass it by omitting a field**.
+  - Rationale: this simulator only ever fights **bosses/dummies**, and in-fiction Command
+    Prohibition does not work on bosses. A boss-effective denial would be both wrong here and
+    untestable in the MVP.
+- **Read-only:** the gate never consumes, alters, extends or refreshes the status.
+
+**Consequence — deliberately inert on every current enemy.** The immunity law makes denial
+pointless against the dummy/boss; and in any case **enemies never pick actions at all** (the dummy
+takes a pass-turn; grid line enemies never act), so `slotAvailable` is never reached for them. The
+mechanic therefore has **real, testable behaviour only when the status lands on a DOLL** — which
+every scenario can arrange. This is an accepted, documented boundary, not an oversight: the
+mechanic exists and is correct, and it is simply unexercisable against enemies in the MVP.
+
+**Evidence status** — the *wording* is `[SOURCE]` (secondary, community database, hierarchy level
+5); the *denial scope* (active + Ultimate, Basic exempt) and the *immunity law* are `[GAME]`
+(project owner, 2026-10-10), recorded as such — the site record says nothing about boss immunity.
+The implementation is covered by automated tests. **NOT in-game validated.** Covered by
+`src/test/skill-denial.test.ts` (12 tests: the denial collapsing a doll's rotation onto Basic
+end-to-end, an undented control, the never-soft-lock guarantee, the immunity matrix for a doll /
+boss / non-doll / basic slot, read-only behaviour, an unrelated-status control, an end-to-end proof
+that a denial on the dummy changes neither damage nor action count, a fixture-leak guard, and a
+guard that no shipped status declares `deny_skills` yet).
+
+**Unknowns / not claimed** — whether Overheat denies anything beyond active skills in the real game
+(e.g. movement, items, or Support Actions); whether the denial is meant to be removable by a
+cleanse (Overheat's own `purgeable` is Vector's data, not decided here); and whether any future
+**playable** unit could be a boss (which would make the immunity law visible). The MVP cannot
+observe the immunity at all, because no enemy ever picks an action.
+
+---
+
 ## 4. Uncertainty register
 
 Every mechanic that is still uncertain, with impact and resolution path. **None of these should be hardcoded as facts in the engine — all are config defaults pending the in-game test plan (§5).**

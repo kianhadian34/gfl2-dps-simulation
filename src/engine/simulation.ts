@@ -98,9 +98,41 @@ function slotAvailable(state: SimulationState, doll: UnitState, slot: ActionSlot
   if (slot === "basic") return true;
   const skill = skillForSlot(doll, slot);
   if (!skill) return false;
+  // SKILL DENIAL — "Command Prohibition" (2026): a denied unit may not use ACTIVE skills or the
+  // ULTIMATE; only the BASIC attack above remains. Consulted HERE (the single action-selection
+  // gate), so the denial is real whenever a unit picks an action.
+  if (skillDenied(state, doll, slot)) return false;
   if (cooldownRemaining(doll, skill.id) > 0) return false;
   if (slot === "ultimate" && doll.confectance < skill.confectanceCost) return false;
   return true;
+}
+
+/**
+ * SKILL DENIAL — "Command Prohibition" (2026, Vector's Overheat). True when the unit may not use
+ * the given non-basic slot because it carries a `deny_skills` status.
+ *
+ * The IMMUNITY is enforced here as a LAW OF THE MECHANIC, deliberately NOT a per-status data flag
+ * (project owner, 2026-10-10):
+ *  - NON-DOLL units are immune. The training dummy and grid line enemies never pick actions in the
+ *    MVP anyway, so denial on them is inert by construction — this makes that explicit and
+ *    guarantees it stays true if enemies ever act.
+ *  - `isBoss` units are immune. The simulator only fights bosses/dummies, and in-fiction Command
+ *    Prohibition does not work on bosses.
+ * Because the rule lives in the gate (not in status data), a future denial status cannot bypass it
+ * by omitting a field.
+ *
+ * Willingly ASSUMED to be unobservable in the MVP: denial is inert on every current enemy. It has
+ * real, testable behaviour only when the status lands on a DOLL.
+ */
+export function skillDenied(state: SimulationState, unit: UnitState, slot: ActionSlot): boolean {
+  if (slot === "basic") return false;
+  if (unit.kind !== "doll" || unit.isBoss) return false;
+  for (const s of unit.statuses) {
+    const def = state.statusRegistry.get(s.statusId);
+    if (!def) continue;
+    if (def.effects.some((e) => e.kind === "deny_skills")) return true;
+  }
+  return false;
 }
 
 function skillForSlot(doll: UnitState, slot: ActionSlot): SkillDefVariant | null {

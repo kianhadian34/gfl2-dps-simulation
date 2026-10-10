@@ -1305,6 +1305,30 @@ export type StatusEffect =
        * No numeric value: the effect IS the grant. Data-driven; no character/skill ids anywhere.
        */
       kind: "extra_action";
+    }
+  | {
+      /**
+       * SKILL DENIAL — "Command Prohibition" (2026, Vector's Overheat: *"Command Prohibition,
+       * disallows the use of active skills."*).
+       *
+       * While the holder carries a status with this effect it may not use ACTIVE skills or the
+       * ULTIMATE — only the BASIC attack remains available. `slotAvailable` consults this, so a
+       * denied unit genuinely loses those skills when it picks its action.
+       *
+       * IMMUNITY IS A LAW OF THE MECHANIC, NOT A DATA FLAG (project owner, 2026-10-10): denial
+       * NEVER applies to a non-doll unit (the training dummy, grid line enemies) or to an
+       * `isBoss` unit. It is enforced inside `skillDenied` — NOT declared per status — so no
+       * future denial status can bypass it by omitting a field. Rationale: the simulator only
+       * fights bosses/dummies, so a boss-effective denial would be both wrong and untestable
+       * here; and in-fiction Command Prohibition does not work on bosses.
+       *
+       * Consequence (intended): denial is INERT on every current enemy, because enemies never
+       * pick actions at all (the dummy takes a pass-turn; grid line enemies never act). The
+       * mechanic still has REAL, testable behaviour when the status lands on a DOLL.
+       *
+       * No numeric value: the effect IS the denial. Data-driven; no character/skill ids.
+       */
+      kind: "deny_skills";
     };
 
 export interface StatusDef {
