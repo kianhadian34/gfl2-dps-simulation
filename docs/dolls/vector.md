@@ -478,7 +478,7 @@ not prose transcription. Source class: **secondary (community database)** — hi
 |---|---|---|---|---|
 | 1 | **Overburn** | Burn/Debuff | ✅ `overburn` | fixed dmg **10%** of applier ATK, on gain + at action end, to the holder *and allies within 1 tile* |
 | 2 | **Blazing Assault II** | Attack/Buff/Burn | ✅ `blazing_assault_ii` | **ATK +15%** |
-| 3 | **Overheat Combustion** | Burn/Debuff | ❌ *(its **tick point** is now supported — `ownActionStart`, §3.27)* | fixed dmg **20%** of applier ATK, on gain + **at the start of the holder's action**, to the holder *and allies within a 1-tile area* · **V1:** *Burn damage taken* **+30%**, area → **3×3** · **V5:** Burn dmg taken +30%, area 3×3, **30%**, and **at action end generates Incineration tiles within 1 tile** |
+| 3 | **Overheat Combustion** | Burn/Debuff | ❌ *(its **tick point** is supported — `ownActionStart` §3.27; its **"all allied units within a 1-tile area"** clause needs AREA targeting, which `all_allies` (§3.28) does **not** provide — that is the whole team, not a 1-tile radius)* | fixed dmg **20%** of applier ATK, on gain + **at the start of the holder's action**, to the holder *and allies within a 1-tile area* · **V1:** *Burn damage taken* **+30%**, area → **3×3** · **V5:** Burn dmg taken +30%, area 3×3, **30%**, and **at action end generates Incineration tiles within 1 tile** |
 | 4 | **Smolder** | Burn/Debuff | ❌ | **on taking Burn damage** → generates **Incineration tiles within 3 tiles**, 2 turns (cannot be cleansed) · **V4:** *for every Burn debuff*, **damage taken +3%** |
 | 5 | **Overheat** | Burn/Debuff | ❌ | **"Command Prohibition, disallows the use of active skills."** |
 | 6 | **Accelerant** | Attack/Buff/Burn | ❌ | *Burn damage dealt* **+10%**, plus 1 instance of **fixed dmg 20% of ATK** (cannot be cleansed) · **V2:** **+30%** · **V6:** *per Burn buff* **+5% dealt**, **+30%**, **crit dmg +15%**, fixed 20% |
@@ -513,7 +513,7 @@ not prose transcription. Source class: **secondary (community database)** — hi
 | ~~**Start-of-action status tick**~~ | ~~`tickAt` is `ownActionEnd \| roundEnd` only~~ — **DONE 2026** (`ownActionStart`, a third point; `docs/research.md` §3.27) | ~~Overheat Combustion (fires at the holder's action **start**)~~ — **the tick point is done; that status still needs other pieces** (see below) |
 | **Count-by-classification scaling** ("for every Burn debuff/buff") | no such scaling exists | Smolder V4 (+3% taken per Burn debuff); Accelerant V6 (+5% dealt per Burn buff) |
 | **Support-trigger vocabulary** | the only trigger is `onAllySingleTargetHit` | Emergency Support / FK6 |
-| **All-allies status targeting** | `StatusApplySpec.target` is `self \| target` | Ultimate applies Accelerant + Blazing Assault II to **all allies**; cleanses 2 debuffs from **all allies** |
+| ~~**All-allies status targeting**~~ | ~~`StatusApplySpec.target` is `self \| target`~~ — **DONE 2026** (`all_allies`, every team member incl. the caster; `docs/research.md` §3.28) | ~~Ultimate applies Accelerant + Blazing Assault II to **all allies**~~ — **the targeting is done; those statuses still need their own definitions** (Accelerant needs the Burn-dealt gate + a fixed instance; Blazing Assault II already exists) |
 
 **c) Genuinely new mechanics:**
 
@@ -534,6 +534,10 @@ not prose transcription. Source class: **secondary (community database)** — hi
   point; turn starts → effect fires → the unit acts). Fired for team units AND the dummy's pass-turn
   so target-side debuffs tick too. `docs/research.md` §3.27. **Overheat Combustion still needs its
   all-allies/area targeting** before it is definable.
+- ~~**All-allies status targeting**~~ — **IMPLEMENTED 2026**: `StatusApplySpec.target: "all_allies"`
+  = every member of the allied team INCLUDING the caster (the enemy/dummy is never included). Used by
+  the Ultimate's "Applies Accelerant to all allied units". `docs/research.md` §3.28. **The statuses
+  themselves still need defining.**
 - ~~**Apathetic Resistance** (Crit DMG +25%, 2 turns)~~ — **IMPLEMENTED 2026** as the
   `apathetic_resistance` status. `docs/research.md` §3.25.
 - ~~**Extra Command** (extra main actions)~~ — **IMPLEMENTED 2026** via the `extra_action` status
@@ -639,9 +643,10 @@ weapon.
 2. **New statuses** (G2) — **6 of Vector's 10 referenced effects remain undefined** (`overburn`,
    `blazing_assault_ii`, `extra_command`, and now `apathetic_resistance` exist); the authoritative
    inventory, their upgrade variants, and the exact capability gaps are recorded in **§7.1**.
-   Remaining vocabulary needs: count-by-classification scaling, all-allies targeting, support-trigger
-   vocabulary; plus one genuinely new mechanic (skill denial) and the V3-coupled tile clauses.
-   *(The **per-element gate** and the **start-of-action tick** are now DONE — §7.1.)*
+   Remaining vocabulary needs: count-by-classification scaling and support-trigger vocabulary; plus
+   one genuinely new mechanic (skill denial) and the V3-coupled tile clauses.
+   *(The **per-element gate**, the **start-of-action tick** and **all-allies targeting** are now DONE
+   — §7.1.)*
 3. **Untile/tile mechanics** (G1, G9) — Burn/Incineration tiles are foundational to Vector's kit
    and the engine has no tile system.
 4. ~~**Turn-start "at max Confectance" drain** and **the 2 extra V5 slots** (G3, G4, G4b)~~ —

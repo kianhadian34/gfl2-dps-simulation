@@ -79,8 +79,15 @@ export interface StatusApplySpec {
   /** Applied duration in rounds — omit to use the status definition's own duration (permanent for durationRounds: null). */
   durationRounds?: number;
   stacks?: number;
-  /** Where the status lands. Default "target". */
-  target?: "self" | "target";
+  /**
+   * Where the status lands.
+   * - `self`   — the ACTING unit.
+   * - `target` — the resolving action's target (the enemy/dummy). DEFAULT.
+   * - `all_allies` — EVERY member of the allied team (`state.units`), INCLUDING the acting unit
+   *   (2026: Vector's Ultimate "Applies Accelerant to all allied units"). Same meaning as the
+   *   Pattern Remolder `unity_dealt` target of the same name. The enemy/dummy is never included.
+   */
+  target?: "self" | "target" | "all_allies";
   /** Source of the application (for applier-ATK fixed damage / later source rules). Optional; captures id + ATK at cast time. */
   applier?: { id: string; atk: number };
 }

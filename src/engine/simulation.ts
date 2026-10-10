@@ -735,23 +735,39 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
 
 function applySkillStatuses(state: SimulationState, actor: UnitState, target: UnitState, specs: StatusApplySpec[] | undefined, ev: LogEvent, sourceLabel: string): void {
   for (const spec of specs ?? []) {
-    const t = spec.target === "self" ? actor : target;
+    // ALL-ALLIES (2026): every member of the allied team, INCLUDING the acting unit — Vector's
+    // Ultimate "Applies Accelerant to all allied units". `state.units` IS the allied side (the
+    // enemy/dummy lives in `state.dummy`), so it is never included. Other targets resolve to the
+    // single recipient they always did.
+    const recipients = spec.target === "all_allies" ? state.units : [spec.target === "self" ? actor : target];
     // Capture the applier (id + ATK at cast) so applier-ATK fixed damage works (Overburn 2026),
     // and the human-readable provenance (sourceLabel) of the granting ability/passive/key.
     const full = { ...spec, applier: spec.applier ?? { id: actor.id, atk: actor.panelAtk }, source: spec.source ?? sourceLabel };
-    const removedBefore = t.statuses.map((s) => s.statusId);
-    const created = applyStatus(state, t, full);
-    // Report statuses REPLACED by this application (VALIDATED 2026: SB II replaces SB I).
-    const replaced = removedBefore.filter((id) => !t.statuses.some((s) => s.statusId === id));
-    if (replaced.length > 0) (ev.statusesExpired ??= []).push(...replaced);
-    // Only report an actual application: a BLOCKED application (VALIDATED 2026: SB II blocks
-    // SB I) neither adds the status nor records provenance.
-    if (t.statuses.some((s) => s.statusId === spec.statusId)) {
-      ev.statusesApplied.push(spec.statusId);
-      (ev.appliedSources ??= []).push({ statusId: spec.statusId, source: full.source });
+    // Report ONCE per SPEC (the established semantics: two specs applying the same status id —
+    // e.g. the at-max branch's extra Support Boost II stack — each report). The all-allies fan-out
+    // therefore reports one entry for the spec, not one per recipient.
+    let reported = false;
+    for (const t of recipients) {
+      const removedBefore = t.statuses.map((s) => s.statusId);
+      const created = applyStatus(state, t, full);
+      // Report statuses REPLACED by this application (VALIDATED 2026: SB II replaces SB I).
+      // Deduplicated per spec: the log's array carries no unit attribution, so the all-allies
+      // fan-out must not list the same status id once per recipient.
+      const replaced = removedBefore.filter((id) => !t.statuses.some((s) => s.statusId === id));
+      if (replaced.length > 0) {
+        const expired = (ev.statusesExpired ??= []);
+        for (const id of replaced) if (!expired.includes(id)) expired.push(id);
+      }
+      // Only report an actual application: a BLOCKED application (VALIDATED 2026: SB II blocks
+      // SB I) neither adds the status nor records provenance.
+      if (!reported && t.statuses.some((s) => s.statusId === spec.statusId)) {
+        ev.statusesApplied.push(spec.statusId);
+        (ev.appliedSources ??= []).push({ statusId: spec.statusId, source: full.source });
+        reported = true;
+      }
+      // Validated (2026): gaining Overburn immediately deals fixed damage = 10% of the APPLIER's ATK.
+      if (created) applyStatusFixedDamage(state, t, spec.statusId, "onApply", state.round);
     }
-    // Validated (2026): gaining Overburn immediately deals fixed damage = 10% of the APPLIER's ATK.
-    if (created) applyStatusFixedDamage(state, t, spec.statusId, "onApply", state.round);
   }
 }
 
@@ -1037,17 +1053,27 @@ function resolveSupportHit(state: SimulationState, shooter: UnitState, skill: Sk
   if (ult?.beforeSupportStatuses) {
     const label = abilitySourceLabel(shooter.def!, "ultimate", shooter.skillLevels.ultimate ?? 1);
     for (const spec of ult.beforeSupportStatuses) {
-      const appliedId = applyStatus(state, dummy, {
-        statusId: spec.statusId,
-        durationRounds: spec.durationRounds,
-        stacks: spec.stacks,
-        target: spec.target,
-        applier: { id: shooter.id, atk: shooter.panelAtk },
-        source: spec.source ?? label,
-      });
-      if (appliedId) {
-        ev.statusesApplied.push(spec.statusId);
-        (ev.appliedSources ??= []).push({ statusId: spec.statusId, source: label });
+      // Recipient resolution — the SAME rule as `applySkillStatuses`, so a declared target is
+      // never silently ignored: `all_allies` = the whole allied team (incl. the shooter);
+      // `self` = the shooter; otherwise the resolving action's target (here: the dummy).
+      const recipients = spec.target === "all_allies" ? state.units : [spec.target === "self" ? shooter : dummy];
+      // Report ONCE per SPEC (consistent with `applySkillStatuses`) — one entry for the spec, not
+      // one per recipient in the all-allies fan-out.
+      let reported = false;
+      for (const recipient of recipients) {
+        const appliedId = applyStatus(state, recipient, {
+          statusId: spec.statusId,
+          durationRounds: spec.durationRounds,
+          stacks: spec.stacks,
+          target: spec.target,
+          applier: { id: shooter.id, atk: shooter.panelAtk },
+          source: spec.source ?? label,
+        });
+        if (appliedId && !reported) {
+          ev.statusesApplied.push(spec.statusId);
+          (ev.appliedSources ??= []).push({ statusId: spec.statusId, source: label });
+          reported = true;
+        }
       }
     }
   }

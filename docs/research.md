@@ -1158,6 +1158,50 @@ their both occurring at the turn start.
 
 ---
 
+### 3.28 All-allies status targeting (`target: "all_allies"`) — 2026, IMPLEMENTED + TESTED
+
+**Mechanic** — a status application may target **every allied unit on the battlefield** rather than
+a single recipient.
+
+**Source** — Vector's **Searing Finale**: *"Applies **Accelerant** to all allied units, lasting for
+2 turns"* (and its V2 upgrade: *"Applies **Blazing Assault II** to all allied units for 2 turns"*).
+The statuses themselves are **NOT implemented here** — this section records the **targeting
+vocabulary** they need.
+
+**Implementation interpretation** — `StatusApplySpec.target` gained a third value,
+`"all_allies"`, alongside `self` and `target` (default):
+- **"All allies" = every member of the allied team (`state.units`), INCLUDING the acting unit.**
+  `state.units` IS the allied side; the enemy/dummy lives in `state.dummy` and is **never** included.
+  (Confirmed with the project owner, 2026-10-09.) The name matches the existing Pattern Remolder
+  `unity_dealt` target of the same spelling.
+- **`applySkillStatuses`** (`src/engine/simulation.ts`) resolves the recipient LIST for a spec —
+  `[actor]` for `self`, `[target]` otherwise, or `state.units` for `all_allies` — and applies to
+  each in turn. Per-recipient semantics are unchanged: blocked applications are still blocked,
+  `replaces` still removes the listed statuses on that recipient, and an `onApply` fixed-damage
+  effect still fires for each recipient that newly gained the status.
+- **Reporting stays ONCE PER SPEC.** The log's `statusesApplied` / `appliedSources` /
+  `statusesExpired` arrays carry **no unit attribution**, so the fan-out must not list the same id
+  once per recipient. Two separate specs that apply the same status id still report twice (the
+  established semantics — e.g. the at-max branch's extra Support Boost II stack).
+- **The `beforeSupportStatuses` path** (`resolveSupportHit`) uses the **same** recipient rule, so a
+  declared target is never silently ignored there either. *(Before 2026 that path always applied to
+  the dummy and ignored `spec.target` entirely; the existing Qiongjiu V4 spec declares
+  `target: "target"`, so its behaviour is unchanged.)*
+
+**Evidence status** — the *semantics* are `[GAME]` (project owner, source hierarchy level 1); the
+*implementation* is covered by automated tests. **NOT in-game validated.** Covered by
+`src/test/all-allies-targeting.test.ts` (7 tests: the fan-out reaching every ally AND the caster,
+`self` and `target` controls, a solo caster, once-per-spec reporting, team-size scaling, and a guard
+that the synthetic fixtures never leak into production data).
+
+**Unknowns / not claimed** — whether any Vector effect targets allies **other than** the whole team
+(e.g. a range- or tile-limited ally set); how all-allies interacts with a **dead** ally (the MVP has
+no death handling); and whether the two Ultimate statuses apply to the caster separately from
+"Vector gains Extra Command" (the source lists them as distinct clauses — the engine does not
+conflate them).
+
+---
+
 ## 4. Uncertainty register
 
 Every mechanic that is still uncertain, with impact and resolution path. **None of these should be hardcoded as facts in the engine — all are config defaults pending the in-game test plan (§5).**

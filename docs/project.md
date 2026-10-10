@@ -205,12 +205,12 @@ summary alone.
 | Item | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | `5e3911af1766be16a1bce1222e48947f03683385` |
-| `origin/main` | `5e3911af1766be16a1bce1222e48947f03683385` (in sync) |
-| Working tree | in progress: **V4 slice 4 — the `ownActionStart` tick (IMPLEMENTED)** — **uncommitted** (§7.1 item 14) |
-| Untracked | `.reasonix/` (host-managed session artifacts — **never stage**) and `src/test/start-of-action-tick.test.ts` |
+| HEAD | `b041e0878b0925248678399fb23c8be5cb6357ea` |
+| `origin/main` | `b041e0878b0925248678399fb23c8be5cb6357ea` (in sync) |
+| Working tree | in progress: **V4 slice 5 — all-allies targeting (IMPLEMENTED)** — **uncommitted** (§7.1 item 15) |
+| Untracked | `.reasonix/` (host-managed session artifacts — **never stage**) and `src/test/all-allies-targeting.test.ts` |
 | Engine build | `npm run build` → exit 0 |
-| Engine tests | **709 pass · 0 fail · 0 skipped** across **100 test files** |
+| Engine tests | **716 pass · 0 fail · 0 skipped** across **101 test files** |
 | UI typecheck | exit 0 |
 | UI tests | **286 pass · 0 fail** |
 | UI build | exit 0 |
@@ -502,7 +502,7 @@ scope is invented or expanded.
 | Weakness exploit | `damage.ts`, `state.ts` | yes | **Validated** | `1 + 0.10 × n`, +2 stab each |
 | Fixed damage | `damage.ts`, `statuses.ts` | yes | **Validated** | post-chain, own ceil |
 | Stability / break / Exposed / recovery | `engine/stability.ts` | yes | **Validated** (timing) | 2-turn recovery |
-| Status system (durations, stacks, replace/block, cleanse) | `engine/statuses.ts` | yes | **Validated** (multiple) | generic; 28 status ids in `data/statuses.ts` |
+| Status system (durations, stacks, replace/block, cleanse) | `engine/statuses.ts` | yes | **Validated** (multiple) | generic; 30 status ids in `data/statuses.ts` |
 | Cooldowns | `engine/cooldowns.ts` | yes | **Validated** (U11) | `nextOwnTurnEnd` |
 | Confectance | `engine/resources.ts` | yes | **Validated** (U9) | start 3 / max 6; **extra-slot pool is SEPARATE** (never raises the cap) |
 | Turn-start Confectance drain (+ extra slots) | `simulation.ts`, `resources.ts`, `statuses.ts`, `model/types.ts` | yes | **[GAME]** (mechanic, user-provided 2026-10-09) + `[TEST]` (8 tests) | generic `turn_start_confectance_drain`; a second extra-slot pool; round-scoped ATK% folded into the existing in-combat ATK% bucket. **NOT in-game validated.** |
@@ -510,6 +510,7 @@ scope is invented or expanded.
 | Apathetic Resistance (Crit DMG buff) | `model/types.ts`, `engine/statuses.ts`, `engine/simulation.ts`, `data/statuses.ts` | yes | **[SOURCE]** (values) + `[TEST]` (7 tests) | `critDmg` added to the `stat_modifier` stat union; read through the ONE `statModifier` path into the confirmed `1 + Crit DMG` multiplier; crit stats stay continuous. **NOT in-game validated.** |
 | Per-element damage gate (`whenElement`) | `model/types.ts`, `engine/statuses.ts` | yes | `[TEST]` (9 tests) | an OR-list (`null` = phase-less) on `damage_modifier`, honored on DEALT + TAKEN and both modes, so it is never silently ignored. Same semantics as the attachment-set / Remolder element gates. **Engine vocabulary, not a game mechanic.** |
 | Start-of-action status tick (`ownActionStart`) | `model/types.ts`, `engine/statuses.ts`, `engine/simulation.ts` | yes | **[GAME]** (ordering, user-provided 2026-10-09) + `[TEST]` (8 tests) | a THIRD `tickAt` point: turn starts → effect fires → the unit acts. Fired for team units AND the dummy's pass-turn (target-side debuffs). `tickStatuses` generalized to match the declared point directly. **NOT in-game validated.** |
+| All-allies status targeting (`all_allies`) | `model/types.ts`, `engine/simulation.ts` | yes | **[GAME]** (semantics, user-provided 2026-10-09) + `[TEST]` (7 tests) | a third `StatusApplySpec.target`: every member of the allied team (`state.units`) INCLUDING the caster; the dummy is never included. Applied in `applySkillStatuses` AND the `beforeSupportStatuses` path. Reporting stays once-per-spec. **NOT in-game validated.** |
 | Determinism / seeded RNG | `engine/rng.ts` | yes | engine guarantee | `determinism.test.ts` |
 | Effect provenance | `simulation.ts`, `state.ts`, `model/runtime.ts` | yes | **Validated** | `effectSources` + `effectSourceRefs` |
 | Grid / positioning (core) | `engine/grid.ts`, `docs/grid.md` | yes (core) | **Validated** (core rules only) | height interaction Not Tested; **elemental tiles NOT modeled** (Burn family documented in `docs/research.md` §3.23) |
@@ -782,7 +783,8 @@ workflow and owning documents.
 | 11 | **V4 slice 1 — Extra Command (IMPLEMENTED + TESTED).** Added the generic `extra_action` `StatusEffect` kind + the `extra_command` status (`category: "state"`) + an **action loop** in the turn loop driven by the previously-vestigial `UnitState.actionBudget`. Semantics confirmed with the user: the holder acts again in the same unit-turn (e.g. Ultimate → Skill 1/2 or Basic), **cannot move** during the extra action, **one extra action per stack**; the end-of-action tick runs **once**, after all actions. Data-driven — no character or skill ids. | `src/model/types.ts`, `src/data/statuses.ts`, `src/engine/simulation.ts`, `src/test/extra-command.test.ts` (new), `docs/research.md` §3.24 (new), `docs/dolls/vector.md`, `docs/validation-checklist.md`, `docs/project.md` | engine **685 pass / 0 fail** (+6 new); UI typecheck/tests/build green; **CLI output byte-identical**; `git diff --check` clean | `cb2d0e1` (pushed) |
 | 12 | **V4 slice 2 — Apathetic Resistance (IMPLEMENTED + TESTED).** Added **`critDmg`** to the `stat_modifier` stat union, kept it **continuous** in `statModifier`, and routed `actor.critDmg` through that ONE path at the crit resolution site — so a Crit-DMG status enters the **confirmed** `1 + Crit DMG` multiplier (U1/U19) with no parallel crit path. Added the `apathetic_resistance` status (Crit DMG **+25%**, 2 turns, `purgeable: false` — the source states "cannot be cleansed"). Duration follows the in-game-**VALIDATED** U7 self-applied tick rule (inherited, not re-derived). | `src/model/types.ts`, `src/engine/statuses.ts`, `src/engine/simulation.ts`, `src/data/statuses.ts`, `src/test/apathetic-resistance.test.ts` (new), `docs/research.md` §3.10 + §3.25 (new), `docs/dolls/vector.md`, `docs/project.md` | engine **692 pass / 0 fail** (+7 new); UI typecheck/tests/build green; **CLI output byte-identical**; `git diff --check` clean; scratch probe file removed | `95717b0` (pushed) |
 | 13 | **V4 slice 3 — per-element gate `whenElement` (IMPLEMENTED + TESTED).** Added the optional `whenElement?: (Element \| null)[]` field to the `damage_modifier` union member and consumed it in **three** places (`additiveDealtBonus`, `additiveTakenBonus`, `multiplicativeTakenMods`) so a declared gate is **never silently ignored** regardless of scope or mode. Semantics are the SAME OR-list as the existing attachment-set / Remolder element gates; `null` matches a phase-less hit. Motivated by Accelerant (Burn dmg *dealt* +10%) and Overheat Combustion V1 (Burn dmg *taken* +30%) — **neither status is implemented by this**; it supplies their element gate only. | `src/model/types.ts`, `src/engine/statuses.ts`, `src/test/element-gate.test.ts` (new), `docs/research.md` §3.26 (new), `docs/dolls/vector.md`, `docs/project.md` | engine **701 pass / 0 fail** (+9 new); UI typecheck/tests/build green; **CLI output byte-identical**; `git diff --check` clean | `5e3911a` (pushed) |
-| 14 | **V4 slice 4 — start-of-action status tick `ownActionStart` (IMPLEMENTED + TESTED).** Added `"ownActionStart"` as a THIRD `tickAt` value (StatusDef + StatusOverride) and generalized `tickStatuses` to match the declared point directly (so a status fires at exactly ONE point). New handler `applyStartOfActionStatusEffects` (status-sourced fixed damage; `heal` deliberately excluded — it is an action-END effect). Fired at the holder's turn start **before movement and the action**, for team units AND the dummy's pass-turn (so target-side debuffs like Overheat Combustion tick). Ordering confirmed with the user: turn starts → effect → the unit acts. | `src/model/types.ts`, `src/engine/statuses.ts`, `src/engine/simulation.ts`, `src/test/start-of-action-tick.test.ts` (new), `docs/research.md` §3.27 (new) + U7 row, `docs/dolls/vector.md`, `docs/project.md` | engine **709 pass / 0 fail** (+8 new); UI typecheck/tests/build green; **CLI output byte-identical**; `git diff --check` clean | uncommitted (§10) |
+| 14 | **V4 slice 4 — start-of-action status tick `ownActionStart` (IMPLEMENTED + TESTED).** Added `"ownActionStart"` as a THIRD `tickAt` value (StatusDef + StatusOverride) and generalized `tickStatuses` to match the declared point directly (so a status fires at exactly ONE point). New handler `applyStartOfActionStatusEffects` (status-sourced fixed damage; `heal` deliberately excluded — it is an action-END effect). Fired at the holder's turn start **before movement and the action**, for team units AND the dummy's pass-turn (so target-side debuffs like Overheat Combustion tick). Ordering confirmed with the user: turn starts → effect → the unit acts. | `src/model/types.ts`, `src/engine/statuses.ts`, `src/engine/simulation.ts`, `src/test/start-of-action-tick.test.ts` (new), `docs/research.md` §3.27 (new) + U7 row, `docs/dolls/vector.md`, `docs/project.md` | engine **709 pass / 0 fail** (+8 new); UI typecheck/tests/build green; **CLI output byte-identical**; `git diff --check` clean | `b041e08` (pushed) |
+| 15 | **V4 slice 5 — all-allies status targeting `all_allies` (IMPLEMENTED + TESTED).** Added `"all_allies"` as a third `StatusApplySpec.target`: **every member of the allied team (`state.units`), INCLUDING the acting unit**; the enemy/dummy is never included. `applySkillStatuses` resolves a recipient LIST per spec, and the `beforeSupportStatuses` path uses the SAME rule (that path previously ignored `spec.target` entirely — a latent silent-ignore, now fixed with the existing Qiongjiu V4 spec's behaviour preserved). **Reporting stays ONCE PER SPEC** — the log arrays carry no unit attribution, so the fan-out must not list an id once per recipient; two specs applying the same id still report twice (the established SB II at-max semantics). | `src/model/types.ts`, `src/engine/simulation.ts`, `src/test/all-allies-targeting.test.ts` (new), `docs/research.md` §3.28 (new), `docs/dolls/vector.md`, `docs/project.md` | engine **716 pass / 0 fail** (+7 new); UI typecheck/tests/build green; **CLI output byte-identical**; `git diff --check` clean. **Two existing tests initially failed** (my first dedupe collapsed two same-id specs) — fixed by reporting once per spec; suite green after | uncommitted (§10) |
 
 **Detail — the documentation-drift cleanup (`8d8ef61`):** the task and its outcome are also
 recorded here because future sessions should not re-fix them.
@@ -868,7 +870,7 @@ data-driven dispatch, registry is a one-line change.
 | ~~V1~~ | ~~**Base stats** (ATK/HP/DEF/critRate/critDmg)~~ | **RESOLVED 2026-10-09** — user-provided character sheet: **HP 1819 · ATK 748 · DEF 569 · Stability 10 · Crit Rate 20% · Crit DMG 120% · Movement 6**; recorded in `docs/dolls/vector.md` §3 | — (obtained) |
 | ~~V2~~ | ~~**The V5 extra Confectance slots + the turn-start drain**~~ | **ENGINE IMPLEMENTED + TESTED 2026-10-09.** The generic capability exists: `turn_start_confectance_drain` (`atkPct` + `extraSlots` + `perExtraSlotAtkPct`), a SECOND `extraConfectance` pool filled by gains beyond `confectanceMax`, and a round-scoped `roundAtkPct` folded into the existing in-combat ATK% bucket. **`confectanceMax` (U9 = 6) unchanged.** Semantics confirmed with the user: overflow fills the extras; additive ⇒ **+10/+20/+30%** for 0/1/2; the drain consumes both pools. **Remaining work is Vector's own DATA** (her passive's values), not engine code | — (capability done; 8 tests in `src/test/confectance-drain.test.ts`) |
 | V3 | **Burn/Incineration tiles** | Foundational to Vector's kit (Dead End Meltdown, Searing Finale, FK1, passive V5); the grid has **no tile-effect system** | design/evidence step |
-| V4 | **The remaining 6 undefined statuses + the engine vocabulary they need** — inventory in `docs/dolls/vector.md` **§7.1** | **EVIDENCE DOCUMENTED; slices 1–4 DONE.** `extra_command` (§3.24), `apathetic_resistance` (§3.25), the **`whenElement` gate** (§3.26) and the **`ownActionStart` tick** (§3.27) are **IMPLEMENTED + TESTED 2026**; `critDmg` is a valid `stat_modifier` stat. Still not implemented: 3 reusable vocabulary additions (count-by-classification scaling; all-allies targeting; support-trigger vocabulary), 1 new mechanic (**skill denial** — `Overheat`), and the V3-coupled tile clauses | definitions obtained; behaviour still needs in-game validation |
+| V4 | **The remaining 6 undefined statuses + the engine vocabulary they need** — inventory in `docs/dolls/vector.md` **§7.1** | **EVIDENCE DOCUMENTED; slices 1–5 DONE.** `extra_command` (§3.24), `apathetic_resistance` (§3.25), the **`whenElement` gate** (§3.26), the **`ownActionStart` tick** (§3.27) and **all-allies targeting** (§3.28) are **IMPLEMENTED + TESTED 2026**; `critDmg` is a valid `stat_modifier` stat. Still not implemented: 2 reusable vocabulary additions (count-by-classification scaling; support-trigger vocabulary), 1 new mechanic (**skill denial** — `Overheat`), **area/radius targeting** (a 1-tile / 3×3 ally radius — distinct from all-allies), and the V3-coupled tile clauses | definitions obtained; behaviour still needs in-game validation |
 | V5 | **Signature weapon shape gaps** (Imprint condition, weapon ATK endpoints, trait pool) | Not representable in today's `WeaponDef`/`Imprint` shapes | source + judgement |
 
 **Recommended order:** base stats are IN; **V2 (the Confectance-drain capability) is IMPLEMENTED +
@@ -1004,12 +1006,12 @@ to be written as data on her passive.
 with the effect names independently resolved. The engine has **no tile system**, so V3 remains a
 design/implementation task.
 
-**V4 (statuses) — slices 1–4 IMPLEMENTED; evidence documented for the rest.**
+**V4 (statuses) — slices 1–5 IMPLEMENTED; evidence documented for the rest.**
 **Extra Command** (§3.24), **Apathetic Resistance** (§3.25), the **`whenElement` per-element gate**
-(§3.26) and the **`ownActionStart` tick** (§3.27) are **DONE** — 6, 7, 9 and 8 new tests
-respectively. The remaining V4 work is documented in `docs/dolls/vector.md` §7.1 — **6 statuses still
-undefined**, needing 3 reusable vocabulary additions, 1 new mechanic (skill denial), and the
-V3-coupled tile clauses.
+(§3.26), the **`ownActionStart` tick** (§3.27) and **all-allies targeting** (§3.28) are **DONE** —
+6, 7, 9, 8 and 7 new tests respectively. The remaining V4 work is documented in
+`docs/dolls/vector.md` §7.1 — **6 statuses still undefined**, needing 2 reusable vocabulary
+additions, 1 new mechanic (skill denial), area/radius targeting, and the V3-coupled tile clauses.
 
 **Why a decision is next:** the data-only portion of Vector is ready, but implementing a *partial* kit
 would silently approximate mechanics the engine does not model — which the project rules forbid
@@ -1019,7 +1021,7 @@ modelable today and record the rest as inert/unmodeled, exactly as the 7 inert a
 
 **Also outstanding (nothing here is committed):**
 
-- **This V4 slice (the `ownActionStart` tick) is uncommitted** (§7.1 item 14) — awaiting the user's
+- **This V4 slice (all-allies targeting) is uncommitted** (§7.1 item 15) — awaiting the user's
   authorization.
 - **Vector's assets are placed but NOT wired** (`assets.ts` untouched) — backlog **B5**.
 - Per the §1.4 policy the §2 snapshot is refreshed at the start of the next task or when wrapping up —
