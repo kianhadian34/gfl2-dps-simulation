@@ -1382,13 +1382,20 @@ observe the immunity at all, because no enemy ever picks an action.
 **Mechanic** — a status application whose recipients are the **allied units inside an AREA around
 the caster**, rather than a single target or the whole team.
 
-**Source** — two Vector clauses:
+**Source** — two Vector clauses, which turn out to be on **TWO DIFFERENT AXES**:
 - **Overheat Combustion** — *"this unit and all allied units within a **1-tile area** … take fixed
-  damage equal to 20% …"*; **V1** upgrades the area to **3×3**.
+  damage equal to 20% …"*; **V1** upgrades the area to **3×3**. Applied to the TARGET (the enemy).
 - **Overburn** — fixed damage *"to the holder **and allies within 1 tile**"* (recorded in
-  `docs/dolls/vector.md` §7.1; **still unimplemented** — see the note below).
+  `docs/dolls/vector.md` §7.1). Also applied to the TARGET.
 
-Neither status is defined here — this section records the **targeting vocabulary** they need.
+**⚠ The two axes — this is the most important thing in this section.** This section implements
+**caster-side** area targeting (`ally_area` ⇒ `state.units`, the player's dolls). **Overburn's and
+Overheat Combustion's clauses are HOLDER-side**: the status sits on an ENEMY, so *"the holder and
+allied units within a 1-tile area"* reads as **that enemy and its neighbours** — the enemy side.
+`ally_area` therefore **cannot** express them, and this section does **NOT** supply their
+vocabulary. They are a separate, deferred gap — see **§3.33**.
+
+Neither status is defined here.
 
 **The shape ambiguity, and why BOTH are modeled.** The source text uses what may be **two
 different metrics**, and conflating them silently changes who is hit:
@@ -1428,11 +1435,10 @@ evidence about targeting areas.)
   **unplaced actor** is likewise an error.
 
 **Deliberately NOT done here (recorded, not hidden):**
-- **Overburn's own "allies within 1 tile" clause is NOT implemented**, and was **not previously
-  recorded as a gap anywhere**. Its implemented status applies to `target` only, and its fixed
-  damage hits only the holder — so the area clause has never been exercised (Overburn was validated
-  against the dummy, where the area is unobservable). This section supplies the vocabulary; wiring
-  Overburn's area remains **open** and is now on the record.
+- **Holder-side (enemy-side) area targeting is NOT built** — and this section does not provide it.
+  See §3.33, which records the correction: Overburn's and Overheat Combustion's clauses are
+  HOLDER-relative, not caster-relative, so `ally_area` does not cover them. An earlier version of
+  this section implied it did; that was wrong and is corrected here.
 
 **Evidence status** — the *clauses* are `[SOURCE]` (secondary, community database, hierarchy level
 5); the *no-grid error rule* and the *shape expressibility decision* are `[GAME]` (project owner,
@@ -1450,6 +1456,57 @@ Tested question); whether the area origin is always the **caster** (assumed from
 and…"*) or sometimes the target; whether an area effect also catches NON-allied units (only the
 ally variant exists here); whether "3×3" ever means a rectangle rather than a radius-1 block; and
 whether LOS/terrain affects area membership (not modeled — membership is pure distance).
+
+---
+
+### 3.33 Holder-side (enemy-side) area targeting — DEFERRED, blocked on the MVP enemy model (2026, recorded only)
+
+**Mechanic** — a status on an **enemy** whose fixed damage also hits **that enemy's nearby allies**:
+*"the holder and allies within 1 tile"* (Overburn) / *"this unit and all allied units within a
+1-tile area"* (Overheat Combustion; **V1** → 3×3).
+
+**Why this is a separate section.** These clauses are **HOLDER-relative**, not caster-relative.
+`ally_area` (§3.32) resolves the CASTER's side (`state.units` — the player's dolls) and therefore
+**cannot** express them. An earlier version of §3.32 implied it could; that was **wrong**, and §3.32
+now says so explicitly. This section exists so the gap is scoped accurately instead of being
+mistaken for solved.
+
+**Status: DEFERRED — NOT implemented, and deliberately NOT built** (project owner, 2026-10-10).
+Three independent reasons, all verified in the repo:
+
+1. **The MVP has no enemy-side neighbours to hit.** The only enemy is the training dummy — a
+   **single** entity with no adjacent allies. `grid.enemyUnits` (FK4 line targets) declare an `hp`
+   field that **nothing ever reads**: `guideLineSecondaryHits` computes and LOGS `finalDamage` and
+   pushes a log event, but never applies HP damage nor calls `accumulateDamage`. So there is no
+   enemy-side damage sink for an area to write to.
+2. **It is unobservable, therefore unverifiable.** With one enemy, an enemy-side area always
+   resolves to just the holder — the area's own-tile member — which is **exactly what the engine
+   already does** (Overburn's fixed damage already hits the holder). A correct implementation would
+   be indistinguishable from doing nothing, so no test could distinguish right from wrong.
+3. **Building it would be speculative infrastructure** for a mechanic that cannot be exercised —
+   which the project's rules forbid (§1.4; "never invent game mechanics"), and which the repo has
+   declined before (Apex is deferred as WIP; FK6 Steadiness ships a gate with no applier rather than
+   inventing a displacement system).
+
+**What it would require if ever unblocked** (recorded so the work is scoped, not started):
+- A **holder-relative** area target — a distinct axis from `ally_area` (the HOLDER's neighbours, not
+  the actor's). The `AreaShape`/`areaTiles` geometry from §3.32 is REUSABLE; the *recipient rule* is
+  not.
+- A **real enemy-side damage model**: tracked enemy HP, damage application, and a decision on
+  whether that damage enters the reported totals. Today `grid.enemyUnits[].hp` is decorative.
+- A **battle grid**, plus a scenario with more than one enemy to make the area meaningful.
+
+**Evidence status** — the *clauses* are `[SOURCE]` (secondary, community database, hierarchy level
+5). The **deferral is `[GAME]`** (project owner, 2026-10-10). **Nothing here is implemented, and
+nothing here is claimed as validated.**
+
+**Related MVP boundary (accepted, not a defect):** the **single-dummy enemy model** is a deliberate
+MVP boundary (project owner, 2026-10-10) — not a modelling defect. Enemy groups are simply out of
+MVP scope, which is why this section is deferred rather than scheduled.
+
+**Unknowns / not claimed** — whether the real game's enemy-side area uses the same metric/shape as
+the caster-side one; whether the area includes only enemies or also allies of the applier; and
+whether an enemy-side area could ever matter in a single-enemy fight (currently: no).
 
 ---
 
