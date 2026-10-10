@@ -110,16 +110,16 @@ export function consumeOneOnUseStacks(state: SimulationState, unit: UnitState, s
 export function tickStatuses(
   state: SimulationState,
   unit: UnitState,
-  at: "ownActionEnd" | "roundEnd",
+  at: "ownActionEnd" | "roundEnd" | "ownActionStart",
   onTick?: (state: SimulationState, unit: UnitState, def: EffectiveStatusDef, active: ActiveStatus) => void,
 ): string[] {
   const expired: string[] = [];
-  const isRoundEnd = at === "roundEnd";
   for (const s of unit.statuses) {
     const def = state.statusRegistry.get(s.statusId);
     if (!def) continue;
-    const matches = isRoundEnd ? def.tickAt === "roundEnd" : def.tickAt === "ownActionEnd";
-    if (!matches) continue;
+    // A status ticks ONLY at its own declared point (2026: generalized from the previous
+    // roundEnd/ownActionEnd pair so `ownActionStart` is supported without a special case).
+    if (def.tickAt !== at) continue;
     if (def.durationRounds === null && def.effectiveDurationRounds === undefined) continue; // permanently-applied (never ticks)
     if (onTick) onTick(state, unit, def, s);
     s.durationLeft -= 1;

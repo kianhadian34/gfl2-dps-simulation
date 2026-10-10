@@ -806,6 +806,19 @@ function applyStatusFixedDamage(state: SimulationState, holder: UnitState, statu
 }
 
 /**
+ * Status-sourced effects that fire at the HOLDER's own turn START, BEFORE it acts
+ * (2026 — Overheat Combustion's "at the start of this unit's action" clause; the
+ * `onTick` phase of the `ownActionStart` tick, same timing as status-sourced fixed damage).
+ *
+ * ONLY the effects whose source text ties them to the action START live here — currently
+ * status-sourced fixed damage. `heal` (Continuous Healing I) is explicitly an ACTION-END
+ * effect and is NOT fired here; do not add it without evidence.
+ */
+export function applyStartOfActionStatusEffects(state: SimulationState, unit: UnitState, def: EffectiveStatusDef, active: ActiveStatus): void {
+  if (active.applier) applyStatusFixedDamage(state, unit, def.id, "onTick", state.round);
+}
+
+/**
  * Status-sourced effects that fire at the HOLDER's own action end, right BEFORE the
  * duration decrement (the `onTick` phase of the `ownActionEnd` tick — same timing for
  * status-sourced fixed damage, Overburn 2026, and the Continuous Healing I heal, 2026).
@@ -1342,6 +1355,11 @@ export function simulate(scenario: Scenario, registry: Registry): SimulationResu
     for (const uid of order) {
       const doll = byId.get(uid)!;
       beginUnitRound(doll);
+      // START-OF-ACTION STATUS TICK (2026): the holder's turn has begun — statuses declaring
+      // `tickAt: "ownActionStart"` fire their effects HERE, BEFORE the unit moves or acts
+      // (source order: turn starts → start-of-turn effect → the unit acts). Data-driven; no-op
+      // for every status that does not declare this tick point.
+      tickStatuses(state, doll, "ownActionStart", (st, u, def, active) => applyStartOfActionStatusEffects(st, u, def, active));
       // TURN-START CONFECTANCE DRAIN (2026, Vector clause 4/5): an at-max gauge is consumed at the
       // holder's own turn start for a round-scoped ATK% bonus. No-op for units without the effect.
       applyTurnStartConfectanceDrain(state, doll);
@@ -1396,6 +1414,10 @@ export function simulate(scenario: Scenario, registry: Registry): SimulationResu
     // oracles) stays unchanged; the UI interleaves pass rows before the ticks so
     // the log explains why the following debuff damage occurs.
     state.passEvents.push({ round: state.round, turn, unit: state.dummy.id, actorName: state.dummy.name, action: "pass" });
+    // The dummy's own turn ALSO starts before it "acts" (passes), so target-side statuses
+    // declaring `tickAt: "ownActionStart"` fire here too — e.g. Overheat Combustion, whose
+    // damage triggers "at the start of this unit's action" on the affected target.
+    tickStatuses(state, state.dummy, "ownActionStart", (st, u, def, active) => applyStartOfActionStatusEffects(st, u, def, active));
     endOfOwnTurn(state, state.dummy);
     endOfRound(state);
   }

@@ -1110,6 +1110,54 @@ still needs other pieces; see `docs/dolls/vector.md` §7.1 for the exact remaini
 
 ---
 
+### 3.27 Start-of-action status tick (`ownActionStart`) — 2026, IMPLEMENTED + TESTED
+
+**Mechanic** — a status may fire its effects at the holder's **turn start**, BEFORE the holder moves
+or acts.
+
+**Ordering (project owner, 2026-10-09):**
+```
+turn starts  →  start-of-turn effect fires  →  the unit acts
+```
+
+**Source** — Vector's **Overheat Combustion**: *"Upon gaining this effect and at the start of this
+unit's action, this unit and all allied units within a 1-tile area … take fixed damage equal to 20%
+of the applier's attack."* The **status is NOT implemented here** — this section records only the
+**tick point** that it needs.
+
+**Implementation interpretation** — `StatusDef.tickAt` (and `StatusOverride.tickAt`) gained a third
+value, `"ownActionStart"`, alongside the existing `ownActionEnd` (CONFIRMED default for normal timed
+buffs, U7) and `roundEnd` (alternative/testing):
+- **`tickStatuses`** (`src/engine/statuses.ts`) was **generalized**: it now matches
+  `def.tickAt === at` directly instead of branching on a two-value pair, so the new point needs no
+  special case and a status still fires at **exactly one** point (never two).
+- **`applyStartOfActionStatusEffects`** (`src/engine/simulation.ts`) is the `onTick` handler for the
+  new point — currently **status-sourced fixed damage only**. `heal` (Continuous Healing I) is an
+  explicit ACTION-END effect and is deliberately **not** fired here.
+- **Fired in two places**, both at a unit's own turn start, after `beginUnitRound` and **before**
+  movement and the action:
+  1. the team loop, per acting unit (`tickStatuses(state, doll, "ownActionStart", …)`);
+  2. the **dummy's pass-turn** — the dummy's own turn starts before it passes, so **target-side**
+     statuses (Overheat Combustion is applied to the *target*) tick there too. This mirrors the
+     existing arrangement where the dummy's pass-turn exists so target-side `ownActionEnd` statuses
+     tick naturally.
+- **Duration decrements at the tick point**, so a 1-turn status is gone before the holder acts.
+
+**Evidence status** — the *ordering* is `[GAME]` (project owner, source hierarchy level 1); the
+*implementation* is covered by automated tests. **NOT in-game validated.** Covered by
+`src/test/start-of-action-tick.test.ts` (8 tests: target-side tick, the before-the-action ordering,
+1-turn expiry at the turn start, an `ownActionEnd` control, single-point exclusivity, a permanent
+status never ticking, a direct `tickStatuses` unit check, and a guard that the synthetic fixtures
+never leak into production data).
+
+**Unknowns / not claimed** — whether any effect OTHER than fixed damage belongs at this tick point
+(none is asserted); whether a start-of-action tick can **kill** the holder before it acts (the
+damage is applied normally, but no death/action-cancellation rule is invented — the MVP has no
+death handling); and any interaction with the unit's own **turn-start Confectance drain** beyond
+their both occurring at the turn start.
+
+---
+
 ## 4. Uncertainty register
 
 Every mechanic that is still uncertain, with impact and resolution path. **None of these should be hardcoded as facts in the engine — all are config defaults pending the in-game test plan (§5).**
@@ -1123,7 +1171,7 @@ Every mechanic that is still uncertain, with impact and resolution path. **None 
 | U4 | ~~Break duration (beta `breakRound=2`)~~ → **RESOLVED 2026-09-03 (permanent simulator rule, current-game validated via U6)**: the broken/exposed window is governed by the ALWAYS-2-turn Stability recovery — break on Turn N → broken through the remainder of N and throughout N+1 → **Stability restored at the START of Turn N+2**. The beta `breakRound=2` datum is supporting historical evidence, not the primary justification. **U4 = window DURATION; U3 = NO universal damage MULTIPLIER (resolved — none exists)** — U4 establishes no Exposed damage magnitude. | ~~UNCERTAIN~~ → **CONFIRMED (current-game, via U6; fixed 2-turn recovery, non-configurable)** | Break window length | ✅ resolved — fixed 2-turn broken/recovery window; engine behavior verified by `stability-recovery.test.ts` and `boss-stability.test.ts`; no configurable recovery duration |
 | U5 | Per-unit max stability & per-skill stab damage values; **boss-specific Stability-conditional passive damage reduction — CONFIRMED & IMPLEMENTED (2026-09-03, in-game boss tooltip: −80% taken while stability > 0 → ×0.20)** | values: CONFIRMED examples / UNKNOWN table; boss-passive mechanic **RESOLVED** (generic, data-driven) | Stability pacing + boss damage | boss-passive: implemented via `DummyConfig.passives` + conditional taken modifier (see §3.7, `boss-stability.test.ts`); per-unit values still from per-skill record / `PotRooms/GFL2_Data` |
 | U6 | ~~Stability recovery timing~~ → **CONFIRMED 2026-09-03**: restored exactly 2 turns after the break (break Turn N → restored Turn N+2), restored to max | ~~UNKNOWN~~ → **CONFIRMED (timing)** | Was long-sim drift | ✅ resolved — engine models the 2-turn delay (`STABILITY_RECOVERY_DELAY = 2`); no universal Exposed damage multiplier (U3 resolved) |
-| U7 | ~~Buff duration tick point (own turn start vs round end)~~ → **RESOLVED 2026-09-03 (in-game, Attack Up II)**: a normal timed buff's duration is consumed at the **END of the recipient's own action** — applied with N turns, unchanged before the recipient acts, −1 at the recipient's action end. Engine default `ownActionEnd`. **Self-applied buffs (VALIDATED in-game 2026, Fortification Protocol / Positive Charge)**: a unit's SELF-applied buff also ticks at the end of that same casting action (3 → 2); the old same-action skip was removed and is locked by `status-timing.test.ts`. Statuses with their own timing text remain status-specific. | ~~UNKNOWN~~ → **CONFIRMED (in-game)** | Buff expiry timing | ✅ resolved — engine default confirmed; `status-timing.test.ts`; alternative tick (`roundEnd`) stays a testing knob (`config-override.test.ts`) |
+| U7 | ~~Buff duration tick point (own turn start vs round end)~~ → **RESOLVED 2026-09-03 (in-game, Attack Up II)**: a normal timed buff's duration is consumed at the **END of the recipient's own action** — applied with N turns, unchanged before the recipient acts, −1 at the recipient's action end. Engine default `ownActionEnd`. **Self-applied buffs (VALIDATED in-game 2026, Fortification Protocol / Positive Charge)**: a unit's SELF-applied buff also ticks at the end of that same casting action (3 → 2); the old same-action skip was removed and is locked by `status-timing.test.ts`. Statuses with their own timing text remain status-specific. | ~~UNKNOWN~~ → **CONFIRMED (in-game)** | Buff expiry timing | ✅ resolved — engine default confirmed; `status-timing.test.ts`; alternative tick (`roundEnd`) stays a testing knob (`config-override.test.ts`). **`ownActionStart` added 2026** as a THIRD point for statuses whose own text ties them to the holder's turn start (Overheat Combustion) — it does not change the U7 default for normal timed buffs; `start-of-action-tick.test.ts` |
 | U8 | ~~Same-tier status reapply: refresh vs stack~~ → **RESOLVED 2026-09-03 (in-game, Attack Up II)**: reapplying the SAME status tier while it is active **refreshes the duration and does NOT add another stack** (1 stack, 2 turns → reapply → still 1 stack, 2 turns). Engine default (refresh; stack only if the status is `stackable`). Statuses with explicit stacking text (max 3/8/10) remain governed by that text. | ~~UNKNOWN~~ → **CONFIRMED (in-game)** | Stack math | ✅ resolved — engine default confirmed; `status-timing.test.ts` |
 | U9 | ~~Confectance cap & battle-start value~~ → **RESOLVED 2026-09-03**: battle start **3** (no keys), max **6**; +1 per Basic damage event; Pressing the Momentum cost **3** | ~~UNKNOWN~~ → **CONFIRMED (in-game, Qiongjiu no keys)** | Ultimate timing | ✅ resolved — engine defaults start 3 / max 6; gains & cost are data-driven; overrides (confectanceMax/Start) remain for alternative testing. U10 closed (generic Confectance damage bonus disproven — no multiplier) |
 | U10 | ~~Confectance damage-bonus table (beta +5%/10pts, cap +50%)~~ → **NOT PRESENT / DISPROVEN 2026-09-03**: Qiongjiu's damage unchanged across rising Confectance over repeated attacks; the claim was beta-only (BWIKI `/gf2/导染指数`, 一测 era) and is removed. Confectance is a **resource** (MVP) — effects only via explicit character/skill/passive data | ~~UNCERTAIN (beta only)~~ → **DISPROVEN (current Qiongjiu/MVP)** | Was damage curve | ✅ closed — no generic multiplier exists or will be added; modeling as a pure resource |

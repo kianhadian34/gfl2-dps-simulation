@@ -1272,7 +1272,15 @@ export interface StatusDef {
   maxStacks?: number;
   /** null = permanent until ticked/removed. */
   durationRounds: number | null;
-  tickAt: "ownActionEnd" | "roundEnd";
+  /**
+   * Duration tick point.
+   * - `ownActionEnd` — the holder's action end (CONFIRMED default for normal timed buffs, U7).
+   * - `roundEnd` — the end of the whole round (alternative/testing).
+   * - `ownActionStart` — the holder's turn START, BEFORE it acts (2026: Overheat Combustion's
+   *   "at the start of this unit's action" clause). Effects tied to this point fire first; the
+   *   holder then takes its action.
+   */
+  tickAt: "ownActionEnd" | "roundEnd" | "ownActionStart";
   purgeable: boolean;
   effects: StatusEffect[];
   /**
@@ -1370,8 +1378,8 @@ export interface StatusOverride {
   perStackValue?: number;
   /** Applied duration in rounds (overrides the skill's appliesStatuses.durationRounds). */
   durationRounds?: number;
-  /** Duration tick point — CONFIRMED default for normal timed buffs: recipient's action end (`ownActionEnd`, U7, in-game 2026-09-03); override retained for alternative testing. */
-  tickAt?: "ownActionEnd" | "roundEnd";
+  /** Duration tick point — CONFIRMED default for normal timed buffs: recipient's action end (`ownActionEnd`, U7, in-game 2026-09-03); override retained for alternative testing. `ownActionStart` = the holder's turn start, before it acts. */
+  tickAt?: "ownActionEnd" | "roundEnd" | "ownActionStart";
 }
 
 /** Every engine default that research left UNVERIFIED is overridable here (docs/architecture.md §1.5). */
