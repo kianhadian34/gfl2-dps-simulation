@@ -64,7 +64,7 @@ These are the items to go over one by one.
 | **M1** | **Tile identity + storage** — no per-tile record of element / level / version / duration | Nothing downstream can be expressed |
 | **M2** | **Unit-on-tile query** — incl. the boss/dummy special case | Every trigger and gate needs "who is standing here" |
 | **M3** | **Tile generation + targeting** — "generates tiles within N tiles of the target" | The entry point for every tile clause |
-| **M4** | **Tile lifecycle** — duration (3 rounds on upgrade/fusion), expiry, Lv3 "refresh only" | Tiles must expire or the field saturates |
+| **M4** | **Tile lifecycle** — duration (first creation 2 → subsequent additions reset to 3, level-capped), expiry, Lv3 "refresh only" | Tiles must expire or the field saturates |
 | **M5** | **Tile Upgrade** — same element onto an existing tile → Lv2 → Lv3, keeping bonuses | The base progression |
 | **M6** | **Versioning** — Allied / Enemy / Neutral, set by the last generator | Determines WHO a tile affects |
 | **M7** | **Polyphase Fusion** — two fusible elements → fusion tile; priority over base; not overwritten by a third element; either element levels it; fusing onto an upgraded tile starts at that level | The most intricate rule set |
@@ -90,8 +90,8 @@ export interface TileEffect {
   elements: Element[];        // 1 = base tile, 2 = fusion tile (order not significant)
   level: 1 | 2 | 3;           // Tile-Upgrade stage
   durationLeft: number;       // live countdown (lifecycle: T4)
-  initialRounds: number;      // ← REVISED: fresh-generation duration (source: "2 turns")
-  resetRounds: number;        // ← REVISED: upgrade/fusion reset duration (source: "resets to 3 rounds")
+  initialRounds: number;      // duration for the FIRST tile created at a position (rule step 1: 2)
+  resetRounds: number;        // duration every SUBSEQUENT addition resets it to (steps 2–3: 3)
   version: "allied" | "enemy" | "neutral";  // set by the LAST generator
   generatedBy: string;        // unitId that generated last
 }
@@ -101,11 +101,19 @@ tiles: Map<string, TileEffect>;   // tileKey -> effect; absent = plain terrain
 ```
 
 **Change 1 — duration became TWO values.** The draft had a single `durationLeft` seeded from one
-constant. The evidence contradicts itself by one round: generation clauses say tiles last *"2
-turns"* (Searing Finale, FK1) while the transformation layer says duration *"resets to **3
-rounds**"* on every upgrade or fusion. Rather than pick a winner, both are stored — `initialRounds`
-for generation, `resetRounds` for upgrade/fusion. The conflict is **Not Tested** (decision 1, §7)
-and neither reading is silently chosen.
+constant. The model now stores **two**, because the game uses **two for two different events** —
+formerly read as a one-round conflict, but **clarified as a rule by the project owner
+(2026-10-10)**:
+
+1. The **first** tile created at a position uses its **initial generation duration** → `initialRounds`
+   (**2 turns**) — the *"lasting for 2 turns"* in the Searing Finale / FK1 clauses.
+2. Whenever **another** tile effect is added at that **same position**, the tile **upgrades by one
+   level** (up to Level 3) and its duration **resets** → `resetRounds` (**3 turns**).
+3. Further additions to a **Level 3** tile do **NOT** level it, but **still reset** its duration
+   to 3.
+
+So the two values answer different events and must never be collapsed into one. The upgrade/level
+mechanics themselves are slices **T5/T7**; T1 only stores the values they consume.
 
 **Change 2 — `elements` is a LIST, not a single element + level.** Forced by *"fusion tiles … are
 **not** overwritten by a third element"* (§3.23.1): "last element wins" is wrong, so the record
@@ -146,8 +154,10 @@ independently committable and leaves the suite green; T11 could be split per-sta
 1. **Scope of the transformation layer.** `research.md` §3.23 deliberately covers **Burn-related
    tiles only**. Do we build the *general* layer (all 5 elements + every fusion) or **Burn-only**
    (matching the existing evidence and Vector's kit)?
-2. **Tile model shape.** Full model (§5: elements + level + version + duration + generator), or a
-   minimal one sized to Vector's clauses only?
+2. ~~**Tile model shape.** Full model (§5: elements + level + version + duration + generator), or a
+   minimal one sized to Vector's clauses only?~~ — **✅ DECIDED 2026-10-10: FULL model.** The
+   **two-duration rule** is also settled (initial generation 2 → subsequent additions reset to 3,
+   level-capped at 3), so it is no longer an open question.
 3. **Weakness application (M10).** Tiles "apply Burn weakness". Two options:
    - **mutate** the unit's `weaknessElements` while it stands on the tile (simple, but add/remove
      on every tile enter/exit, and it touches a stat the panel owns);
@@ -194,9 +204,11 @@ boundary was deliberately the smallest that lets later slices build on a reviewe
 **Decisions taken (project owner, 2026-10-10):**
 1. **Full model** — element set + level + version + generator + duration (not a minimal shape sized
    to Vector alone).
-2. **Two duration values** — `initialRounds` (generation, source *"2 turns"*) and `resetRounds`
-   (upgrade/fusion, source *"resets to 3 rounds"*). The sources conflict by one round; **both are
-   kept so neither is silently chosen**, and the conflict is recorded Not Tested.
+2. **Two duration values** — `initialRounds` (**2**) for the FIRST tile created at a position, and
+   `resetRounds` (**3**) for every SUBSEQUENT addition there. This was first read as a one-round
+   source conflict; the project owner **clarified it as a rule** (two values for two different
+   events — see §5 Change 1, and `research.md` §3.23.1). Kept as two fields so they can never be
+   collapsed.
 3. **`elements` as a list** — forced by *"fusion tiles … are not overwritten by a third element"*;
    "last element wins" cannot express that.
 
@@ -210,13 +222,14 @@ mutable runtime maps). Keyed by the existing `tileKey(x,y)` convention. The type
 **No UI change needed** — verified: the UI mirrors only `GridConfigView` (the static config), never
 `GridState`, so nothing there referenced tiles.
 
-**Tests:** `src/test/tiles.test.ts` (11) — empty map on build; `tileKey` keying; the map is
+**Tests:** `src/test/tiles.test.ts` (12) — empty map on build; `tileKey` keying; the map is
 PER-GRID-STATE (not a shared/module-level map); tiles are independent of static terrain; base (1
 element) vs fusion (2 elements) expressible; all three levels and all three versions; the generator
-is recorded; **the two durations are independent and settable to different values** (the exact
-failure that collapsing them would cause); `durationLeft` is a live counter distinct from either
-constant; **a scope guard asserting NO tile-rule functions exist yet**; and a guard that slice 9's
-`AreaShape` vocabulary is intact (tiles will reuse it for generation areas).
+is recorded; **the two durations are independent and belong to two different EVENTS** (the exact
+failure that collapsing them would cause); **`level` is capped at 3, so the rule that additions at
+Level 3 cannot level a tile is representable**; `durationLeft` is a live counter distinct from
+either constant; **a scope guard asserting NO tile-rule functions exist yet**; and a guard that
+slice 9's `AreaShape` vocabulary is intact (tiles will reuse it for generation areas).
 
 **Evidence status:** none of this is `Validated`. The *rules* remain `[SOURCE]` (community guide,
 hierarchy level 5) per `research.md` §3.23; M1 adds only structure, covered by tests. Engine

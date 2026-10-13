@@ -119,24 +119,32 @@ export interface GridMove {
  *
  * `level` is the Tile-Upgrade stage (Base → Lv2 → Lv3, §3.23.1). Values above 3 are not modeled.
  *
- * DURATION IS TWO SEPARATE VALUES, because the source states two and they conflict:
- *  - `initialRounds` — how long a freshly GENERATED tile lasts. The skill clauses say tiles last
- *    *"2 turns"* (Searing Finale, FK1).
- *  - `resetRounds` — the duration an UPGRADE or FUSION resets the tile to. The transformation layer
- *    says it *"resets to 3 rounds"*.
- * Both are kept so NEITHER reading is silently chosen: the per-tile starting value is data, and the
- * conflict is recorded **Not Tested** (`docs/tiles.md` §7 decision 1). Do not collapse them.
+ * DURATION IS TWO SEPARATE VALUES — the RULE (project owner, 2026-10-10):
+ *  - `initialRounds` — the duration a tile gets when it is FIRST created at a position.
+ *  - `resetRounds`  — the duration every SUBSEQUENT tile effect added at that position resets it to.
+ *
+ * The full rule, as stated by the project owner:
+ *   1. The first tile created at a position uses its **initial generation duration** (2 turns).
+ *   2. Whenever ANOTHER tile effect is added at that same position, the tile **upgrades by one
+ *      level** (up to Level 3) and its duration **resets to 3 turns**.
+ *   3. Further additions to a **Level 3** tile do NOT increase its level, but STILL reset its
+ *      duration to 3 turns.
+ *
+ * This is NOT a conflict between two sources — the two values describe two different EVENTS
+ * (first creation vs subsequent interaction), which is exactly why they are two fields and must
+ * never be collapsed into one. The upgrade/level mechanics themselves are slices T5/T7
+ * (`docs/tiles.md`); this type only stores the values they consume.
  */
 export interface TileEffect {
   /** 1 element = a base tile; 2 = a fusion tile. Order is not significant. */
   elements: Element[];
-  /** Tile-Upgrade stage: 1 (base) → 2 → 3. */
+  /** Tile-Upgrade stage: 1 (base) → 2 → 3. Further additions at 3 do NOT increase it. */
   level: 1 | 2 | 3;
   /** Rounds remaining for this tile; ticks down and removes the entry at 0 (lifecycle: T4). */
   durationLeft: number;
-  /** The duration a fresh generation uses (source: "2 turns"). */
+  /** Duration when the tile is FIRST created at a position (rule step 1: 2 turns). */
   initialRounds: number;
-  /** The duration an upgrade/fusion resets to (source: "resets to 3 rounds"). */
+  /** Duration every SUBSEQUENT tile effect resets it to (rule steps 2–3: 3 turns, level-capped or not). */
   resetRounds: number;
   /**
    * Which side the tile debuffs, set by whichever unit LAST generated onto it:

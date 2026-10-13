@@ -15,8 +15,8 @@ import type { GridConfig, GridCoord, TileEffect } from "../model/grid.js";
  *  - a built grid starts with an EMPTY tile map;
  *  - the map is keyed by the engine's existing `tileKey` convention;
  *  - the map is PER-GRID-STATE (two grids never share one);
- *  - `TileEffect` can express both a base tile and a fusion tile, all three versions, and the two
- *    INDEPENDENT duration values the conflicting sources require.
+ *  - `TileEffect` can express both a base tile and a fusion tile, all three versions, and the TWO
+ *    duration values that two different EVENTS require (first creation vs subsequent addition).
  *
  * Nothing here is `Validated` — the underlying rules are `[SOURCE]` (community guide, level 5).
  */
@@ -100,17 +100,31 @@ test("M1: a tile records WHO generated it (drives version/provenance)", () => {
   assert.equal(aTile({ generatedBy: "other_doll" }).generatedBy, "other_doll");
 });
 
-// ------------------------------------------------------------ the duration conflict
+// ------------------------------------------------------------ the duration RULE
 
-test("M1: the TWO duration values are independent (the sources conflict by one round)", () => {
-  // Generation says "2 turns" (Searing Finale, FK1); upgrade/fusion "resets to 3 rounds".
-  // M1 keeps BOTH so neither reading is silently chosen.
+test("M1: the TWO duration values are independent — they belong to TWO different events", () => {
+  // The RULE (project owner, 2026-10-10):
+  //   1. the FIRST tile created at a position uses its initial generation duration (2 turns);
+  //   2. when ANOTHER tile effect is added at that position, the tile upgrades one level
+  //      (up to 3) and its duration resets to 3 turns;
+  //   3. further additions at Level 3 do NOT level it, but STILL reset the duration to 3.
+  // So "2" and "3" are not competing readings of one value — they answer different events. The
+  // model keeps them as separate fields so they can never be collapsed into one.
   const t = aTile({ initialRounds: 2, resetRounds: 3, durationLeft: 2 });
-  assert.equal(t.initialRounds, 2, "fresh generation duration (source: \"2 turns\")");
-  assert.equal(t.resetRounds, 3, "upgrade/fusion reset duration (source: \"resets to 3 rounds\")");
-  assert.equal(t.durationLeft, 2, "the live counter may differ from EITHER constant");
-  // They must be settable to DIFFERENT values — collapsing them is the failure this pins.
-  assert.notEqual(t.initialRounds, t.resetRounds, "the two values are genuinely separate");
+  assert.equal(t.initialRounds, 2, "rule step 1 — first creation at a position");
+  assert.equal(t.resetRounds, 3, "rule steps 2–3 — every subsequent addition");
+  assert.equal(t.durationLeft, 2, "the live counter starts at the creation duration");
+  assert.notEqual(t.initialRounds, t.resetRounds, "the two VALUES are genuinely different");
+});
+
+test("M1: level is capped at 3 in the type — rule step 3 cannot level a Level 3 tile", () => {
+  // Rule step 3 ("further additions do NOT increase level") is expressible because the type
+  // admits only 1 | 2 | 3. The enforcement itself is T5/T7; this pins the TYPE's affordance.
+  assert.equal(aTile({ level: 3 }).level, 3, "Level 3 is representable");
+  // A Level 3 tile still carries a resettable duration (it resets, it just does not level).
+  const maxed = aTile({ level: 3, durationLeft: 3, resetRounds: 3 });
+  assert.equal(maxed.level, 3);
+  assert.equal(maxed.durationLeft, 3, "rule step 3: an addition at Level 3 still resets duration");
 });
 
 test("M1: durationLeft is a live counter, distinct from the constants", () => {

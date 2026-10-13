@@ -888,6 +888,20 @@ do not treat their absence as "no such tiles".
 - **Duration resets to 3 rounds** on every upgrade or fusion (note: the per-effect durations
   stated below are separate 2-turn status durations).
 
+**TILE DURATION — RULE CLARIFIED (project owner, 2026-10-10, authoritative).** The two different
+duration figures used across the sources are **not a conflict** — they describe two different
+EVENTS:
+1. The **first** tile created at a position uses its **initial generation duration** (**2 turns**)
+   — this is the *"lasting for 2 turns"* in the skill clauses (Searing Finale, FK1).
+2. Whenever **another** tile effect is added at that **same position**, the tile **upgrades by one
+   level** (up to Level 3) and its duration **resets to 3 turns** — the layer's *"resets to 3
+   rounds"*.
+3. Further additions to a **Level 3** tile do **NOT** increase its level, but **still reset its
+   duration to 3 turns**.
+
+So `initialRounds` (2) and `resetRounds` (3) are two fields for two events and must never be
+collapsed into one. Model + slice record: `docs/tiles.md` §10 (T1/M1).
+
 #### 3.23.2 Effect-name resolution (independently verified)
 
 The guide renders effects as opaque `[effect:<uuid>]` tokens. The names below were resolved by
@@ -974,10 +988,11 @@ points**.
   inventory M1–M12, a 12-slice breakdown, and the open decisions). **T1/M1 (tile identity +
   storage) is DONE 2026** — `TileEffect` + `GridState.tiles` exist, but carry **no rules**: nothing
   generates, upgrades, fuses, or ticks a tile yet.
-- **Duration conflict, recorded (not resolved).** The two duration statements above (**generation =
-  "2 turns"** vs the layer's **"resets to 3 rounds"**) are kept as **two separate values**
-  (`initialRounds` / `resetRounds` in `TileEffect`) rather than one being chosen. See
-  `docs/tiles.md` §10.
+- **Tile duration — RULE, not a conflict.** `TileEffect` carries **two** duration values because
+  the game uses two for **two different events**: `initialRounds` (2) when a tile is FIRST created
+  at a position, and `resetRounds` (3) for every SUBSEQUENT addition there (which also levels the
+  tile, except at Level 3 where it only resets duration). See the clarified rule in §3.23.1 above
+  and `docs/tiles.md` §10.
 - **Non-Burn tiles and fusions** are out of scope for this section (see the scope note above).
 - **The Burn-DEBUFF family is separate from Burn TILES.** Effects such as **Overburn**,
   **Overheat Combustion**, **Smolder**, and **Overheat** are game **status effects**, not tile
