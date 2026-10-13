@@ -23,6 +23,7 @@ import {
   type GridCoord,
   type GridMove,
   GRID_SIZE,
+  type TileEffect,
   type TileHeight,
   type UnitPlacement,
 } from "../model/grid.js";
@@ -46,6 +47,13 @@ export interface GridState {
   ladders: Map<string, { to: string }>; // from tileKey -> ladder edge (cost 1, both directions)
   /** Scripted per-round movements (deterministic; validated at application time). */
   moves: GridMove[];
+  /**
+   * ELEMENTAL TILE EFFECTS (2026, M1) — sparse runtime map, `tileKey` → effect. A tile ABSENT from
+   * this map is plain terrain. Distinct from `heights`/`blocked`/`enemyTiles`, which are STATIC
+   * terrain fixed at `buildGrid`; these are created and destroyed during the fight (lifecycle: T4).
+   * Empty until tile generation exists (T3) — the map itself is the whole of M1.
+   */
+  tiles: Map<string, TileEffect>;
 }
 
 export const tileKey = (x: number, y: number): string => `${x},${y}`;
@@ -164,6 +172,7 @@ export function buildGrid(cfg: GridConfig): GridState {
     boss: cfg.boss,
     ladders: new Map(),
     moves: cfg.moves ?? [],
+    tiles: new Map(),
   };
   for (const e of state.enemyUnits) {
     if (!inBounds(e.coord.x, e.coord.y)) throw new Error(`enemy unit ${e.unitId} placed outside the grid`);

@@ -62,6 +62,10 @@ unimplemented).
 - A ladder is the only confirmed High Ground access; using it costs **1 Mobility** when adjacent.
 
 ## UNRESOLVED — deliberately NOT implemented
+- **Elemental tile effects** — a whole subsystem the grid does not model (no per-tile effect
+  storage, no tile triggers). Its **rules** are in `docs/research.md` §3.23 (Burn family,
+  `[SOURCE]`, Not Tested); its **engine design and slice plan** are in `docs/tiles.md` (PLAN ONLY).
+  Note this is distinct from *terrain*: the facts above are static and set at build time.
 - Diagonal corner-squeezing around blocked/enemy tiles (plain 8-direction tiling; the squeeze
   cases are not modeled and not tested as known behavior).
 - Ground → High Ground combat interaction.

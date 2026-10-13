@@ -970,6 +970,14 @@ points**.
   guide.
 - **Not implemented.** The engine has **no tile system at all** (`docs/grid.md` — terrain is
   height/blocked/ladder only; `GridConfig` carries no tile-effect field). Nothing above is modeled.
+  **The engine design and slice plan for it are owned by `docs/tiles.md`** (gap
+  inventory M1–M12, a 12-slice breakdown, and the open decisions). **T1/M1 (tile identity +
+  storage) is DONE 2026** — `TileEffect` + `GridState.tiles` exist, but carry **no rules**: nothing
+  generates, upgrades, fuses, or ticks a tile yet.
+- **Duration conflict, recorded (not resolved).** The two duration statements above (**generation =
+  "2 turns"** vs the layer's **"resets to 3 rounds"**) are kept as **two separate values**
+  (`initialRounds` / `resetRounds` in `TileEffect`) rather than one being chosen. See
+  `docs/tiles.md` §10.
 - **Non-Burn tiles and fusions** are out of scope for this section (see the scope note above).
 - **The Burn-DEBUFF family is separate from Burn TILES.** Effects such as **Overburn**,
   **Overheat Combustion**, **Smolder**, and **Overheat** are game **status effects**, not tile

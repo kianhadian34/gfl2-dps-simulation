@@ -103,6 +103,52 @@ export interface GridMove {
   endTurnWithoutAction?: boolean;
 }
 
+/**
+ * ELEMENTAL TILE EFFECT (2026, M1 — storage/identity ONLY; no rules yet).
+ *
+ * A **runtime** per-tile record: which element(s) the tile carries and how long it lasts. Sparse —
+ * a tile with no entry is plain terrain. The tile RULES (generation, upgrade, fusion, triggers) are
+ * owned by `docs/research.md` §3.23 and planned in `docs/tiles.md` (slices T3+); this type only
+ * gives them somewhere to live.
+ *
+ * `elements` is a LIST, not a single element: a base tile has one, a **fusion tile** has two, and
+ * fusion tiles are explicitly NOT overwritten by a third element (`§3.23.1`) — so "the last element
+ * wins" is wrong and an element SET is required. The tile's display NAME is derived from
+ * (element set, level) elsewhere, deliberately: the source names are CN-only and "subject to
+ * change", so they stay OUT of the engine's data model.
+ *
+ * `level` is the Tile-Upgrade stage (Base → Lv2 → Lv3, §3.23.1). Values above 3 are not modeled.
+ *
+ * DURATION IS TWO SEPARATE VALUES, because the source states two and they conflict:
+ *  - `initialRounds` — how long a freshly GENERATED tile lasts. The skill clauses say tiles last
+ *    *"2 turns"* (Searing Finale, FK1).
+ *  - `resetRounds` — the duration an UPGRADE or FUSION resets the tile to. The transformation layer
+ *    says it *"resets to 3 rounds"*.
+ * Both are kept so NEITHER reading is silently chosen: the per-tile starting value is data, and the
+ * conflict is recorded **Not Tested** (`docs/tiles.md` §7 decision 1). Do not collapse them.
+ */
+export interface TileEffect {
+  /** 1 element = a base tile; 2 = a fusion tile. Order is not significant. */
+  elements: Element[];
+  /** Tile-Upgrade stage: 1 (base) → 2 → 3. */
+  level: 1 | 2 | 3;
+  /** Rounds remaining for this tile; ticks down and removes the entry at 0 (lifecycle: T4). */
+  durationLeft: number;
+  /** The duration a fresh generation uses (source: "2 turns"). */
+  initialRounds: number;
+  /** The duration an upgrade/fusion resets to (source: "resets to 3 rounds"). */
+  resetRounds: number;
+  /**
+   * Which side the tile debuffs, set by whichever unit LAST generated onto it:
+   * `"allied"` (debuffs enemies) / `"enemy"` (debuffs allies) / `"neutral"` (debuffs everyone).
+   * The engine currently has no enemy generator, so only `"allied"` is reachable in the MVP — the
+   * other two are modeled because the rule is unconditional (§3.23.1) and versioning is T6.
+   */
+  version: "allied" | "enemy" | "neutral";
+  /** The unitId that generated onto this tile last (drives `version` and provenance). */
+  generatedBy: string;
+}
+
 export interface GridConfig {
   size: number; // must be exactly 15
   units: UnitPlacement[];
