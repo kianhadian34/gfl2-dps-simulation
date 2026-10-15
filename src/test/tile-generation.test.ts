@@ -35,14 +35,16 @@ function grid(over: Partial<GridConfig> = {}): GridState {
   });
 }
 
-const keys = (tiles: GridCoord[]): string[] => tiles.map((t) => tileKey(t.x, t.y)).sort();
+const keys = (tiles: { tile: GridCoord }[]): string[] => tiles.map((r) => tileKey(r.tile.x, r.tile.y)).sort();
+const coords = (results: { tile: GridCoord }[]): GridCoord[] => results.map((r) => r.tile);
 
 // ------------------------------------------------------------ the basics
 
 test("T3: a radius-0 area generates exactly the origin tile", () => {
   const g = grid();
   const created = generateTiles(g, { origin: at(7, 7), shape: "manhattan", radius: 0, elements: ["burn"], generatedBy: "vector" });
-  assert.deepEqual(created, [at(7, 7)]);
+  assert.deepEqual(coords(created), [at(7, 7)]);
+  assert.deepEqual(created[0].outcome, "created");
   assert.equal(g.tiles.size, 1, "one tile stored");
   assert.ok(g.tiles.has(tileKey(7, 7)));
 });
@@ -124,28 +126,29 @@ test("T3: the stored element list is a COPY — mutating the caller's array does
 
 // ------------------------------------------------------------ the return value / boundary
 
-test("T3: the return value is ONLY the tiles created by this call", () => {
+test("T3: the return value is ONLY the tiles this call acted on", () => {
   const g = grid();
   const first = generateTiles(g, { origin: at(7, 7), shape: "manhattan", radius: 0, elements: ["burn"], generatedBy: "v" });
-  assert.deepEqual(first, [at(7, 7)]);
+  assert.deepEqual(coords(first), [at(7, 7)]);
   const second = generateTiles(g, { origin: at(9, 9), shape: "manhattan", radius: 0, elements: ["burn"], generatedBy: "v" });
-  assert.deepEqual(second, [at(9, 9)], "not the earlier tile");
+  assert.deepEqual(coords(second), [at(9, 9)], "not the earlier tile");
   assert.equal(g.tiles.size, 2, "generation accumulates on the state's tile map");
 });
 
-test("T3 BOUNDARY: an EXISTING tile is left UNTOUCHED — the upgrade/reset rule is T5", () => {
+test("T3 → T5 SUPERSEDED: an occupied tile is now acted on by the addition rule (was left untouched)", () => {
+  // T3's slice boundary was "generation never writes a tile twice". T5 implemented the rule that
+  // boundary deferred, so this test now pins the NEW contract: an occupied tile IS acted on, and the
+  // outcome is reported. T3's other guarantees (below this test) are untouched.
   const g = grid();
   generateTiles(g, { origin: at(7, 7), shape: "manhattan", radius: 0, elements: ["burn"], generatedBy: "vector" });
-  const before = { ...g.tiles.get(tileKey(7, 7))! };
 
-  // "Another tile effect is added at that same position" → upgrade a level + reset duration. That
-  // clause is the UPGRADE slice (T5); T3 must not implement or half-implement it.
-  const again = generateTiles(g, { origin: at(7, 7), shape: "manhattan", radius: 0, elements: ["hydro"], generatedBy: "other" });
+  const again = generateTiles(g, { origin: at(7, 7), shape: "manhattan", radius: 0, elements: ["burn"], generatedBy: "other" });
 
-  assert.deepEqual(again, [], "T3 created nothing (the tile already existed)");
-  assert.deepEqual(g.tiles.get(tileKey(7, 7)), before, "level, duration and elements are unchanged");
-  assert.equal(g.tiles.size, 1, "no second entry");
-  assert.equal(g.tiles.get(tileKey(7, 7))!.durationLeft, TILE_INITIAL_ROUNDS, "duration was NOT reset to 3 (that is T5)");
+  assert.equal(again.length, 1, "the occupied tile IS acted on now (T5)");
+  assert.equal(again[0].outcome, "upgraded", "same element → level up (the T5 rule)");
+  assert.equal(g.tiles.size, 1, "no second entry — still one tile");
+  assert.equal(g.tiles.get(tileKey(7, 7))!.level, 2, "levelled");
+  assert.equal(g.tiles.get(tileKey(7, 7))!.durationLeft, TILE_RESET_ROUNDS, "duration reset to 3 (T4's reset)");
 });
 
 // ------------------------------------------------------------ bounds / terrain
@@ -191,10 +194,14 @@ test("T3: the duration constants are the owner-stated initial 2 / reset 3", () =
   assert.notEqual(TILE_INITIAL_ROUNDS, TILE_RESET_ROUNDS, "two values for two EVENTS — never collapsed");
 });
 
-test("T3: no UPGRADE/FUSION/lifecycle/trigger functions exist yet (scope guard)", async () => {
-  // Guard against scope creep: T3 ships generation only. Lifecycle is T4, upgrade T5, fusion T7,
+test("T3: no UPGRADE/FUSION/trigger functions exist yet (scope guard)", async () => {
+  // Guard against scope creep: T3 ships generation only. Upgrade is T5, versioning T6, fusion T7,
   // triggers T8 — none of them may appear before its slice.
+  //
+  // `tickTiles` / `resetTileDuration` were in this list while T3 was the newest slice; **T4 now owns
+  // them** and the guard is advanced deliberately rather than loosened — the T4 lifecycle tests assert
+  // those two DO exist, so they cannot silently vanish either.
   const tiles = await import("../engine/tiles.js");
-  const suspicious = Object.keys(tiles).filter((k) => /^(upgradeTile|fuseTile|tickTiles|expireTiles|advanceTiles|applyTileTrigger)/.test(k));
-  assert.deepEqual(suspicious, [], "T3 adds generation ONLY (docs/tiles.md slice plan)");
+  const suspicious = Object.keys(tiles).filter((k) => /^(upgradeTile|fuseTile|applyTileTrigger|advanceTiles)/.test(k));
+  assert.deepEqual(suspicious, [], "generation + lifecycle only so far (docs/tiles.md slice plan)");
 });

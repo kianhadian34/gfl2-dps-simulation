@@ -77,10 +77,10 @@ These are the items to go over one by one.
 | **M1** | **Tile identity + storage** — no per-tile record of element / level / version / duration | Nothing downstream can be expressed |
 | **M2** | **Unit-on-tile query** — incl. the boss/dummy special case. **✅ DONE (T2) — see §10.** | Every trigger and gate needs "who is standing here" |
 | **M3** | **Tile generation + targeting** — "generates tiles within N tiles of the target". **✅ DONE (T3) — see §10.** | The entry point for every tile clause |
-| **M4** | **Tile lifecycle** — duration (first creation 2 → subsequent additions reset to 3, level-capped), expiry, Lv3 "refresh only" | Tiles must expire or the field saturates |
-| **M5** | **Tile Upgrade** — same element onto an existing tile → Lv2 → Lv3, keeping bonuses | The base progression |
+| **M4** | **Tile lifecycle** — duration (first creation 2 → subsequent additions reset to 3, level-capped), expiry, Lv3 "refresh only". **✅ DONE (T4) — see §10.** | Tiles must expire or the field saturates |
+| **M5** | **Tile Upgrade** — same element onto an existing tile → Lv2 → Lv3, keeping bonuses. **✅ DONE (T5) — see §10.** | The base progression |
 | **M6** | **Versioning** — Allied / Enemy / Neutral, set by the last generator | Determines WHO a tile affects |
-| **M7** | **Polyphase Fusion** — two fusible elements → fusion tile; priority over base; not overwritten by a third element; either element levels it; fusing onto an upgraded tile starts at that level | The most intricate rule set |
+| **M7** | **Polyphase Fusion** — two fusible elements → fusion tile; priority over base; not overwritten by a third element; either element levels it; fusing onto an upgraded tile starts at that level. **✅ DONE — MERGED INTO T5 (project owner, 2026) — see §10.** | The most intricate rule set |
 | **M8** | **Tile triggers** — (a) on generation, (b) "units that **remain on the area after ending their action**", (c) "**for every 3 times** they take Burn damage" | The tile rules are entirely trigger-driven |
 | **M9** | **Tile-gated effects** — FK5 *"while on a Burn tile, damage taken −20%"*; Perception Block *"immune to debuffs inflicted by Burn tiles"* | Needs M1 + M2 |
 | **M10** | **Runtime weakness application** — tiles *"apply Burn weakness"*, but `weaknessElements` is immutable today | Changes the damage path |
@@ -147,18 +147,19 @@ is **vocabulary or mechanism only** unless stated. Sizes are indicative.
 | **T1** | `TileEffect` + `GridState.tiles` (storage + identity). No generation, no triggers. **✅ DONE 2026 — see §10.** | M1 | Model shape (§5). **✅ DECIDED** — full model, plus a **two-duration** split (see §10). |
 | **T2** | Unit-on-tile query: allies, the **boss/dummy** (footprint-aware), grid enemies. Pure. **✅ DONE 2026 — see §10.** | M2 | — (none: the plan's "footprint-aware" scope settled it) |
 | **T3** | Tile generation + area targeting (reuses `AreaShape`; numeric ⇒ diamond). Duration init. **✅ DONE 2026 — see §10.** | M3 | ✅ RESOLVED — generation uses `initialRounds` (2); upgrade/fusion resets to `resetRounds` (3) |
-| **T4** | Lifecycle: round-end ticking, expiry, Lv3 "refresh only". | M4 | — |
-| **T5** | Tile Upgrade: same element onto an existing tile → level up, bonuses kept. | M5 | — |
+| **T4** | Lifecycle: round-end ticking, expiry, Lv3 "refresh only". **✅ DONE 2026 — see §10.** | M4 | — (scope split: T4 owns the CLOCK, T5 owns LEVELLING — see §10) |
+| **T5** | Tile Upgrade **+ Polyphase Fusion** (merged — see §10): same element → level up (cap 3); fusible pair → fusion preserving level; fusion tile protected from a third element; non-fusible → replace (base) / protect (upgraded); every addition resets duration. **✅ DONE 2026 — see §10.** | M5 + M7 | ✅ RESOLVED — all four branches implemented from the guide's upgrade text + its **Polyphase Fusion List**; the non-fusible REPLACEMENT's level/duration is the one inference (§7 decision 7) |
 | **T6** | Versioning (Allied / Enemy / Neutral). | M6 | **Only Allied is reachable** — no enemy generator exists. Model all three anyway? |
-| **T7** | Polyphase Fusion: priority, third-element behaviour, either-element levelling, fuse-onto-upgraded. | M7 | Scope: Burn fusions only, or all? |
+| **T7** | ~~Polyphase Fusion~~ **ABSORBED INTO T5** (project owner, 2026): the upgrade and fusion rules share one core and one call site, so splitting them would have meant writing the addition rule twice. Nothing of its own remains. | — | — |
 | **T8** | The three tile triggers (on-generation / end-of-action-on-tile / every-3-Burn-hits counter). | M8 | The counter is per-unit-per-tile state — where does it live? |
 | **T9** | Tile-gated effects: "while on a tile" query + gates (FK5 −20%, Burn-tile immunity). | M9 | — |
 | **T10** | Runtime weakness application (tile-applied Burn weakness). | M10 | **Mutate `weaknessElements` or compute at hit time?** (see §7) |
 | **T11** | The 9 missing statuses. | M11 | Each needs its OWN evidence — the guide names them but does not fully define them |
 | **T12** | Vector's clauses end-to-end (FK1, FK5, PB L1/V5, OC V5, Smolder, Searing Finale). | M12 | Depends on T1–T11 |
 
-**Suggested order:** T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9 → T10 → T11 → T12. Each is
-independently committable and leaves the suite green; T11 could be split per-status if needed.
+**Suggested order:** T1 → T2 → T3 → T4 → **T5 (incl. fusion; T7 absorbed)** → T6 → T8 → T9 → T10 →
+T11 → T12. Each is independently committable and leaves the suite green; T11 could be split
+per-status if needed.
 
 ---
 
@@ -167,6 +168,11 @@ independently committable and leaves the suite green; T11 could be split per-sta
 1. **Scope of the transformation layer.** `research.md` §3.23 deliberately covers **Burn-related
    tiles only**. Do we build the *general* layer (all 5 elements + every fusion) or **Burn-only**
    (matching the existing evidence and Vector's kit)?
+   **→ PARTIALLY ANSWERED 2026 (T5):** the guide's **Polyphase Fusion List** establishes the complete
+   **pair membership** (8 pairs; §3.23.4), so `isFusiblePair` covers all five elements rather than
+   Burn-only. The remaining sliver of this decision is the **per-pair EFFECT TEXT** for the four
+   non-Burn pairs (a recorded gap, `research.md` §3.23.4) — the engine needs it only when a slice
+   applies tile effects (T9/T11).
 2. ~~**Tile model shape.** Full model (§5: elements + level + version + duration + generator), or a
    minimal one sized to Vector's clauses only?~~ — **✅ DECIDED 2026-10-10: FULL model.** The
    **two-duration rule** is also settled (initial generation 2 → subsequent additions reset to 3,
@@ -188,9 +194,20 @@ independently committable and leaves the suite green; T11 could be split per-sta
 6. **Do tiles generate on impassable terrain (blocked tiles / the boss footprint) — and can tiles be
    generated on a tile that already has one?** The source says *"generates … tiles within a N-tile
    radius"* and does not restrict by terrain. **T3 takes the no-invention default: generate on every
-   in-bounds tile of the area, with NO terrain filter**, and treat an already-occupied tile as
-   untouched (the *"another tile effect is added"* upgrade is T5). Whether generation should skip
-   impassable terrain is **Not Tested** — flagged rather than guessed.
+   in-bounds tile of the area, with NO terrain filter**; the occupied-tile half was **answered by T5**
+   (an occupied tile goes through the addition rule — upgraded/fused/replaced/protected). Whether
+   generation should skip impassable terrain is **Not Tested** — flagged rather than guessed.
+
+7. **What does a NON-FUSIBLE replacement produce?** The guide implies replacement (*"a tile that has
+   been upgraded is also protected from being replaced by new elemental tiles that cannot fuse"*)
+   but never states the result. **✅ DECIDED 2026 (project owner):** the tile becomes the **incoming
+   element at Lv1, with its duration reset to 3** (an addition at that position). This is an
+   **inference, not a source value → Not Tested.** The FUSIBLE pairs involved are NOT inferred —
+   they are transcribed from the guide's Polyphase Fusion List (§3.23.4).
+
+8. **Should T7 remain a separate slice?** — **✅ ANSWERED 2026 (project owner): no.** Fusion was
+   **merged into T5**, because the upgrade and fusion rules share one core and one call site;
+   splitting them would have meant implementing the addition rule twice. T7 is absorbed.
 
 ---
 
@@ -364,6 +381,126 @@ are still `[SOURCE]`/Not Tested** — generation's shape/radius semantics and th
 rule are the guide's, not observed. Engine **820 pass / 0 fail**; CLI output byte-identical
 (14,581 / 7 actions).
 
-**Next:** T4 / M4 — the lifecycle: round-end ticking, expiry, and the Lv3 "refresh only" case. Its
-prerequisite query already exists: a tile's occupants (`occupantsAtTile`, T2). **T5 then replaces
-T3's occupied-tile boundary** with the real upgrade + duration-reset rule.
+### T4 / M4 — the lifecycle (tile clock) — **DONE 2026**
+
+**Delivered** in `src/engine/tiles.ts`:
+- `resetTileDuration(effect)` — sets `durationLeft` to the tile's OWN `resetRounds` (3). This is the
+  duration half of the layer's *"resets to 3 rounds"* on a subsequent addition, and at **Lv3** it is
+  the entire *"only refreshes duration"* case.
+- `tickTiles(state): string[]` — the end-of-round clock: decrements every tile's `durationLeft`,
+  removes the ones that reach 0, and returns the **keys that expired**. Call it from `endOfRound`,
+  exactly as `endOfRoundStability` is (it is NOT wired into the round loop yet — see below).
+
+**Scope — the CLOCK, not the WHO.** The slice boundary decided here is the important part:
+
+1. **T4 owns TIME; T5 owns LEVELLING.** The layer's clause is *"upgrades one level **and** its
+   duration resets"* — two halves with different evidence. `resetTileDuration` ships the time half
+   alone, explicitly, so T5 composes `reset + level bump` instead of rewriting duration logic. This
+   also keeps T4 entirely free of the element-matching question (*"the **same** element"* levels a
+   tile), which belongs to T5's evidence — so nothing here guesses at it.
+2. **No `applyEffects` callback.** `tickTiles` never decides **who** a tile affects. Applying the
+   tile's debuffs is the trigger slices (T8: *"remain on the area after ending their action"*; T9:
+   *"while on a tile"*). Adding a callback now would invent a signature for a rule that is not yet
+   established. T8 can take the tile's occupants at its own call site via `occupantsAtTile` (T2).
+3. **Round-scoped clock** (like `endOfRoundStability`), not holder-action-scoped: a tile is
+   terrain with its own clock, and every duration the source states is in *turns/rounds*.
+4. **Copy-then-delete** (`[...state.tiles]`) so the loop stays correct when a future `applyEffects`
+   mutates the same map — no reliance on `Map` iteration-under-deletion semantics.
+
+**NOT wired into the simulation turn loop — deliberately.** Ticks + expiry are meaningless until a
+tile can *do* something (T8), and a tile applied by nothing expiring changes no damage number. Wiring
+it now would add unexercisable code with no test able to observe it end-to-end. It becomes observable
+in the same slice that gives tiles an effect.
+
+**Tests:** `src/test/tile-lifecycle.test.ts` (16) — one tick = one round; the full initial lifetime
+(generate → 1 tick alive → 1 tick expired, i.e. **exactly 2 rounds**); removal from the map at 0;
+`tickTiles` returning only the keys that expired THIS tick; empty map; **independent expiry**; the
+refresh setting `durationLeft` to 3; the refresh being driven by the tile's own `resetRounds` field
+(not a hard-coded 3) — **mutation-checked**; the refresh prolonging life across the tick that would
+have killed the tile; the reset **not** changing the level; the **Lv3 "only refreshes duration"**
+case; refresh on a **fusion** tile without disturbing its element set; the tick touching only the tile
+map (placements/allyTiles/terrain untouched); the tick creating nothing; and a scope guard asserting
+T4's two functions exist while T5/T7/T8's do not. A second **mutation check** (off-by-one expiry)
+failed 8 tests, then was reverted. T3's scope guard was **advanced deliberately** — `tickTiles` moved
+from its "must not exist" list to being positively asserted by T4.
+
+**Evidence status:** the **clock itself is `[SOURCE]`/Not Tested** — that a tile's duration counts
+down by rounds, and that expiry removes the tile, is the guide's statement, not an in-game
+observation. Engine **836 pass / 0 fail**; CLI output byte-identical (14,581 / 7 actions).
+
+**Next:** T6 / M6 — versioning semantics (Allied / Enemy / Neutral), then T8 (the triggers).
+
+### T5 / M5 (+ M7) — Tile Upgrade + Polyphase Fusion — **DONE 2026**
+
+**Scope change first.** The project owner directed that fusion be **pulled forward into T5** rather
+than left for T7: the upgrade and fusion rules share one core (*"generate onto the same tile"*) and
+one call site, so splitting them would have meant writing the addition rule twice. **M7/T7 is
+absorbed**; the slice plan reflects it.
+
+**Evidence — a re-transcription of the source found MORE than the repo had recorded.** The guide has
+a **"Polyphase Fusion List"** and a **replacement-protection clause** that the earlier pass missed:
+- **8 fusible pairs**, not 4: the four Burn pairs *plus* `Corrosion+Hydro`, `Electric+Hydro`,
+  `Electric+Corrosion`, `Freeze+Hydro`. Only **Electric+Freeze** and **Corrosion+Freeze** are NOT
+  listed (i.e. not fusible) — the previous "7 of 10, missing Corrosion+Freeze / Electric+Freeze"
+  note undercounted the pairs. Recorded in `research.md` §3.23.4/§3.23.6.
+- *"A tile that has been **upgraded** is also **protected from being replaced** by new elemental
+  tiles that cannot fuse with the base element."* — implies a **non-upgraded base tile CAN be
+  replaced**, a case nothing in the repo previously covered.
+- The four non-Burn pairs' **effect text** is a **recorded gap** (pair membership is authoritative;
+  the effects are not transcribed because nothing yet needs them — engine stores only element set +
+  level).
+
+**Delivered** (`src/engine/tiles.ts`):
+- `FUSIBLE_PAIRS` + `isFusiblePair(a, b)` — the guide's list as **data**, order-insensitive,
+  like-with-like excluded (that is an upgrade).
+- `TILE_MAX_LEVEL = 3`.
+- `TileAdditionOutcome` (`created` | `upgraded` | `fused` | `replaced` | `protected`) and
+  `TileAdditionResult { tile, outcome }`.
+- `applyTileAddition(effect, spec)` — **the rule, in evaluation order**:
+  1. **shared element → LEVEL UP** (cap 3; at Lv3 only the clock refreshes). This is also how a
+     **fusion** tile levels: *"either of the original fused elements can be used"* — a shared element
+     is exactly that, so one branch covers both.
+  2. **fusion tile → PROTECTED**: *"won't be overwritten if there is an attempt to generate a third
+     element"*. Its own elements still level it (case 1), so disjoint elements do nothing.
+  3. **fusible pair → FUSION**, carrying BOTH elements and **PRESERVING the level** (*"the resulting
+     fusion tile will start at the existing tile's upgrade level"* — fusion neither resets the level
+     nor grants a free one).
+  4. **disjoint + non-fusible** → **upgraded ⇒ PROTECTED**, **base ⇒ REPLACED** (incoming element,
+     Lv1 — the owner decision, §7 decision 7).
+  **Every** mutation resets the duration (the `resetTileDuration` T4 exposed — T5 composes it, never
+  re-implements it) and records `generatedBy`/`version` (the guide: the version *"can be changed
+  depending on the last unit that generated"*).
+- `generateTiles` now **returns `TileAdditionResult[]`** and routes occupied positions through
+  `applyTileAddition`. Empty positions still create base tiles at the initial duration.
+
+**Choices:**
+1. **One core function, two rule paths.** Upgrade and fusion are branches of `applyTileAddition`, not
+   two exported functions — matching the merge decision and keeping one place where "generate onto an
+   occupied tile" is defined.
+2. **Fusion preserves the level deliberately** (not reset, not +1): the source is explicit, and both
+   wrong readings are mutation-checked.
+3. **Replacement's Lv1 + duration 3 is an INFERENCE** (owner decision 7) and is marked as such in
+   code + docs — the only non-source value in this slice. The pair table is NOT inferred.
+4. **Element order kept deterministic** (existing element first). Order is *not significant*
+   (`TileEffect` doc), but the engine must not depend on caller order.
+5. **`generateTiles`' contract changed** (occupied tiles are now acted on; a richer return type).
+   This **supersedes T3's slice boundary**, whose "left untouched" test was rewritten to pin the new
+   contract. No other T3/T4 guarantee was touched; nothing was weakened to make T5 pass.
+
+**Tests:** `src/test/tile-upgrade.test.ts` (28) — the 8 fusible pairs order-insensitively; the two
+non-pairs not fusible; like-with-like never fusible; level-up Lv1→Lv2→Lv3 with the cap; Lv3 refresh;
+duration reset on every path; fusion carrying both elements; **fusion preserving the level** (Lv2 base
+→ Lv2 fusion) and starting at Lv1 from a base; **either** fused element levelling to Lv3; a fusion
+tile **protected** from a third element; order determinism; **non-fusible replacement** on a base tile
+(both non-pairs) vs **protection** on an upgraded one (Lv2 and Lv3); replacement producing a
+single-element base tile that can then level; per-tile outcomes across an area; empty positions still
+creating with the initial duration; and a scope guard (T6/T8 still absent). **Mutation checks:**
+fusion resetting the level → **6 failures**; protecting every tile instead of only upgraded ones →
+**4 failures**; both reverted. T3's superseded boundary test was rewritten (test count unchanged).
+
+**Evidence status:** all four rule branches are `[SOURCE]` (guide, level 5) / **Not Tested**; the
+replacement's level/duration is an **inference** (owner decision 7). Engine **864 pass / 0 fail**;
+CLI output byte-identical (14,581 / 7 actions).
+
+**Next:** T6 / M6 — versioning semantics, then T8 (the triggers, which is where tiles start changing
+damage).

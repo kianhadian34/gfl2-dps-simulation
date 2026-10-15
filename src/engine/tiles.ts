@@ -9,16 +9,17 @@ import type { Element } from "../model/types.js";
  *  - `model/grid.ts` — the tile's shape/identity (`TileEffect`), a value type.
  *  - `engine/grid.ts` — the `GridState.tiles` storage (T1/M1) and the pure GEOMETRY tile rules are
  *    read through (areas, occupancy — T2/M2 and slice 9's `areaTiles`).
- *  - **this module** — the tile RULES that CHANGE that state. Generation today; lifecycle (T4),
- *    upgrade (T5), fusion (T7) and triggers (T8) next. It is the tile analogue of `stability.ts`.
+ *  - **this module** — the tile RULES that CHANGE that state. Generation + upgrade + fusion (T3/T5)
+ *    and the lifecycle clock (T4); versioning (T6) and the triggers (T8) next. It is the tile
+ *    analogue of `stability.ts`.
  *
  * The RULES are `[SOURCE]` — a community guide, hierarchy level 5 — and are **Not Tested**
  * (`docs/research.md` §3.23). The feature's *existence* on global IS confirmed by the project owner
  * (2026, direct in-game evidence — hierarchy level 1), but that confirms only that the subsystem is
  * playable, NOT its rule values. Nothing here is `Validated`.
  *
- * **Slice boundary:** generation only (T3/M3). Upgrade, fusion, ticking/expiry and every trigger
- * are NOT here — a scope guard in the tests asserts that.
+ * **Slice boundary:** generation, upgrade/fusion (T3 + T5) and the lifecycle clock (T4). Versioning
+ * semantics (T6) and every trigger (T8/T9) are NOT here — a scope guard in the tests asserts that.
  */
 
 /**
@@ -34,6 +35,45 @@ export const TILE_RESET_ROUNDS = 3;
 
 /** A freshly generated tile is always the BASE stage (§3.23.1 Lv1); level-ups are T5/T7. */
 export const TILE_BASE_LEVEL = 1;
+
+/** The highest Tile-Upgrade stage (§3.23.1: Base → Lv2 → Lv3; further additions only refresh). */
+export const TILE_MAX_LEVEL = 3;
+
+/**
+ * POLYPHASE FUSION PAIRS (T5, 2026) — the base-element pairs that FUSE when generated onto the same
+ * tile. **Evidence: the guide's own "Polyphase Fusion List"**, transcribed from the source
+ * (`docs/research.md` §3.23.4). All five phases participate; **8 pairs are fusible** and the guide
+ * lists exactly these (its earlier "7 of the 10" note undercounted — see `research.md` §3.23.4).
+ *
+ * The two pairs the guide does NOT list — **Electric+Freeze** and **Corrosion+Freeze** — are
+ * therefore **NOT fusible** by this table. That is what the *"tiles that cannot fuse with the base
+ * element"* clause in the replacement rule refers to.
+ *
+ * Pairs are UNORDERED and stored with each pair's two elements sorted alphabetically, so a lookup is
+ * canonical. Kept as DATA here (not in `src/data/`) because it is tile-RULE data with no per-character
+ * or per-scenario dimension, and it is the same for every fight — matching how the tile constants
+ * above live here. Element order inside a tile's `elements` list is explicitly NOT significant
+ * (`TileEffect` doc), which is what makes canonical lookup correct.
+ */
+const FUSIBLE_PAIRS: readonly (readonly [Element, Element])[] = [
+  ["burn", "freeze"], // Smoldering Suspire
+  ["burn", "hydro"], // Scalding Vapors
+  ["burn", "electric"], // Crackling Flare (CN-only per the guide; the pair is still fusible)
+  ["burn", "corrosion"], // Venomfire
+  ["corrosion", "electric"],
+  ["corrosion", "hydro"],
+  ["electric", "hydro"],
+  ["freeze", "hydro"],
+];
+
+/**
+ * True when the two elements form a fusible pair (order-insensitive). A pair is fusible exactly when
+ * the guide's Polyphase Fusion List contains it — no pair is inferred.
+ */
+export function isFusiblePair(a: Element, b: Element): boolean {
+  if (a === b) return false; // like-with-like is an UPGRADE, not a fusion
+  return FUSIBLE_PAIRS.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+}
 
 /**
  * What to generate and where. The element set IS the tile's identity (`TileEffect.elements`): one
@@ -60,29 +100,128 @@ export interface TileGenerationSpec {
   version?: "allied" | "enemy" | "neutral";
 }
 
+/** What generating onto a position DID — the outcome of the tile addition rule. */
+export type TileAdditionOutcome =
+  /** Nothing was there: a NEW base tile was created. */
+  | "created"
+  /** The generation SHARED an element with the tile → it levelled up (or, at Lv3, only the clock refreshed). */
+  | "upgraded"
+  /** A FUSIBLE different element → a Polyphase Fusion tile. */
+  | "fused"
+  /** A NON-FUSIBLE different element on a **non-upgraded** base tile → it replaced the tile. */
+  | "replaced"
+  /** The tile was **protected** and left unchanged (upgraded, or an existing fusion tile). */
+  | "protected";
+
+/** One tile the addition rule acted on, and what happened to it. */
+export interface TileAdditionResult {
+  tile: GridCoord;
+  outcome: TileAdditionOutcome;
+}
+
 /**
- * Generate (create) elemental tiles across the AREA of `spec`; return the tiles CREATED (a caller —
- * trigger (T8) or test — can then act on exactly what was added, not on what was already there).
+ * Apply the tile addition rule to ONE tile that ALREADY carries an effect — *"generating … onto the
+ * same tile"*. This is the shared core of **Tile Upgrade** and **Polyphase Fusion** (both **T5/M5**:
+ * per the project owner, 2026, fusion was pulled forward into T5 rather than left for T7).
+ *
+ * The rule as the source states it (`docs/research.md` §3.23.1, §3.23.4), in evaluation order:
+ *
+ *  1. **A shared element → LEVEL UP.** *"The way to level up a tile is through continuing to generate
+ *     new tiles of that element onto the same tile."* At **Lv3** it *"will just refresh its duration"*
+ *     (the level is capped). This ALSO covers levelling a **fusion** tile by *"either of the original
+ *     fused elements"* — a shared element is exactly that.
+ *  2. **A fusion tile takes no third element.** *"won't be overwritten if there is an attempt to
+ *     generate a third element on them."* Since only its own fused elements level it (case 1), any
+ *     other element does nothing — `"protected"`.
+ *  3. **A FUSIBLE pair → POLYPHASE FUSION.** The tile becomes a fusion tile carrying **BOTH**
+ *     elements. The fusion **PRESERVES the tile's existing level**: *"If you attempt Polyphase Fusion
+ *     on a tile that has already been Upgraded, the resulting fusion tile will start at the existing
+ *     tile's upgrade level."* (So fusing costs no level and grants no free level — a Lv2 base tile
+ *     fuses into a Lv2 fusion tile, which can then be upgraded twice more to Lv3.)
+ *  4. **A different, NON-FUSIBLE element.** *"A tile that has been **upgraded** is also protected from
+ *     being replaced by new elemental tiles that cannot fuse with the base element"* — so an
+ *     **upgraded** tile (level ≥ 2) is `"protected"` and unchanged, while a **non-upgraded** one is
+ *     `"replaced"`: it becomes the incoming element at Lv1.
+ *
+ * **Every** mutation (upgrade, fusion, replacement) then **resets the duration to 3** — *"Each time an
+ * upgrade or fusion occurs, the tile's duration will be reset to 3 rounds"* — and updates
+ * `generatedBy`/`version`, since the version *"can also be changed depending on the last unit that
+ * generated the tile onto the area"* (trivial in the MVP: there is no non-allied generator yet; T6
+ * deepens this).
+ *
+ * **Genuinely inferred (Not Tested, §7 decision 7):** the replacement's exact level/duration — the
+ * guide implies replacement but never states its result (project owner chose **Lv1 + duration 3**).
+ * The **fusible pairs** are NOT inferred: they come from the guide's own list (`FUSIBLE_PAIRS`).
+ *
+ * Mutates `effect` in place; the caller owns putting `key` back on the map.
+ */
+function applyTileAddition(effect: TileEffect, spec: TileGenerationSpec): TileAdditionOutcome {
+  const incoming = spec.elements;
+  const current = effect.elements;
+
+  // 1) A shared element levels the tile — the general form of "generate that element onto the same
+  //    tile", and the only way a fusion tile levels (either of its fused elements qualifies).
+  if (incoming.some((e) => current.includes(e))) {
+    if (effect.level < TILE_MAX_LEVEL) effect.level += 1; // at Lv3 this only refreshes the duration
+    resetTileDuration(effect);
+    effect.generatedBy = spec.generatedBy;
+    effect.version = spec.version ?? "allied";
+    return "upgraded";
+  }
+
+  // 2) Past this point the elements are disjoint. A fusion tile is never overwritten by a third
+  //    element, and only its own fused elements (case 1) level it — so nothing happens.
+  if (current.length === 2) return "protected";
+
+  // 3) Fusible → POLYPHASE FUSION, PRESERVING the current level ("start at the existing tile's
+  //    upgrade level"). Both elements are carried; the original keeps its position for determinism
+  //    (element ORDER is not significant — `TileEffect` doc).
+  if (incoming.length === 1 && isFusiblePair(current[0], incoming[0])) {
+    effect.elements = [current[0], incoming[0]];
+    resetTileDuration(effect);
+    effect.generatedBy = spec.generatedBy;
+    effect.version = spec.version ?? "allied";
+    return "fused";
+  }
+
+  // 4) Different AND non-fusible: an UPGRADED tile is protected; a non-upgraded one is replaced.
+  if (effect.level >= 2) return "protected";
+  effect.elements = [...incoming]; // replace: becomes the incoming element…
+  effect.level = TILE_BASE_LEVEL; // …at Lv1 (owner decision — the guide gives no level)
+  resetTileDuration(effect); // and the addition resets the clock
+  effect.generatedBy = spec.generatedBy;
+  effect.version = spec.version ?? "allied";
+  return "replaced";
+}
+
+/**
+ * Generate elemental tiles across the AREA of `spec`, applying the tile addition rule at each
+ * position, and return what happened at every tile the call acted on (a caller — trigger (T8) or
+ * test — can then act on exactly those).
  *
  * Every **in-bounds** tile of the area is generated on, with **NO terrain filter**: the source
  * restricts generation by nothing but the area, so no filter is invented (§7 decision 6 — whether
  * generation should skip impassable terrain / the boss footprint is **Not Tested**).
  *
- * A tile that **already** carries an effect is left **untouched**. That case is governed by the
- * *"another tile effect is added at that same position → upgrade one level + reset duration"* rule,
- * which is the **upgrade** slice (T5) — not generation. Leaving it alone here is the slice boundary,
- * pinned by a test, NOT an oversight. T3 never writes a tile twice.
+ * An EMPTY position gets a new **base** tile (`TILE_BASE_LEVEL`, initial duration). An OCCUPIED
+ * position goes through `applyTileAddition` — level up / fusion / replacement / protection. Note the
+ * consequence: **`generateTiles` no longer leaves occupied tiles untouched** (it did in T3, before the
+ * upgrade rule existed); the T3 "occupied tile" test was rewritten for T5.
  *
  * MUTATES `state.tiles` — tile effects are runtime state, exactly like `allyTiles` (which the
  * engine also mutates in place), so generation is a state transition, not a pure query.
  */
-export function generateTiles(state: GridState, spec: TileGenerationSpec): GridCoord[] {
+export function generateTiles(state: GridState, spec: TileGenerationSpec): TileAdditionResult[] {
   if (spec.elements.length === 0) throw new Error("a tile must carry at least one element");
   const version = spec.version ?? "allied";
-  const created: GridCoord[] = [];
+  const results: TileAdditionResult[] = [];
   for (const tile of areaTiles(spec.origin, spec.shape, spec.radius, state.size)) {
     const key = tileKey(tile.x, tile.y);
-    if (state.tiles.has(key)) continue; // occupied → the upgrade rule (T5), not generation
+    const existing = state.tiles.get(key);
+    if (existing) {
+      results.push({ tile, outcome: applyTileAddition(existing, spec) });
+      continue;
+    }
     const effect: TileEffect = {
       elements: [...spec.elements], // copy: the tile must not alias the caller's array
       level: TILE_BASE_LEVEL,
@@ -93,7 +232,59 @@ export function generateTiles(state: GridState, spec: TileGenerationSpec): GridC
       generatedBy: spec.generatedBy,
     };
     state.tiles.set(key, effect);
-    created.push(tile);
+    results.push({ tile, outcome: "created" });
   }
-  return created;
+  return results;
+}
+
+// ------------------------------------------------------------------ T4 / M4: the lifecycle
+
+/**
+ * Reset a tile's remaining duration to `effect.resetRounds` (3) — the duration EVERY SUBSEQUENT tile
+ * effect added at that position gives it (owner-stated duration RULE, steps 2–3; §3.23.1).
+ *
+ * Exposed as its own function because **"resets duration to 3" and "levels up" are SEPARATE halves**
+ * of the layer's rule: this one is the time dimension (T4); the level dimension is the UPGRADE slice
+ * (T5). T5 composes `resetTileDuration` with a level bump rather than rewriting the duration logic —
+ * which also keeps T4 free of the element-matching question (*"the SAME element"* levels a tile)
+ * that belongs to T5's evidence.
+ *
+ * Mutates the stored effect in place, like every other runtime write here.
+ */
+export function resetTileDuration(effect: TileEffect): void {
+  effect.durationLeft = effect.resetRounds;
+}
+
+/**
+ * End-of-ROUND tile lifecycle: tick every tile's duration down and remove the ones that reach 0.
+ * Returns the tile keys that **expired** this round.
+ *
+ * Diagrammed rules this implements (§3.23.1):
+ *  - a tile carries a duration (`TileEffect.durationLeft`) that counts rounds down;
+ *  - at **Lv3**, further generation *"only refreshes duration"* — i.e. a tile is not immortal and not
+ *    levelled forever, it just gets its clock reset (`resetTileDuration`, which T5 calls).
+ *
+ * The tick counts **rounds** (like `endOfRoundStability`), NOT the holder's own action — a tile is
+ * battlefield terrain with its own clock, and every duration the source states is in *turns/rounds*.
+ *
+ * **`applyEffects` is deliberately absent.** What a tile DEBUFFS is the trigger slices' work: the
+ * *"remain on the area after ending their action"* application is T8, and *"while on a tile"* gates
+ * are T9. This slice owns the clock only — it never decides WHO a tile affects.
+ *
+ * Copy-then-delete: iterating a frozen snapshot keeps this correct if a future `applyEffects`
+ * mutates the same map (T8), without relying on `Map` iteration semantics under deletion.
+ *
+ * The **clock itself is `[SOURCE]`/Not Tested** — that a tile's duration counts down by rounds, and
+ * that a tile expires when it elapses, is the guide's statement, not observed in game.
+ */
+export function tickTiles(state: GridState): string[] {
+  const expired: string[] = [];
+  for (const [key, effect] of [...state.tiles]) {
+    effect.durationLeft -= 1;
+    if (effect.durationLeft <= 0) {
+      state.tiles.delete(key);
+      expired.push(key);
+    }
+  }
+  return expired;
 }

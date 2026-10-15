@@ -873,19 +873,29 @@ resolved from the site's own effect records (see below).
 **Confidence** — **[SOURCE], Not Tested.** No in-game observation, no automated test. Every value
 below is what the guide states.
 
-**Scope of this section:** **Burn-related tiles only** (the base Burn tile and every fusion tile
-that contains Burn). Non-Burn tiles and non-Burn fusions are **deliberately out of scope here** —
-do not treat their absence as "no such tiles".
+**Scope of this section:** originally **Burn-related tiles only** (the base Burn tile and every fusion
+tile that contains Burn), with non-Burn content deliberately omitted. **Revised 2026**: the guide's
+own **Polyphase Fusion List** establishes the **complete pair set** (§3.23.4 — 8 pairs, of which only
+4 contain Burn), so **pair MEMBERSHIP is now fully recorded here**; what remains Burn-scoped is the
+per-pair **effect text** (the four non-Burn pairs' effects are a stated gap, not "no such tiles").
 
 #### 3.23.1 The transformation layer (applies to all elemental tiles)
 
 - **Tile Upgrade** — generating the **same** element onto an existing tile levels it up. **Three
   stages**: Base → Lv2 → Lv3. It **keeps the original bonuses** and either improves numbers or adds
   effects. At **Lv3**, further generation **only refreshes duration**.
+- **Replacement protection (2026, from the guide's own text).** *"A tile that has been **upgraded** is
+  also **protected from being replaced** by new elemental tiles that **cannot fuse** with the base
+  element."* This is the rule the earlier transcription missed, and it implies its complement: a
+  **non-upgraded** (base) tile is **NOT** protected, so a different non-fusible element **REPLACES**
+  it. The guide states neither the resulting level nor duration — see §3.23.4 and `docs/tiles.md`
+  §7 decision 7 (project-owner inference: **Lv1 + duration 3**, **Not Tested**).
 - **Polyphase Fusion** — generating **two fusible base elements** onto the same tile produces a
   fusion tile carrying **partial effects of both**. Fusion tiles **take priority over base tiles**
-  and are **not** overwritten by a third element. They also level to **Lv3**, and **either** fused
-  element can level them. Fusing onto an **already-upgraded** tile starts at that tile's level.
+  and are **not** overwritten by a third element (a fusion tile is therefore **`protected`** against
+  any non-shared element). They also level to **Lv3**, and **either** fused element can level them.
+  Fusing onto an **already-upgraded** tile starts at that tile's level (**fusion preserves the
+  level** — it neither resets it nor grants a free level).
 - **Three versions:** **Allied** (debuffs enemies) / **Enemy** (debuffs allies) / **Neutral**
   (debuffs everyone), set by whichever unit last generated onto the tile. Enemy versions **swap
   which units are targeted**; neutral versions **apply all effects**.
@@ -942,7 +952,37 @@ Allied version, verbatim (effect tokens resolved):
 self-propagation clause. The **Lv1 tile name is "Incineration"** — the same term Vector's kit uses
 for the tiles her skills generate.
 
-#### 3.23.4 Burn fusion tiles
+#### 3.23.4 Fusion tiles — the COMPLETE list (2026 re-transcription)
+
+**The guide has a "Polyphase Fusion List", and it defines the full pair set.** An earlier pass
+transcribed only the four Burn-containing entries; re-reading the source (`2026`) gives **eight
+fusible pairs in total** — so the previous "Burn fusion tiles" framing (and this section's Burn-only
+scope note) undercounted. The **listed** pairs are:
+
+| Pair | Name | Notes |
+|---|---|---|
+| **Burn + Hydro** | **Scalding Vapors** | full effect below |
+| **Burn + Corrosion** | **Venomfire** | full effect below |
+| **Burn + Freeze** | **Smoldering Suspire** | full effect below |
+| **Burn + Electric** | **Crackling Flare (震爆)** | *CN-only, unofficial TL* |
+| **Corrosion + Hydro** | *(not transcribed here)* | listed in the guide; effect text **not yet transcribed** |
+| **Electric + Hydro** | *(not transcribed here)* | listed in the guide; effect text **not yet transcribed** |
+| **Electric + Corrosion** | *(not transcribed here)* | listed in the guide; effect text **not yet transcribed** |
+| **Freeze + Hydro** | *(not transcribed here)* | listed in the guide; effect text **not yet transcribed** |
+
+**Pair membership is authoritative here; the per-pair EFFECT TEXT for the four non-Burn pairs is a
+recorded GAP** — the engine stores only the element set + level (`TileEffect`), so nothing downstream
+currently needs those effects, and they are deliberately not invented. Transcribe them when a slice
+(T9/T11) needs them.
+
+**Pairs the guide does NOT list: Electric + Freeze and Corrosion + Freeze.** Of the 10 possible pairs
+these two are **not fusible** — which is exactly what the replacement-protection clause's *"tiles
+that cannot fuse with the base element"* refers to. (The earlier note here said the guide "covers 7
+of the 10 phase pairs (8 including the CN-only Burn+Electric)" and named the wrong two as missing;
+corrected 2026 — see §3.23.6.)
+
+`Burn + Hydro` / `Burn + Corrosion` / `Burn + Freeze` / `Burn + Electric` effects (Allied, verbatim
+with resolved names):
 
 | Pair | Name | Effect (Allied, verbatim with resolved names) |
 |---|---|---|
@@ -1006,8 +1046,13 @@ points**.
   conflate the two.
 - **"Burn and Electric Boost … points"** uses the same "Boost/points" vocabulary as the Apex
   All-Element Boost — the relationship between those is **[UNKNOWN]** here.
-- **The guide covers 7 of the 10 phase pairs** (8 including the CN-only Burn+Electric);
-  **Corrosion+Freeze** and **Electric+Freeze** are not listed.
+- **The guide lists 8 of the 10 phase pairs as fusible** (§3.23.4). The two it does NOT list —
+  **Electric+Freeze** and **Corrosion+Freeze** — are therefore **not fusible** (the pair table is
+  data, `isFusiblePair`). The earlier note in this section naming Corrosion+Freeze / Electric+Freeze
+  as "missing" while calling it "7 of 10" was **both undercounting the pairs and mislabelling the
+  omission** — corrected 2026 from the guide's own Polyphase Fusion List.
+- **The per-pair EFFECT TEXT for the four non-Burn fusion tiles is NOT transcribed** (recorded gap,
+  §3.23.4). Their PAIR MEMBERSHIP is established; their effects are not, and are not invented.
 
 ---
 
