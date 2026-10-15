@@ -25,6 +25,7 @@ import {
   GRID_SIZE,
   type TileEffect,
   type TileHeight,
+  type TileOccupant,
   type UnitPlacement,
 } from "../model/grid.js";
 
@@ -137,6 +138,81 @@ export function allyIdsInArea(
     if (inside.has(tileKey(placement.coord.x, placement.coord.y))) ids.push(unitId);
   }
   return ids;
+}
+
+// --------------------------------------------------------- unit-on-tile queries (M2, 2026)
+
+/**
+ * The tiles an occupant physically STANDS ON: one tile for an ally or a grid enemy, the FULL
+ * footprint for the boss (a 3×3 boss covers nine tiles — the same ones `buildGrid` marks
+ * `enemyTiles`).
+ *
+ * This is OCCUPANCY, not the RANGE origin: a 3×3 boss's range origin is still its CENTER tile
+ * (`unitDistance`). Keep the two distinct — the occupancy answer is what "who is standing on this
+ * tile" needs, the range origin is what distance/range needs.
+ *
+ * Returns `[]` for an id that is not present in the grid (unplaced or unknown) and never throws —
+ * what a missing occupant MEANS is the caller's rule, not a grid invariant.
+ */
+export function tilesOccupiedBy(state: GridState, occ: TileOccupant): GridCoord[] {
+  if (occ.kind === "boss") return bossFootprintTiles(state.boss.center, state.boss.footprintSide);
+  if (occ.kind === "ally") {
+    const placement = state.placements.get(occ.unitId);
+    return placement ? [placement.coord] : [];
+  }
+  const enemy = state.enemyUnits.find((e) => e.unitId === occ.unitId);
+  return enemy ? [enemy.coord] : [];
+}
+
+/**
+ * Every DISTINCT occupant standing on ANY of `tiles`, in a stable order: allies in placement order,
+ * then grid enemies in config order, then the boss.
+ *
+ * De-duplicated BY CONSTRUCTION — each source is visited once, so the 3×3 boss is reported ONCE
+ * however many of its footprint tiles are in the set. This is the primitive; `occupantsAtTile` and
+ * `occupantsInArea` are thin wrappers over it, so all three answer identically.
+ *
+ * "One unit per tile" is a core grid rule (`docs/grid.md`), so on a well-formed grid at most one
+ * occupant matches a single tile. The set-based signature reports the truth for a malformed config
+ * (two `enemyUnits` on one tile) instead of silently dropping an occupant behind an invented
+ * precedence. Pure — never mutates the grid.
+ */
+export function occupantsOnTiles(state: GridState, tiles: GridCoord[]): TileOccupant[] {
+  const wanted = new Set(tiles.map((t) => tileKey(t.x, t.y)));
+  const found: TileOccupant[] = [];
+  for (const [unitId, placement] of state.placements) {
+    if (wanted.has(tileKey(placement.coord.x, placement.coord.y))) found.push({ kind: "ally", unitId });
+  }
+  for (const enemy of state.enemyUnits) {
+    if (wanted.has(tileKey(enemy.coord.x, enemy.coord.y))) found.push({ kind: "enemy", unitId: enemy.unitId });
+  }
+  if (bossFootprintTiles(state.boss.center, state.boss.footprintSide).some((t) => wanted.has(tileKey(t.x, t.y)))) {
+    found.push({ kind: "boss" });
+  }
+  return found;
+}
+
+/**
+ * Every occupant standing on ONE tile. On a well-formed grid this has at most one entry (one unit
+ * per tile); an out-of-bounds or empty tile yields `[]` rather than throwing.
+ */
+export function occupantsAtTile(state: GridState, tile: GridCoord): TileOccupant[] {
+  return occupantsOnTiles(state, [tile]);
+}
+
+/**
+ * Every distinct occupant inside an area of the given `shape`/`radius` centered on `originTile` —
+ * `areaTiles` + `occupantsOnTiles`, sharing the same `AreaShape` vocabulary as targeting. This is
+ * the query behind the trigger rule *"units that remain on the area after ending their action"*
+ * (slice T8). An out-of-bounds origin simply matches nothing.
+ */
+export function occupantsInArea(
+  state: GridState,
+  originTile: GridCoord,
+  shape: AreaShape,
+  radius: number,
+): TileOccupant[] {
+  return occupantsOnTiles(state, areaTiles(originTile, shape, radius, state.size));
 }
 
 const ORTHO = [

@@ -62,7 +62,7 @@ These are the items to go over one by one.
 | # | Gap | Why it blocks |
 |---|---|---|
 | **M1** | **Tile identity + storage** — no per-tile record of element / level / version / duration | Nothing downstream can be expressed |
-| **M2** | **Unit-on-tile query** — incl. the boss/dummy special case | Every trigger and gate needs "who is standing here" |
+| **M2** | **Unit-on-tile query** — incl. the boss/dummy special case. **✅ DONE (T2) — see §10.** | Every trigger and gate needs "who is standing here" |
 | **M3** | **Tile generation + targeting** — "generates tiles within N tiles of the target" | The entry point for every tile clause |
 | **M4** | **Tile lifecycle** — duration (first creation 2 → subsequent additions reset to 3, level-capped), expiry, Lv3 "refresh only" | Tiles must expire or the field saturates |
 | **M5** | **Tile Upgrade** — same element onto an existing tile → Lv2 → Lv3, keeping bonuses | The base progression |
@@ -132,7 +132,7 @@ is **vocabulary or mechanism only** unless stated. Sizes are indicative.
 | Slice | Delivers | Gap(s) | Open question |
 |---|---|---|---|
 | **T1** | `TileEffect` + `GridState.tiles` (storage + identity). No generation, no triggers. **✅ DONE 2026 — see §10.** | M1 | Model shape (§5). **✅ DECIDED** — full model, plus a **two-duration** split (see §10). |
-| **T2** | Unit-on-tile query: allies, the **boss/dummy** (footprint-aware), grid enemies. Pure. | M2 | — |
+| **T2** | Unit-on-tile query: allies, the **boss/dummy** (footprint-aware), grid enemies. Pure. **✅ DONE 2026 — see §10.** | M2 | — (none: the plan's "footprint-aware" scope settled it) |
 | **T3** | Tile generation + area targeting (reuses `AreaShape`; numeric ⇒ diamond). Duration init. | M3 | ✅ RESOLVED — generation uses `initialRounds` (2); upgrade/fusion resets to `resetRounds` (3) |
 | **T4** | Lifecycle: round-end ticking, expiry, Lv3 "refresh only". | M4 | — |
 | **T5** | Tile Upgrade: same element onto an existing tile → level up, bonuses kept. | M5 | — |
@@ -235,6 +235,52 @@ slice 9's `AreaShape` vocabulary is intact (tiles will reuse it for generation a
 hierarchy level 5) per `research.md` §3.23; M1 adds only structure, covered by tests. Engine
 **783 pass / 0 fail**; CLI output byte-identical (14,581 / 7 actions).
 
-**Next:** T2 / M2 — the unit-on-tile query, which must handle three cases (allies via `allyTiles`,
-the **boss/dummy** via `boss.center` — it is NOT in `placements` — and grid enemies via
-`enemyUnits[].coord`).
+### T2 / M2 — unit-on-tile query — **DONE 2026**
+
+**Delivered** (pure helpers in `src/engine/grid.ts`, vocabulary type in `src/model/grid.ts`):
+- `TileOccupant` = `{kind:"ally",unitId}` | `{kind:"enemy",unitId}` | `{kind:"boss"}` — identity
+  only, no position, and the boss deliberately has **no id** (`BossPlacement` has none).
+- `occupantsOnTiles(state, tiles)` — the primitive: distinct occupants on any of a tile set.
+- `occupantsAtTile(state, tile)` and `occupantsInArea(state, origin, shape, radius)` — thin
+  wrappers over it (the latter reuses `areaTiles`, so areas share the targeting vocabulary).
+- `tilesOccupiedBy(state, occ)` — the reverse direction.
+
+**The three cases, and why one query covers them.** Allies live in `placements`/`allyTiles` (1×1),
+grid enemies in `enemyUnits[].coord` (1×1 props), and the **boss in neither** — it is
+`boss.center` + footprint. The boss case is the entire reason the slice exists: a `placements`-only
+lookup misses the dummy, and the dummy is the only enemy the MVP is observable against
+(`docs/dolls/vector.md`; §4 above). A dedicated test pins that a placements-only scan fails.
+
+**Decisions/choices (and their basis):**
+1. **Footprint-aware, not center-only.** The boss reports on **every** footprint tile, matching the
+   tiles `buildGrid` marks `enemyTiles`. This is the plan's approved wording ("footprint-aware"),
+   and it is what "who is standing on this tile" means physically for a 3×3 body.
+2. **Occupancy ≠ range origin.** Explicitly kept separate: occupancy spans the footprint, while the
+   range origin stays the **center** tile (`unitDistance`). Tests assert both at once so neither can
+   drift into the other.
+3. **Sets, not a single value.** `occupantsAtTile` returns an **array**. "One unit per tile" is a
+   core rule (`docs/grid.md`), so a well-formed grid yields at most one; the array exists so a
+   malformed config (overlapping `enemyUnits`, which `buildGrid` does not reject) reports the truth
+   rather than hiding an occupant behind an **invented precedence**. No validation was added —
+   `buildGrid`'s checks are unchanged, since T2 is a query slice.
+4. **No mutation of the grid**, and no new validation — pure reads only.
+
+**Out of scope, deliberately.** Whether a tile *effect* considers a unit "standing on" a
+non-center footprint tile is **not** decided here — that is T8/T9's rule question and is flagged
+there. T2 answers geography only.
+
+**Tests:** `src/test/tile-occupancy.test.ts` (18) — the three cases; the boss found despite not
+being in `placements` (the named regression); footprint-awareness (all nine tiles, and one tile
+outside is empty); 1×1 boss = center only; out-of-bounds yields nothing; `tilesOccupiedBy` forward
+and reverse incl. unknown ids; de-duplication of the boss across footprint tiles; stable ordering;
+`occupantsInArea` diamond vs 3×3 (the shape changes the answer); out-of-bounds area; and purity
+(no tiles created, no state mutated). A **mutation check** confirmed the footprint tests genuinely
+fail when the boss is treated as center-only (3 tests failed), then were reverted.
+
+**Evidence status:** none of this is `Validated` — it is pure geometry over the existing model, so
+no game rule is asserted. The tile RULES remain `[SOURCE]` / Not Tested (`research.md` §3.23).
+Engine **802 pass / 0 fail**; CLI output byte-identical (14,581 / 7 actions).
+
+**Next:** T3 / M3 — tile generation + area targeting (reuses `AreaShape`; numeric ⇒ diamond),
+seeding duration from `initialRounds`. **Still gated on §7 decision 5** (is the feature live in
+global?) before behaviour is modelled.

@@ -38,6 +38,23 @@ unimplemented).
   engine raises an honest error rather than approximating the clause away.
 - Membership is **pure distance** — LOS/terrain do not affect it (not modeled).
 
+### Occupancy — "who stands on this tile" (2026, engine helper; Not Tested as a rule)
+- **`TileOccupant`** is the identity vocabulary for anything standing on the battlefield:
+  `{kind:"ally",unitId}` · `{kind:"enemy",unitId}` · `{kind:"boss"}`. It carries **no position** —
+  the 3×3 boss covers several tiles, so position is what the query resolves. The boss carries **no
+  id**, because `BossPlacement` models it without one.
+- The three occupant kinds live in three different places and are all reached by one query:
+  allies in `placements`/`allyTiles` (1×1), grid enemies in `enemyUnits[].coord` (1×1 line props),
+  the boss in `boss.center` + its footprint — **the boss is NOT in `placements`**, which is the case
+  a naive lookup silently misses.
+- **`occupantsAtTile`** (one tile) / **`occupantsOnTiles`** (a tile set, de-duplicated) /
+  **`occupantsInArea`** (an `AreaShape` area) / **`tilesOccupiedBy`** (the reverse — the tiles an
+  occupant covers) are **pure** and never mutate the grid.
+- **Footprint-aware:** the boss reports on **every** footprint tile, not just the center. Note this
+  is **occupancy**, distinct from the **range origin** above (which stays the center tile).
+- These are **grid geometry**, not a game rule: **Not Tested** means no in-game observation backs
+  who a tile effect considers "standing" on it — that is slice T8/T9's question, not this helper's.
+
 ### Movement (Validated / Mathematically Proven)
 - **Orthogonal = 1 Mobility, diagonal = 2** → movement cost ≡ Manhattan distance.
 - A unit may move up to its Mobility; using less is allowed; exceeding is illegal.
@@ -62,10 +79,12 @@ unimplemented).
 - A ladder is the only confirmed High Ground access; using it costs **1 Mobility** when adjacent.
 
 ## UNRESOLVED — deliberately NOT implemented
-- **Elemental tile effects** — a whole subsystem the grid does not model (no per-tile effect
-  storage, no tile triggers). Its **rules** are in `docs/research.md` §3.23 (Burn family,
-  `[SOURCE]`, Not Tested); its **engine design and slice plan** are in `docs/tiles.md` (PLAN ONLY).
-  Note this is distinct from *terrain*: the facts above are static and set at build time.
+- **Elemental tile effects** — the *rules* (generation, upgrade, fusion, triggers, tile-gated
+  effects) are NOT implemented. Its **rules** are in `docs/research.md` §3.23 (Burn family,
+  `[SOURCE]`, Not Tested); its **engine design and slice plan** are in `docs/tiles.md`. Storage and
+  the unit-on-tile query now EXIST (slices T1/M1, T2/M2 — `GridState.tiles`, the occupancy helpers
+  above); everything that READS them is still to come (T3+). Note this is distinct from *terrain*:
+  the facts above are static and set at build time, whereas tile effects are runtime state.
 - Diagonal corner-squeezing around blocked/enemy tiles (plain 8-direction tiling; the squeeze
   cases are not modeled and not tested as known behavior).
 - Ground → High Ground combat interaction.

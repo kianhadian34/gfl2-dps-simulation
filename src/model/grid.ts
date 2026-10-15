@@ -157,6 +157,34 @@ export interface TileEffect {
   generatedBy: string;
 }
 
+/**
+ * WHO STANDS ON A TILE (2026, M2) — the query vocabulary the tile rules are built on.
+ *
+ * Every tile rule is ultimately about WHO is standing where (*"units that remain on the area after
+ * ending their action"*, *"while on a Burn tile"*, *"immune to debuffs inflicted by Burn tiles"*),
+ * and the battlefield holds THREE kinds of occupant that live in three different places in the
+ * grid state:
+ *
+ *  - an **ally** — `GridState.placements` / `allyTiles` (1×1), keyed by the doll's id;
+ *  - a grid **enemy** — `GridState.enemyUnits[].coord` (1×1 line-attack props, FK4), keyed by its
+ *    `unitId`;
+ *  - the **boss** (the training dummy) — `GridState.boss.center` + its footprint (1×1 or 3×3),
+ *    which is deliberately NOT in `placements` (stationary enemy terrain, not a placed doll).
+ *
+ * This type is **identity only** — it carries no position, because one occupant can cover more than
+ * one tile (the 3×3 boss) and resolving position is exactly what the query does. It is **not stored
+ * anywhere**; it is the return vocabulary of the pure queries in `engine/grid.ts`
+ * (`occupantsAtTile` / `occupantsOnTiles` / `occupantsInArea` / `tilesOccupiedBy`).
+ *
+ * The boss carries **no id**: `BossPlacement` models it without one, so the engine must not invent
+ * an id it does not have. `kind` separates it from a grid enemy even though both are "enemies" —
+ * they are hit and resolved through different paths (boss = the dummy target, enemy = line props).
+ */
+export type TileOccupant =
+  | { kind: "ally"; unitId: string }
+  | { kind: "enemy"; unitId: string }
+  | { kind: "boss" };
+
 export interface GridConfig {
   size: number; // must be exactly 15
   units: UnitPlacement[];
