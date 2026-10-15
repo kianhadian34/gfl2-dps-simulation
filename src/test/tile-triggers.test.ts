@@ -83,22 +83,36 @@ test("T8: the Burn tile's recorded effects apply Overburn for 2 rounds at every 
   for (const level of [1, 2, 3]) {
     const data = tileEffectsFor(["burn"], level);
     assert.ok(data, `Lv${level} is recorded`);
-    assert.deepEqual(data!.applies, [{ statusId: "overburn", durationRounds: 2 }], `Lv${level} duration is 2`);
+    const overburn = data!.applies.find((a) => a.statusId === "overburn");
+    assert.deepEqual(overburn, { statusId: "overburn", durationRounds: 2 }, `Lv${level} applies Overburn for 2`);
   }
 });
 
-test("T8: the source's OTHER named statuses are recorded as PENDING, never applied", () => {
-  // The engine must not silently drop them, and must not apply an undefined status (applyStatus throws).
-  assert.deepEqual(tileEffectsFor(["burn"], 1)!.pendingStatusIds, ["conflagration"]);
-  assert.deepEqual(tileEffectsFor(["burn"], 2)!.pendingStatusIds, ["conflagration", "combustion"]);
-  assert.deepEqual(tileEffectsFor(["burn"], 3)!.pendingStatusIds, ["conflagration", "combustion_ii"]);
+test("T8: the Burn tile's recorded effects now apply Overburn + Conflagration (T11 filled the gap)", () => {
+  // T8 recorded the source's other named statuses as `pendingStatusIds`; **T11 defined them**, so each
+  // Burn level now applies its FULL source set and `pendingStatusIds` is EMPTY. The duration stays 2
+  // at every level ("lasting 2 turns").
+  const want: Record<number, string[]> = {
+    1: ["overburn", "conflagration"],
+    2: ["overburn", "conflagration", "combustion"],
+    3: ["overburn", "conflagration", "combustion_ii"],
+  };
+  for (const level of [1, 2, 3]) {
+    const data = tileEffectsFor(["burn"], level)!;
+    assert.ok(data, `Lv${level} is recorded`);
+    assert.deepEqual(data.applies.map((a) => a.statusId), want[level], `Lv${level} applies its source set`);
+    assert.ok(data.applies.every((a) => a.durationRounds === 2), `Lv${level}: 'lasting 2 turns'`);
+  }
+});
+
+test("T8: every applied status RESOLVES in the registry, and NOTHING is left pending", () => {
+  // The engine must never silently drop a source status, nor apply an undefined one (applyStatus throws).
   const defined = new Set(STATUS_DEFS.map((s) => s.id));
   for (const level of [1, 2, 3]) {
-    for (const s of tileEffectsFor(["burn"], level)!.applies) {
+    const data = tileEffectsFor(["burn"], level)!;
+    assert.deepEqual(data.pendingStatusIds, [], `Lv${level}: T11 defined every status the source names`);
+    for (const s of data.applies) {
       assert.ok(defined.has(s.statusId), `${s.statusId} is actually defined in src/data/statuses.ts`);
-    }
-    for (const p of tileEffectsFor(["burn"], level)!.pendingStatusIds) {
-      assert.equal(defined.has(p), false, `${p} is NOT defined yet — that is why it is pending (T11)`);
     }
   }
 });
@@ -112,14 +126,16 @@ test("T8: an UNRECORDED tile applies nothing (fusion tiles + every non-Burn tile
 
 // ============================================================ trigger (b), end to end
 
-test("T8: a unit standing on an allied Burn tile gains Overburn at its action end", () => {
+test("T8: a unit standing on an allied Burn tile gains the tile's statuses at its action end", () => {
   const state = stateWithTiles(["burn"]);
   const dummy = state.dummy;
   assert.equal(dummy.statuses.length, 0, "clean before the trigger");
 
+  // `stateWithTiles` builds a Lv1 Burn tile, whose source set is Overburn + Conflagration (T11).
   const applied = applyTileEffectsOnActionEnd(state, dummy, /* isAlly */ false);
-  assert.deepEqual(applied, ["overburn"], "the tile applied Overburn to the enemy on it");
-  assert.ok(dummy.statuses.some((s) => s.statusId === "overburn"), "the status is actually on the unit");
+  assert.deepEqual(applied, ["overburn", "conflagration"], "the tile applied its whole source set");
+  assert.ok(dummy.statuses.some((s) => s.statusId === "overburn"), "Overburn is on the unit");
+  assert.ok(dummy.statuses.some((s) => s.statusId === "conflagration"), "Conflagration is on the unit");
 });
 
 test("T8: the applied status carries the tile's 2-round duration", () => {
@@ -129,12 +145,14 @@ test("T8: the applied status carries the tile's 2-round duration", () => {
   assert.equal(st.durationLeft, 2, "source: 'lasting 2 turns'");
 });
 
-test("T8: the applied status records TILE provenance (element + level, never a CN name)", () => {
+test("T8: the applied statuses record TILE provenance (element + level, never a CN name)", () => {
   const state = stateWithTiles(["burn"]);
-  const applied = applyTileEffectsOnActionEnd(state, state.dummy, false);
-  assert.deepEqual(applied, ["overburn"]);
-  const st = state.dummy.statuses.find((s) => s.statusId === "overburn")!;
-  assert.equal(st.source, "burn tile Lv1", "derived, not a CN tile name");
+  applyTileEffectsOnActionEnd(state, state.dummy, false);
+  // EVERY status the tile applied shares the same tile provenance.
+  for (const st of state.dummy.statuses) {
+    assert.equal(st.source, "burn tile Lv1", `${st.statusId} carries derived provenance, not a CN name`);
+  }
+  assert.ok(state.dummy.statuses.length >= 2, "both Lv1 statuses are present");
 });
 
 // ============================================================ the round clock + WIRING, end to end
@@ -178,7 +196,7 @@ test("T8: a tile with NO real generator still APPLIES its status, but the applie
     new Set(),
   );
   const applied = applyTileEffectsOnActionEnd(state2, state2.dummy, false);
-  assert.deepEqual(applied, ["overburn"], "the status is still applied");
+  assert.deepEqual(applied, ["overburn", "conflagration"], "the tile's statuses are still applied");
   assert.equal(state2.dummy.statuses[0].applier, undefined, "but no applier is fabricated");
   assert.equal(state.dummy.statuses.length, 0, "control state untouched");
 });
@@ -252,14 +270,14 @@ test("T8: an ENEMY-version tile DOES debuff an ally standing on it (the swap)", 
   });
   const ally = state.units[0];
   const applied = applyTileEffectsOnActionEnd(state, ally, /* isAlly */ true);
-  assert.deepEqual(applied, ["overburn"], "an enemy tile debuffs allies");
+  assert.deepEqual(applied, ["overburn", "conflagration"], "an enemy tile debuffs allies");
 });
 
 test("T8: a NEUTRAL tile debuffs EVERYONE (both sides)", () => {
   const state = stateWithTiles(["burn"]);
   generateTiles(state.grid!, { origin: at(2, 2), shape: "manhattan", radius: 0, elements: ["burn"], generatedBy: "hazard", version: "neutral" });
-  assert.deepEqual(applyTileEffectsOnActionEnd(state, state.units[0], true), ["overburn"], "ally affected");
-  assert.deepEqual(applyTileEffectsOnActionEnd(state, state.dummy, false), ["overburn"], "dummy affected");
+  assert.deepEqual(applyTileEffectsOnActionEnd(state, state.units[0], true), ["overburn", "conflagration"], "ally affected");
+  assert.deepEqual(applyTileEffectsOnActionEnd(state, state.dummy, false), ["overburn", "conflagration"], "dummy affected");
 });
 
 // ============================================================ footprint / multiplicity
@@ -269,7 +287,7 @@ test("T8: the 3×3 boss is debuffed from ANY of its footprint tiles (footprint-a
   // Generate ONLY on a corner of the boss footprint — not the center.
   generateTiles(state.grid!, { origin: at(6, 6), shape: "manhattan", radius: 0, elements: ["burn"], generatedBy: "qiongjiu" });
   const applied = applyTileEffectsOnActionEnd(state, state.dummy, false);
-  assert.deepEqual(applied, ["overburn"], "the boss stands on the whole footprint, not just its center");
+  assert.deepEqual(applied, ["overburn", "conflagration"], "the boss stands on the whole footprint, not just its center");
 });
 
 test("T8: a footprint straddling the SAME tile type applies it ONCE (no duplicate re-application)", () => {
@@ -277,8 +295,9 @@ test("T8: a footprint straddling the SAME tile type applies it ONCE (no duplicat
   const state = createState(scenarioWithGrid(gridCfg()), REGISTRY, new Set());
   generateTiles(state.grid!, { origin: at(7, 7), shape: "square", radius: 1, elements: ["burn"], generatedBy: "qiongjiu" }); // 9 tiles
   const applied = applyTileEffectsOnActionEnd(state, state.dummy, false);
-  assert.deepEqual(applied, ["overburn"], "reported once");
-  assert.equal(state.dummy.statuses.filter((s) => s.statusId === "overburn").length, 1, "and stacked once");
+  assert.deepEqual(applied, ["overburn", "conflagration"], "each distinct tile effect reported once");
+  assert.equal(state.dummy.statuses.filter((s) => s.statusId === "overburn").length, 1, "Overburn stacked once");
+  assert.equal(state.dummy.statuses.filter((s) => s.statusId === "conflagration").length, 1, "Conflagration once too");
 });
 
 // ============================================================ unrecorded tiles are inert

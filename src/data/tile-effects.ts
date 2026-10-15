@@ -13,10 +13,11 @@ import type { Element } from "../model/types.js";
  *   `src/data/statuses.ts`, and `applyStatus` THROWS on an unknown id — deliberately, so a missing
  *   definition can never silently no-op.
  * - It does **not** cover the whole game. Only the Burn tile is recorded, because that is the only
- *   tile whose APPLIED STATUSES the repo has evidence for. **`overburn` is the only one of the ten
- *   named tile-effect statuses that exists in the engine**; the other nine (Conflagration,
- *   Combustion, Combustion II, Stability Loss I, Frozen, Damp, Paralysis, Congestion, Meltdown) are
- *   **undefined** — a recorded gap owned by slice **T11** (`docs/tiles.md`).
+ *   tile whose APPLIED STATUSES the repo has evidence for. The Burn tile's three levels name
+ *   **Overburn, Conflagration and Combustion / Combustion II**, and as of **T11** all four now EXIST
+ *   in `src/data/statuses.ts` — so **T11 emptied this table's `pendingStatusIds`**. The remaining
+ *   six named tile-effect statuses (Stability Loss I, Frozen, Damp, Paralysis, Congestion, Meltdown)
+ *   are defined in the source but **not expressible/evidenced yet** — see `docs/tiles.md` §10 (T11).
  *
  * ## Evidence status — [SOURCE], Not Tested
  * The applied-status sets below are transcribed from the community guide's Burn tile text (§3.23.3):
@@ -24,9 +25,8 @@ import type { Element } from "../model/types.js";
  *     after ending their action, lasting 2 turns."*
  *   - Lv2 Flashover II: adds **Combustion**.
  *   - Lv3 Flashover III: **Combustion II** replaces Combustion (+ the self-propagation clause).
- * Because 8 of the 10 named statuses are undefined, the recorded sets list ONLY the statuses that
- * actually exist today (`overburn`), and the omitted ones are named in `pendingStatusIds` so the gap
- * is explicit and machine-visible rather than silently dropped. **Nothing is invented.**
+ * `pendingStatusIds` remains part of the shape: a future tile whose source names a status the engine
+ * does not define is recorded here rather than silently dropped or invented.
  *
  * The fusion tiles' applied-status sets (Scalding Vapors → Damp, Venomfire → Stability Loss I,
  * Smoldering Suspire → Frozen, …) are likewise **not** recorded yet — every one of them needs an
@@ -56,22 +56,33 @@ export interface TileEffectData {
 }
 
 const BURN_TILE_LV1: TileEffectData = {
-  // Source: "Applies Overburn and Conflagration ... lasting 2 turns." Conflagration is undefined.
-  applies: [{ statusId: "overburn", durationRounds: 2 }],
-  pendingStatusIds: ["conflagration"],
+  // Source: "Applies Overburn and Conflagration ... lasting 2 turns." Both now EXIST (T11).
+  applies: [
+    { statusId: "overburn", durationRounds: 2 },
+    { statusId: "conflagration", durationRounds: 2 },
+  ],
+  pendingStatusIds: [],
 };
 
 const BURN_TILE_LV2: TileEffectData = {
-  // Source: Lv1 + Combustion. Both Conflagration and Combustion are undefined.
-  applies: [{ statusId: "overburn", durationRounds: 2 }],
-  pendingStatusIds: ["conflagration", "combustion"],
+  // Source: Lv1 + Combustion.
+  applies: [
+    { statusId: "overburn", durationRounds: 2 },
+    { statusId: "conflagration", durationRounds: 2 },
+    { statusId: "combustion", durationRounds: 2 },
+  ],
+  pendingStatusIds: [],
 };
 
 const BURN_TILE_LV3: TileEffectData = {
-  // Source: Conflagration + Combustion II. Both undefined. (Flashover III's every-3-Burn-damage
-  // self-propagation clause is trigger (c), which is NOT implemented — see docs/tiles.md §10.)
-  applies: [{ statusId: "overburn", durationRounds: 2 }],
-  pendingStatusIds: ["conflagration", "combustion_ii"],
+  // Source: Conflagration + Combustion II. (Flashover III's every-3-Burn-damage self-propagation
+  // clause is trigger (c), still NOT implemented — docs/tiles.md §10.)
+  applies: [
+    { statusId: "overburn", durationRounds: 2 },
+    { statusId: "conflagration", durationRounds: 2 },
+    { statusId: "combustion_ii", durationRounds: 2 },
+  ],
+  pendingStatusIds: [],
 };
 
 /**

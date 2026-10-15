@@ -84,7 +84,7 @@ These are the items to go over one by one.
 | **M8** | **Tile triggers** — (a) on generation, (b) "units that **remain on the area after ending their action**", (c) "**for every 3 times** they take Burn damage". **(b) ✅ DONE (T8); (a) and (c) NOT built — see §10.** | The tile rules are entirely trigger-driven |
 | **M9** | **Tile-gated effects** — FK5 *"while on a Burn tile, damage taken −20%"*; Perception Block *"immune to debuffs inflicted by Burn tiles"* | Needs M1 + M2 |
 | **M10** | **Runtime weakness application** — tiles *"apply Burn weakness"*, but `weaknessElements` is immutable today | Changes the damage path |
-| **M11** | **The 9 missing statuses** | "Applies Overburn + Conflagration" cannot be expressed |
+| **M11** | **The 9 missing statuses** — **investigated (T11): all nine are now DEFINED in the source; 3 are expressible and defined, 6 are blocked on MISSING MECHANICS (not evidence).** | "Applies Overburn + Conflagration" cannot be expressed |
 | **M12** | **Vector's clauses end-to-end** — FK1, FK5, Perception Block L1/V5, Overheat Combustion V5, Smolder, Searing Finale | The payoff |
 
 **Important — this IS observable in the MVP** (unlike holder-side area targeting, §3.33): the dummy
@@ -154,7 +154,7 @@ is **vocabulary or mechanism only** unless stated. Sizes are indicative.
 | **T8** | The three tile triggers. **Trigger (b) — "remain on the area after ending their action" — ✅ DONE 2026 (see §10); (a) on-generation damage and (c) the every-3-Burn-hits counter are NOT built and are recorded gaps.** | M8 | ✅ RESOLVED for (b): scope = data-driven mechanism; the counter (c) is per-UNIT on the unit's own state (owner decision 10) — deferred with (c) itself |
 | **T9** | Tile-gated effects: "while on a tile" query + gates (FK5 −20%, Burn-tile immunity). | M9 | — |
 | **T10** | Runtime weakness application (tile-applied Burn weakness). | M10 | **Mutate `weaknessElements` or compute at hit time?** (see §7) |
-| **T11** | The 9 missing statuses. | M11 | Each needs its OWN evidence — the guide names them but does not fully define them |
+| **T11** | The 9 missing tile-effect statuses. **✅ PARTIALLY DONE 2026 — see §10.** The three the engine can express **without inventing a mechanic** are defined (Conflagration, Combustion, Combustion II), which **empties the Burn tile's `pendingStatusIds`**. The other six are **blocked on missing mechanics**, each recorded with its exact block. | M11 | ✅ RESOLVED — do NOT invent mechanics to force them; define what the engine supports and record the rest (owner decision 12) |
 | **T12** | Vector's clauses end-to-end (FK1, FK5, PB L1/V5, OC V5, Smolder, Searing Finale). | M12 | Depends on T1–T11 |
 
 **Suggested order:** T1 → T2 → T3 → T4 → **T5 (incl. fusion; T7 absorbed)** → T6 → T8 → T9 → T10 →
@@ -231,6 +231,15 @@ per-status if needed.
     `docs/research.md` §3.33 / `docs/dolls/vector.md` G14: the MVP has no enemy-side neighbours, so
     Overburn's *"allies within 1 tile"* and Overheat Combustion's area clauses remain **DEFERRED** and
     are NOT part of T8.
+
+12. **T11 — how far to push the nine statuses?** All nine ARE defined in the source (T11 fetched
+    their `effectDetails`), but only three map onto mechanics the engine already has. **✅ DECIDED 2026
+    (project owner): implement the currently-expressible subset and record the rest as blocked with
+    reasons — do NOT invent mechanics to force them.** Defining Stability Loss I (taken-side Stability
+    modifier), Frozen (mobility), Damp (healing-received), Congestion (heal-blocked) or Paralysis
+    (a denial variant that also blocks BASIC attacks) would each be a new engine feature with its own
+    semantics, and Meltdown needs an incoming-skill-type gate the engine deliberately lacks. These are
+    engine-capability gaps, **not** evidence gaps — so re-investigation will not unblock them.
 
 ---
 
@@ -660,5 +669,81 @@ neutral targeting neutered → **2 failures**; both reverted.
 **Evidence status:** the clause is `[SOURCE]` (community guide, level 5) / **Not Tested**. Engine
 **903 pass / 0 fail**; CLI byte-identical (14,581 / 7 actions).
 
-**Next:** T9 / M9 (tile-gated effects), then T11 (the 9 statuses, which unblocks (a)/(c) and the fusion
-tiles' applied sets).
+**Next:** T9 / M9 (tile-gated effects) — or T10 (runtime weakness), which are independent.
+
+### T11 / M11 — the missing tile-effect statuses — **PARTIALLY DONE 2026** (3 defined, 6 blocked)
+
+**The evidence problem dissolved; an ENGINE problem remains.** The plan warned each status *"needs its
+OWN evidence — the guide names them but does not fully define them"*, predicting a stall. It did not
+stall: **T11 re-fetched the same primary records the name-resolution used** (`dandegate.net/effects/<uuid>`,
+what the guide's `[effect:…]` tokens resolve to) and extracted their **`effectDetails`** — so **all nine
+now have real definitions** (`research.md` §3.23.2 carries them verbatim).
+
+What actually blocks six of them is that the engine **lacks the mechanic**, not the definition.
+
+**Defined (3) — expressible with EXISTING mechanics, no invention:**
+| Status | Definition | Mapped to |
+|---|---|---|
+| **Conflagration** | Burn damage taken +20% | `damage_modifier {scope:"taken", mode:"additive", whenElement:["burn"]}` |
+| **Combustion** | on gain + action end: self (+ allies within 2 tiles) take fixed dmg **15%** of inflictor ATK, **max 3 stacks**, cannot be dispelled | `fixed_damage {percentOfAtk:0.15, applies:["onApply","onTick"]}`, `maxStacks:3`, `purgeable:false` |
+| **Combustion II** | same at **3-tile radius**, **20%**, **max 5 stacks** | `percentOfAtk:0.2`, `maxStacks:5` |
+
+This **empties the Burn tile's `pendingStatusIds`** — the gap T8 recorded, closed.
+
+**Blocked (6) — recorded with their exact block, NOT half-implemented (owner decision 12):**
+| Status | Block |
+|---|---|
+| **Stability Loss I** | *"Stability damage taken is increased by 1 point"* — no **taken-side** Stability modifier exists (`stability_damage_bonus` is dealt-side only) |
+| **Frozen** | *"Movement is decreased by 1 tile"* — no mobility mechanic at all (Movement Up I is already RECORDED-ONLY for the same reason); its 2-stack conversion target **Frigid** is also unmodeled |
+| **Damp** | *"Reduces healing received by 40%"* — no healing-received modifier; converts to Congestion |
+| **Paralysis** | *"disallows the use of **basic attacks and** active skills"* — `deny_skills` blocks only active/ult, and **extending it would change Overheat's established semantics** (which denies active skills only) |
+| **Congestion** | *"Cannot be healed"* — no heal-blocked mechanic |
+| **Meltdown** | *"if this unit takes damage from a **basic attack or active skill**"* — no **incoming-skill-type** gate (`whenCategory` distinguishes AoE/targeted, not basic/active) |
+
+**Two numeric/behavioural points the source leaves OPEN — flagged, not invented:**
+1. **Does Combustion's fixed damage scale per stack?** The record states the **cap** (3 / 5) and never
+   the **scaling**. The engine's `fixed_damage` applies its percentage **once** regardless of stacks, so
+   that reading is kept (an engine change here would also touch Overburn's validated fixed damage).
+   Recorded in each status's `deferredNote`.
+2. **The holder-side area portion** (*"self AND all allies within a 2/3-tile radius"*) is **DEFERRED**
+   (§3.33 / **G14**) exactly like Overburn's analogous clause — the MVP has no enemy-side neighbours and
+   no enemy-side damage sink, so it is unobservable. The **self** portion is modelled; the area portion
+   is recorded in `deferredNote`.
+
+**Choices:**
+1. **`element`, but NO `phase`.** The records tag these `[Burn, Debuff]` and say *"Considered a Burn
+   debuff"* — that is a **classification** (`element`), NOT the in-game-validated status→Phase
+   relationship that `phase` marks (only Overburn→Burn has one). Populating `phase` would invent a
+   Phase Strike interaction.
+2. **`purgeable` follows the text exactly**: Combustion/Combustion II are *"cannot be dispelled"* ⇒
+   `false`; Conflagration says no such thing ⇒ `true` (matching the existing convention that only
+   textually un-cleansable statuses are `false`).
+3. **Blocked statuses are NOT defined at all** — a scope-guard test asserts their absence, so a future
+   session cannot quietly add a half-implementation.
+4. **`verified: false` on all three.** The field's contract (`src/model/types.ts`) is that unverified
+   values are **surfaced (warnings)** rather than silently assumed. These come from the community
+   database's records, **not our own in-game observation**, so they declare themselves unverified —
+   matching `extra_command`'s precedent (also "NOT in-game validated"). Marking them `true` would have
+   silently claimed validation. **Caught and corrected during this slice's own review** — the first
+   draft had `verified: true`, and the test that was supposed to guard it did not actually assert the
+   flag; both were fixed and the flag is now mutation-checked.
+
+**Tests:** `src/test/tile-statuses.test.ts` (15) — the three exist as Burn debuffs; **no `phase` is
+invented** (while Overburn's stays); Conflagration's exact effect shape; **its +20% applies to a Burn
+hit and NOT to phase-less/Hydro ones, exercised through the real `additiveTakenBonus` path the damage
+code uses**; Combustion/Combustion II percentages, tick points, caps and un-dispellability; the
+stack-scaling question is recorded in `deferredNote`; the holder-side area clause is recorded with its
+owning deferral; registry resolution; **`verified: false` asserted on all three (with Overburn as the
+`true` control)**; every Burn level applies its full set with **nothing pending**; an end-to-end tile
+application carrying tile provenance; and a scope guard for the six blocked ids. **Mutation checks:**
+Conflagration magnitude 0.2→0.3 → **2 failures**; Combustion II percentage 0.2→0.3 → **1 failure**;
+Combustion `verified` false→true → **1 failure**; all reverted. The existing `count-by-classification`
+affiliation guard was **updated deliberately** (its list pins exactly which statuses carry a
+source-stated classification, and the three now legitimately do).
+
+**Evidence status:** `[SOURCE]` (community database records, level 5) / **Not Tested** — stronger
+provenance than the guide's prose, but still not our own in-game observation. Engine **919 pass /
+0 fail**; CLI byte-identical (14,581 / 7 actions).
+
+**Next:** T9 / M9 (tile-gated effects) or T10 (runtime weakness) — both independent. The six blocked
+statuses need **engine mechanics**, so they are a mechanism backlog, not a re-investigation task.

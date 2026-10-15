@@ -916,24 +916,35 @@ EVENTS:
 So `initialRounds` (2) and `resetRounds` (3) are two fields for two events and must never be
 collapsed into one. Model + slice record: `docs/tiles.md` §10 (T1/M1).
 
-#### 3.23.2 Effect-name resolution (independently verified)
+#### 3.23.2 Effect resolution — names AND definitions (independently fetched)
 
 The guide renders effects as opaque `[effect:<uuid>]` tokens. The names below were resolved by
 fetching each `https://dandegate.net/effects/<uuid>` record (the page title is the effect name) —
-**not** guessed from context:
+**not** guessed from context. **T11 (2026) re-fetched the same records and extracted their
+`effectDetails`**, so this table now carries the **definitions**, not just the names:
 
-| Effect uuid | Name |
-|---|---|
-| `71b3f790-db3b-4188-a3d7-15fa9752b57a` | **Overburn** |
-| `a55cd12e-7fd4-47c1-bddc-6e933f2a323a` | **Conflagration** |
-| `174c1af6-3fc1-41aa-b4ec-48e5583baacb` | **Combustion** |
-| `783df2a2-7606-4471-abbf-e49dcfb6e813` | **Combustion II** |
-| `1e0dd817-2d72-4a4a-98d5-4acd6e11b8e5` | **Stability Loss I** |
-| `d85addc9-1d0c-46cb-a37a-377dde1be0ae` | **Frozen** |
-| `7dec35ce-d8cc-443e-8a4e-410233b3cda6` | **Damp** |
-| `8cfe89a9-404a-42e5-9cc7-5bf57b070887` | **Paralysis** |
-| `bba5e073-5719-4cc8-85d9-6de563caaa5e` | **Congestion** |
-| `c3a3ce01-1487-4a69-bc3c-9c04aa8c26ec` | **Meltdown** |
+| Effect uuid | Name | Definition (verbatim from the record) | Engine status |
+|---|---|---|---|
+| `71b3f790-db3b-4188-a3d7-15fa9752b57a` | **Overburn** | fixed damage 10% of applier ATK, on gain + at action end | ✅ defined (validated in-game) |
+| `a55cd12e-7fd4-47c1-bddc-6e933f2a323a` | **Conflagration** | *"Burn damage taken is increased by 20%. Considered a Burn debuff."* | ✅ defined (**T11**) |
+| `174c1af6-3fc1-41aa-b4ec-48e5583baacb` | **Combustion** | *"When this effect is gained and at the end of action, self and all allies within a 2-tile radius receive fixed damage equal to 15% of inflictor's attack, up to a maximum of 3 stacks. Burn debuff, cannot be dispelled."* | ⚠️ **PARTIAL** (**T11**) — self portion only; holder-side area DEFERRED |
+| `783df2a2-7606-4471-abbf-e49dcfb6e813` | **Combustion II** | same at a **3-tile radius**, **20%**, **max 5 stacks** | ⚠️ **PARTIAL** (**T11**) — as above |
+| `1e0dd817-2d72-4a4a-98d5-4acd6e11b8e5` | **Stability Loss I** | *"Stability damage taken is increased by 1 point. Defense debuff."* | ❌ **blocked** — no taken-side Stability modifier exists |
+| `d85addc9-1d0c-46cb-a37a-377dde1be0ae` | **Frozen** | *"Movement is decreased by 1 tile. If Frozen has reached 2 stacks at the end of the action, it is converted into `f4fc6af5-7a01-48a3-91e2-e432a7216dbc` [**Frigid** — *"Unable to move and cannot be actively displaced"*], which lasts for 1 turn. Maximum of 2 stacks."* | ❌ **blocked** — no mobility mechanic; conversion + target effect unmodeled |
+| `7dec35ce-d8cc-443e-8a4e-410233b3cda6` | **Damp** | *"Reduces healing received by 40%. Upon reaching 2 stacks, it is converted to `bba5e073…` [Congestion] for 2 turns. Maximum of 2 stacks. Considered a Hydro debuff."* | ❌ **blocked** — no healing-received modifier; conversion unmodeled |
+| `8cfe89a9-404a-42e5-9cc7-5bf57b070887` | **Paralysis** | *"Command Prohibition, disallows the use of **basic attacks and** active skills. Considered an Electric debuff."* | ❌ **blocked** — `deny_skills` blocks only active/ult; extending it would change Overheat's established semantics |
+| `bba5e073-5719-4cc8-85d9-6de563caaa5e` | **Congestion** | *"Cannot be healed. Considered a Hydro debuff."* | ❌ **blocked** — no heal-blocked mechanic |
+| `c3a3ce01-1487-4a69-bc3c-9c04aa8c26ec` | **Meltdown** | *"After reaching 2 stacks, if this unit takes damage from a **basic attack or active skill**, damage taken is increased by 45%. This effect lasts for 1 turn. Further stacks will not be gained while this effect is active. Considered a Burn debuff, cannot be cleansed."* | ❌ **blocked** — no incoming-skill-type gate (`whenCategory` is AoE/targeted, not basic/active) |
+
+**Evidence status: `[SOURCE]` (level 5) — NOT in-game validated.** The definitions are the
+**community database's own effect records** (the same provenance the name-resolution already used),
+which is stronger than the guide's prose but still not our own in-game observation.
+
+**Six of the ten are blocked on MECHANICS, not on evidence** — so T11 is no longer an evidence
+problem; it is an engine-capability problem (`docs/tiles.md` §10 T11 records each block precisely).
+**Two have an UNRESOLVED numeric question the source leaves open:** whether Combustion's fixed damage
+scales **per stack** (the record states the cap, never the scaling), and Meltdown's 45% is gated on an
+incoming-skill-type distinction the engine does not make.
 
 **Note:** only **Overburn** of these exists in this repo (`src/data/statuses.ts`). The other nine
 are **not defined** in the engine.

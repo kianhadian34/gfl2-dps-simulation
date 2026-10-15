@@ -226,9 +226,12 @@ test("countMatchingStatuses counts per status (not per stack) and matches elemen
 
 test("production data: `element` affiliation is declared only where the source states it", () => {
   const tagged = STATUS_DEFS.filter((s) => s.element != null).map((s) => s.id).sort();
-  // Vector's inventory Tags column: Overburn = "Burn/Debuff"; Blazing Assault II = "Attack/Buff/Burn".
-  // Nothing else has a source-stated classification — do not invent one.
-  assert.deepEqual(tagged, ["blazing_assault_ii", "overburn"]);
+  // Source-stated classifications, nothing inferred:
+  //  - Vector's inventory Tags column: Overburn = "Burn/Debuff"; Blazing Assault II = "Attack/Buff/Burn".
+  //  - T11 (2026): the Burn tile's Conflagration / Combustion / Combustion II come from their effect
+  //    records, which tag them [Burn, Debuff] and say "Considered a Burn debuff".
+  // Anything else must NOT be given a classification — do not invent one.
+  assert.deepEqual(tagged, ["blazing_assault_ii", "combustion", "combustion_ii", "conflagration", "overburn"]);
 });
 
 test("production data: `element` is separate from `phase` (the Phase Strike gate is untouched)", () => {

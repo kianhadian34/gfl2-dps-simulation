@@ -105,6 +105,77 @@ export const STATUS_DEFS: StatusDef[] = [
     note: "Validated in-game (2026): applier-ATK 1974 → 198 per trigger; sequence apply + holder action-end ×2 = 594, then expires (see docs/research.md §3.10)",
   },
   {
+    id: "conflagration",
+    name: "Conflagration",
+    category: "debuff",
+    stackable: false,
+    maxStacks: 1,
+    durationRounds: 2,
+    tickAt: "ownActionEnd",
+    purgeable: true,
+    effects: [
+      // "Burn damage taken is increased by 20%." TAKEN-side, gated to BURN hits by the existing
+      // per-element gate (`whenElement`), in the shared additive taken bucket. No new mechanic.
+      { kind: "damage_modifier", scope: "taken", mode: "additive", value: 0.2, whenElement: ["burn"] },
+    ],
+    playerDescription: "Burn damage taken +20%.",
+    // NOT in-game validated by us — `[SOURCE]` only, so `verified: false` per the field's contract
+    // (unverified values are surfaced in SimulationResult.warnings rather than silently assumed).
+    verified: false,
+    // Burn affiliation — the source calls it "Considered a Burn debuff" and tags it [Burn, Debuff],
+    // so it counts toward count-by-classification clauses ("for every Burn debuff").
+    element: "burn",
+    // NOTE: NO `phase` is populated. `phase` marks an in-game-validated status→Phase relationship
+    // (only `overburn` → Burn has one); the source's "Considered a Burn debuff" is a CLASSIFICATION
+    // (which `element` carries), not an observed Phase attribute. Do not invent one.
+    note: "T11 (2026). Source: effect a55cd12e-7fd4-47c1-bddc-6e933f2a323a — 'Burn damage taken is increased by 20%. Considered a Burn debuff.' Tags [Burn, Debuff]. Duration set by the applying tile (2 turns); the effect record states none. Not in-game validated by us — [SOURCE].",
+  },
+  {
+    id: "combustion",
+    name: "Combustion",
+    category: "debuff",
+    stackable: true,
+    maxStacks: 3,
+    durationRounds: 2,
+    tickAt: "ownActionEnd",
+    purgeable: false, // authoritative: "cannot be dispelled"
+    effects: [
+      // "When this effect is gained and at the end of action, self and all allies within a 2-tile
+      // radius receive fixed damage equal to 15% of inflictor's attack."
+      // SHIPPED PARTIAL, exactly like Overburn (which carries the same holder-side area clause):
+      // the SELF portion applies; the "all allies within a 2-tile radius" portion is HOLDER-side area
+      // targeting, which is DEFERRED (docs/research.md §3.33 / G14 — the MVP has no enemy-side
+      // neighbours and no enemy-side damage sink, so it is unobservable). Recorded in deferredNote.
+      { kind: "fixed_damage", percentOfAtk: 0.15, applies: ["onApply", "onTick"] },
+    ],
+    playerDescription: "When gained and at action end: fixed damage equal to 15% of the inflictor's ATK.",
+    verified: false, // [SOURCE] only — not in-game validated by us (see Conflagration's note)
+    element: "burn",
+    deferredNote:
+      "PARTIAL (T11, 2026). The SELF fixed damage is modelled; the source's 'self AND ALL ALLIES WITHIN A 2-TILE RADIUS' area portion is HOLDER-side area targeting and is DEFERRED (§3.33 / G14) — it is unobservable in the MVP (one dummy, no enemy-side neighbours, no enemy-side damage sink). ALSO UNRESOLVED: whether the fixed damage scales per stack. The source states 'up to a maximum of 3 stacks' but never says the damage multiplies; the engine's fixed damage applies its percentage ONCE regardless of stacks, so that reading is left as-is rather than invented. Do NOT treat the numeric effects as complete semantics.",
+    note: "T11 (2026). Source: effect 174c1af6-3fc1-41aa-b4ec-48e5583baacb — 'When this effect is gained and at the end of action, self and all allies within a 2-tile radius receive fixed damage equal to 15% of inflictor's attack, up to a maximum of 3 stacks. Burn debuff, cannot be dispelled.' (regionTag cn). [SOURCE], not in-game validated by us.",
+  },
+  {
+    id: "combustion_ii",
+    name: "Combustion II",
+    category: "debuff",
+    stackable: true,
+    maxStacks: 5,
+    durationRounds: 2,
+    tickAt: "ownActionEnd",
+    purgeable: false, // authoritative: "cannot be dispelled"
+    effects: [
+      // Same shape as Combustion at the higher tier: 20% of inflictor ATK, 3-tile radius, max 5.
+      { kind: "fixed_damage", percentOfAtk: 0.2, applies: ["onApply", "onTick"] },
+    ],
+    playerDescription: "When gained and at action end: fixed damage equal to 20% of the inflictor's ATK.",
+    verified: false, // [SOURCE] only — not in-game validated by us (see Conflagration's note)
+    element: "burn",
+    deferredNote:
+      "PARTIAL (T11, 2026). Same two caveats as Combustion: the source's 'all allies within a 3-tile radius' area portion is HOLDER-side and DEFERRED (§3.33 / G14), and whether the fixed damage scales per stack is UNRESOLVED (the engine applies the percentage once).",
+    note: "T11 (2026). Source: effect 783df2a2-7606-4471-abbf-e49dcfb6e813 — 'When this effect is gained and at the end of action, self and all allies within a 3-tile radius receive fixed damage equal to 20% of inflictor's attack, up to a maximum of 5 stacks. Burn debuff, cannot be dispelled.' (regionTag cn). [SOURCE], not in-game validated by us.",
+  },
+  {
     id: "vulnerable_i",
     name: "Vulnerable I",
     category: "debuff",

@@ -493,6 +493,12 @@ not prose transcription. Source class: **secondary (community database)** — hi
 **Score: 2 of 10 existed; 4 of 10 now exist** (`overburn`, `blazing_assault_ii`, `extra_command` and
 `apathetic_resistance` — the last two IMPLEMENTED 2026; see `docs/research.md` §3.24/§3.25).
 
+**T11 (2026) added three TILE-effect statuses** — **Conflagration**, **Combustion** and
+**Combustion II** — which are not rows in this kit inventory (they are applied BY tiles, not by her
+skills) but ARE named in row 10's Incineration clause. All three are now defined; six further
+tile-effect statuses (Stability Loss I, Frozen, Damp, Paralysis, Congestion, Meltdown) are defined in
+the source but **blocked on missing engine mechanics** — see `docs/tiles.md` §10 (T11) for each block.
+
 #### Two record corrections this inventory forces
 
 1. **`Overheat Combustion` is a real, distinct effect** (Burn/Debuff, uuid `e64fa51b`) — **not**
