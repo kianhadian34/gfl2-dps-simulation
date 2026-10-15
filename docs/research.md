@@ -1026,12 +1026,15 @@ points**.
 
 - **No in-game validation.** Nothing here is `Validated`; all of it is `[SOURCE]` from a community
   guide.
-- **Not implemented.** The engine has **no tile system at all** (`docs/grid.md` — terrain is
-  height/blocked/ladder only; `GridConfig` carries no tile-effect field). Nothing above is modeled.
-  **The engine design and slice plan for it are owned by `docs/tiles.md`** (gap
-  inventory M1–M12, a 12-slice breakdown, and the open decisions). **T1/M1 (tile identity +
-  storage) is DONE 2026** — `TileEffect` + `GridState.tiles` exist, but carry **no rules**: nothing
-  generates, upgrades, fuses, or ticks a tile yet.
+- **Not implemented (2026 status).** The engine now HAS a tile subsystem: **T1** storage, **T2** the
+  unit-on-tile query, **T3** generation, **T4** the lifecycle clock (wired into the turn loop), **T5**
+  Tile Upgrade + Polyphase Fusion, **T6** versioning and **T8 trigger (b)** — *"applies … to units that
+  remain on the area after ending their action"* — with a tile-effect DATA table
+  (`src/data/tile-effects.ts`). **Still NOT implemented:** triggers (a) on-generation damage and (c)
+  the every-3-Burn-hits counter; tile-gated effects ("while on a tile"); runtime weakness application
+  ("applies Burn weakness"); and **9 of the 10 named tile-effect statuses** — only `overburn` exists,
+  so the table records the others as `pendingStatusIds`. **The engine design and slice plan for all of
+  it are owned by `docs/tiles.md`** (gap inventory M1–M12, slices T1–T12, and the open decisions).
 - **Tile duration — RULE, not a conflict.** `TileEffect` carries **two** duration values because
   the game uses two for **two different events**: `initialRounds` (2) when a tile is FIRST created
   at a position, and `resetRounds` (3) for every SUBSEQUENT addition there (which also levels the

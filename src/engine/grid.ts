@@ -23,6 +23,8 @@ import {
   type GridCoord,
   type GridMove,
   GRID_SIZE,
+  TILE_INITIAL_ROUNDS,
+  TILE_RESET_ROUNDS,
   type TileEffect,
   type TileHeight,
   type TileOccupant,
@@ -294,6 +296,21 @@ export function buildGrid(cfg: GridConfig): GridState {
     state.ladders.set(hk, { to: gk });
   }
   state.moves = cfg.moves ?? [];
+  // SCRIPTED pre-existing tiles (2026, T8): a deterministic scenario-level SEED, mirroring `moves`.
+  // Validate the same way the rest of buildGrid does, then place each entry as a fresh tile.
+  for (const t of cfg.initialTiles ?? []) {
+    if (!inBounds(t.coord.x, t.coord.y)) throw new Error("initial tile outside the grid");
+    if (t.elements.length === 0) throw new Error("an initial tile must carry at least one element");
+    state.tiles.set(tileKey(t.coord.x, t.coord.y), {
+      elements: [...t.elements],
+      level: t.level ?? 1,
+      durationLeft: TILE_INITIAL_ROUNDS,
+      initialRounds: TILE_INITIAL_ROUNDS,
+      resetRounds: TILE_RESET_ROUNDS,
+      version: t.version ?? "allied",
+      generatedBy: t.generatedBy ?? "<scenario>",
+    });
+  }
   return state;
 }
 

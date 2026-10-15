@@ -28,6 +28,19 @@ export type TileHeight = "ground" | "high";
 export const TILE_HEIGHTS: TileHeight[] = ["ground", "high"];
 
 /**
+ * THE TWO TILE DURATION VALUES (project owner, 2026-10-10) — declared HERE, in the model, because
+ * `buildGrid` seeds scripted tiles and most NOT import the rule module (`engine/tiles.ts` imports
+ * `engine/grid.ts`, so the reverse would be a cycle). `engine/tiles.ts` re-exports both, so the rule
+ * module remains the single place they are DOCUMENTED for the tile rules.
+ *
+ *  - `TILE_INITIAL_ROUNDS` — the duration a tile gets when it is FIRST created at a position.
+ *  - `TILE_RESET_ROUNDS` — the duration every SUBSEQUENT tile effect added at that position resets
+ *    it to (also the value at Level 3, which is refreshed but not levelled).
+ */
+export const TILE_INITIAL_ROUNDS = 2;
+export const TILE_RESET_ROUNDS = 3;
+
+/**
  * AREA SHAPE (2026) — the tile-shape vocabulary an area/radius effect selects on. TWO shape
  * FAMILIES exist, because the game uses two different metrics and the source text reflects both:
  *
@@ -104,6 +117,25 @@ export interface GridMove {
 }
 
 /**
+ * TILE VERSION (2026, M6/T6) — which SIDE a tile's effects land on, determined by *"the source that
+ * created the tile"* (§3.23.1):
+ *
+ *  - `"allied"` — debuffs **enemies** (a friendly generator).
+ *  - `"enemy"` — debuffs **allies** (*"enemy versions swap which units are targeted"*).
+ *  - `"neutral"` — debuffs **everyone** (*"neutral versions apply all effects"*).
+ *
+ * The version is set by whichever unit **last** generated onto the tile, and *"can also be changed
+ * depending on the last unit that generated"* — so every mutating tile addition updates it (T5).
+ *
+ * This is deliberately SEPARATE from `StatusDef.phase`/`element` (element affiliation): a version is
+ * about *whose* effects they are, not what element they are.
+ */
+export type TileVersion = "allied" | "enemy" | "neutral";
+
+/** The three tile versions the engine models (Allied / Enemy / Neutral). */
+export const TILE_VERSIONS: TileVersion[] = ["allied", "enemy", "neutral"];
+
+/**
  * ELEMENTAL TILE EFFECT (2026, M1 — storage/identity ONLY; no rules yet).
  *
  * A **runtime** per-tile record: which element(s) the tile carries and how long it lasts. Sparse —
@@ -149,10 +181,11 @@ export interface TileEffect {
   /**
    * Which side the tile debuffs, set by whichever unit LAST generated onto it:
    * `"allied"` (debuffs enemies) / `"enemy"` (debuffs allies) / `"neutral"` (debuffs everyone).
-   * The engine currently has no enemy generator, so only `"allied"` is reachable in the MVP — the
-   * other two are modeled because the rule is unconditional (§3.23.1) and versioning is T6.
+   * See `TileVersion`. The engine currently has no enemy generator, so only `"allied"` is reachable
+   * in the MVP — the other two are modeled because the rule is unconditional (§3.23.1) and
+   * `tileVersionFor` derives them from the generator's side (T6).
    */
-  version: "allied" | "enemy" | "neutral";
+  version: TileVersion;
   /** The unitId that generated onto this tile last (drives `version` and provenance). */
   generatedBy: string;
 }
@@ -217,4 +250,27 @@ export interface GridConfig {
   blockedTiles?: BlockedTile[];
   /** Optional per-round scripted movements (validated against the grid). */
   moves?: GridMove[];
+  /**
+   * Optional SCRIPTED pre-existing elemental tiles, seeded at `buildGrid`. A scenario-level,
+   * **deterministic fixture affordance** — the same kind of thing `moves` is — NOT a game mechanic:
+   * no rule says a battlefield starts with tiles. It exists so the tile subsystem is reachable by a
+   * simulation BEFORE any skill/passive generates tiles (none does yet; `docs/tiles.md` §10 T8).
+   *
+   * Each entry creates a tile exactly as generation would: the given `elements`, the given `level`
+   * (default base), the initial creation duration, and the given `version` (default `"allied"`).
+   * Unlike generation it does NOT merge with other entries — each entry is an independent placement.
+   */
+  initialTiles?: Array<{
+    coord: GridCoord;
+    elements: Element[];
+    level?: 1 | 2 | 3;
+    version?: TileVersion;
+    /**
+     * The generating unit's id, which becomes the APPLIER of any status the tile inflicts (the source's
+     * fixed damage is *"X% of the applier's ATK"*). Defaults to a scenario marker that names no real
+     * unit — a tile with no applier still APPLIES its statuses, but their applier-ATK damage is inert
+     * (no ATK is invented). Name a real allied unit when the tile should deal its damage.
+     */
+    generatedBy?: string;
+  }>;
 }

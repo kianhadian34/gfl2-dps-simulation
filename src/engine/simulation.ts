@@ -23,6 +23,7 @@ import { remolderCritDmgBonus, remolderFirstTargetStability, remolderHealBonus, 
 import { attachmentSetDealtBonus } from "./attachment-sets.js";
 import { apexDealtBonus } from "./apex.js";
 import { applyStabilityDamage, endOfRoundStability } from "./stability.js";
+import { applyTileEffectsOnActionEnd, tickTiles } from "./tiles.js";
 import { abilitySourceLabel, createState, DEFAULT_CONFIG, fortificationV, passiveSourceLabel, supportAttackQuota, weaponCalibration, type EffectiveStatusDef, type SimulationState, type UnitState } from "./state.js";
 import type { ActiveStatus } from "../model/runtime.js";
 import type { AbilitySlot, CharacterDef } from "../model/types.js";
@@ -1376,6 +1377,11 @@ function endOfOwnTurn(state: SimulationState, unit: UnitState): void {
   // Weapon Trait (VALIDATED in-game 2026): at the END of the holder's own action, if the
   // holder is at FULL HP, exactly ONE random buff from the weapon's uniform pool is granted.
   applyWeaponTrait(state, unit);
+  // TILE TRIGGER (b), 2026 (T8): "applies ... to units that REMAIN ON THE AREA AFTER ENDING THEIR
+  // ACTION". Fires at the unit's own action end — the same point the source names. `state.units` are
+  // the allied side, so a doll is `isAlly: true`; the dummy is the MVP's only non-ally, and is the
+  // one unit observable standing on a generated tile (docs/tiles.md §4).
+  applyTileEffectsOnActionEnd(state, unit, unit.kind === "doll");
 }
 
 /**
@@ -1398,6 +1404,9 @@ export function applyWeaponTrait(state: SimulationState, unit: UnitState): strin
 function endOfRound(state: SimulationState): void {
   endOfRoundStability(state);
   for (const u of [...state.units, state.dummy]) tickStatuses(state, u, "roundEnd");
+  // TILE CLOCK (T4), wired in 2026 with T8: tile durations count ROUNDS down and expire. It only
+  // becomes observable once tiles have effects, which is why T4 deliberately shipped it unwired.
+  if (state.grid) tickTiles(state.grid);
 }
 
 function collectWarnings(state: SimulationState): void {

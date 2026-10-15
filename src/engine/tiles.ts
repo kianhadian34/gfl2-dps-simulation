@@ -1,5 +1,8 @@
-import { areaTiles, tileKey, type GridState } from "./grid.js";
-import type { AreaShape, GridCoord, TileEffect } from "../model/grid.js";
+import { areaTiles, tilesOccupiedBy, tileKey, type GridState } from "./grid.js";
+import { applyStatus } from "./statuses.js";
+import { tileEffectsFor, tileEffectKey } from "../data/tile-effects.js";
+import type { AreaShape, GridCoord, TileEffect, TileOccupant, TileVersion } from "../model/grid.js";
+import type { SimulationState, UnitState } from "./state.js";
 import type { Element } from "../model/types.js";
 
 /**
@@ -9,17 +12,18 @@ import type { Element } from "../model/types.js";
  *  - `model/grid.ts` — the tile's shape/identity (`TileEffect`), a value type.
  *  - `engine/grid.ts` — the `GridState.tiles` storage (T1/M1) and the pure GEOMETRY tile rules are
  *    read through (areas, occupancy — T2/M2 and slice 9's `areaTiles`).
- *  - **this module** — the tile RULES that CHANGE that state. Generation + upgrade + fusion (T3/T5)
- *    and the lifecycle clock (T4); versioning (T6) and the triggers (T8) next. It is the tile
- *    analogue of `stability.ts`.
+ *  - **this module** — the tile RULES that CHANGE that state. Generation + upgrade + fusion (T3/T5),
+ *    the lifecycle clock (T4) and versioning (T6); the triggers (T8) next. It is the tile analogue of
+ *    `stability.ts`.
  *
  * The RULES are `[SOURCE]` — a community guide, hierarchy level 5 — and are **Not Tested**
  * (`docs/research.md` §3.23). The feature's *existence* on global IS confirmed by the project owner
  * (2026, direct in-game evidence — hierarchy level 1), but that confirms only that the subsystem is
  * playable, NOT its rule values. Nothing here is `Validated`.
  *
- * **Slice boundary:** generation, upgrade/fusion (T3 + T5) and the lifecycle clock (T4). Versioning
- * semantics (T6) and every trigger (T8/T9) are NOT here — a scope guard in the tests asserts that.
+ * **Slice boundary:** generation, upgrade/fusion (T3 + T5), the lifecycle clock (T4) and version
+ * DERIVATION (T6). What a version DOES — which units a tile's effects actually land on — belongs to
+ * the trigger slices (T8/T9), so T6 determines the label and stops there.
  */
 
 /**
@@ -28,10 +32,13 @@ import type { Element } from "../model/types.js";
  * **SUBSEQUENT** tile effect added there resets it to `TILE_RESET_ROUNDS`.
  *
  * TWO values for TWO different EVENTS — never collapse them into one. Generation uses only the
- * first; the second is stored on the tile for the upgrade slices (T5/T7) to consume.
+ * first; the second is stored on the tile for the upgrade/fusion paths to consume.
+ *
+ * DECLARED in `model/grid.ts` (so `buildGrid` can seed scripted tiles without an import cycle) and
+ * RE-EXPORTED here, where the tile RULES live and document them.
  */
-export const TILE_INITIAL_ROUNDS = 2;
-export const TILE_RESET_ROUNDS = 3;
+export { TILE_INITIAL_ROUNDS, TILE_RESET_ROUNDS } from "../model/grid.js";
+import { TILE_INITIAL_ROUNDS, TILE_RESET_ROUNDS } from "../model/grid.js";
 
 /** A freshly generated tile is always the BASE stage (§3.23.1 Lv1); level-ups are T5/T7. */
 export const TILE_BASE_LEVEL = 1;
@@ -91,13 +98,51 @@ export interface TileGenerationSpec {
   radius: number;
   /** The tile's element set — must be NON-EMPTY: 1 element = base tile, 2 = fusion tile. */
   elements: Element[];
-  /** The `unitId` that generated the tile (provenance; drives `version` in T6). */
+  /** The `unitId` that generated the tile (provenance; drives the derived `version`). */
   generatedBy: string;
   /**
-   * Which side the tile debuffs. Defaults to `"allied"` — the ONLY version reachable in the MVP
-   * (there is no enemy generator; see `docs/tiles.md` non-goals). T6 models the other two.
+   * Which side the tile debuffs — an EXPLICIT override. When ABSENT the version is **derived from the
+   * generator's side** via `tileVersionFor` (T6): a generator in `grid.placements` is `"allied"` and
+   * one in `grid.enemyUnits` is `"enemy"`. Provide this only for a generator that is not a placed unit
+   * at all — e.g. a **terrain effect**, which the source explicitly allows to create tiles and which
+   * is `"neutral"` (debuffs everyone) — or to be explicit in a test.
    */
-  version?: "allied" | "enemy" | "neutral";
+  version?: TileVersion;
+}
+
+/**
+ * Derive the tile VERSION from the SIDE of the unit that generated it — the source's *"correspond
+ * to the source that created the tile"* rule (§3.23.1, T6/M6).
+ *
+ * The engine models sides **structurally**, not as a `UnitState` field: allies live in
+ * `grid.placements`, grid enemies in `grid.enemyUnits`, and the boss is a separate stationary entity.
+ * So this reads that structure rather than inventing an affiliation flag:
+ *
+ *  - a **placed ally** → `"allied"` (debuffs enemies);
+ *  - a **grid enemy** → `"enemy"` (debuffs allies);
+ *  - the **boss** — a `BossPlacement` with **no id** (`TileOccupant` doc) and no generator path in the
+ *    MVP — therefore cannot be looked up here at all; if it ever generates, the caller states the
+ *    version explicitly (`TileGenerationSpec.version`), which is the override's purpose.
+ *
+ * An UNKNOWN id (not a placed ally or a grid enemy) returns `undefined`, so the caller falls back to
+ * the *"allied"* default rather than inventing an affiliation for a unit the grid does not know. That
+ * fallback matches T3–T5's behaviour, so T6 changes no existing outcome.
+ *
+ * **Only `"allied"` is reachable in the MVP**: nothing but a player doll generates tiles, because
+ * there is no enemy generator and no terrain generator (`docs/tiles.md` §8 non-goals). The `"enemy"`
+ * branch is modeled because the rule is unconditional, and is exercised by tests rather than by play.
+ *
+ * **Not Tested** — that version follows the generator's side is the guide's statement, not observed.
+ */
+export function tileVersionFor(grid: GridState, generatorId: string): TileVersion | undefined {
+  if (grid.placements.has(generatorId)) return "allied";
+  if (grid.enemyUnits.some((e) => e.unitId === generatorId)) return "enemy";
+  return undefined;
+}
+
+/** The version a spec resolves to: explicit override, else the generator's side, else `"allied"`. */
+function resolveVersion(state: GridState, spec: TileGenerationSpec): TileVersion {
+  return spec.version ?? tileVersionFor(state, spec.generatedBy) ?? "allied";
 }
 
 /** What generating onto a position DID — the outcome of the tile addition rule. */
@@ -155,7 +200,7 @@ export interface TileAdditionResult {
  *
  * Mutates `effect` in place; the caller owns putting `key` back on the map.
  */
-function applyTileAddition(effect: TileEffect, spec: TileGenerationSpec): TileAdditionOutcome {
+function applyTileAddition(state: GridState, effect: TileEffect, spec: TileGenerationSpec): TileAdditionOutcome {
   const incoming = spec.elements;
   const current = effect.elements;
 
@@ -165,7 +210,7 @@ function applyTileAddition(effect: TileEffect, spec: TileGenerationSpec): TileAd
     if (effect.level < TILE_MAX_LEVEL) effect.level += 1; // at Lv3 this only refreshes the duration
     resetTileDuration(effect);
     effect.generatedBy = spec.generatedBy;
-    effect.version = spec.version ?? "allied";
+    effect.version = resolveVersion(state, spec);
     return "upgraded";
   }
 
@@ -180,7 +225,7 @@ function applyTileAddition(effect: TileEffect, spec: TileGenerationSpec): TileAd
     effect.elements = [current[0], incoming[0]];
     resetTileDuration(effect);
     effect.generatedBy = spec.generatedBy;
-    effect.version = spec.version ?? "allied";
+    effect.version = resolveVersion(state, spec);
     return "fused";
   }
 
@@ -190,7 +235,7 @@ function applyTileAddition(effect: TileEffect, spec: TileGenerationSpec): TileAd
   effect.level = TILE_BASE_LEVEL; // …at Lv1 (owner decision — the guide gives no level)
   resetTileDuration(effect); // and the addition resets the clock
   effect.generatedBy = spec.generatedBy;
-  effect.version = spec.version ?? "allied";
+  effect.version = resolveVersion(state, spec);
   return "replaced";
 }
 
@@ -213,13 +258,13 @@ function applyTileAddition(effect: TileEffect, spec: TileGenerationSpec): TileAd
  */
 export function generateTiles(state: GridState, spec: TileGenerationSpec): TileAdditionResult[] {
   if (spec.elements.length === 0) throw new Error("a tile must carry at least one element");
-  const version = spec.version ?? "allied";
+  const version = resolveVersion(state, spec);
   const results: TileAdditionResult[] = [];
   for (const tile of areaTiles(spec.origin, spec.shape, spec.radius, state.size)) {
     const key = tileKey(tile.x, tile.y);
     const existing = state.tiles.get(key);
     if (existing) {
-      results.push({ tile, outcome: applyTileAddition(existing, spec) });
+      results.push({ tile, outcome: applyTileAddition(state, existing, spec) });
       continue;
     }
     const effect: TileEffect = {
@@ -253,6 +298,83 @@ export function generateTiles(state: GridState, spec: TileGenerationSpec): TileA
  */
 export function resetTileDuration(effect: TileEffect): void {
   effect.durationLeft = effect.resetRounds;
+}
+
+// ------------------------------------------------------------------ T8 / M8: tile triggers
+
+/**
+ * Does a tile with this VERSION affect a unit on a given side? This is the rule T6 deliberately left
+ * unimplemented — *what a version DOES* (§3.23.1):
+ *
+ *  - `"allied"` → debuffs **enemies** (the MVP's enemy is the dummy/boss);
+ *  - `"enemy"`  → *"swap which units are targeted"* → debuffs **allies**;
+ *  - `"neutral"`→ *"apply all effects"* → affects **everyone**.
+ *
+ * `targetIsAlly` is the SIDE of the unit standing on the tile. Pure; no state.
+ */
+export function tileAppliesToUnit(version: TileVersion, targetIsAlly: boolean): boolean {
+  if (version === "neutral") return true;
+  return version === "allied" ? !targetIsAlly : targetIsAlly;
+}
+
+/** Provenance label for a tile-applied status. Derived from element set + level, never a CN name. */
+export function tileEffectSource(effect: TileEffect): string {
+  return `${[...effect.elements].sort().join("+")} tile Lv${effect.level}`;
+}
+
+/**
+ * TILE TRIGGER (b) — *"applies … to enemy units that **remain on the area after ending their
+ * action**"* (§3.23.3). Call at the END of a unit's own action: it applies the effects of every tile
+ * the unit is standing on, subject to the tile's version targeting rule above.
+ *
+ * `isAlly` is the CALLER's statement of which side the unit is on — the engine models sides
+ * structurally (`state.units` are allies; the MVP's only non-ally `UnitState` is the dummy), so the
+ * caller already knows, and passing it keeps this function pure of that lookup.
+ *
+ * Returns the status ids actually applied (empty when nothing applies), so a caller/test can observe
+ * the trigger without re-deriving it.
+ *
+ * Deliberately NOT here (recorded as gaps, `docs/tiles.md` §10):
+ *  - **trigger (a)** on-generation damage, and **trigger (c)** *"for every 3 times they take Burn
+ *    damage"* — the latter has no Burn-damage event stream to count, and no defined statuses to grant.
+ *
+ * **Not Tested** — the clause is the guide's; nothing here is in-game validated.
+ */
+export function applyTileEffectsOnActionEnd(
+  state: SimulationState,
+  unit: UnitState,
+  isAlly: boolean,
+): string[] {
+  const grid = state.grid;
+  if (!grid) return [];
+  // Reuse T2's reviewed occupancy query (footprint-aware for the boss) — never a placements-only scan.
+  const occ: TileOccupant = isAlly ? { kind: "ally", unitId: unit.id } : { kind: "boss" };
+  const applied: string[] = [];
+  const appliedTiles = new Set<string>();
+  for (const coord of tilesOccupiedBy(grid, occ)) {
+    const effect = grid.tiles.get(tileKey(coord.x, coord.y));
+    if (!effect) continue;
+    if (!tileAppliesToUnit(effect.version, isAlly)) continue;
+    // One application per distinct tile EFFECT: a 3×3 boss can straddle the same tile type several
+    // times, and re-applying would only refresh a duration that is already correct.
+    const effectKey = tileEffectKey(effect.elements, effect.level);
+    if (appliedTiles.has(effectKey)) continue;
+    const data = tileEffectsFor(effect.elements, effect.level);
+    if (!data) continue; // no recorded effects for this (element set, level) — apply nothing
+    appliedTiles.add(effectKey);
+    // APPLIER: the source's fixed damage is *"equal to X% of the applier's ATK"* — the applier of a
+    // tile-inflicted status is the unit that GENERATED the tile (`effect.generatedBy`). Resolved only
+    // when that id names a real allied unit; a scripted/terrain generator has no panel ATK, so the
+    // status is applied with NO applier and its applier-ATK fixed damage is inert (no ATK is invented).
+    const generator = state.units.find((u) => u.id === effect.generatedBy);
+    const applier = generator ? { id: generator.id, atk: generator.panelAtk } : undefined;
+    for (const s of data.applies) {
+      if (applyStatus(state, unit, { statusId: s.statusId, durationRounds: s.durationRounds, source: tileEffectSource(effect), applier })) {
+        applied.push(s.statusId);
+      }
+    }
+  }
+  return applied;
 }
 
 /**

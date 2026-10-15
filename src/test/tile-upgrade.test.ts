@@ -349,9 +349,12 @@ test("T5: every mutation path resets the duration (nothing leaves a stale clock)
 
 // ============================================================ scope guard
 
-test("T5: versioning (T6) and the triggers (T8) are still absent (scope guard)", async () => {
+test("T5: the triggers (T8) are still absent (scope guard)", async () => {
+  // `isFusiblePair` is T5's. `tileVersionFor` was in this "must not exist" list while T5 was the
+  // newest slice; **T6 now owns it**, so the guard is advanced deliberately rather than loosened —
+  // the T6 versioning tests assert it DOES exist, so it cannot silently vanish either.
   const tiles = await import("../engine/tiles.js");
   assert.equal(typeof tiles.isFusiblePair, "function", "T5 delivers the fusible-pair predicate");
-  const suspicious = Object.keys(tiles).filter((k) => /^(applyTileTrigger|advanceTiles|resolveTileVersion|tileVersionFor)/.test(k));
-  assert.deepEqual(suspicious, [], "T5 adds upgrade + fusion ONLY");
+  const suspicious = Object.keys(tiles).filter((k) => /^(applyTileTrigger|advanceTiles)/.test(k));
+  assert.deepEqual(suspicious, [], "T5 adds upgrade + fusion ONLY — triggers are still T8");
 });

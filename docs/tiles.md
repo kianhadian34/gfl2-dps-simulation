@@ -79,9 +79,9 @@ These are the items to go over one by one.
 | **M3** | **Tile generation + targeting** — "generates tiles within N tiles of the target". **✅ DONE (T3) — see §10.** | The entry point for every tile clause |
 | **M4** | **Tile lifecycle** — duration (first creation 2 → subsequent additions reset to 3, level-capped), expiry, Lv3 "refresh only". **✅ DONE (T4) — see §10.** | Tiles must expire or the field saturates |
 | **M5** | **Tile Upgrade** — same element onto an existing tile → Lv2 → Lv3, keeping bonuses. **✅ DONE (T5) — see §10.** | The base progression |
-| **M6** | **Versioning** — Allied / Enemy / Neutral, set by the last generator | Determines WHO a tile affects |
+| **M6** | **Versioning** — Allied / Enemy / Neutral, set by the last generator. **✅ DONE (T6) — see §10.** | Determines WHO a tile affects |
 | **M7** | **Polyphase Fusion** — two fusible elements → fusion tile; priority over base; not overwritten by a third element; either element levels it; fusing onto an upgraded tile starts at that level. **✅ DONE — MERGED INTO T5 (project owner, 2026) — see §10.** | The most intricate rule set |
-| **M8** | **Tile triggers** — (a) on generation, (b) "units that **remain on the area after ending their action**", (c) "**for every 3 times** they take Burn damage" | The tile rules are entirely trigger-driven |
+| **M8** | **Tile triggers** — (a) on generation, (b) "units that **remain on the area after ending their action**", (c) "**for every 3 times** they take Burn damage". **(b) ✅ DONE (T8); (a) and (c) NOT built — see §10.** | The tile rules are entirely trigger-driven |
 | **M9** | **Tile-gated effects** — FK5 *"while on a Burn tile, damage taken −20%"*; Perception Block *"immune to debuffs inflicted by Burn tiles"* | Needs M1 + M2 |
 | **M10** | **Runtime weakness application** — tiles *"apply Burn weakness"*, but `weaknessElements` is immutable today | Changes the damage path |
 | **M11** | **The 9 missing statuses** | "Applies Overburn + Conflagration" cannot be expressed |
@@ -149,9 +149,9 @@ is **vocabulary or mechanism only** unless stated. Sizes are indicative.
 | **T3** | Tile generation + area targeting (reuses `AreaShape`; numeric ⇒ diamond). Duration init. **✅ DONE 2026 — see §10.** | M3 | ✅ RESOLVED — generation uses `initialRounds` (2); upgrade/fusion resets to `resetRounds` (3) |
 | **T4** | Lifecycle: round-end ticking, expiry, Lv3 "refresh only". **✅ DONE 2026 — see §10.** | M4 | — (scope split: T4 owns the CLOCK, T5 owns LEVELLING — see §10) |
 | **T5** | Tile Upgrade **+ Polyphase Fusion** (merged — see §10): same element → level up (cap 3); fusible pair → fusion preserving level; fusion tile protected from a third element; non-fusible → replace (base) / protect (upgraded); every addition resets duration. **✅ DONE 2026 — see §10.** | M5 + M7 | ✅ RESOLVED — all four branches implemented from the guide's upgrade text + its **Polyphase Fusion List**; the non-fusible REPLACEMENT's level/duration is the one inference (§7 decision 7) |
-| **T6** | Versioning (Allied / Enemy / Neutral). | M6 | **Only Allied is reachable** — no enemy generator exists. Model all three anyway? |
+| **T6** | Versioning (Allied / Enemy / Neutral): named `TileVersion` + `tileVersionFor` deriving the version from the generator's SIDE (`placements` → allied, `enemyUnits` → enemy), with an explicit override for a non-unit (terrain) generator. **✅ DONE 2026 — see §10.** | M6 | ✅ RESOLVED — derive from the generator's side, keeping the explicit override (owner decision 9). What a version DOES is T8/T9 |
 | **T7** | ~~Polyphase Fusion~~ **ABSORBED INTO T5** (project owner, 2026): the upgrade and fusion rules share one core and one call site, so splitting them would have meant writing the addition rule twice. Nothing of its own remains. | — | — |
-| **T8** | The three tile triggers (on-generation / end-of-action-on-tile / every-3-Burn-hits counter). | M8 | The counter is per-unit-per-tile state — where does it live? |
+| **T8** | The three tile triggers. **Trigger (b) — "remain on the area after ending their action" — ✅ DONE 2026 (see §10); (a) on-generation damage and (c) the every-3-Burn-hits counter are NOT built and are recorded gaps.** | M8 | ✅ RESOLVED for (b): scope = data-driven mechanism; the counter (c) is per-UNIT on the unit's own state (owner decision 10) — deferred with (c) itself |
 | **T9** | Tile-gated effects: "while on a tile" query + gates (FK5 −20%, Burn-tile immunity). | M9 | — |
 | **T10** | Runtime weakness application (tile-applied Burn weakness). | M10 | **Mutate `weaknessElements` or compute at hit time?** (see §7) |
 | **T11** | The 9 missing statuses. | M11 | Each needs its OWN evidence — the guide names them but does not fully define them |
@@ -160,7 +160,6 @@ is **vocabulary or mechanism only** unless stated. Sizes are indicative.
 **Suggested order:** T1 → T2 → T3 → T4 → **T5 (incl. fusion; T7 absorbed)** → T6 → T8 → T9 → T10 →
 T11 → T12. Each is independently committable and leaves the suite green; T11 could be split
 per-status if needed.
-
 ---
 
 ## 7. Decisions that are the project owner's (not inferable from evidence)
@@ -208,6 +207,30 @@ per-status if needed.
 8. **Should T7 remain a separate slice?** — **✅ ANSWERED 2026 (project owner): no.** Fusion was
    **merged into T5**, because the upgrade and fusion rules share one core and one call site;
    splitting them would have meant implementing the addition rule twice. T7 is absorbed.
+
+9. **Where does a tile's VERSION come from?** The source ties it to *"the source that created the
+   tile"*, but the engine has no affiliation field on `UnitState` — it models sides **structurally**
+   (`grid.placements` = allied, `grid.enemyUnits` + the boss = enemy). Options were: derive it from the
+   generator's side; keep it purely caller-supplied data; or derive it strictly with no override.
+   **✅ DECIDED 2026 (project owner): derive it from the generator's side (`tileVersionFor`), KEEPING
+   the explicit `spec.version` override.** The override exists because the source allows a **terrain
+   effect** to create tiles — a generator that is not a placed unit at all, and which is `"neutral"`.
+   A strict no-override derivation could not express that at all. The boss has **no id** and so is not
+   derivable; if it ever generates, the caller states the version. An unknown id derives **nothing**
+   (the caller falls back to `"allied"`), so no affiliation is ever invented for a unit the grid does
+   not know — and T6 changes no pre-T6 outcome.
+
+10. **T8's scope, and where the "every 3 Burn hits" counter lives.** The three triggers were to be
+    built together, but **T8 applies statuses and 9 of the 10 named tile-effect statuses do not exist**
+    (`applyStatus` throws on an unknown id). **✅ DECIDED 2026 (project owner):** build the trigger
+    **MECHANISM + trigger (b)**, data-driven, **populated with Overburn only**; the undefined statuses
+    stay a **T11** gap. Triggers **(a)** and **(c)** are deferred with reasons. For **(c)**, the counter
+    lives **per-UNIT on the unit's own state**, not in a per-tile map — *"for every 3 times they take
+    Burn damage"* is about the UNIT, and it carries no tile dimension.
+11. **Tile effects on the ENEMY that owns them (holder-side) — still deferred.** Unchanged from
+    `docs/research.md` §3.33 / `docs/dolls/vector.md` G14: the MVP has no enemy-side neighbours, so
+    Overburn's *"allies within 1 tile"* and Overheat Combustion's area clauses remain **DEFERRED** and
+    are NOT part of T8.
 
 ---
 
@@ -502,5 +525,140 @@ fusion resetting the level → **6 failures**; protecting every tile instead of 
 replacement's level/duration is an **inference** (owner decision 7). Engine **864 pass / 0 fail**;
 CLI output byte-identical (14,581 / 7 actions).
 
-**Next:** T6 / M6 — versioning semantics, then T8 (the triggers, which is where tiles start changing
-damage).
+**Next:** T8 / M8 — the three tile triggers (on-generation / end-of-action-on-tile / every-3-Burn-hits
+counter), which is where tiles start changing damage and where wiring `tickTiles` into the turn loop
+becomes testable.
+
+### T6 / M6 — versioning — **DONE 2026**
+
+**Scope.** The version says which **side** a tile's effects land on (*"These correspond to the source
+that created the tile"*, *"set by whichever unit last generated onto the tile"* — §3.23.1). T5 already
+implemented the *update* semantics (every mutating addition re-stamps `version`; `protected` leaves it
+alone), so T6's work is the **vocabulary** and **how a version is determined**. What a version
+*actually does* (*"Enemy versions swap which units are targeted; neutral versions apply all
+effects"*) is **applying** the tile's debuffs — the trigger slices' job (T8/T9) — so T6 determines the
+label and stops.
+
+**Delivered:**
+- `model/grid.ts`: the named **`TileVersion`** type (`"allied" | "enemy" | "neutral"`) + **`TILE_VERSIONS`**,
+  and `TileEffect.version`/`TileGenerationSpec.version` now use it (one vocabulary, no inline unions).
+- `engine/tiles.ts`: **`tileVersionFor(grid, generatorId)`** — derives the version from the generator's
+  **side**, reading the engine's existing structural split rather than inventing an affiliation field:
+  a **placed ally** (`grid.placements`) → `"allied"`; a **grid enemy** (`grid.enemyUnits`) → `"enemy"`;
+  an **unknown id** → `undefined` (no affiliation invented). Plus the private
+  **`resolveVersion(state, spec)`** = `spec.version ?? tileVersionFor(...) ?? "allied"`, now the single
+  place the version is decided — used by the create path and all three mutating paths in
+  `applyTileAddition` (which therefore takes `state`).
+
+**Choices (owner decision 9):**
+1. **Derive from the generator's side** — the most faithful reading of *"corresponds to the source"*,
+   and it reuses structure the engine already has. An `affiliation` field on `UnitState` was NOT added:
+   the engine deliberately has none, and inventing one to serve tiles would be mechanics invention.
+2. **Keep the explicit `spec.version` override.** The source allows a **terrain effect** to create
+   tiles — a generator that is not a placed unit at all and cannot be derived. A strict no-override
+   derivation could not express it. This is also what makes `"neutral"` reachable.
+3. **Unknown id ⇒ no derivation.** The caller falls back to `"allied"`, which is exactly T3–T5's
+   behaviour, so **T6 changes no existing outcome** (proved: the whole pre-T6 suite passes untouched).
+4. **The boss is not derivable** — `BossPlacement` carries no id (`TileOccupant` doc), and T6 does not
+   synthesise one.
+5. **`"enemy"` is modeled but unreachable in play** (no enemy generator exists; §8 non-goals). It is
+   exercised by tests rather than by combat — the same treatment as the other model-all-three
+   decisions.
+
+**Tests:** `src/test/tile-versioning.test.ts` (16) — the three-version vocabulary; an ally generator →
+allied and a grid enemy → enemy; unknown id derives nothing and falls back to allied; the **boss is
+not derivable** (no id is invented for it, checked against several guesses); derivation reads structure
+not name (two ids differing only by collection); the explicit override (incl. overriding an id that
+WOULD derive differently, and each of the three values); the **last generator wins** in both
+directions; **every** mutating path re-stamps the version; a **protected** tile keeps its version AND
+provenance; a fusion tile re-stamps when levelled by a fused element; an area generation stamps the
+same version on all 9 tiles; and a scope guard (no trigger/effect-application functions). **Mutation
+checks:** dropping the enemy branch → **7 failures**; ignoring the override → **3 failures**; both
+reverted. T5's scope guard was **advanced deliberately** (`tileVersionFor` moved from "must not exist"
+to positively asserted by T6).
+
+**Evidence status:** `[SOURCE]`/Not Tested — the feature exists on global (level 1), but *which*
+version a generator produces is the guide's rule. Engine **880 pass / 0 fail**; CLI byte-identical
+(14,581 / 7 actions).
+
+### T8 / M8 — tile triggers: **trigger (b)**, the tile-effect data table, and the loop wiring — **DONE 2026**
+
+**Scope (project owner decision 10).** The three triggers were inventoried; only **(b)** is built.
+The blocker is real and was found by investigation, not assumption: **T8 applies STATUSES, and 9 of
+the 10 named tile-effect statuses do not exist** (`overburn` is the only one), while `applyStatus`
+**throws** on an unknown id. A literal "all three triggers" slice would therefore have required
+inventing the nine undefined statuses — which the project rules forbid. So T8 delivers the
+**mechanism + trigger (b), data-driven, populated with Overburn only**, and records the rest as gaps.
+
+**Delivered:**
+- **`src/data/tile-effects.ts` (new)** — the tile-effect **DATA** table: which statuses a tile applies,
+  keyed by the tile's element set (order-insensitive) + level via `tileEffectKey`/`tileEffectsFor`.
+  This is source CONTENT, deliberately separate from the (generic, element-only) tile RULES. Only the
+  Burn tile is recorded. Each entry lists `applies` (statuses which EXIST — only `overburn`) plus
+  **`pendingStatusIds`** — the source's other named statuses (Conflagration / Combustion /
+  Combustion II) recorded as **explicit, machine-visible gaps** rather than silently dropped.
+  An unrecorded (element set, level) returns `undefined` ⇒ **apply nothing**, which is the state of
+  every fusion tile and every non-Burn tile today.
+- **`engine/tiles.ts`**: `tileAppliesToUnit(version, targetIsAlly)` — T6's deferred *"what a version
+  DOES"* (allied → enemies, enemy → allies, neutral → everyone); `tileEffectSource(effect)` — a
+  provenance label derived from element set + level (never a CN name); and
+  **`applyTileEffectsOnActionEnd(state, unit, isAlly)`** — trigger (b). It reuses **T2's**
+  footprint-aware occupancy query, applies each distinct tile effect once, and passes the status's
+  **applier**.
+- **`simulation.ts` wiring**: the trigger fires in `endOfOwnTurn` (the point the source names) and
+  **`tickTiles` is now wired into `endOfRound`** — T4's clock, which shipped unwired because it was
+  unobservable. `tickTiles` + expiry now actually run.
+- **`GridConfig.initialTiles` (scripted scenario seed)** — see the wiring note below.
+
+**The APPLIER rule (found by a failing end-to-end test, and a real gap).** The source's fixed damage
+is *"equal to X% of the **applier's** ATK"*, and the engine's fixed-damage path returns early when a
+status has **no applier** (`if (!applier) return`). So a tile-inflicted status needs one: the applier
+is the unit that **generated** the tile (`effect.generatedBy`). If that id names no real allied unit
+(a scripted/terrain generator), the status is still applied but its applier-ATK damage is **inert** —
+**no ATK is invented**. This surfaced only because the first end-to-end test asserted real damage;
+the unit-level test had passed while the loop silently did nothing.
+
+**WIRING — made testable, and why that mattered.** A **mutation check** (commenting out the trigger
+call) initially **broke no test**: the wiring was correct but **unobservable**, because nothing could
+put a tile on the grid during a simulation — no skill/passive generates tiles yet and no scenario
+seed existed. Per the project owner, `GridConfig.initialTiles` was added: a **scripted, deterministic
+scenario affordance mirroring the existing `GridConfig.moves`** — explicitly **NOT a game mechanic**
+(no rule says a battlefield starts with tiles) and labelled as such in the type. Each entry creates a
+tile exactly as generation would (elements, level, initial duration, version, optional `generatedBy`).
+Re-running the same mutation now **fails** the end-to-end test, so the wiring is genuinely covered.
+Consequently `TILE_INITIAL_ROUNDS`/`TILE_RESET_ROUNDS` moved to `model/grid.ts` (re-exported by
+`engine/tiles.ts`) to avoid a `grid → tiles` import cycle.
+
+**Choices:**
+1. **Data table in `data/`, not the engine** — the rules are generic; *what a Burn tile debuffs you
+   with* is content. Keeps the CN-name risk (§7 decision 4) in data.
+2. **`pendingStatusIds` rather than silent omission** — the gap is recorded where the data lives.
+3. **Applier = the tile's generator**, resolved only to a real allied unit (no invented ATK).
+4. **One application per distinct tile effect** — a 3×3 boss straddling nine same-type tiles applies
+   once, not nine times.
+5. **`initialTiles` is a test/scenario affordance**, stated plainly in its doc so no future reader
+   mistakes it for a mechanic.
+
+**NOT built (recorded gaps, not oversights):** **trigger (a)** on-generation damage (needs the
+damage-application side of generation, and the fusion tiles that use it are unrecorded); **trigger
+(c)** *"for every 3 times they take Burn damage"* (needs a Burn-damage event stream and its counter);
+the **9 undefined statuses** (**T11**); every **fusion tile's** applied-status set; and the *"applies
+Burn weakness"* clause of every tile (**T10** — `weaknessElements` is immutable today).
+
+**Tests:** `src/test/tile-triggers.test.ts` (23) — the version targeting rule (allied/enemy/neutral
+against both sides); the data table's keying, order-insensitivity and per-level durations; the pending
+statuses are genuinely undefined while every `applies` entry resolves in the registry; unrecorded
+tiles apply nothing; trigger (b) end-to-end on the dummy; the 2-round duration; TILE provenance; a
+unit off-tile; allied-does-not-debuff-ally vs enemy-does; neutral affecting both; **footprint-aware**
+firing from a non-center footprint tile; **single application** across nine same-type tiles;
+unrecorded-tile inertness; **an end-to-end simulation** (dummy stands on a seeded Burn tile, Overburn
+damage appears as status ticks — the test that covers the WIRING); a no-tiles control; tile
+**tick/expiry** across a 6-turn run; and a scope guard for (a)/(c). **Mutation checks:** trigger wiring
+removed → **1 failure** (the end-to-end test — this is the check that previously passed silently);
+neutral targeting neutered → **2 failures**; both reverted.
+
+**Evidence status:** the clause is `[SOURCE]` (community guide, level 5) / **Not Tested**. Engine
+**903 pass / 0 fail**; CLI byte-identical (14,581 / 7 actions).
+
+**Next:** T9 / M9 (tile-gated effects), then T11 (the 9 statuses, which unblocks (a)/(c) and the fusion
+tiles' applied sets).
