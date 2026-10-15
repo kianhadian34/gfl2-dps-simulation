@@ -82,7 +82,7 @@ These are the items to go over one by one.
 | **M6** | **Versioning** — Allied / Enemy / Neutral, set by the last generator. **✅ DONE (T6) — see §10.** | Determines WHO a tile affects |
 | **M7** | **Polyphase Fusion** — two fusible elements → fusion tile; priority over base; not overwritten by a third element; either element levels it; fusing onto an upgraded tile starts at that level. **✅ DONE — MERGED INTO T5 (project owner, 2026) — see §10.** | The most intricate rule set |
 | **M8** | **Tile triggers** — (a) on generation, (b) "units that **remain on the area after ending their action**", (c) "**for every 3 times** they take Burn damage". **(b) ✅ DONE (T8); (a) and (c) NOT built — see §10.** | The tile rules are entirely trigger-driven |
-| **M9** | **Tile-gated effects** — FK5 *"while on a Burn tile, damage taken −20%"*; Perception Block *"immune to debuffs inflicted by Burn tiles"* | Needs M1 + M2 |
+| **M9** | **Tile-gated effects** — FK5 *"while on a Burn tile, damage taken −20%"*; Perception Block *"immune to debuffs inflicted by Burn tiles"*. **✅ DONE (T9) — the "while on a tile" query + BOTH gate shapes; Vector's VALUES wait on B4. See §10.** | Needs M1 + M2 |
 | **M10** | **Runtime weakness application** — tiles *"apply Burn weakness"*, but `weaknessElements` is immutable today | Changes the damage path |
 | **M11** | **The 9 missing statuses** — **investigated (T11): all nine are now DEFINED in the source; 3 are expressible and defined, 6 are blocked on MISSING MECHANICS (not evidence).** | "Applies Overburn + Conflagration" cannot be expressed |
 | **M12** | **Vector's clauses end-to-end** — FK1, FK5, Perception Block L1/V5, Overheat Combustion V5, Smolder, Searing Finale | The payoff |
@@ -152,7 +152,7 @@ is **vocabulary or mechanism only** unless stated. Sizes are indicative.
 | **T6** | Versioning (Allied / Enemy / Neutral): named `TileVersion` + `tileVersionFor` deriving the version from the generator's SIDE (`placements` → allied, `enemyUnits` → enemy), with an explicit override for a non-unit (terrain) generator. **✅ DONE 2026 — see §10.** | M6 | ✅ RESOLVED — derive from the generator's side, keeping the explicit override (owner decision 9). What a version DOES is T8/T9 |
 | **T7** | ~~Polyphase Fusion~~ **ABSORBED INTO T5** (project owner, 2026): the upgrade and fusion rules share one core and one call site, so splitting them would have meant writing the addition rule twice. Nothing of its own remains. | — | — |
 | **T8** | The three tile triggers. **Trigger (b) — "remain on the area after ending their action" — ✅ DONE 2026 (see §10); (a) on-generation damage and (c) the every-3-Burn-hits counter are NOT built and are recorded gaps.** | M8 | ✅ RESOLVED for (b): scope = data-driven mechanism; the counter (c) is per-UNIT on the unit's own state (owner decision 10) — deferred with (c) itself |
-| **T9** | Tile-gated effects: "while on a tile" query + gates (FK5 −20%, Burn-tile immunity). | M9 | — |
+| **T9** | Tile-gated effects: the "while on a tile" query (`tileElementsUnderOccupant`) + both gate shapes — FK5's `KeyDef.damageReductionWhileOnTile` and the `PassiveEffect { kind: "tile_debuff_immunity" }`. **✅ DONE 2026 — see §10.** | M9 | ✅ RESOLVED — mechanism now, Vector's values wait on her registration (B4); owner decision 13 |
 | **T10** | Runtime weakness application (tile-applied Burn weakness). | M10 | **Mutate `weaknessElements` or compute at hit time?** (see §7) |
 | **T11** | The 9 missing tile-effect statuses. **✅ PARTIALLY DONE 2026 — see §10.** The three the engine can express **without inventing a mechanic** are defined (Conflagration, Combustion, Combustion II), which **empties the Burn tile's `pendingStatusIds`**. The other six are **blocked on missing mechanics**, each recorded with its exact block. | M11 | ✅ RESOLVED — do NOT invent mechanics to force them; define what the engine supports and record the rest (owner decision 12) |
 | **T12** | Vector's clauses end-to-end (FK1, FK5, PB L1/V5, OC V5, Smolder, Searing Finale). | M12 | Depends on T1–T11 |
@@ -240,6 +240,15 @@ per-status if needed.
     (a denial variant that also blocks BASIC attacks) would each be a new engine feature with its own
     semantics, and Meltdown needs an incoming-skill-type gate the engine deliberately lacks. These are
     engine-capability gaps, **not** evidence gaps — so re-investigation will not unblock them.
+
+13. **T9 — whose data, and where do the two gates live?** Both T9 clauses are **Vector's** (FK5 is a
+    Fixed Key; the immunity is a Perception Block passive), but **Vector is not registered** (backlog
+    B4) and a partial registration would approximate her kit — which the project rules forbid.
+    **✅ DECIDED 2026 (project owner):** build the **MECHANISM** (the *"while on a tile"* query plus
+    **both** gate shapes) and exercise it with **fixtures**; **Vector's VALUES wait on B4**. Shapes:
+    FK5's reduction goes on a **new `KeyDef` field** (`damageReductionWhileOnTile`), following the
+    FK2/FK3/FK4/FK6 precedent of one explicit key field per key; the immunity goes on a
+    **`PassiveEffect` kind** (`tile_debuff_immunity`), matching that it IS a passive.
 
 ---
 
@@ -747,3 +756,62 @@ provenance than the guide's prose, but still not our own in-game observation. En
 
 **Next:** T9 / M9 (tile-gated effects) or T10 (runtime weakness) — both independent. The six blocked
 statuses need **engine mechanics**, so they are a mechanism backlog, not a re-investigation task.
+
+### T9 / M9 — tile-gated effects — **DONE 2026** (mechanism; Vector's values wait on B4)
+
+**Scope (owner decision 13).** Both T9 clauses are **Vector's** — FK5 is a Fixed Key, the immunity is a
+Perception Block passive — and **Vector is not registered** (backlog B4). A partial registration would
+approximate her kit, which the rules forbid. So T9 ships the **MECHANISM** and exercises it with
+**fixtures**; her VALUES land with B4.
+
+**Delivered:**
+- **`tileElementsUnderOccupant(grid, occ)`** (`engine/grid.ts`) — the *"while on a tile"* query: which
+  tile ELEMENTS an occupant stands on. Reuses T2's footprint-aware `tilesOccupiedBy`, so a 3×3 boss
+  reports the union across its tiles. **Deliberately VERSION-AGNOSTIC** — it answers *"what is
+  underfoot"*, not *"is this unit being affected"*; version targeting stays at the application site
+  (`tileAppliesToUnit`). Folding the two together would make every future *"while on"* clause
+  side-dependent.
+- **`hasTileDebuffImmunity(unit, tileElements)`** (`engine/tiles.ts`) — the **source-property** gate
+  for Perception Block Lv.1 clause 1, reading a new **`PassiveEffect { kind: "tile_debuff_immunity";
+  elements }`**. Consulted in `applyTileEffectsOnActionEnd` **after** the version gate, so it only ever
+  blocks a tile that would have debuffed the holder.
+- **`keyTileTakenReduction(unit, tileElements)`** (`engine/tiles.ts`) — FK5's taken-side reduction,
+  reading a new **`KeyDef.damageReductionWhileOnTile { value, elements }`**, resolved through the
+  established **equipped-key** pattern and multiplied into the **existing** `red` term of the taken
+  chain (no separate bucket). Wired at the one call site (`targetPassiveTakenMods`).
+
+**Choices:**
+1. **Two different shapes, because they are two different things.** A KEY's effect belongs in key data
+   (one explicit field per key — the FK2/FK3/FK4/FK6 precedent), and an IMMUNITY that IS a passive
+   belongs on `PassiveEffect`. The `displacementImmunityWhenStatuses` idiom was NOT reused: that gate
+   is *holder-status-conditioned*, whereas this one is **source-conditioned** (the debuff came from a
+   tile), so it is enforced at the tile-application site instead.
+2. **Both gates are DATA** — element lists and magnitudes are declared, never hardcoded, so no element
+   or value is assumed.
+3. **Immunity is declared, never assumed** — no passive, no tile underfoot, or an empty element list
+   ⇒ not immune.
+
+**HONEST LIMIT — FK5's gate is INERT end to end in the MVP** (stated in code + docs, not hidden):
+`dealDamageHit` only ever targets the training **dummy** (which carries no Fixed Keys), and the one
+path where a **doll** takes damage (`applyReactiveDamage`) subtracts raw HP **without** consulting the
+taken-reduction chain. It therefore becomes live the moment a doll can be a damage target — the same
+honest state as skill denial vs bosses (`research.md` §3.31). It is tested **directly** instead.
+The **immunity IS observable**, because the dummy can carry the passive and tiles can debuff it — and
+that path is covered end to end.
+
+**Tests:** `src/test/tile-gated-effects.test.ts` (22) — the query's basics, empty answers, footprint
+union, de-duplication, **version-agnosticism** and purity; the immunity predicate (element match,
+ANY-match, list-as-set, declared-not-assumed cases); **the immunity END TO END** (an immune holder
+takes nothing from a neutral Burn tile that DOES debuff a non-immune holder — the paired control);
+element-specificity; the gate-ordering guard (an allied tile is skipped by VERSION, not credited to the
+immunity); FK5's ×0.8; off-tile / wrong-element / unequipped cases; magnitude and element lists as DATA;
+multiple keys multiplying; and guards that **no production data references either gate yet** and that
+**Vector remains unregistered** (B4 owns her values). **Mutation checks:** immunity never matching →
+**1 failure** (the end-to-end test); FK5's sign flipped (reduce → add) → **4 failures**; both reverted.
+
+**Evidence status:** both clauses are `[SOURCE]` (Vector's kit record, from the community guide) /
+**Not Tested**. Engine **941 pass / 0 fail**; CLI byte-identical (14,581 / 7 actions) — **no behaviour
+change**, as expected for a mechanism whose only consumer is unregistered.
+
+**Next:** T10 / M10 (runtime weakness application), then T12 (Vector's clauses end-to-end, which needs
+her registered).

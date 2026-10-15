@@ -30,6 +30,7 @@ import {
   type TileOccupant,
   type UnitPlacement,
 } from "../model/grid.js";
+import type { Element } from "../model/types.js";
 
 export interface GridState {
   size: number;
@@ -164,6 +165,30 @@ export function tilesOccupiedBy(state: GridState, occ: TileOccupant): GridCoord[
   }
   const enemy = state.enemyUnits.find((e) => e.unitId === occ.unitId);
   return enemy ? [enemy.coord] : [];
+}
+
+/**
+ * THE TILE ELEMENTS A UNIT STANDS ON (2026, T9/M9) — the query behind every *"while on a X tile"*
+ * clause: FK5's *"while on a Burn tile, damage taken is reduced by 20%"* and Perception Block's
+ * *"immune to negative effects inflicted by Burn tiles"*.
+ *
+ * **VERSION-AGNOSTIC BY DESIGN.** It answers *"which tile ELEMENTS is this occupant standing on"*,
+ * NOT *"is this occupant being affected"*. Version targeting (*"allied tiles debuff enemies"*) is a
+ * property of APPLYING effects and stays at the application site (`tileAppliesToUnit`), where the
+ * caller already knows the two sides. Folding them together here would make the query's answer
+ * depend on side, and every future *"while on"* clause would inherit that assumption.
+ *
+ * Element order follows the tiles' own declaration; duplicates collapse (a boss on a 3×3 footprint
+ * reports the UNION across its tiles). Pure — reads the tile map, mutates nothing.
+ */
+export function tileElementsUnderOccupant(state: GridState, occ: TileOccupant): Element[] {
+  const seen = new Set<Element>();
+  for (const coord of tilesOccupiedBy(state, occ)) {
+    const effect = state.tiles.get(tileKey(coord.x, coord.y));
+    if (!effect) continue;
+    for (const e of effect.elements) seen.add(e);
+  }
+  return [...seen];
 }
 
 /**

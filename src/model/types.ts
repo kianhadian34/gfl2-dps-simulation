@@ -269,8 +269,7 @@ export type PassiveEffect =
        * Qiongjiu trigger, VALIDATED in-game 2026). The acting unit itself is EXCLUDED.
        */
       trigger: "onAllySingleTargetHit";
-    }
-  | {
+    }  | {
       kind: "support_attack";
       skillId: string;
       perRoundMax: number;
@@ -301,6 +300,25 @@ export type PassiveEffect =
       statusId: string;
       durationRounds?: number;
       stacks?: number;
+    }
+  | {
+      /**
+       * TILE-DEBUFF IMMUNITY (2026, T9/M9) — Vector's Perception Block Lv.1 clause 1: *"Immune to
+       * negative effects inflicted by **Burn tiles**."*
+       *
+       * A **SOURCE-property** gate: a status whose inflicting source is a **tile** carrying any of
+       * `elements` is NOT applied to the holder. Distinct from the holder-property immunity idiom
+       * (`KeyDef.displacementImmunityWhenStatuses`, which depends on the holder's own ACTIVE
+       * statuses) — this one depends on **where the debuff came from**, so it is enforced at the
+       * tile-application site (`applyTileEffectsOnActionEnd`), not by the generic status machinery.
+       *
+       * It only bites against tiles that would actually debuff the holder. An **allied** tile
+       * targets ENEMIES, so in normal play (there is no enemy tile generator) this is unreachable;
+       * it is exercised by the scripted `GridConfig.initialTiles` seed with `version: "enemy"`.
+       * The element list is DATA — no element is assumed or hardcoded.
+       */
+      kind: "tile_debuff_immunity";
+      elements: Element[];
     }
   | {
       /**
@@ -467,6 +485,23 @@ export interface KeyDef {
    * no enemy displacement applier; this gate is where one would be checked (boundary).
    */
   displacementImmunityWhenStatuses?: string[];
+  /**
+   * Fixed Key 5: Unfortunate Jinx (Vector's FK5) — *"While on a **Burn tile**, damage taken is
+   * reduced by **20%**."*
+   *
+   * A **taken-side** reduction gated on the **holder's POSITION**: the holder must be standing on a
+   * tile whose element set intersects `elements`. `value` is the reduction FRACTION (−20% ⇒ `0.2`),
+   * the same convention as the `damage_reduction` status effect, and it enters the **same
+   * multiplicative taken chain** — no separate bucket (matching every other taken reduction).
+   *
+   * **INERT IN THE MVP (2026, stated rather than hidden).** The gate is implemented from the
+   * confirmed clause, but nothing can exercise it end to end: `dealDamageHit` only ever targets the
+   * training DUMMY (which carries no Fixed Keys), and the only path on which a DOLL takes damage
+   * (`applyReactiveDamage`) subtracts raw HP **without** consulting the taken-reduction chain. So it
+   * becomes live the moment a doll can be a damage target — the same honest state as skill denial vs
+   * bosses (`research.md` §3.31). It IS testable directly via `keyTileTakenReduction`.
+   */
+  damageReductionWhileOnTile?: { value: number; elements: Element[] };
   /**
    * Expansion Key — Ruined Gem (VALIDATED in-game 2026): while equipped, the holder's SUPPORT
    * ACTION resolves with this EFFECTIVE element instead of the base skill's element. The base

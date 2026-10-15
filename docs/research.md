@@ -1039,13 +1039,18 @@ points**.
   guide.
 - **Not implemented (2026 status).** The engine now HAS a tile subsystem: **T1** storage, **T2** the
   unit-on-tile query, **T3** generation, **T4** the lifecycle clock (wired into the turn loop), **T5**
-  Tile Upgrade + Polyphase Fusion, **T6** versioning and **T8 trigger (b)** — *"applies … to units that
+  Tile Upgrade + Polyphase Fusion, **T6** versioning, **T8 trigger (b)** — *"applies … to units that
   remain on the area after ending their action"* — with a tile-effect DATA table
-  (`src/data/tile-effects.ts`). **Still NOT implemented:** triggers (a) on-generation damage and (c)
-  the every-3-Burn-hits counter; tile-gated effects ("while on a tile"); runtime weakness application
-  ("applies Burn weakness"); and **9 of the 10 named tile-effect statuses** — only `overburn` exists,
-  so the table records the others as `pendingStatusIds`. **The engine design and slice plan for all of
-  it are owned by `docs/tiles.md`** (gap inventory M1–M12, slices T1–T12, and the open decisions).
+  (`src/data/tile-effects.ts`), **T9 tile-gated effects** (the *"while on a tile"* query
+  `tileElementsUnderOccupant`, plus both gate shapes: `KeyDef.damageReductionWhileOnTile` for FK5's
+  *"while on a Burn tile, damage taken −20%"*, and the `PassiveEffect { kind: "tile_debuff_immunity" }`
+  for *"immune to negative effects inflicted by Burn tiles"*), and **T11** the tile-effect statuses
+  (3 of the 9 defined; the other 6 are blocked on **missing engine mechanics**, not evidence).
+  **Still NOT implemented:** triggers (a) on-generation damage and (c)
+  the every-3-Burn-hits counter; runtime weakness application
+  ("applies Burn weakness"); and the six blocked tile-effect statuses. **The engine design and slice
+  plan for all of it are owned by `docs/tiles.md`** (gap inventory M1–M12, slices T1–T12, and the open
+  decisions).
 - **Tile duration — RULE, not a conflict.** `TileEffect` carries **two** duration values because
   the game uses two for **two different events**: `initialRounds` (2) when a tile is FIRST created
   at a position, and `resetRounds` (3) for every SUBSEQUENT addition there (which also levels the

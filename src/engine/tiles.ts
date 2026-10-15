@@ -3,7 +3,7 @@ import { applyStatus } from "./statuses.js";
 import { tileEffectsFor, tileEffectKey } from "../data/tile-effects.js";
 import type { AreaShape, GridCoord, TileEffect, TileOccupant, TileVersion } from "../model/grid.js";
 import type { SimulationState, UnitState } from "./state.js";
-import type { Element } from "../model/types.js";
+import type { Element, KeyDef } from "../model/types.js";
 
 /**
  * ELEMENTAL TILES — runtime operations (2026, slices T3+).
@@ -323,6 +323,62 @@ export function tileEffectSource(effect: TileEffect): string {
 }
 
 /**
+ * TILE-DEBUFF IMMUNITY (2026, T9/M9) — true when `unit` declares immunity to negative effects
+ * inflicted by a tile carrying ANY of `tileElements`. Vector's Perception Block Lv.1 clause 1:
+ * *"Immune to negative effects inflicted by Burn tiles."*
+ *
+ * Reads the unit's PASSIVES (`tile_debuff_immunity`) — a **SOURCE-property** gate, unlike the
+ * holder-status-conditioned `displacementImmunityWhenStatuses` idiom. Pure predicate; exported so
+ * the gate is testable directly and so a caller can ask the question without applying anything.
+ *
+ * An EMPTY element list, or a unit with no such passive, is not immune — immunity is declared, never
+ * assumed (the same "never invent" rule the rest of the subsystem follows).
+ */
+export function hasTileDebuffImmunity(unit: UnitState, tileElements: Element[]): boolean {
+  if (tileElements.length === 0) return false;
+  return unit.passives.some(
+    (p) => p.kind === "tile_debuff_immunity" && p.elements.some((e) => tileElements.includes(e)),
+  );
+}
+
+/**
+ * FK5's TAKEN-SIDE TILE REDUCTION (2026, T9/M9) — the multiplicative factor a unit's EQUIPPED FIXED
+ * KEYS grant for standing on the tiles whose elements are `tileElements`. Vector's FK5: *"While on a
+ * Burn tile, damage taken is reduced by 20%"* ⇒ `0.8`.
+ *
+ * The result multiplies into the EXISTING `red` term of the taken-reduction chain (never a separate
+ * bucket), matching every other taken reduction. `value` is the reduction FRACTION (−20% ⇒ `0.2`),
+ * the same convention as the `damage_reduction` status effect.
+ *
+ * A key applies only when it is EQUIPPED (`unit.equippedKeys` contains its id) — the established
+ * Fixed-Key resolution pattern — and only when the declared `elements` intersect the tiles actually
+ * stood on. Multiple qualifying keys multiply in declaration order (no cap is invented).
+ *
+ * Lives here, beside the other tile-gated helpers, because the gate is a **tile** query even though
+ * its data is key data.
+ *
+ * **INERT IN THE MVP** (see `KeyDef.damageReductionWhileOnTile`): `dealDamageHit` targets only the
+ * dummy, which has no Fixed Keys, and the only doll-damage path bypasses this chain. Pure and
+ * directly testable regardless.
+ */
+export function keyTileTakenReduction(
+  unit: UnitState,
+  tileElements: Element[],
+): number {
+  let red = 1;
+  if (tileElements.length === 0) return red;
+  const keys: KeyDef[] = unit.def?.fixedKeys ?? [];
+  for (const k of keys) {
+    const spec = k.damageReductionWhileOnTile;
+    if (!spec) continue;
+    if (!(unit.equippedKeys ?? []).includes(k.id)) continue;
+    if (!spec.elements.some((e) => tileElements.includes(e))) continue;
+    red *= 1 - spec.value;
+  }
+  return red;
+}
+
+/**
  * TILE TRIGGER (b) — *"applies … to enemy units that **remain on the area after ending their
  * action**"* (§3.23.3). Call at the END of a unit's own action: it applies the effects of every tile
  * the unit is standing on, subject to the tile's version targeting rule above.
@@ -355,6 +411,10 @@ export function applyTileEffectsOnActionEnd(
     const effect = grid.tiles.get(tileKey(coord.x, coord.y));
     if (!effect) continue;
     if (!tileAppliesToUnit(effect.version, isAlly)) continue;
+    // TILE-DEBUFF IMMUNITY (T9/M9): a holder that declares immunity to debuffs from tiles carrying
+    // any of these elements takes NOTHING from this tile (Vector's Perception Block Lv.1). Checked
+    // AFTER the version gate, so it only ever blocks a tile that WOULD have debuffed the holder.
+    if (hasTileDebuffImmunity(unit, effect.elements)) continue;
     // One application per distinct tile EFFECT: a 3×3 boss can straddle the same tile type several
     // times, and re-applying would only refresh a duration that is already correct.
     const effectKey = tileEffectKey(effect.elements, effect.level);

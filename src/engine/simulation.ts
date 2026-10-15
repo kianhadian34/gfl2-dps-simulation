@@ -5,7 +5,7 @@ import type { Registry } from "../data/registry.js";
 import { rollHit } from "./damage.js";
 import { cooldownRemaining, setCooldown, tickCooldowns } from "./cooldowns.js";
 import { drainAllConfectance, gainConfectance, spendConfectance } from "./resources.js";
-import { allyIdsInArea, attackHeightEffect, bossFootprintTiles, legalDestinations, moveCost, resolveCardinalRayTarget, resolveCardinalRayTargets, tileKey, unitDistance, type GridState } from "./grid.js";
+import { allyIdsInArea, attackHeightEffect, bossFootprintTiles, legalDestinations, moveCost, resolveCardinalRayTarget, resolveCardinalRayTargets, tileElementsUnderOccupant, tileKey, unitDistance, type GridState } from "./grid.js";
 import {
   additiveDealtBonus,
   additiveTakenBonus,
@@ -23,7 +23,7 @@ import { remolderCritDmgBonus, remolderFirstTargetStability, remolderHealBonus, 
 import { attachmentSetDealtBonus } from "./attachment-sets.js";
 import { apexDealtBonus } from "./apex.js";
 import { applyStabilityDamage, endOfRoundStability } from "./stability.js";
-import { applyTileEffectsOnActionEnd, tickTiles } from "./tiles.js";
+import { applyTileEffectsOnActionEnd, keyTileTakenReduction, tickTiles } from "./tiles.js";
 import { abilitySourceLabel, createState, DEFAULT_CONFIG, fortificationV, passiveSourceLabel, supportAttackQuota, weaponCalibration, type EffectiveStatusDef, type SimulationState, type UnitState } from "./state.js";
 import type { ActiveStatus } from "../model/runtime.js";
 import type { AbilitySlot, CharacterDef } from "../model/types.js";
@@ -157,7 +157,7 @@ interface TakenMods {
  * state, so a stability-breaking attack is still reduced while stability > 0 at
  * evaluation time — no special break-hit rule is invented.
  */
-function targetPassiveTakenMods(target: UnitState): TakenMods {
+function targetPassiveTakenMods(target: UnitState, tileElements: Element[] = []): TakenMods {
   let additive = 0;
   let multiplicative = 1;
   for (const e of target.passives) {
@@ -167,6 +167,9 @@ function targetPassiveTakenMods(target: UnitState): TakenMods {
     if (e.mode === "additive") additive += e.value;
     else multiplicative *= e.value;
   }
+  // FK5 (T9/M9): a FIXED-KEY taken reduction while the holder stands on a matching tile. Enters the
+  // SAME multiplicative taken chain (no separate bucket). INERT in the MVP — see the KeyDef field.
+  multiplicative *= keyTileTakenReduction(target, tileElements);
   return { additive, multiplicative };
 }
 
@@ -570,7 +573,10 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
     expBonusTerm +
     weaponDealtTerm +
     imprintBonus;
-  const targetMods = targetPassiveTakenMods(dummy); // U5 boss/target stability-conditional passives
+  const targetMods = targetPassiveTakenMods(
+    dummy,
+    state.grid ? tileElementsUnderOccupant(state.grid, { kind: "boss" }) : [],
+  ); // U5 boss/target stability-conditional passives + FK5's tile-gated key reduction (T9)
   const addTaken =
     additiveTakenBonus(dummy, state.statusRegistry, element, { isAoE, isBoss: dummy.isBoss, distance: attackDist, enemiesWithin3: enemiesNear }) + targetMods.additive;
   // Effect provenance (2026): deduplicated, human-readable sources of the modifiers that
