@@ -206,12 +206,12 @@ summary alone.
 | Item | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | `4c63337d23833979ab18d071068168af7a8abc07` |
-| `origin/main` | `4c63337d23833979ab18d071068168af7a8abc07` (in sync) |
-| Working tree | in progress: **Tiles T2/M2 — the unit-on-tile query** — **uncommitted** (§7.1 item 25) |
+| HEAD | `1799d32234f2fa3bc7e6b78a2ea3a28a754c0b1c` |
+| `origin/main` | `1799d32234f2fa3bc7e6b78a2ea3a28a754c0b1c` (in sync) |
+| Working tree | in progress: **Tiles T3/M3 — tile generation + area targeting** — **uncommitted** (§7.1 item 26) |
 | Untracked | `.reasonix/` (host-managed session artifacts — **never stage**) |
 | Engine build | `npm run build` → exit 0 |
-| Engine tests | **802 pass · 0 fail · 0 skipped** across **107 test files** |
+| Engine tests | **820 pass · 0 fail · 0 skipped** across **108 test files** |
 | UI typecheck | exit 0 |
 | UI tests | **286 pass · 0 fail** |
 | UI build | exit 0 |
@@ -522,7 +522,8 @@ scope is invented or expanded.
 | Area/radius targeting (`ally_area` + `AreaShape`) | `model/grid.ts`, `model/types.ts`, `engine/grid.ts`, `engine/simulation.ts` | yes | **[SOURCE]** (area clauses) + **[GAME]** (no-grid honest-error rule, user-provided 2026-10-10) + `[TEST]` (18 tests) | `target: "ally_area"` + `allyArea { shape, radius }`: the PLACED allies inside an area around the actor. Two shapes — `manhattan` (diamond) and `square` (Chebyshev 3×3) — because the game genuinely uses both; **which one an effect uses follows its wording (numeric ⇒ diamond, `NxN` ⇒ square), resolved 2026 from the game's own range-map targeting diagrams** (`docs/research.md` §3.32); strict state Not Tested pending our own in-game check. No grid ⇒ honest error. Recipient resolution is ONE shared helper across both status paths. |
 | Determinism / seeded RNG | `engine/rng.ts` | yes | engine guarantee | `determinism.test.ts` |
 | Effect provenance | `simulation.ts`, `state.ts`, `model/runtime.ts` | yes | **Validated** | `effectSources` + `effectSourceRefs` |
-| Grid / positioning (core) | `engine/grid.ts`, `docs/grid.md` | yes (core) | **Validated** (core rules only) | height interaction Not Tested; **elemental tiles: storage + the unit-on-tile query exist (T1/T2), the RULES do NOT** (Burn family documented in `docs/research.md` §3.23; plan in `docs/tiles.md`) |
+| Grid / positioning (core) | `engine/grid.ts`, `docs/grid.md` | yes (core) | **Validated** (core rules only) | height interaction Not Tested |
+| Elemental tiles (PARTIAL) | `engine/tiles.ts`, `model/grid.ts`, `engine/grid.ts`, `docs/tiles.md` | partial | **[SOURCE]** — rules are a community guide; the feature's EXISTENCE on global is confirmed (level 1) | T1/T2/T3 built — storage, unit-on-tile query, generation (`generateTiles`). **Not built:** lifecycle, upgrade, versioning, fusion, triggers, tile-gated effects, runtime weakness (T4–T12; `docs/tiles.md`). Burn family in `docs/research.md` §3.23 |
 | Turn loop / round order | `engine/simulation.ts` | yes | engine guarantee | `roundOrder` full permutation |
 
 ### 5.2 Character, stats and permanent sources
@@ -803,7 +804,8 @@ workflow and owning documents.
 | 22 | **V4 slice 12 — FK4 secondary damage counted in totals (BUG FIX) + `enemyUnits` declared props.** Investigating the `enemyUnits` HP question surfaced **two** gaps, not one. **(a) A real reporting bug:** FK4's secondary (line) damage was computed and logged but **never accumulated**, so `totals.damage`/`byCharacter`/`bySource` **silently under-reported every FK4 line hit** (measured: 0/1/2 line enemies ⇒ totals stuck at 1003 while logged secondaries were 0/427/854). **No test caught it** — FK4 tests asserted per-event `finalDamage` but never `totals`. Fixed by returning the secondary total from `guideLineSecondaryHits` and folding each hit into `state.accum` — deliberately **without an extra action** (same cast = 1 action) and under the **same source bucket** as the primary. Verified: 0→1003, 1→1430, 2→1857; actions stay 1; `bySource.active` = 609+854. **Mutation-checked** — the two new regression tests FAIL without the fix and pass with it. **(b) `enemyUnits` are props, not combatants** (user decision): the never-read `hp`/`stability`/`weaknessTags` fields were **removed** from `GridConfig.enemyUnits` (and the UI mirror), and the stale doc comment corrected (they DO carry statuses). Making them real combatants stays deferred — the same blocker as G14. | `src/engine/simulation.ts`, `src/model/grid.ts`, `ui/src/shared/engine-types.ts`, `src/test/fk4-point-of-vulnerability.test.ts`, `src/test/remolder-bulwark.test.ts`, `docs/research.md` §3.34 (new), `docs/validation-checklist.md` row 42, `docs/dolls/vector.md` (G15), `docs/project.md` | engine **772 pass / 0 fail** (+2 new); UI typecheck/tests (286)/build green; **CLI output byte-identical** (14,581 / 7 actions — no grid ⇒ no FK4 line); `git diff --check` clean; mutation check confirms the tests pin the bug | uncommitted (§10) |
 | 23 | **Tiles T1/M1 — tile identity + storage (IMPLEMENTED + TESTED).** First slice of the tile system, from the plan in the new **`docs/tiles.md`** (gap inventory M1–M12, 12 slices T1–T12). Delivered **storage and identity ONLY**: the `TileEffect` type + `GridState.tiles: Map<string, TileEffect>`, initialised empty — no generation, upgrade, fusion, triggers or duration ticking (those are T3+). Sited on the **runtime** `GridState`, not `GridConfig` (which holds STATIC terrain), keyed by the existing `tileKey`, type in `model/grid.ts`. **Three decisions (user, 2026-10-10):** (1) **full model** (not Vector-minimal); (2) **TWO duration values** — `initialRounds` (2) for the FIRST tile created at a position and `resetRounds` (3) for every SUBSEQUENT addition there; **at the time this was recorded as a source conflict, but the project owner CLARIFIED it in item 24 as a RULE — two values for two different events** (see item 24); (3) **`elements` as a LIST** — forced by *"fusion tiles are not overwritten by a third element"*, so "last element wins" cannot express it. Verified no UI change is needed (the UI mirrors only `GridConfigView`, never `GridState`). Tests include a **scope guard asserting no tile-rule functions exist yet**. | `src/model/grid.ts`, `src/engine/grid.ts`, `src/test/tiles.test.ts` (new), `docs/tiles.md` (new: plan + §10 record), `docs/research.md` §3.23.6, `docs/grid.md`, `docs/project.md` §1.5 | engine **783 pass / 0 fail** (+11 new); 106 src == 106 dist; UI typecheck/tests (286)/build green; **CLI output byte-identical** (14,581 / 7 actions); `git diff --check` clean | `c2d66ad` (pushed) |
 | 24 | **Tile duration RULE clarified — the "conflict" was not a conflict (docs/model/tests; no behaviour change).** The project owner supplied the authoritative rule: **the FIRST tile created at a position uses its initial generation duration (2 turns); whenever ANOTHER tile effect is added at that SAME position the tile upgrades one level (up to Level 3) and its duration RESETS to 3 turns; further additions at Level 3 do NOT level it but STILL reset its duration to 3.** So the two figures are **two values for two different EVENTS**, not competing readings — which is exactly why `TileEffect` keeps them as two fields and why they must never be collapsed. **No model change was needed** (the two fields were already right); this slice corrected the *documentation*, which had wrongly called it an unresolved source conflict, and strengthened the tests to pin the RULE. | `src/model/grid.ts` (`TileEffect` doc), `src/test/tiles.test.ts` (+1 test, wording), `docs/research.md` §3.23.1 (rule) + §3.23.6, `docs/tiles.md` (§5, §6, §7, §10), `docs/project.md` | engine **784 pass / 0 fail** (+1 new); UI typecheck/tests (286)/build green; **CLI output byte-identical** (14,581 / 7 actions); `git diff --check` clean | `4c63337` (pushed) |
-| 25 | **Tiles T2/M2 — the unit-on-tile query (IMPLEMENTED + TESTED; pure).** Second tile slice, from `docs/tiles.md` (gap M2). Adds the query every tile trigger/gate needs — "who is standing here" — covering all THREE occupant kinds in ONE API, because they live in three places: allies in `placements`/`allyTiles` (1×1), grid enemies in `enemyUnits[].coord` (1×1 line props), and the **boss/dummy in NEITHER** (`boss.center` + footprint) — so a `placements`-only lookup MISSES the dummy, and the dummy is the only enemy the MVP is observable against. New: `TileOccupant` (`{kind:"ally"\|"enemy"\|"boss"}`; identity only, no position; the boss has **no id**, since `BossPlacement` has none) + `occupantsOnTiles` (the primitive), `occupantsAtTile`, `occupantsInArea` (reuses `areaTiles`), `tilesOccupiedBy` (the reverse). **Choices:** (1) **footprint-aware** — the boss reports on EVERY footprint tile, matching `enemyTiles`; (2) **occupancy ≠ range origin** — occupancy spans the footprint while the range origin stays the **center** tile (`unitDistance`), kept explicitly apart; (3) `occupantsAtTile` returns an **array** so a malformed config (overlapping `enemyUnits`, which `buildGrid` does not reject) reports the truth instead of hiding an occupant behind an **invented precedence** — **no `buildGrid` validation was added** (T2 is a query slice). Whether a tile *effect* treats a non-center footprint tile as "standing" is **T8/T9's** question, flagged there, not decided here. | `src/model/grid.ts` (`TileOccupant`), `src/engine/grid.ts` (4 pure queries), `src/test/tile-occupancy.test.ts` (new, 18), `docs/tiles.md` (§4, §6, §10), `docs/grid.md` (new Occupancy section + corrected the stale "no per-tile effect storage" claim), `docs/project.md` | engine **802 pass / 0 fail** (+18 new); 107 src == 107 dist; UI typecheck/tests (286)/build green; **CLI output byte-identical** (14,581 / 7 actions); **mutation check** (boss treated as center-only) failed exactly 3 footprint tests, then reverted; `git diff --check` clean | uncommitted (§10) |
+| 25 | **Tiles T2/M2 — the unit-on-tile query (IMPLEMENTED + TESTED; pure).** Second tile slice, from `docs/tiles.md` (gap M2). Adds the query every tile trigger/gate needs — "who is standing here" — covering all THREE occupant kinds in ONE API, because they live in three places: allies in `placements`/`allyTiles` (1×1), grid enemies in `enemyUnits[].coord` (1×1 line props), and the **boss/dummy in NEITHER** (`boss.center` + footprint) — so a `placements`-only lookup MISSES the dummy, and the dummy is the only enemy the MVP is observable against. New: `TileOccupant` (`{kind:"ally"\|"enemy"\|"boss"}`; identity only, no position; the boss has **no id**, since `BossPlacement` has none) + `occupantsOnTiles` (the primitive), `occupantsAtTile`, `occupantsInArea` (reuses `areaTiles`), `tilesOccupiedBy` (the reverse). **Choices:** (1) **footprint-aware** — the boss reports on EVERY footprint tile, matching `enemyTiles`; (2) **occupancy ≠ range origin** — occupancy spans the footprint while the range origin stays the **center** tile (`unitDistance`), kept explicitly apart; (3) `occupantsAtTile` returns an **array** so a malformed config (overlapping `enemyUnits`, which `buildGrid` does not reject) reports the truth instead of hiding an occupant behind an **invented precedence** — **no `buildGrid` validation was added** (T2 is a query slice). Whether a tile *effect* treats a non-center footprint tile as "standing" is **T8/T9's** question, flagged there, not decided here. | `src/model/grid.ts` (`TileOccupant`), `src/engine/grid.ts` (4 pure queries), `src/test/tile-occupancy.test.ts` (new, 18), `docs/tiles.md` (§4, §6, §10), `docs/grid.md` (new Occupancy section + corrected the stale "no per-tile effect storage" claim), `docs/project.md` | engine **802 pass / 0 fail** (+18 new); 107 src == 107 dist; UI typecheck/tests (286)/build green; **CLI output byte-identical** (14,581 / 7 actions); **mutation check** (boss treated as center-only) failed exactly 3 footprint tests, then reverted; `git diff --check` clean | `1799d32` (pushed) |
+| 26 | **Tiles T3/M3 — tile generation + area targeting (IMPLEMENTED + TESTED).** Third tile slice. **First it resolved §7 decision 5** — the gate on all tile BEHAVIOUR: the guide said the feature was CN-only, so modelling it risked a G14-style deferral. **The project owner confirmed (2026, direct in-game evidence — source hierarchy LEVEL 1) that the tile feature IS live in global**, so T3+ is real implementation. (It confirms the feature EXISTS; every rule VALUE stays `[SOURCE]`/Not Tested, and the CN naming question — decision 4 — is untouched.) Delivered in a **NEW module `src/engine/tiles.ts`**, deliberately the tile counterpart of `stability.ts`: `model/grid.ts` owns the `TileEffect` value type, `engine/grid.ts` owns state + pure geometry, `engine/tiles.ts` owns the rules that CHANGE that state. Adds `TILE_INITIAL_ROUNDS = 2` / `TILE_RESET_ROUNDS = 3` / `TILE_BASE_LEVEL = 1`, `TileGenerationSpec`, and `generateTiles(state, spec)` → creates a tile on every in-bounds tile of the area, seeding the initial duration, and **returns the tiles it created**. **Choices:** (1) **a new module, not `grid.ts`** — `grid.ts`'s exports are pure, generation MUTATES `state.tiles`, and `stability.ts`/`cooldowns.ts`/`resources.ts` already set that pattern (side benefit: T1's `grid.js` scope guard stays green and meaningful); (2) **areas reuse `AreaShape`/`areaTiles` unchanged** — the shape stays DATA (numeric ⇒ diamond, `NxN` ⇒ square), so the [SOURCE] provenance is not laundered into an engine assumption; (3) **initial duration only** — generation writes `initialRounds` (2) and stores `resetRounds` (3) untouched for T5/T7; (4) **an occupied tile is left UNTOUCHED** — the *"another tile effect added → upgrade + reset"* clause is the **upgrade** slice (T5), so T3's "untouched" is the slice boundary made testable (**T5 will replace that expectation**); (5) **NO terrain filter** (no invention) — generation lands on blocked tiles and the boss footprint alike, and whether it *should* skip impassable terrain is unstated → new §7 **decision 6**, Not Tested; (6) **empty `elements` throws** (a tile's element set IS its identity; matches `buildGrid`'s validate-and-throw), and the element array is **copied** so a tile cannot alias a caller's array; (7) **`version` defaults to `"allied"`** (the only reachable version) but is overridable so T6 needs no signature change. | `src/engine/tiles.ts` (new), `src/test/tile-generation.test.ts` (new, 18), `docs/tiles.md` (§2 Risk 1, §3 retitle, §4, §6, §7 decisions 5/6, §10), `docs/research.md` §3.23 (CN-only → confirmed live on global), `docs/project.md` | engine **820 pass / 0 fail** (+18 new); 108 src == 108 dist; UI typecheck/tests (286)/build green; **CLI output byte-identical** (14,581 / 7 actions); **mutation check** (seed `resetRounds` as a new tile's duration; drop the occupied-tile guard) failed exactly the duration + boundary tests, then reverted; `git diff --check` clean | uncommitted (§10) |
 
 **Detail — the documentation-drift cleanup (`8d8ef61`):** the task and its outcome are also
 recorded here because future sessions should not re-fix them.
@@ -1006,12 +1008,14 @@ installers beyond plain Windows dev builds.
 
 ## 10. Next Action
 
-**The single most appropriate next action: scope Vector's remaining engine work with the user.** Her
-source record is complete, the **only data blocker (base stats) is resolved** (`[GAME]`: HP 1819 ·
-ATK 748 · DEF 569 · Stability 10 · Crit Rate 20% · Crit DMG 120% · Movement 6), **V2 is now
-IMPLEMENTED + TESTED**, and **V4's evidence is documented**. What remains
-(`docs/dolls/vector.md` §7 V3–V5) is **engine-scale work, not data entry**: Burn/Incineration tiles
-and the 8 undefined statuses plus the vocabulary they need.
+**The single most appropriate next action: continue the tile plan — slice T4 (tile lifecycle).**
+The user is directing the tile slices one at a time, and the long-standing gate on tile behaviour
+is now closed (§7 decision 5: the feature is confirmed live in global). Her source record is
+complete, the **only data blocker (base stats) is resolved** (`[GAME]`: HP 1819 · ATK 748 ·
+DEF 569 · Stability 10 · Crit Rate 20% · Crit DMG 120% · Movement 6), **V2 is**
+IMPLEMENTED + TESTED, and **V4's evidence is documented**. What remains
+(`docs/dolls/vector.md` §7 V3–V5) is **engine-scale work, not data entry**: the rest of the tile
+subsystem (T4–T12) and the undefined statuses plus the vocabulary they need.
 
 **V2 — DONE (engine capability).** The generic `turn_start_confectance_drain` mechanism is implemented
 and covered by 8 tests (`src/test/confectance-drain.test.ts`): a second extra-slot Confectance pool,
@@ -1019,16 +1023,18 @@ the turn-start drain, and a round-scoped ATK% folded into the existing in-combat
 **`confectanceMax` (U9 = 6) is unchanged** — pinned by a guard test. Only **Vector's own values** remain
 to be written as data on her passive.
 
-**V3 (tiles) is documented, and its FIRST TWO SLICES are built.** `docs/research.md` §3.23 records
-the Burn-family tile rules (base **Incineration → Flashover II → III**; fusions **Scalding Vapors**,
-**Venomfire**, **Smoldering Suspire**, CN-only **Crackling Flare**) from a community guide,
-`[SOURCE]`/`Not Tested`, with the effect names independently resolved; the **design + 12-slice plan**
-is `docs/tiles.md`. Implemented so far: **T1/M1** per-tile storage/identity (`GridState.tiles`,
-`TileEffect`, with the owner-clarified **two-duration rule**) and **T2/M2** the pure
-**unit-on-tile query** (`TileOccupant` + `occupantsAtTile`/`occupantsOnTiles`/`occupantsInArea`/
-`tilesOccupiedBy`). What remains is the BEHAVIOUR — generation, lifecycle, upgrade, fusion,
-versioning, triggers, tile-gated effects and runtime weakness (T3–T12) — which is why V3 is still
-an open implementation task.
+**V3 (tiles) — the first THREE slices are built, and the "is it real?" gate is CLOSED.**
+`docs/research.md` §3.23 records the Burn-family tile rules (base **Incineration → Flashover II →
+III**; fusions **Scalding Vapors**, **Venomfire**, **Smoldering Suspire**, CN-only **Crackling
+Flare**) from a community guide, `[SOURCE]`/Not Tested, with the effect names independently
+resolved; the **design + 12-slice plan** is `docs/tiles.md`. Implemented: **T1/M1** per-tile
+storage/identity (`GridState.tiles`, `TileEffect`, owner-clarified **two-duration rule**), **T2/M2**
+the pure **unit-on-tile query** (`TileOccupant` + `occupantsAtTile`/`occupantsOnTiles`/
+`occupantsInArea`/`tilesOccupiedBy`), and **T3/M3** **tile generation + area targeting**
+(`src/engine/tiles.ts`: `generateTiles` + `TileGenerationSpec`). Remaining BEHAVIOUR: lifecycle
+(T4), upgrade (T5), versioning (T6), fusion (T7), triggers (T8), tile-gated effects (T9), runtime
+weakness (T10), the 9 missing statuses (T11), Vector's clauses (T12) — so V3 is still an open
+implementation task, now unblocked.
 
 **V4 (statuses) — slices 1–9 IMPLEMENTED; the reusable vocabulary is COMPLETE.**
 **Extra Command** (§3.24), **Apathetic Resistance** (§3.25), the **`whenElement` per-element gate**
@@ -1042,22 +1048,26 @@ clauses, **Overburn's own unimplemented 1-tile clause**, and the per-effect **ar
 (`square`), per the game's own range-map targeting diagrams (`docs/research.md` §3.32). Provenance
 is a community database, so the strict state stays **Not Tested** pending our own in-game check.
 
-**Why a decision is next:** the data-only portion of Vector is ready, but implementing a *partial* kit
-would silently approximate mechanics the engine does not model — which the project rules forbid
-(`§1.4`; "never invent game mechanics"). So the next step is a scope decision, not code:
-either (a) extend the engine for tiles/statuses, or (b) implement only the subset that is honestly
-modelable today and record the rest as inert/unmodeled, exactly as the 7 inert attachment sets are.
+**Why that ordering (and what changed):** the data-only portion of Vector was ready, but implementing
+a *partial* kit would silently approximate mechanics the engine does not model — which the project
+rules forbid (`§1.4`; "never invent game mechanics"). That made the next step a scope decision rather
+than code: (a) extend the engine for tiles/statuses, or (b) implement only what is honestly
+modelable and record the rest as inert/unmodeled, as the 7 inert attachment sets are.
+**Path (a) was chosen and is in progress** — the tile subsystem is being built slice by slice, and
+with §7 decision 5 resolved it is no longer at risk of modelling unplayable content.
 
 **Also outstanding:**
 
-- **This slice (Tiles T2/M2 — the unit-on-tile query) is uncommitted** (§7.1 item 25) — awaiting
-  the user's authorization. (Slices 5–12 are committed and pushed: `45ed287`, `b0ccf7c`, `ca34892`,
-  `e247f15`, `e636961`, `e6b9926`, `b323ea6`, `ed9446a`; the T1/M1 tile slice is `c2d66ad`, and the
-  duration-rule slice is `4c63337`.)
-- **Tile work is still gated on `docs/tiles.md` §7 decision 5** — whether the tile feature is live
-  in global (the guide says CN-only). T1/T2 are safe either way (structure + geometry); **T3
-  (generation) should not be built** until that is answered, or the subsystem risks being a
-  deferral like G14 rather than an implementation.
+- **This slice (Tiles T3/M3 — tile generation + area targeting) is uncommitted** (§7.1 item 26) —
+  awaiting the user's authorization. (Slices 5–12 are committed and pushed: `45ed287`, `b0ccf7c`,
+  `ca34892`, `e247f15`, `e636961`, `e6b9926`, `b323ea6`, `ed9446a`; the T1/M1 tile slice is
+  `c2d66ad`, the duration-rule slice is `4c63337`, and T2/M2 is `1799d32`.)
+- **§7 decision 5 is RESOLVED: the tile feature IS live in global** (project owner, 2026, direct
+  in-game evidence — level 1), so T3+ is real implementation, not a G14-style deferral. The tile
+  RULES nonetheless remain `[SOURCE]`/Not Tested. Two tile decisions are still open:
+  **decision 1** (general element layer vs Burn-only) — which first bites at T5/T7 — and
+  **decision 4** (CN names) — which bites at T11. New **decision 6** records that T3 generates with
+  **no terrain filter** (Not Tested, flagged not guessed).
 - **Vector's assets are placed but NOT wired** (`assets.ts` untouched) — backlog **B5**.
 - Per the §1.4 policy the §2 snapshot is refreshed at the start of the next task or when wrapping up —
   not by a separate commit after every commit.

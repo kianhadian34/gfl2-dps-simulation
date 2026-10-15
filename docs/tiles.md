@@ -24,13 +24,21 @@ kinds. It is comparable in size to the whole V4 vocabulary effort, not a slice o
 2026-04-04, updated 2026-09-07). A **community guide**, not an official data page — its own footer
 says it "reflects the author's opinions". **Source hierarchy level 5 (secondary/community).**
 
-**Risk 1 — CN-only, names may change.** The guide states the feature is **CN-only** and that
-**names are subject to change** on global release. The simulator targets global. So every Burn tile
-*name* (Incineration, Flashover II/III, Scalding Vapors, …) is provisional.
+**Risk 1 — feature existence CONFIRMED on global; only the NAMES are provisional.** The guide
+states the feature is **CN-only** and that **names are subject to change** on global release; the
+simulator targets global. **RESOLVED (project owner, 2026, direct in-game evidence — source
+hierarchy level 1): the tile feature IS live in global.** So the subsystem models playable global
+content — it is **not** a CN-only curiosity and **not** a deferral (contrast G14, §7 decision 5).
+What stays provisional is the **naming alone**: the guide's tile/effect names are CN, and the
+global names may differ (§7 decision 4). That is exactly why names live in **data** and the engine
+stores only the element set + level, deriving any display name from those.
 
-**Risk 2 — no in-game observation, and no automated test is possible yet.** Nothing here is
-`Validated`. Effect *names* were independently resolved from the site's own effect records (by
-UUID), which is stronger than prose transcription, but the *rules* remain the guide's.
+**Risk 2 — no in-game observation of the RULES, and no automated test of them is possible yet.**
+Nothing here is `Validated`. Effect *names* were independently resolved from the site's own effect
+records (by UUID), which is stronger than prose transcription, but the *rules* remain the guide's.
+The confirmation that the feature exists on global (Risk 1) is an observation of **existence only**
+— it validates no value below, and the absence of a tile endpoint on the source site means the rules
+still rest on the guide alone.
 
 **What I re-verified this session:** three of the ten effect UUIDs resolve against the live API
 (`71b3f790… → Overburn`, `a55cd12e… → Conflagration`, `174c1af6… → Combustion`). The site exposes
@@ -39,7 +47,12 @@ guide.
 
 ---
 
-## 3. What the engine has today (verified)
+## 3. What the engine had BEFORE the tile work (baseline, verified)
+
+This is the starting point the plan was drawn against. Slices **T1–T3** have since added tile
+storage, the unit-on-tile query and generation — see **§10** for what actually exists now, which
+supersedes the rows below where they differ (`Per-tile effect storage`, `Unit → tile`, `Tile →
+unit`).
 
 | Piece | State |
 |---|---|
@@ -63,7 +76,7 @@ These are the items to go over one by one.
 |---|---|---|
 | **M1** | **Tile identity + storage** — no per-tile record of element / level / version / duration | Nothing downstream can be expressed |
 | **M2** | **Unit-on-tile query** — incl. the boss/dummy special case. **✅ DONE (T2) — see §10.** | Every trigger and gate needs "who is standing here" |
-| **M3** | **Tile generation + targeting** — "generates tiles within N tiles of the target" | The entry point for every tile clause |
+| **M3** | **Tile generation + targeting** — "generates tiles within N tiles of the target". **✅ DONE (T3) — see §10.** | The entry point for every tile clause |
 | **M4** | **Tile lifecycle** — duration (first creation 2 → subsequent additions reset to 3, level-capped), expiry, Lv3 "refresh only" | Tiles must expire or the field saturates |
 | **M5** | **Tile Upgrade** — same element onto an existing tile → Lv2 → Lv3, keeping bonuses | The base progression |
 | **M6** | **Versioning** — Allied / Enemy / Neutral, set by the last generator | Determines WHO a tile affects |
@@ -133,7 +146,7 @@ is **vocabulary or mechanism only** unless stated. Sizes are indicative.
 |---|---|---|---|
 | **T1** | `TileEffect` + `GridState.tiles` (storage + identity). No generation, no triggers. **✅ DONE 2026 — see §10.** | M1 | Model shape (§5). **✅ DECIDED** — full model, plus a **two-duration** split (see §10). |
 | **T2** | Unit-on-tile query: allies, the **boss/dummy** (footprint-aware), grid enemies. Pure. **✅ DONE 2026 — see §10.** | M2 | — (none: the plan's "footprint-aware" scope settled it) |
-| **T3** | Tile generation + area targeting (reuses `AreaShape`; numeric ⇒ diamond). Duration init. | M3 | ✅ RESOLVED — generation uses `initialRounds` (2); upgrade/fusion resets to `resetRounds` (3) |
+| **T3** | Tile generation + area targeting (reuses `AreaShape`; numeric ⇒ diamond). Duration init. **✅ DONE 2026 — see §10.** | M3 | ✅ RESOLVED — generation uses `initialRounds` (2); upgrade/fusion resets to `resetRounds` (3) |
 | **T4** | Lifecycle: round-end ticking, expiry, Lv3 "refresh only". | M4 | — |
 | **T5** | Tile Upgrade: same element onto an existing tile → level up, bonuses kept. | M5 | — |
 | **T6** | Versioning (Allied / Enemy / Neutral). | M6 | **Only Allied is reachable** — no enemy generator exists. Model all three anyway? |
@@ -165,9 +178,19 @@ independently committable and leaves the suite green; T11 could be split per-sta
      site must consult tiles).
 4. **CN naming risk.** Build on the CN names now (accepting a future rename), or hold the named
    *statuses* (T11) until global?
-5. **Is the feature live in global?** The guide says CN-only. If tiles do not exist on global, the
+5. ~~**Is the feature live in global?** The guide says CN-only. If tiles do not exist on global, the
    whole subsystem models something unplayable — which would make it a **deferral** like G14, not
-   an implementation.
+   an implementation.~~ — **✅ RESOLVED 2026 (project owner, direct in-game evidence — hierarchy
+   level 1): the tile feature IS live in global.** T3 onward is real implementation, not a deferral.
+   This removes the "unplayable" risk only — it does **not** validate the tile *rules*, which remain
+   `[SOURCE]`/Not Tested (Risk 2), and it does not settle the naming (decision 4).
+
+6. **Do tiles generate on impassable terrain (blocked tiles / the boss footprint) — and can tiles be
+   generated on a tile that already has one?** The source says *"generates … tiles within a N-tile
+   radius"* and does not restrict by terrain. **T3 takes the no-invention default: generate on every
+   in-bounds tile of the area, with NO terrain filter**, and treat an already-occupied tile as
+   untouched (the *"another tile effect is added"* upgrade is T5). Whether generation should skip
+   impassable terrain is **Not Tested** — flagged rather than guessed.
 
 ---
 
@@ -281,6 +304,66 @@ fail when the boss is treated as center-only (3 tests failed), then were reverte
 no game rule is asserted. The tile RULES remain `[SOURCE]` / Not Tested (`research.md` §3.23).
 Engine **802 pass / 0 fail**; CLI output byte-identical (14,581 / 7 actions).
 
-**Next:** T3 / M3 — tile generation + area targeting (reuses `AreaShape`; numeric ⇒ diamond),
-seeding duration from `initialRounds`. **Still gated on §7 decision 5** (is the feature live in
-global?) before behaviour is modelled.
+### T3 / M3 — tile generation + area targeting — **DONE 2026**
+
+**Unblocked first.** §7 decision 5 was the gate on all tile *behaviour*: the guide said the feature
+was CN-only, so modelling it risked building a subsystem nobody could play (a G14-style deferral).
+**The project owner confirmed (2026, direct in-game evidence — hierarchy level 1) that the tile
+feature IS live in global.** Decision 5 is therefore resolved: T3+ is real implementation. Note
+what this does *not* do — it confirms the feature EXISTS on global; it leaves every rule VALUE at
+`[SOURCE]`/Not Tested, and it does not settle the CN naming (decision 4).
+
+**Delivered** in a NEW module `src/engine/tiles.ts` — deliberately the tile counterpart of
+`stability.ts` (a focused runtime-subsystem module), keeping the split clean: `model/grid.ts` owns
+the `TileEffect` value type, `engine/grid.ts` owns the state + pure geometry, and `engine/tiles.ts`
+owns the rules that CHANGE that state.
+- `TILE_INITIAL_ROUNDS = 2` / `TILE_RESET_ROUNDS = 3` / `TILE_BASE_LEVEL = 1`.
+- `TileGenerationSpec` — `{ origin, shape, radius, elements, generatedBy, version? }`.
+- `generateTiles(state, spec): GridCoord[]` — creates a tile on every **in-bounds** tile of the
+  area, seeding each with the initial duration, and **returns the tiles it created**.
+
+**Decisions/choices (and their basis):**
+1. **A new module, not `grid.ts`.** `grid.ts`'s exports are pure (geometry/construction); generation
+   MUTATES `state.tiles`. `stability.ts` / `cooldowns.ts` / `resources.ts` already establish the
+   pattern of a focused runtime module. Side benefit: T1's scope guard (which asserts `grid.js` has
+   no tile-rule functions) stays green and stays meaningful.
+2. **Areas reuse `AreaShape` / `areaTiles`** (slice 9's vocabulary) unchanged — no second geometry
+   path. Which shape an effect uses stays DATA per the resolved default (`numeric ⇒ diamond`,
+   `NxN ⇒ square`); the engine asserts neither, so the [SOURCE] provenance is not laundered into a
+   hard-coded assumption.
+3. **Initial duration only.** Generation writes `initialRounds` (2) into `durationLeft` and stores
+   `resetRounds` (3) untouched for the upgrade slices — the two values stay two values, per the
+   owner's duration RULE. Generation never writes 3.
+4. **An occupied tile is left UNTOUCHED.** The *"another tile effect is added at that same position
+   → upgrade a level + reset duration"* clause belongs to the **upgrade** slice (T5). T3 pinning
+   "untouched" is the slice boundary made explicit and testable — **T5 will replace that
+   expectation** when it implements the clause (the test says so in its name).
+5. **No terrain filter** (no invention). The source restricts generation by the AREA only, so
+   generation lands on blocked tiles and on the boss footprint alike. Whether it *should* skip
+   impassable terrain is unstated → recorded as §7 **decision 6**, **Not Tested**.
+6. **Empty `elements` throws.** A tile's element set IS its identity (1 = base, 2 = fusion); an
+   empty set has no meaning, so it is rejected at the boundary — matching `buildGrid`'s
+   validate-and-throw style. The element array is **copied** in, so the tile cannot alias a caller's
+   array.
+7. **`version` defaults to `"allied"`** — the only version reachable in the MVP (no enemy generator;
+   §8 non-goals) — but is overridable so T6 needs no signature change.
+
+**Tests:** `src/test/tile-generation.test.ts` (18) — radius-0 = the origin; a numeric area is a
+5-tile DIAMOND and `NxN` a 9-tile SQUARE (and the shape genuinely changes the set); duration init
+= 2 with `resetRounds` stored as 3; level = 1; version default + override; provenance; 1-element vs
+2-element tiles; the element list is copied (no aliasing); only-created is returned and generation
+accumulates per state; the **T3 boundary** (an existing tile untouched); out-of-bounds creates
+nothing; an edge-clipped diamond drops its off-grid arms; **no terrain filter** on blocked tiles or
+the boss footprint; empty elements throws; the constants are 2/3; and a **scope guard** asserting no
+upgrade/fusion/lifecycle/trigger functions exist in `engine/tiles.js` yet. A **mutation check**
+(seed `resetRounds` as the new tile's duration; drop the occupied-tile guard) failed exactly the
+duration and boundary tests, then was reverted.
+
+**Evidence status:** the feature's existence is confirmed on global (**level 1**), but the **rules
+are still `[SOURCE]`/Not Tested** — generation's shape/radius semantics and the absence of a terrain
+rule are the guide's, not observed. Engine **820 pass / 0 fail**; CLI output byte-identical
+(14,581 / 7 actions).
+
+**Next:** T4 / M4 — the lifecycle: round-end ticking, expiry, and the Lv3 "refresh only" case. Its
+prerequisite query already exists: a tile's occupants (`occupantsAtTile`, T2). **T5 then replaces
+T3's occupied-tile boundary** with the real upgrade + duration-reset rule.

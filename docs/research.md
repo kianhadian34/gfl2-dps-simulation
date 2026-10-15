@@ -862,8 +862,12 @@ them, plus the 2026 **Tile Transformation** layer (Tile Upgrade + Polyphase Fusi
 Transformation", author **B Botzu**, published 2026-04-04, updated 2026-09-07). **This is a
 community guide, not an official data page** — its own footer states it "reflects the author's
 opinions" and "does not represent an official Dandegate.net position." It also states the feature
-is **CN-only** and that **names are subject to change** on global release. Treat as **source
-hierarchy level 5 (secondary/community)** for discovery; the effect names were independently
+is **CN-only** and that **names are subject to change** on global release. **The feature's existence
+on global was later CONFIRMED by the project owner (2026, direct in-game evidence — hierarchy
+level 1): elemental tiles ARE live in global.** The guide's **names remain CN and provisional**
+(global names may differ), which is why no tile name enters the engine model — tiles are stored as
+element set + level and named in data. Treat as **source hierarchy level 5
+(secondary/community)** for discovery; the effect names were independently
 resolved from the site's own effect records (see below).
 
 **Confidence** — **[SOURCE], Not Tested.** No in-game observation, no automated test. Every value
