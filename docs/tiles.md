@@ -83,7 +83,7 @@ These are the items to go over one by one.
 | **M7** | **Polyphase Fusion** — two fusible elements → fusion tile; priority over base; not overwritten by a third element; either element levels it; fusing onto an upgraded tile starts at that level. **✅ DONE — MERGED INTO T5 (project owner, 2026) — see §10.** | The most intricate rule set |
 | **M8** | **Tile triggers** — (a) on generation, (b) "units that **remain on the area after ending their action**", (c) "**for every 3 times** they take Burn damage". **(b) ✅ DONE (T8); (a) and (c) NOT built — see §10.** | The tile rules are entirely trigger-driven |
 | **M9** | **Tile-gated effects** — FK5 *"while on a Burn tile, damage taken −20%"*; Perception Block *"immune to debuffs inflicted by Burn tiles"*. **✅ DONE (T9) — the "while on a tile" query + BOTH gate shapes; Vector's VALUES wait on B4. See §10.** | Needs M1 + M2 |
-| **M10** | **Runtime weakness application** — tiles *"apply Burn weakness"*, but `weaknessElements` is immutable today | Changes the damage path |
+| **M10** | **Runtime weakness application** — tiles *"apply Burn weakness"*. **✅ DONE (T10) — computed at hit time, never mutated (owner decision 3). See §10.** | Changes the damage path |
 | **M11** | **The 9 missing statuses** — **investigated (T11): all nine are now DEFINED in the source; 3 are expressible and defined, 6 are blocked on MISSING MECHANICS (not evidence).** | "Applies Overburn + Conflagration" cannot be expressed |
 | **M12** | **Vector's clauses end-to-end** — FK1, FK5, Perception Block L1/V5, Overheat Combustion V5, Smolder, Searing Finale | The payoff |
 
@@ -153,7 +153,7 @@ is **vocabulary or mechanism only** unless stated. Sizes are indicative.
 | **T7** | ~~Polyphase Fusion~~ **ABSORBED INTO T5** (project owner, 2026): the upgrade and fusion rules share one core and one call site, so splitting them would have meant writing the addition rule twice. Nothing of its own remains. | — | — |
 | **T8** | The three tile triggers. **Trigger (b) — "remain on the area after ending their action" — ✅ DONE 2026 (see §10); (a) on-generation damage and (c) the every-3-Burn-hits counter are NOT built and are recorded gaps.** | M8 | ✅ RESOLVED for (b): scope = data-driven mechanism; the counter (c) is per-UNIT on the unit's own state (owner decision 10) — deferred with (c) itself |
 | **T9** | Tile-gated effects: the "while on a tile" query (`tileElementsUnderOccupant`) + both gate shapes — FK5's `KeyDef.damageReductionWhileOnTile` and the `PassiveEffect { kind: "tile_debuff_immunity" }`. **✅ DONE 2026 — see §10.** | M9 | ✅ RESOLVED — mechanism now, Vector's values wait on her registration (B4); owner decision 13 |
-| **T10** | Runtime weakness application (tile-applied Burn weakness). | M10 | **Mutate `weaknessElements` or compute at hit time?** (see §7) |
+| **T10** | Runtime weakness application (tile-applied weakness). **✅ DONE 2026 — see §10.** | M10 | ✅ RESOLVED — **compute at hit time**, never mutate `weaknessElements` (owner decision 3) |
 | **T11** | The 9 missing tile-effect statuses. **✅ PARTIALLY DONE 2026 — see §10.** The three the engine can express **without inventing a mechanic** are defined (Conflagration, Combustion, Combustion II), which **empties the Burn tile's `pendingStatusIds`**. The other six are **blocked on missing mechanics**, each recorded with its exact block. | M11 | ✅ RESOLVED — do NOT invent mechanics to force them; define what the engine supports and record the rest (owner decision 12) |
 | **T12** | Vector's clauses end-to-end (FK1, FK5, PB L1/V5, OC V5, Smolder, Searing Finale). | M12 | Depends on T1–T11 |
 
@@ -181,6 +181,11 @@ per-status if needed.
      on every tile enter/exit, and it touches a stat the panel owns);
    - **compute at hit time** from the attacker/target's tile (no mutation, but every weakness read
      site must consult tiles).
+   **✅ DECIDED 2026 (project owner): COMPUTE AT HIT TIME.** Investigation showed there are only
+   **two** weakness read sites in the damage path (and `state.dummy.weaknessElements` ALIASES
+   `DummyConfig.weaknesses` — `state.ts` does not copy it — so a mutation would corrupt the caller's
+   config object). Computing also tracks position AND tile lifetime for free, and is **additive by
+   construction**: with no tile underfoot the union IS the declared array.
 4. **CN naming risk.** Build on the CN names now (accepting a future rename), or hold the named
    *statuses* (T11) until global?
 5. ~~**Is the feature live in global?** The guide says CN-only. If tiles do not exist on global, the
@@ -815,3 +820,63 @@ change**, as expected for a mechanism whose only consumer is unregistered.
 
 **Next:** T10 / M10 (runtime weakness application), then T12 (Vector's clauses end-to-end, which needs
 her registered).
+
+### T10 / M10 — runtime weakness application — **DONE 2026**
+
+**Delivered.** `effectiveWeaknessElements(state, occ)` (`engine/tiles.ts`) — the target's **effective**
+elemental weaknesses at hit time: its **DECLARED** list UNIONed with the elements of the tiles it
+stands on. Wired at the **two** read sites in the damage path: `exploitedWeaknesses` (the primary hit,
+now taking `state`) and the FK4 secondary-target loop. Both feed the SAME matched array into the
+`1 + 0.10 × matched` multiplier AND the `+2` stability bonus per weakness, so a tile that supplies a
+weakness supplies both.
+
+**No new data table was needed.** The source's applied elements are **the tile's OWN elements** —
+Incineration *"Applies Burn weakness to enemy units on the area"*, Scalding Vapors *"Inflicts Burn and
+Hydro weakness"*, Smoldering Suspire *"Burn and Freeze weakness"*, Crackling Flare *"Burn and Electric
+weakness"* — so the tile's `elements` already are the answer.
+
+**COMPUTED AT HIT TIME, never mutated** (owner decision 3). `weaknessElements` stays the immutable
+DECLARED value. The helper walks the tiles itself rather than reusing T9's `tileElementsUnderOccupant`,
+because it must ALSO honour the tile's **VERSION targeting**: the source scopes the weakness to
+*"ENEMY units in the area"*, so a tile applies it only to the side its version targets
+(allied→enemies, enemy→allies, neutral→everyone) — exactly as T8 does for applied statuses. The T9
+query is deliberately version-AGNOSTIC, so it could not be reused directly here.
+
+**Why compute (the investigation that settled decision 3):**
+1. There are only **TWO** weakness read sites, so "every weakness read site must consult tiles" was a
+   much smaller cost than the plan assumed.
+2. `state.dummy.weaknessElements` **ALIASES** `DummyConfig.weaknesses` (`state.ts` assigns the array,
+   it is not a copy) — a mutation would corrupt the caller's config object, not just the runtime state.
+3. The engine has **no tile enter/exit event**: positions change via scripted moves while tiles appear
+   and expire independently, so a mutation would need synchronised sync points at move, generation,
+   expiry and placement. Computing tracks both for free.
+
+**Additive by construction — the safety property.** With no tile underfoot the union IS the declared
+array, so every pre-T10 damage number is preserved exactly. Proven: the whole pre-T10 suite passes
+untouched and the **CLI regression is byte-identical** (14,581 / 7 actions), because the default
+scenario has no tiles.
+
+**Choices:**
+1. **De-duplicated** — a target already weak to Burn gains nothing further from a Burn tile, matching
+   the confirmed `1 + 0.10 × matched` count rule (one weakness matched, not two).
+2. **Declared-first ordering**, then tile-only additions — deterministic.
+3. **All three occupant kinds covered**: a grid line enemy will get its own config `weaknesses` UNIONed
+   with its tile (its statuses live per-enemy, FK4); the boss uses the dummy's; allies report none
+   (the engine models no ally weakness).
+4. **FK5's immunity does NOT block it.** *"Immune to negative effects inflicted by Burn tiles"* (T9) is
+   about applied STATUSES; the weakness clause states no such immunity, so the union still applies.
+
+**Tests:** `src/test/tile-weakness.test.ts` (19) — the additive guarantee (declared list unchanged with
+no tile); a tile ADDING its element; a fusion tile applying BOTH; **de-duplication**; non-mutation +
+stability across repeated calls; the immunity not blocking weakness; **tile EXPIRY** removing the
+weakness and **POSITION** scoping it; footprint-awareness; a grid line enemy's own list unioned;
+version-scoping (allied tile does not weaken allies / enemy and neutral do); ally = no weakness; and
+**end-to-end damage numbers** — a Burn tile supplies the ×1.10 that a non-weak target lacked
+(1091), and does NOT double it for an already-Burn-weak target (still 1091, exactly one match).
+**Mutation checks:** removing the version check → **2 failures**; dropping de-duplication →
+**2 failures** (including the end-to-end damage test); both reverted.
+
+**Evidence status:** the clause is `[SOURCE]` (community guide) / **Not Tested**. Engine **960 pass /
+0 fail**; CLI byte-identical (14,581 / 7 actions).
+
+**Next:** T12 / M12 — Vector's clauses end-to-end, which needs her **registered** (backlog B4).

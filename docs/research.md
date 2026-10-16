@@ -508,6 +508,7 @@ Both rules draw on the holder's **per-round** quota (`supportQuota`, reset in `b
 
 **Distinction (kept separate):**
 - **Generic weakness effect** — each matched target weakness adds `1 + 0.10 × n` damage (1 → ×1.10, 2 → ×1.20); this generic multiplier **also applies to Phase damage** (e.g. a Burn + Ammo Phase attack vs a target weak to both Burn and Ammo receives the normal ×1.20).
+- **Tiles APPLY weakness to units standing on them (2026, T10).** Every tile's text says so — Incineration *"Applies Burn weakness to enemy units on the area"*, Scalding Vapors *"Inflicts Burn and Hydro weakness"*, Smoldering Suspire *"Burn and Freeze weakness"*, Crackling Flare *"Burn and Electric weakness"* — and the applied elements are **the tile's OWN elements** (no separate table needed). The engine resolves the target's **effective** weaknesses at hit time as `declared ∪ tiles-underfoot`, **computed, never mutated** (project-owner decision 3), honouring the tile's **version** targeting (*"ENEMY units"* for the Allied version). **Additive by construction** — with no tile underfoot the effective set IS the declared array, so no pre-T10 number moves. Tests: `src/test/tile-weakness.test.ts`. **Not Tested** — the clause is the guide's.
 - **Ammo Weakness Upgrade system** — triggered only by exploiting an **Ammo weakness**; the upgrade bonus affects **phase-less (physical-ammo) damage only**; **Phase damage does NOT receive it**.
 - The upgrade is NOT the generic weakness multiplier. **Phase interaction VALIDATED (2026): a Phase Ammo exploit does NOT advance AWU stacks and does NOT receive the AWU bonus; only a qualifying Physical Ammo-weakness exploit advances stacks.** Generic weakness matching still applies to Phase damage independently.
 
@@ -1044,11 +1045,12 @@ points**.
   (`src/data/tile-effects.ts`), **T9 tile-gated effects** (the *"while on a tile"* query
   `tileElementsUnderOccupant`, plus both gate shapes: `KeyDef.damageReductionWhileOnTile` for FK5's
   *"while on a Burn tile, damage taken −20%"*, and the `PassiveEffect { kind: "tile_debuff_immunity" }`
-  for *"immune to negative effects inflicted by Burn tiles"*), and **T11** the tile-effect statuses
+  for *"immune to negative effects inflicted by Burn tiles"*), **T10 runtime weakness application**
+  (tiles apply their own elements as weakness to units standing on them — computed at hit time, never
+  mutated), and **T11** the tile-effect statuses
   (3 of the 9 defined; the other 6 are blocked on **missing engine mechanics**, not evidence).
   **Still NOT implemented:** triggers (a) on-generation damage and (c)
-  the every-3-Burn-hits counter; runtime weakness application
-  ("applies Burn weakness"); and the six blocked tile-effect statuses. **The engine design and slice
+  the every-3-Burn-hits counter; and the six blocked tile-effect statuses. **The engine design and slice
   plan for all of it are owned by `docs/tiles.md`** (gap inventory M1–M12, slices T1–T12, and the open
   decisions).
 - **Tile duration — RULE, not a conflict.** `TileEffect` carries **two** duration values because

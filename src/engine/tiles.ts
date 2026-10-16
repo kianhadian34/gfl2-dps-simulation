@@ -323,6 +323,61 @@ export function tileEffectSource(effect: TileEffect): string {
 }
 
 /**
+ * TILE-APPLIED WEAKNESS (2026, T10/M10) — the target's EFFECTIVE elemental weaknesses at hit time:
+ * its DECLARED `weaknessElements` UNIONed with the elements of the tiles it is standing on.
+ *
+ * The source has every tile *"apply … weakness"* to units **on the area** — Incineration *"Applies
+ * Burn weakness to enemy units on the area"*, Scalding Vapors *"Inflicts Burn and Hydro weakness"*,
+ * Smoldering Suspire *"Burn and Freeze weakness"*, Crackling Flare *"Burn and Electric weakness"*.
+ * **The applied elements are the TILE'S OWN elements**, so no separate data table is needed. The
+ * same element set the T9 query (`tileElementsUnderOccupant`) reports is what gets applied here —
+ * but this helper walks the tiles itself, because it must ALSO honour the tile's VERSION targeting
+ * (below), which the version-agnostic T9 query deliberately does not.
+ *
+ * **COMPUTED AT HIT TIME — never mutated** (project-owner decision 3). `weaknessElements` stays the
+ * immutable DECLARED value: the source scopes the weakness to *"on the area"*, so it must track the
+ * target's POSITION and the tile's LIFETIME automatically. Unioning here gets both for free, whereas
+ * mutating would need synchronised enter/exit hooks at every move, generation and expiry — and
+ * `state.dummy.weaknessElements` ALIASES `DummyConfig.weaknesses` (`state.ts` does not copy it), so a
+ * mutation would corrupt the caller's config object too.
+ *
+ * **ADDITIVE BY CONSTRUCTION.** With no tile underfoot the query returns `[]`, so the union is the
+ * declared array unchanged — the pre-T10 result exactly, which is why no validated damage number can
+ * move. Elements are de-duplicated, so a target already weak to Burn gains nothing further from a Burn
+ * tile (matching the confirmed `1 + 0.10 × matched` count rule — one weakness matched, not two).
+ *
+ * Order: DECLARED weaknesses first, then tile-only additions — deterministic.
+ */
+export function effectiveWeaknessElements(state: SimulationState, occ: TileOccupant): Element[] {
+  // DECLARED weaknesses by occupant kind. Allies carry none (the engine models no ally weakness);
+  // a grid line enemy has its own config list; the boss/dummy uses its configured weaknesses.
+  let declared: Element[];
+  if (occ.kind === "enemy") {
+    const enemy = state.grid?.enemyUnits.find((e) => e.unitId === occ.unitId);
+    declared = [...(enemy?.weaknesses ?? [])];
+  } else if (occ.kind === "boss") {
+    declared = [...state.dummy.weaknessElements];
+  } else {
+    declared = [];
+  }
+  const grid = state.grid;
+  if (!grid) return declared;
+  // VERSION-SCOPED, exactly like the tile's applied STATUSES (T8): the source states the Allied
+  // version "Inflicts Burn and Hydro weakness to ENEMY units in the area", so a tile only applies
+  // its weakness to the side its version targets (allied→enemies, enemy→allies, neutral→everyone).
+  const targetIsAlly = occ.kind === "ally";
+  for (const coord of tilesOccupiedBy(grid, occ)) {
+    const effect = grid.tiles.get(tileKey(coord.x, coord.y));
+    if (!effect) continue;
+    if (!tileAppliesToUnit(effect.version, targetIsAlly)) continue;
+    for (const e of effect.elements) {
+      if (!declared.includes(e)) declared.push(e);
+    }
+  }
+  return declared;
+}
+
+/**
  * TILE-DEBUFF IMMUNITY (2026, T9/M9) — true when `unit` declares immunity to negative effects
  * inflicted by a tile carrying ANY of `tileElements`. Vector's Perception Block Lv.1 clause 1:
  * *"Immune to negative effects inflicted by Burn tiles."*

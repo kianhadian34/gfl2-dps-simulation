@@ -23,7 +23,7 @@ import { remolderCritDmgBonus, remolderFirstTargetStability, remolderHealBonus, 
 import { attachmentSetDealtBonus } from "./attachment-sets.js";
 import { apexDealtBonus } from "./apex.js";
 import { applyStabilityDamage, endOfRoundStability } from "./stability.js";
-import { applyTileEffectsOnActionEnd, keyTileTakenReduction, tickTiles } from "./tiles.js";
+import { applyTileEffectsOnActionEnd, effectiveWeaknessElements, keyTileTakenReduction, tickTiles } from "./tiles.js";
 import { abilitySourceLabel, createState, DEFAULT_CONFIG, fortificationV, passiveSourceLabel, supportAttackQuota, weaponCalibration, type EffectiveStatusDef, type SimulationState, type UnitState } from "./state.js";
 import type { ActiveStatus } from "../model/runtime.js";
 import type { AbilitySlot, CharacterDef } from "../model/types.js";
@@ -232,11 +232,15 @@ function consumeExtraAction(state: SimulationState, unit: UnitState): string | n
 }
 
 /** Match the attack's element AND ammo type against the target's exposed weaknesses: +10% damage and +2 stability each (research §3.5 / U20 / 2026 ammo dimension). */
-function exploitedWeaknesses(target: UnitState, skill: SkillDefVariant): { weaknesses: string[]; mult: number; ammoExploited: boolean } {
+function exploitedWeaknesses(state: SimulationState, target: UnitState, skill: SkillDefVariant): { weaknesses: string[]; mult: number; ammoExploited: boolean } {
   // Absent `element` (an ability with no attack phase attribute) behaves as phase-less here; in
   // practice this is only reached for damaging hits, which declare their element.
   const element = skill.element ?? null;
-  const elementMatches = target.weaknessElements.filter((w) => w === element);
+  // T10/M10 (2026): the target's EFFECTIVE weaknesses include any the tiles underfoot APPLY —
+  // computed at hit time, never mutated (decision 3). With no grid/tiles this is the declared list
+  // unchanged, so every pre-T10 number is preserved exactly.
+  const effective = effectiveWeaknessElements(state, { kind: "boss" });
+  const elementMatches = effective.filter((w) => w === element);
   const ammoExploited = skill.ammoType !== undefined && target.weaknessTags.includes(skill.ammoType);
   const weaknesses = ammoExploited ? [...elementMatches, skill.ammoType as string] : [...elementMatches];
   // U20 CONFIRMED 2026-09-03 (in-game: Burn → 1091; Burn + Medium ammo (Qiongjiu) → 1191):
@@ -299,7 +303,13 @@ function guideLineSecondaryHits(
     const tk = tileKey(t.x, t.y);
     const unit = grid.enemyUnits.find((e) => tileKey(e.coord.x, e.coord.y) === tk);
     const defense = unit ? unit.defense : state.dummy.defStat;
-    const weaknesses: Element[] = unit ? (unit.weaknesses ?? ([] as Element[])) : (state.dummy.weaknessElements as Element[]);
+    // T10/M10 (2026): effective weaknesses = the target's DECLARED list UNION the tiles it stands on
+    // (computed, never mutated). `unit` is a line enemy with its own config weaknesses; otherwise the
+    // slot is the dummy/boss.
+    const weaknesses: Element[] = effectiveWeaknessElements(
+      state,
+      unit ? { kind: "enemy", unitId: unit.unitId } : { kind: "boss" },
+    );
     const weaknessExploited = weaknesses.filter((w) => w === (skill.element ?? null));
     // Per-secondary status/hit state: line enemies keep their own statuses (FK4 secondary
     // targets receive Guide's applied statuses — e.g. Overburn — via the GENERIC applyStatus).
@@ -475,7 +485,7 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   const enemiesNear = state.grid ? enemiesWithin3(state.grid, dummy.id) : undefined;
   // GRID (2026): High Ground → Ground ADDS Exposed; otherwise the normal exposed state governs.
   const targetExposed = opts?.exposedOverride === true ? true : dummy.exposed;
-  const { weaknesses, mult: weaknessMult, ammoExploited } = exploitedWeaknesses(dummy, skill);
+  const { weaknesses, mult: weaknessMult, ammoExploited } = exploitedWeaknesses(state, dummy, skill);
   // AWU trigger fires BEFORE the hit resolves: the first exploiting attack already
   // benefits from its own 2 stacks (validated T1 = 616 / 105). Phase attacks are
   // gated out by the trigger data (requiresElements) — they neither gain nor benefit.
