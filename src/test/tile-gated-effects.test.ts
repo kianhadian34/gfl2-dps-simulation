@@ -230,14 +230,24 @@ test("T9: FK5's gate IS consulted by the real damage path (wired, even though in
   assert.equal(base.dummy.def, null, "the dummy is not a doll — it carries no Fixed Keys");
 });
 
-test("T9: the mechanism ships WITHOUT Vector's data (backlog B4 owns her values)", async () => {
-  // No CharacterDef for Vector exists yet, so nothing in production data references these gates.
+test("T9: the mechanism's consumer is now REAL — Vector is registered and FK5 is wired (B4 landed)", async () => {
+  // T9 shipped the mechanism with NO consumer (Vector unregistered). **B4 has since registered her**
+  // and set FK5's values, so this guard now asserts the opposite of its original claim. The gate is
+  // still INERT end to end in the MVP (see the test above) — but the DATA exists.
   const reg = await import("../data/registry.js");
-  assert.equal(reg.REGISTRY.getCharacter("vector"), undefined, "Vector is not registered yet (B4)");
-  assert.deepEqual(reg.REGISTRY.characterIds().sort(), ["basic_attack_dummy", "qiongjiu"], "only the existing characters");
+  const vector = reg.REGISTRY.getCharacter("vector");
+  assert.ok(vector, "Vector is registered (B4)");
+  const fk5 = vector!.fixedKeys.find((k) => k.id === "vector_fk5_unfortunate_jinx");
+  assert.ok(fk5?.damageReductionWhileOnTile, "FK5 declares the tile reduction");
+  assert.deepEqual(fk5!.damageReductionWhileOnTile, { value: 0.2, elements: ["burn"] }, "−20% on a Burn tile, per the source");
+  // Her PASSIVE carries the immunity clause against Burn tiles.
+  const immunity = vector!.passive.effects.find((e) => e.kind === "tile_debuff_immunity");
+  assert.deepEqual(immunity, { kind: "tile_debuff_immunity", elements: ["burn"] }, "Perception Block clause 1");
 });
 
-test("T9: no production status/key/passive declares a tile gate yet (the fields are mechanism-only)", async () => {
+test("T9: the tile gates live on Vector's PASSIVE/KEY — no STATUS uses them, and Qiongjiu has none", async () => {
+  // `tile_debuff_immunity` is a PASSIVE effect, so no status may carry it; and Qiongjiu — the other
+  // real character — has neither gate. (Vector's own use is asserted in the test above.)
   const statuses = await import("../data/statuses.js");
   const withTileGate = statuses.STATUS_DEFS.filter((s) => s.effects.some((e) => (e as { kind: string }).kind === "tile_debuff_immunity"));
   assert.deepEqual(withTileGate, [], "no status uses the tile-immunity effect (it is a PASSIVE effect, not a status one)");

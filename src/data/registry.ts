@@ -2,6 +2,7 @@ import type { AffinityKeyDef, ApexComponentDef, CharacterDef, CommonKeyDef, Stat
 import { APEX_COMPONENTS } from "./apex-components.js";
 import { COMMON_KEYS } from "./common-keys.js";
 import { QIONGJIU } from "./qiongjiu.js";
+import { VECTOR } from "./vector.js";
 import { BASIC_ATTACK_DUMMY } from "./basic-attack-dummy.js";
 import { statusMap } from "./statuses.js";
 import { WEAPONS } from "./weapons.js";
@@ -25,7 +26,7 @@ export interface Registry {
   getApexComponent(id: string): ApexComponentDef | undefined;
 }
 
-const CHARACTERS: CharacterDef[] = [QIONGJIU, BASIC_ATTACK_DUMMY];
+const CHARACTERS: CharacterDef[] = [QIONGJIU, VECTOR, BASIC_ATTACK_DUMMY];
 
 export const REGISTRY: Registry = {
   getCharacter(id) {

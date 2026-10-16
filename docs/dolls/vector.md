@@ -2,9 +2,11 @@
 
 **Doll id:** `vector`
 **Source:** `https://dandegate.net/dolls/vector` (Dandegate.net, accessed 2026-10-09)
-**Status of this document:** **SOURCE DATA — DOCUMENTED, NOT IMPLEMENTED.** Nothing in this file
-has been implemented in the engine. **Base stats (§3) are `Validated`** (an in-game character-sheet
-read, same standard as Qiongjiu's); **every behavior claim is `Not Tested`**. See §7.
+**Status of this document:** **SOURCE DATA — PARTIALLY IMPLEMENTED (B4, 2026).** Vector is
+**REGISTERED** (`src/data/vector.ts`, backlog B4): her **modelable subset** is wired, and **every
+blocked clause is recorded** in a `deferredNote` rather than approximated. **Base stats (§3) are
+`Validated`** (an in-game character-sheet read, same standard as Qiongjiu's); **every behavior claim
+is `Not Tested`**. See §7 and §11.
 
 This is a **per-doll source record**: what the authoritative source states, transcribed faithfully
 and labelled. It does not replace `docs/research.md` (mechanics) or
@@ -677,3 +679,64 @@ character-sheet read (`Validated` under the project standard, the same basis as 
 stats) — but a validated *stat* is not a validated *behavior*, and no Vector *behavior* has been
 tested. Everything about how her kit behaves in the simulation remains `Not Tested` until tested
 under the project standard.
+
+---
+
+## 11. Implementation record (B4, 2026) — what is REGISTERED vs RECORDED-ONLY
+
+**Vector is registered** (`src/data/vector.ts`, entry in `src/data/registry.ts`). Per the project
+owner (2026), her **modelable subset** is wired and **every blocked clause is recorded** — in the
+ability's `deferredNote`, the key's `deferredNote`, or the passive's per-level `deferredNotes` — rather
+than approximated. Precedent: the 7 inert attachment sets and the RECORDED-ONLY weapon-trait outcome.
+
+**Consequence, stated plainly: her damage reads LOW versus the real game**, because whole clauses are
+absent. None is silently dropped; each names the mechanic it waits on.
+
+### Wired (real behaviour)
+
+| Element | Detail |
+|---|---|
+| Identity / stats | `support` · `weaponType: "smg"` · phase Burn · **base stats `Validated`** (748/1819/569, stab 10, CR 20%, CDMG 120%) · mobility 6 |
+| Remolder | `remolderFlat {244,651,245}`-class flats — `{ atk: 224, hp: 651, def: 245 }` |
+| **Basic** | COMPLETE — 80% ATK, Physical (phase-less), Light Ammo, Stability 3 |
+| **Skill 1** damage | 120% → **150%** at V3 (the damage half only) |
+| **Skill 2** damage | 100% → **130%** at V4 (ammo left ABSENT — the source is ambiguous) |
+| **Ultimate** damage | 60% AoE Burn, cooldown 4, Stability 1 |
+| **Ultimate** Extra Command | grants `extra_command` to self ⇒ a real extra main action |
+| **Ultimate V2** | applies **Blazing Assault II** to `all_allies` for 2t (status exists) |
+| **Ultimate V6** | applies **Apathetic Resistance** to self for 2t (status exists) |
+| **Passive** clause 1 | Burn-tile debuff immunity (`tile_debuff_immunity`) |
+| **Passive** clause 4 | at-max Confectance drain ⇒ round-scoped +10% ATK |
+| **Passive** clause 5 (Lv.3/V5) | 2 extra slots ⇒ +10/+20/+30% for 0/1/2 filled |
+| **Fortification map** | her OWN ordering (V1 passive L2 · V2 ult L2 · V3 a1 L2 · V4 a2 L2 · V5 passive L3 · V6 ult L3) |
+| **FK2** | +3 Confectance at battle start (Qiongjiu's FK1 shape) |
+| **FK5** | the tile reduction (−20% on a Burn tile) — **INERT end to end** (the damage path only targets the dummy), tested directly |
+
+### Recorded-only (each with its reason, in code)
+
+| Element | Block |
+|---|---|
+| Skill 1 fixed-damage AoE | needs an ability-sourced **percent-of-ATK fixed damage** + multi-enemy targeting |
+| Skill 1/2 Conf gain | `resource_gain` is a PASSIVE effect only — no skill-level Confectance grant |
+| Skill 1's Overburn clause | conditional on the same Burn-debuff clause and area-scoped — omitted with it |
+| Skill 2's **Smolder** | status UNDEFINED (§7.1 row 4) |
+| Ultimate's **Incineration tiles** | no skill can generate a tile (`docs/tiles.md` §10) |
+| Ultimate's **Accelerant** | status UNDEFINED (row 6) |
+| Ultimate V2's ally **cleanse ×2** | the existing cleanse is Support-scoped and removes 1 |
+| Passive clause 2 (**Overheat Combustion**) | status UNDEFINED (row 3); its area portion is holder-side/DEFERRED (§3.33) |
+| Passive clause 3 (Burn support count) | no "Support Attacks dealing Burn damage" classification (G6) |
+| **FK1** | needs skill-driven tile generation + a killing blow (the dummy is unkillable) |
+| **FK3** | cleanse 2 from the ENEMY before ANY attack — the existing cleanse is support-scoped ×1 |
+| **FK4** | needs the **"large target"** classification (G10) + a key-sourced per-attack fixed instance |
+| **FK6** | its payload **Emergency Support** is UNDEFINED (row 8) |
+| Affinity / Common / Expansion Keys | Crit Rate on an affinity key (G12) · a conditional turn-start ATK · cooldown reduction + ally heal (G7/G8) |
+| Signature weapon **Banshee's Whisper** | not in `weapons.ts`; its trait POOL is unknown and its Imprint needs a condition shape the repo lacks (§9) |
+
+**Tests:** `src/test/vector-data.test.ts` (20) — identity/stats, the remolder flats, the fortification
+ordering, each skill's wired halves AND its recorded gaps, the passive's clauses in and out, the six
+keys' wired/recorded split, the invariant that **every referenced status resolves**, and end-to-end
+simulation (her Basic reproduces the confirmed damage formula exactly; the Ultimate's Extra Command
+really yields an extra main action).
+
+**Status: her base stats are `Validated`; no Vector BEHAVIOUR is validated.** Everything above is
+`[SOURCE]` / **Not Tested**.
