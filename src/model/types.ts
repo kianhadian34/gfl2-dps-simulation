@@ -69,6 +69,13 @@ export interface WeaponDef {
    * `durationRounds` turns. Data-driven; the engine hook is generic, never character-specific.
    */
   trait?: { statusIds: string[]; durationRounds: number };
+  /**
+   * INNATE weapon damage% (2026, VALIDATED in-game — "Retired TMP"). A property of the weapon ITSELF,
+   * distinct from a Calibration Effect: always active whenever the weapon is equipped, with no
+   * `calibrationLevel` required. ADDITIVE in the existing DMG% bucket — the same bucket the calibration
+   * path uses, so there is no second formula and no second bucket.
+   */
+  innateDamageDealt?: number;
   subStats: { stat: "pctAtk" | "pctHp" | "pctDef"; value: number }[];
 }
 

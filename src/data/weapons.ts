@@ -67,4 +67,20 @@ export const WEAPONS: WeaponDef[] = [
       durationRounds: 1,
     },
   },
+  {
+    id: "retired_tmp",
+    // PLAYER-FACING name (owner-provided, 2026): "Retired TMP" — a SUBMACHINE GUN (Vector's weapon type).
+    name: "Retired TMP",
+    rarity: "standard",
+    // The owner's observed in-game panel lists this weapon at exactly +25 ATK. Only the SUMMED value is
+    // known, not the per-proficiency curve, so BOTH endpoints are 25 — that makes `weaponAtk` return 25
+    // at every level, which is the only claim the evidence supports (no curve is invented).
+    atkLvl1: 25,
+    atkLvl60: 25,
+    level: 60,
+    // Weapon feature (VALIDATED in-game 2026): "increases damage done by 1%". An INNATE property, so it
+    // applies with no calibration — folded into the existing additive DMG% bucket.
+    innateDamageDealt: 0.01,
+    subStats: [],
+  },
 ];

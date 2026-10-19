@@ -141,6 +141,41 @@ Every damaging `LogEvent` records: `round`, `turn`, `unit`, `action`, `attackerA
 
 ## 6. Validation evidence
 
+### 6.1 Panel read — Vector, V6 · Affinity Lv5 · max Remolder · dispatch · Neural Helix · weapon (2026, in-game)
+
+**Source:** owner-supplied in-game **View Details** screenshots — **Basic Attributes** AND **Special
+Attributes** tabs (source-hierarchy **level 1**). Claim recorded at the per-stat level.
+
+**Basic Attributes (observed):** Attack **1718.73** · Defense **1422.40** · Health **4313.79**.
+**Special Attributes (observed):** Stability **10.00** · Crit Rate **20.00%** · Critical Damage
+**120.00%** · Attack Boost **17.00%** · Defense Boost **12.00%** · Health Boost **17.00%** ·
+Mobility **6** · Stability Damage Reduction **60.00%**.
+
+| Claim | State | Basis |
+|---|---|---|
+| The **Basic Attributes** Attack/Health/Defense is a **pure additive sum of its listed parts, flat only — no percentage folded in** | **`Validated`** | All three totals equal their parts **to the cent** (`1718.73`, `1422.40`, `4313.79`); `total / Σparts = 1.000000` exactly |
+| **The game exposes flat `Attack` and `Attack Boost`% as TWO SEPARATE stats** | **`Validated`** | Flat only on Basic Attributes; the percentage appears on Special Attributes. Comparing an engine *effective* panel to the game's *flat* Attack is invalid |
+| The engine's **flat-bucket folding** (base + weapon + Neural Helix + Affinity + Dispatch + Remolder, summed before any percentage) | **`Mathematically Proven`** | Engine-with-sources `ceil(1718.73) = 1719` vs observed `1718.73`; each engine-vs-game gap is **exactly** the missing source sum, to the cent |
+| **Neural Helix contributes flat ATK 432.73 / HP 945.79 / DEF 252.40** for this character | **`Validated`** | Displayed per-source line in-game |
+| **Affinity Lv5 contributes flat ATK 106 / HP 280 / DEF 116** for this character | **`Validated`** | Displayed per-source line in-game |
+| **The equipped weapon contributes flat ATK 25** (and no HP/DEF lines) | **`Validated`** | Displayed "Weapon: 25.00" on Attack only |
+| **In-game stat values are displayed to 2 decimals**, preserving fractional flats (`432.73` etc.) | **`Validated`** | Directly displayed |
+| **`NEURAL_HELIX_GLOBAL_PCT` (12%) applies to this character** | **`Validated`** | **`Defense Boost = 12.00%`** exactly, and Defence has **no** Fighting Spirit component. *(An earlier "must NOT apply / +206 ATK error" claim from this same session is **WITHDRAWN** — it compared the engine's effective panel against the game's flat-only Attack display)* |
+| **Base stats: Stability 10 · Crit Rate 20% · Critical Damage 120% · Mobility 6** | **`Validated`** | Special Attributes tab matches `src/data/vector.ts` exactly |
+| **`Stability Damage Reduction` = 60%** exists and has that value for this character | **`Validated`** (the value) / **`Not Modelled`** (the mechanic) | Displayed on Special Attributes. The engine has **no field** for it, and it is **inert** in the MVP (dolls are never attacked). Whether 60% is universal is **`Not Tested`** |
+| Whether **`Fighting Spirit`'s 1.8% is inside `Attack Boost`'s 17%** | **RESOLVED — `Validated`: NOT present** | The owner confirmed "max level remolding" = **Remolder LEVEL 60** (the flat stat), **not** the flower/buff picks; Vector has **no Fighting Spirit**. So `Attack Boost 17% = 12% universal + 5% Neural Helix` (`atkPct: 0.05`). *(The earlier "5.0% vs 3.2%" ambiguity was self-inflicted — I assumed "max remolding" meant all 15 `SUPPORT_BUFFS` at max)* |
+| **Vector's Neural Helix flats** (432.73 / 945.79 / 252.40) and **Affinity Lv5 flats** (106 / 280 / 116) | **`Validated`** and **WIRED** | Entered into `src/data/vector.ts`; the engine now reproduces **all six** observed stats (flat 1718.73/4313.79/1422.40, percent 17%/17%/12%) ⇒ effective **ATK 2011 · HP 5048 · DEF 1594** |
+| **Vector's weapon can be equipped** | **`Not Tested` / BLOCKED** | The panel shows `Weapon 25.00` but **no `WeaponDef` exists**. The engine's real-build panel is **1982**, not 2011; Basic damage **451 vs 462**. Needs the weapon's identity/ATK curve |
+| **Percentage-bucket folding into DAMAGE (ATK% → damage)** | **`Not Tested`** | This build equips no attachments/Common Keys/Apex, so no independent percentage source was exercised; still validated only through Qiongjiu's attachment observation |
+| The engine's **integer `ceil` panel convention is adequate** for damage | **`Mathematically Proven`** | ATK 1719 vs 1718.73 → identical **352** damage at DEF 5000 |
+
+**Scope limit, stated plainly:** this read validates the **flat-plus-bond** arithmetic and the
+**percentage-stat VALUES** (Attack/Defense/Health Boost, Crit, Stability, Stability Damage Reduction).
+It says **nothing** about how the percentage buckets fold into **damage** — no independent percentage
+source (attachments / Common Keys / Apex) was equipped, and no hit was observed.
+
+### 6.2 Automated evidence
+
 - `npm test` → 174/174 pass (92 base + 7 U5 boss-Stability + 2 U7/U8 status-timing + 1 self-applied buff timing (2026) + 6 stat-modifier consumption incl. DEF Down II + 2 U14 boss-DEF + 10 Ammo Weakness Upgrade + 4 Phase-elemental-weakness U15b + 4 weakness-matching U15a + 1 AWU persistence + 5 weakness-stability U15 + 3 partial-match U15a + 2 Overburn validation + 7 final-DMG validation + 5 determinism/state-isolation (2026) + 1 multi-gain Confectance regression (2026) + 5 Qiongjiu key-data regression (2026) + 12 skill-level/Fortification regression (2026) + 8 Qiongjiu kit-sync regression (2026) − 1 premise-based 'phase countering ×1.2/×0.8' test removed 2026).
 - CLI: 7-turn example and 4-turn rotation walkthrough verified by hand (see report).
 - 8+ turns rejected with a clear error message (CLI + engine tests).

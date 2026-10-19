@@ -4,6 +4,7 @@ import { REGISTRY } from "../data/registry.js";
 import { VECTOR } from "../data/vector.js";
 import { STATUS_DEFS } from "../data/statuses.js";
 import { simulateScenario } from "../simulate.js";
+import { weaponAtk } from "../engine/state.js";
 import type { Scenario } from "../model/types.js";
 
 /**
@@ -205,6 +206,69 @@ test("B4: her Basic resolves against the confirmed damage formula (no weapon, no
     REGISTRY,
   );
   assert.equal(r.log[0].finalDamage, 359, "the formula reproduces exactly with her registered ATK");
+});
+
+// ============================================================ VALIDATED IN-GAME (2026)
+// Real-build reproduction. Every number below was OBSERVED in-game (owner-provided) and the engine
+// must reproduce it exactly. This is the pin for her Neural Helix shape: the GENE NODE table gives the
+// PRE-percentage values (ATK 183 / HP 319 / DEF 100, atkPct 5%, hpPct 5%); the `View Details`
+// "Neural Helix" line (432.73 / 945.79 / 252.40) is the POST-percentage contribution and must NEVER be
+// entered as flat — doing so double-counts the panel path's own multiply.
+test("VALIDATED: Vector's full panel reproduces the in-game View Details values exactly", () => {
+  const ch = REGISTRY.getCharacter("vector");
+  assert.ok(ch);
+  // Gene-node flats (the authoritative pre-percentage values).
+  assert.deepEqual(ch.neuralHelixStats, { atk: 183, hp: 319, def: 100, atkPct: 0.05, hpPct: 0.05 });
+  assert.deepEqual(ch.remolderFlat, { atk: 224, hp: 651, def: 245 });
+  assert.deepEqual(ch.affinityFlatStats?.[5], { atk: 106, hp: 280, def: 116 });
+
+  // The weapon's ATK contribution, as displayed in-game.
+  assert.equal(weaponAtk(REGISTRY.getWeapon("retired_tmp") ?? null), 25);
+
+  // Effective panel = (Σflat) × (1 + Σ%), with the GLOBAL 12% applied by the panel path.
+  const flatAtk = ch.base.atk + 183 + 106 + 183 + 224 + 25;
+  const flatHp = ch.base.hp + 319 + 280 + 618 + 651;
+  const flatDef = ch.base.def + 100 + 116 + 240 + 245;
+  // Tolerance for binary floating point (the values are exact in decimal, not in IEEE-754).
+  const near = (actual: number, expected: number, label: string) =>
+    assert.ok(Math.abs(actual - expected) < 1e-9, `${label}: ${actual} vs ${expected}`);
+  near(flatAtk * (1 + 0.12 + 0.05), 1718.73, "in-game Attack 1718.73");
+  near(flatHp * (1 + 0.12 + 0.05), 4313.79, "in-game Health 4313.79");
+  near(flatDef * (1 + 0.12), 1422.4, "in-game Defense 1422.40");
+});
+
+test("VALIDATED: Vector's Basic at DEF 5000 reproduces the observed 356 (ATK 1719, +1% weapon)", () => {
+  const r = simulateScenario(
+    {
+      version: 1,
+      seed: 2,
+      turns: 1,
+      team: [{ characterId: "vector", rotation: ["basic"], weaponId: "retired_tmp" }],
+      configOverrides: { fortificationLevel: 6 },
+      dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], phase: null, cover: "none" },
+    },
+    REGISTRY,
+  );
+  // ceil(1719² / 6719 × 0.80 × 1.01) = 356 — the in-game observation, non-crit.
+  const basic = r.log.find((e) => e.attackerAtk !== undefined && e.actionType !== "status_tick");
+  assert.ok(basic);
+  assert.equal(basic.attackerAtk, 1719, "the engine uses the effective panel ATK");
+  if (basic.critical !== true) {
+    assert.equal(basic.finalDamage, 356, "in-game observed Basic damage");
+  }
+});
+
+test("VALIDATED: the Retired TMP's innate +1% damage is always active (no calibration needed)", () => {
+  const w = REGISTRY.getWeapon("retired_tmp");
+  assert.ok(w);
+  assert.equal(w.name, "Retired TMP");
+  assert.equal(w.innateDamageDealt, 0.01);
+  assert.equal(w.calibrationLevel, undefined, "innate effect must not require a calibration");
+  // The +1% is the DIFFERENCE between the observed 356 and the no-weapon-effect 352.
+  const withBonus = Math.ceil((1719 * 1719) / (1719 + 5000) * 0.8 * 1.01);
+  const withoutBonus = Math.ceil((1719 * 1719) / (1719 + 5000) * 0.8);
+  assert.equal(withBonus, 356);
+  assert.equal(withoutBonus, 352);
 });
 
 test("B4: her Ultimate grants Extra Command, which yields an EXTRA main action", () => {

@@ -111,9 +111,33 @@ export const VECTOR: CharacterDef = {
   base: { atk: 748, hp: 1819, def: 569, stability: 10, critRate: 0.2, critDmg: 0.2 },
   // Movement 6 (in-game sheet, corroborated by the source's `movement: 6`).
   mobility: 6,
-  // PATTERN REMOLDER (source §2.2): Lv.60 Remolder FLAT stats. The SET BONUS definitions are NOT in
-  // the source, so `remolderSetBonuses` is deliberately ABSENT rather than invented.
+  // PATTERN REMOLDER (source §2.2): Lv.60 Remolder FLAT stats. Corroborated in-game 2026: the
+  // View Details "Remolding Pattern" line reads exactly 224 / 651 / 245.
+  // NOTE: this is the Lv.60 FLAT stat only. The Remolder FLOWER/buff picks (the 15 SUPPORT_BUFFS)
+  // are a SEPARATE system and are NOT active for this record — the owner confirmed 2026 that
+  // "max level remolding" means level 60, with no flower/key selections.
   remolderFlat: { atk: 224, hp: 651, def: 245 },
+
+  // NEURAL HELIX (VALIDATED in-game 2026 — the GENE NODE TABLE, which gives the PRE-PERCENTAGE values).
+  // This is the authoritative shape: 6 nodes, each a flat pair and/or a stat%. The `View Details`
+  // "Neural Helix" line (432.73 / 945.79 / 252.40) is the POST-percentage contribution and must NOT be
+  // entered as flat — doing so double-counts the panel path's own multiply (that error is recorded in
+  // `docs/validation-plan.md` §5, 2026).
+  //   Enhancement 1 (Lv1) : ATK +35  DEF +24
+  //   Enhancement 2 (Lv20): HP +77   ATK +5.0%
+  //   Enhancement 3 (Lv25): ATK +42  DEF +33
+  //   Enhancement 4 (Lv30): HP +105  HP +5.0%
+  //   Enhancement 5 (Lv35): ATK +49  DEF +43
+  //   Enhancement 6 (Lv40): ATK +57  HP +137
+  // Node flats sum to ATK 183 / HP 319 / DEF 100, with atkPct 5% and hpPct 5%. The UNIVERSAL +12% is
+  // the separate GLOBAL `NEURAL_HELIX_GLOBAL_PCT` — not written here (it would double-count).
+  neuralHelixStats: { atk: 183, hp: 319, def: 100, atkPct: 0.05, hpPct: 0.05 },
+
+  // AFFINITY Lv5 FLAT (VALIDATED in-game 2026 — View Details "Affinity" line, 106 / 280 / 116).
+  // NOTE: this is a SINGLE FLAT BLOCK, not a per-level increase. The model (`affinityFlatStats`) expects
+  // PER-LEVEL increments that are summed 1..N, so the sum would over-report if this were spread across
+  // levels. With no source for the per-level split, only Lv5 is defined — the exact level observed.
+  affinityFlatStats: { 5: { atk: 106, hp: 280, def: 116 } },
 
   skills: {
     // ---------------------------------------------------------------- Basic — COMPLETE

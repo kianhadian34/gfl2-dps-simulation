@@ -529,7 +529,11 @@ function dealDamageHit(state: SimulationState, actor: UnitState, skill: SkillDef
   // formula or bucket. Calibration effect is only active when `calibrationLevel` is set (the
   // established pre-weapon validations were all observed without it).
   const wcal = weaponCalibration(actor.weapon, actor.weaponCalibrationLevel);
+  // INNATE weapon damage% (2026, VALIDATED — "Retired TMP"): a property of the weapon ITSELF, always
+  // active whenever equipped and INDEPENDENT of `calibrationLevel`. Additive in the SAME DMG% bucket
+  // as the calibration Effect — no second bucket, no second formula.
   const weaponDealtTerm =
+    (actor.weapon?.innateDamageDealt ?? 0) +
     (wcal?.damageDealt ?? 0) + (ev.supportAttack && wcal?.charging ? (actor.weaponCharges ?? 0) * wcal.charging.perStackValue : 0);
   // WEAPON IMPRINT (Golden Melody, 2026): OWNER-ONLY — applies only when the damage DEALER is the
   // weapon's recorded owner (`ownerCharacterId`) — additive in the SAME DMG% bucket: +`bonus` vs

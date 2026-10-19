@@ -111,6 +111,107 @@ plus the user's statement that base Crit Rate is 20% for all characters.
 | `critDmg` | **0.2** (120% displayed) | user-provided: same as Qiongjiu (`critDmg 0.2` = the displayed "120% Crit DMG"; the multiplier is `1 + critDmg`) |
 | `mobility` | **6** | in-game sheet ("Movement Speed: 6 tiles"), corroborating Dandegate `movement: 6` |
 
+### 3.1 Permanent-source flats — `Validated` [in-game View Details, 2026]
+
+The in-game **View Details → Basic Attributes** panel was read for a
+**V6 · Affinity Lv5 · max Remolder · dispatch · Neural Helix · blue SMG** configuration. Every displayed
+total equals the sum of its listed parts **to the cent with no percentage applied**
+(`total / Σparts = 1.000000` exactly), which both validates the source lines below and confirms the
+panel is additive.
+
+| Source | Flat ATK | Flat HP | Flat DEF | State |
+|---|---|---|---|---|
+| Basic Doll (base) | 748.00 | 1819.00 | 569.00 | **`Validated`** (§3) |
+| **Weapon** | **25.00** | — | — | **`Validated`** (ATK only; no HP/DEF lines) |
+| **Neural Helix** | **432.73** | **945.79** | **252.40** | **`Validated`** ⚠️ **POST-percentage — do NOT enter as flat** |
+| **Affinity Lv5** | **106.00** | **280.00** | **116.00** | **`Validated`** |
+| Dispatch Room | 183.00 | 618.00 | 240.00 | **`Validated`** (matches `src/data/dispatch.ts` support) |
+| Remolding Pattern | 224.00 | 651.00 | 245.00 | **`Validated`** (matches `remolderFlat`) |
+| **Pane total (V6 · Aff Lv5 · max Remolder · dispatch · Helix · weapon)** | **1718.73** | **4313.79** | **1422.40** | **`Validated`** |
+
+**WIRED INTO `src/data/vector.ts` (2026).** These sources are now entered, and the engine reproduces
+the observed panel **exactly on all six stats**:
+
+- `neuralHelixStats: { atk: 183, hp: 319, def: 100, atkPct: 0.05, hpPct: 0.05 }` — the **GENE NODE
+  TABLE** values (pre-percentage). ⚠️ The `View Details` line above (432.73 / 945.79 / 252.40) is
+  **post-percentage**; entering it as flat double-counts the panel multiply. That mistake was made and
+  corrected 2026.
+
+  | Node | Level | Effect |
+  |---|---|---|
+  | Enhancement 1 | 1 | ATK +35 · DEF +24 |
+  | Enhancement 2 | 20 | HP +77 · **ATK +5.0%** |
+  | Enhancement 3 | 25 | ATK +42 · DEF +33 |
+  | Enhancement 4 | 30 | HP +105 · **HP +5.0%** |
+  | Enhancement 5 | 35 | ATK +49 · DEF +43 |
+  | Enhancement 6 | 40 | ATK +57 · HP +137 |
+
+  Flats sum to **ATK 183 / HP 319 / DEF 100**, plus **atkPct 5% / hpPct 5%**. The universal **+12%** is
+  the separate GLOBAL `NEURAL_HELIX_GLOBAL_PCT` and is never written into her data.
+- `affinityFlatStats: { 5: { atk: 106, hp: 280, def: 116 } }` — **only Lv5 is defined**, because the
+  model expects **PER-LEVEL increments** summed 1..N while the observation gives a single flat block;
+  spreading it across levels would over-report. No per-level split exists in any source.
+- `remolderFlat` was already correct (224 / 651 / 245) and is corroborated by the panel's own line.
+- **Weapon — "Retired TMP"** added to `src/data/weapons.ts`: **+25 flat ATK** (`atkLvl1` = `atkLvl60` =
+  25, since only the summed value is known — no curve invented) and an **innate +1% damage** via the new
+  `WeaponDef.innateDamageDealt`, folded into the existing additive DMG% bucket.
+
+| Stat | Engine flat | Game flat | Engine % | Game % |
+|---|---|---|---|---|
+| ATK | **1718.73** ✅ | 1718.73 | **17.00%** ✅ | 17.00% |
+| HP | **4313.79** ✅ | 4313.79 | **17.00%** ✅ | 17.00% |
+| DEF | **1422.40** ✅ | 1422.40 | **12.00%** ✅ | 12.00% |
+
+**Effective panel: ATK 2011 · HP 5048 · DEF 1594.** `atkPct: 0.05` is Vector's own Helix percentage —
+`Attack Boost 17% = 12% universal + 5%`. The **+12% universal is NOT written into her data** (it is the
+global `NEURAL_HELIX_GLOBAL_PCT`, applied automatically) — writing it would double-count.
+
+**THE WEAPON IS STILL NOT MODELLED.** The panel's `Weapon 25.00` has no `WeaponDef` in
+``src/data/weapons.ts`` (which holds one AR). So the engine's real-build panel is **1982**, not 2011 —
+short by exactly the weapon: `ceil(1693.73 × 1.17) = 1982`, and `ceil(1718.73 × 1.17) = 2011`. Damage
+consequence: Basic **451** instead of **462**. Entering the weapon closes this (see `validation-plan.md`
+§3.2).
+
+**Special Attributes tab (also read, 2026)** — the percentage stats are a **SEPARATE** display:
+
+| Stat | Value | Match? |
+|---|---|---|
+| Stability | **10.00** | ✅ `base.stability` 10 |
+| Crit Rate | **20.00%** | ✅ `base.critRate` 0.2 |
+| Critical Damage | **120.00%** | ✅ `base.critDmg` 0.2 (multiplier 1.2) |
+| **Attack Boost** | **17.00%** | — |
+| **Defense Boost** | **12.00%** | = `NEURAL_HELIX_GLOBAL_PCT` exactly |
+| **Health Boost** | **17.00%** | — |
+| Mobility | **6** | ✅ `mobility` 6 |
+| **Stability Damage Reduction** | **60.00%** | ⚠️ **not modelled** (see below) |
+
+**KEY CORRECTION — the game exposes flat `Attack` and `Attack Boost`% as TWO DIFFERENT STATS.** Basic
+Attributes shows flat only; the percentage is its own row here. So the engine's `panel ATK` (an
+**effective** value = Σflat × (1 + Σ%)) must be compared against `game Attack × (1 + Attack Boost)`, or
+flat-to-flat — **never** against the displayed flat Attack.
+
+**One question resolved, one still open** — full detail in `docs/validation-plan.md` §3.0.1–§3.0.3:
+
+1. **`NEURAL_HELIX_GLOBAL_PCT` (12%) DOES apply to Vector — RESOLVED** by `Defense Boost = 12.00%`
+   exactly (Defence has no Fighting Spirit component). **An earlier claim in this session that it "must
+   not apply, +206 ATK error" is WITHDRAWN** — it came from comparing the engine's effective panel
+   against the game's flat-only Attack display.
+2. **Is `Fighting Spirit`'s 1.8% inside `Attack Boost`'s 17%? — STILL OPEN.** After the universal 12%
+   the residual is exactly **+5.0% ATK/HP, +0.0% DEF**, fitting two identical models: NH
+   `atkPct`/`hpPct` = **5.0%** (FS excluded) or **3.2%** (FS's 1.8% included). Deciding test: set
+   **Fighting Spirit to Lv1** (0.4%) and re-read `Attack Boost` — **15.60%** ⇒ included, **17.00%** ⇒
+   excluded. Double-counting is **ruled out** (would show 18.8% → panel 2042; game shows 17.0% → 2011).
+
+**`Stability Damage Reduction` (稳态减伤) = 60%** is a real stat (`docs/research.md` §3.8 lists it) but
+**the engine has no field for it**. It is **inert** in the MVP — dolls are never attacked, the dummy is
+the only target — so it is a **recorded gap, not a live bug**. Whether 60% is universal across dolls or
+Vector's own value is **`Not Tested`** (one character observed).
+
+**Scope:** this read covers flat-plus-bond arithmetic and the percentage-**stat values**. Crit / Crit DMG
+/ Stability / Mobility are now confirmed against `src/data/vector.ts`. But **no percentage source was
+exercised into damage** (no attachments / Common Keys / Apex, no hits observed), so **nothing here
+validates percentage-bucket folding into damage**.
+
 **Sanity check against Qiongjiu** (the only other real character): Qiongjiu (sentinel) 802 ATK /
 1893 HP / 528 DEF; Vector (support) **748 / 1819 / 569** — distinct, plausible, and consistent with
 a different class. Recorded as **data**, not derived from Qiongjiu.
