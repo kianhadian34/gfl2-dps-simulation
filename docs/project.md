@@ -202,17 +202,17 @@ summary alone.
 
 ## 2. Current Project State
 
-**Snapshot verified:** 2026-10-09 (this session). Treat as a dated snapshot — re-verify per §1.2.
+**Snapshot verified:** 2026-10-09 (this session, refreshed at the V3-setup wrap-up). Treat as a dated snapshot — re-verify per §1.2.
 
 | Item | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | `346cbc2813b62ce62608f7960fd40ddb9de736cb` |
-| `origin/main` | `346cbc2813b62ce62608f7960fd40ddb9de736cb` (in sync) |
-| Working tree | clean after commit `9a68711` (§7.1 items 36–43) |
+| HEAD | `f63e552ff5c47cdcdeb2db0ef7aba202f880367a` |
+| `origin/main` | `f63e552ff5c47cdcdeb2db0ef7aba202f880367a` (in sync) |
+| Working tree | V3 clause-4 validation in progress (uncommitted — see §7.1 item 44) |
 | Untracked | `.reasonix/` (host-managed session artifacts — **never stage**) |
 | Engine build | `npm run build` → exit 0 |
-| Engine tests | **980 pass · 0 fail · 0 skipped** across **116 test files** |
+| Engine tests | **984 pass · 0 fail · 0 skipped** across **116 test files** |
 | UI typecheck | exit 0 |
 | UI tests | **286 pass · 0 fail** |
 | UI build | exit 0 |
@@ -777,7 +777,8 @@ commit actually exists**.
 **Session scope:** new session bootstrapped from the external handout; orientation/audit; a
 documentation-drift cleanup; establishment of this document; hardening its maintenance contract;
 making explicit that this document is additional to — never a replacement for — the existing
-workflow and owning documents.
+workflow and owning documents. Later: Vector's source record, the tile subsystem (T1–T11), B4's
+registration, the V1 panel validation, and the V3 setup (item 44).
 
 | # | Work | Files | Verification | Commit |
 |---|---|---|---|---|
@@ -823,7 +824,8 @@ workflow and owning documents.
 | 40 | **V1 STEP 1 CLOSED — the "ambiguity" was my misreading, and her validated data is now WIRED.** The owner clarified: **"max level remolding" means Remolder LEVEL 60** (the flat stat), **NOT** the Remolder flower/buff picks — **she has no `Fighting Spirit` at all**. So item 39's two-hypothesis problem **never existed**: the residual **+5.0% ATK/HP is Neural Helix's own percentage**, `neuralHelixStats.atkPct = 0.05`, `hpPct = 0.05`. **The "set Fighting Spirit to Lv1 and re-read" test I asked the owner to run was MOOT and is WITHDRAWN** — a direct consequence of my own assumption. **The lesson, recorded because it is a recurring failure mode:** "max level remolding" names the **Lv.60 flat stat**; the flower/buff picks are a SEPARATE system with their own levels. **I had set all 15 `SUPPORT_BUFFS` to max in my probes**, which invented an 18.8%-vs-17% discrepancy and cost two round-trips. **DATA ENTERED into `src/data/vector.ts`:** ~~`neuralHelixStats { atk: 432.73, hp: 945.79, def: 252.4, atkPct: 0.05, hpPct: 0.05 }`~~ **⚠️ THIS FIGURE WAS WRONG — superseded by item 41 (the View Details line is POST-percentage; the real values are ATK 183 / HP 319 / DEF 100)** and `affinityFlatStats { 5: { atk: 106, hp: 280, def: 116 } }`. **Only Lv5 is defined** for affinity — the model expects **PER-LEVEL increments** summed 1..N while the observation gives a SINGLE flat block; spreading it across levels would over-report, and no per-level split exists in any source. The **+12% universal is deliberately NOT written into her data** — it is the global `NEURAL_HELIX_GLOBAL_PCT` applied automatically; writing it would double-count. **VERIFICATION CLAIM — ⚠️ WRONG, see item 41:** the panel figures below were reproduced using the WRONG (post-percentage) helix flats, and the resulting effective ATK 2011 was itself incorrect. The true effective panel is ATK 1718.73 (HUD 1719) — NOT 2011. Engine **980 pass / 0 fail**, Qiongjiu CLI **unchanged at 14,581**. **A FALSE ALARM I RAISED AND CORRECTED MID-TASK:** reading `panelAtk: finalStat(panel.atk, 0, atkPct)` I claimed the percentage was applied TWICE; the runtime proved otherwise (`attackerAtk = 1982`, not 2107) — `computePanel` is passed the FLAT-only sources and `panelAtk` applies the % once. The real residual was **the unmodelled weapon**, not a double-count. Recorded because I nearly "fixed" working code. **STILL OPEN — THE WEAPON.** **RESOLVED in item 41** — the owner named the weapon (**"Retired TMP"**, +25 ATK, innate +1% damage) and it is now in `src/data/weapons.ts`. **STEP 2 SHELVED (item 42):** both damage fixtures were deleted at the owner's request, so the damage-multiplier comparison is not the active work. The weapon-independent ratio test (s1/basic ≈ 1.875, s2/basic ≈ 1.625) remains a valid method for later. | `src/data/vector.ts` (validated Helix + Affinity flats, with the per-level and double-count caveats documented in comments), `docs/validation-plan.md` (§3.0.2 RESOLVED + §5), `docs/validation-checklist.md` (§6.1 three rows updated), `docs/dolls/vector.md` (§3.1), `docs/project.md` (§2, §7.1, §10) | engine **980 pass / 0 fail**; Qiongjiu CLI **14,581 unchanged**; all six panel stats reproduced exactly; 0 char-id conditionals in engine; scratch scripts kept OUTSIDE the repo and deleted; `git diff --check` clean | uncommitted (§10) |
 | 41 | **NEURAL HELIX RESOLVED — the gene node table, and the engine now reproduces EVERY observed Vector number exactly.** The owner supplied the **Neural Helix gene node table**, which is the missing authoritative source. **THE ROOT CAUSE, now a permanent convention:** Neural Helix has TWO representations and confusing them breaks everything — the **GENE NODE TABLE is PRE-percentage** (Enh1 Lv1 ATK +35/DEF +24 · Enh2 Lv20 HP +77/**ATK +5.0%** · Enh3 Lv25 ATK +42/DEF +33 · Enh4 Lv30 HP +105/**HP +5.0%** · Enh5 Lv35 ATK +49/DEF +43 · Enh6 Lv40 ATK +57/HP +137), while the **`View Details` "Neural Helix" line is POST-percentage** (432.73 / 945.79 / 252.40). Entering the latter as flat **double-counts the panel path's own multiply** — that was the whole defect. **Node flats sum to ATK 183 / HP 319 / DEF 100, with atkPct 5% / hpPct 5%**, and the universal **+12%** stays the separate GLOBAL `NEURAL_HELIX_GLOBAL_PCT`. **WEAPON NAMED AND ADDED — "Retired TMP"** (`src/data/weapons.ts`): **+25 flat ATK** with `atkLvl1` = `atkLvl60` = 25 (only the SUMMED value is known, so no proficiency curve is invented) and an **innate +1% damage** via a NEW `WeaponDef.innateDamageDealt?: number` field in `src/model/types.ts`, folded in `src/engine/simulation.ts` (`weaponDealtTerm`) into the **EXISTING additive DMG% bucket** — no new formula, no new bucket, and **independent of `calibrationLevel`** (calibrations are per-level Effects; this is an innate property). The +1% is exactly the difference between **356** and 352. **EVERY NUMBER NOW REPRODUCES EXACTLY:** panel ATK `(748+183+106+183+224+25) × 1.17 = 1718.73` (HUD **1719**), HP `(1819+319+280+618+651) × 1.17 = 4313.79` (HUD **4314**), DEF `(569+100+116+240+245) × 1.12 = 1422.40` (HUD **1423**), and Basic `ceil(1719²/6719 × 0.80 × 1.01)` = **356** — the owner's observed hit. **Pinned by 3 tests** in `src/test/vector-data.test.ts` (full panel, the observed 356, and the innate-+1% invariant). **Also corrected in place, not deleted:** item 40's `neuralHelixStats { atk: 432.73 … }` and its "effective ATK 2011" claim are struck through with a pointer here, so the wrong figures cannot be mistaken for current state. **Owner directives recorded:** the 12% is GLOBAL and must not be questioned; **never compare two characters' numbers**; the +1% is present during validations; dummy DEF is always **5000**; food-buff crit deltas in screenshots (20.5% / 120.8%) are NOT data. | `src/data/vector.ts` (gene-node helix + affinity flats), `src/data/weapons.ts` (Retired TMP), `src/model/types.ts` (`innateDamageDealt`), `src/engine/simulation.ts` (innate fold), `src/test/vector-data.test.ts` (+3 VALIDATED pins), `docs/dolls/vector.md` (§3.1 node table + post-percentage warning), `docs/validation-plan.md` (§5), `docs/validation-checklist.md` (§6.1), `docs/project.md` (§2, §7.1, §10) | engine **983 pass / 0 fail**; Qiongjiu CLI **14,581 unchanged**; panel + damage reproduced exactly; 0 char-id conditionals; trailing newline restored on `weapons.ts`; `git diff --check` clean | `d05ee66` |
 | 42 | **Owner-requested deletions — the damage fixtures.** The owner asked to **delete the Basic-attack validation test** and to **stop and refocus on basic stats**. DELETED: `examples/vector-validation-v1.json` (tracked) and `examples/vector-real-build.json` (untracked) — both were damage-comparison fixtures; **all references to them were cleared across the docs**. **They must NOT be recreated without asking.** The damage-multiplier slice is **SHELVED**; the weapon-independent ratio test remains a valid method for later. `examples/` is back to `qiongjiu-dummy.json` + `rotation-check.json`. | `examples/vector-validation-v1.json` (deleted), `examples/vector-real-build.json` (deleted), `docs/validation-plan.md` (§5 + all fixture refs), `docs/project.md` (§2, §7.1, §10) | engine **983 pass / 0 fail**; Qiongjiu CLI **14,581 unchanged**; no dangling fixture references anywhere in `docs/`; `git diff --check` clean | `d05ee66` |
-| 43 | **Vector's PANEL and BASIC ATTACK are VALIDATED — the slice is closed.** Final confirmation with the weapon included (the owner's point: "a character without a weapon does not exist"): with all five flat sources plus **Retired TMP**'s 25 ATK, the engine reproduces **every** observed number exactly — flat **1469 / 3687 / 1270**, percentages **ATK 17% / HP 17% / DEF 12%** (12% global + 5% Helix), giving effective **ATK 1718.73 · HP 4313.79 · DEF 1422.40** (HUD **1719 / 4314 / 1423**) and **Basic 356** at DEF 5000 non-crit with the +1% weapon. **The earlier "ATK is short by 29" flag was simply the excluded weapon** — 25 × 1.17 = 29.25 — not an engine defect; recorded so the false alarm is not re-raised. **BASIC IS GENUINELY VALIDATED, with discriminating power verified:** 356 with the +1% vs **352** without it vs **423** on a crit, and **no ATK in 1600–1850** yields 356 without the +1% — so a single observation pins the panel ATK, the Basic 80% multiplier AND the weapon's +1% simultaneously. **Test hardened:** the 356 assertion was previously behind `if (basic.critical !== true)`, which could SILENTLY SKIP if a future seed crit; it is now a hard `assert.equal(basic.critical, false)` with a note to pick another seed rather than relax the assertion. **SCOPE, stated plainly so nothing is over-claimed:** validated = flat-plus-bond arithmetic, the percentage VALUES, the full panel, and **Basic only**. NOT validated = **Skill 1 / Skill 2 / Ultimate** (never observed), the **passive** (Perception Block), the Fixed Keys beyond FK2/FK5 being wired, percentage folding from an INDEPENDENT equipment source, and **`Stability Damage Reduction` 60%** (displayed in-game; **the engine has no field** for it — inert in the MVP since dolls are never attacked, recorded as a gap). | `src/test/vector-data.test.ts` (hard-fail crit guard), `docs/validation-checklist.md` (§6.1 — Helix row corrected to the node-table values, weapon row resolved, panel + Basic rows added, scope limit rewritten), `docs/dolls/vector.md` (Basic `Validated`), `docs/validation-plan.md` (§5 closure), `docs/project.md` (§2, §7.1, §10) | engine **983 pass / 0 fail**; Qiongjiu CLI **14,581 unchanged**; panel + Basic reproduced exactly; 0 mojibake; `git diff --check` clean | see §10 |
+| 43 | **Vector's PANEL and BASIC ATTACK are VALIDATED — the slice is closed.** Final confirmation with the weapon included | (the owner's point: "a character without a weapon does not exist"): with all five flat sources plus **Retired TMP**'s 25 ATK, the engine reproduces **every** observed number exactly — flat **1469 / 3687 / 1270**, percentages **ATK 17% / HP 17% / DEF 12%** (12% global + 5% Helix), giving effective **ATK 1718.73 · HP 4313.79 · DEF 1422.40** (HUD **1719 / 4314 / 1423**) and **Basic 356** at DEF 5000 non-crit with the +1% weapon. **The earlier "ATK is short by 29" flag was simply the excluded weapon** — 25 × 1.17 = 29.25 — not an engine defect; recorded so the false alarm is not re-raised. **BASIC IS GENUINELY VALIDATED, with discriminating power verified:** 356 with the +1% vs **352** without it vs **423** on a crit, and **no ATK in 1600–1850** yields 356 without the +1% — so a single observation pins the panel ATK, the Basic 80% multiplier AND the weapon's +1% simultaneously. **Test hardened:** the 356 assertion was previously behind `if (basic.critical !== true)`, which could SILENTLY SKIP if a future seed crit; it is now a hard `assert.equal(basic.critical, false)` with a note to pick another seed rather than relax the assertion. **SCOPE, stated plainly so nothing is over-claimed:** validated = flat-plus-bond arithmetic, the percentage VALUES, the full panel, and **Basic only**. NOT validated = **Skill 1 / Skill 2 / Ultimate** (never observed), the **passive** (Perception Block), the Fixed Keys beyond FK2/FK5 being wired, percentage folding from an INDEPENDENT equipment source, and **`Stability Damage Reduction` 60%** (displayed in-game; **the engine has no field** for it — inert in the MVP since dolls are never attacked, recorded as a gap). | `src/test/vector-data.test.ts` (hard-fail crit guard), `docs/validation-checklist.md` (§6.1 — Helix row corrected to the node-table values, weapon row resolved, panel + Basic rows added, scope limit rewritten), `docs/dolls/vector.md` (Basic `Validated`), `docs/validation-plan.md` (§5 closure), `docs/project.md` (§2, §7.1, §10) | engine **983 pass / 0 fail**; Qiongjiu CLI **14,581 unchanged**; panel + Basic reproduced exactly; 0 mojibake; `git diff --check` clean | see §10 |
+| 44 | **V3 SETUP PREPARED — and the slice's real scope was FOUND, not assumed; then OBSERVED and VALIDATED.** Tasked with moving from documentation to validation on Vector, I investigated before writing the setup and found that the plan's V3 (clauses 4 **and** 5) promised more than the engine can produce. **(a) The finding:** Vector declares **no `resource_gain`** — she gains Confectance from her SKILLS ("gains 2 points"), which is **RECORDED-ONLY** because `resource_gain` is a PASSIVE effect with `on: "onDamageDealt"` and no skill-level grant exists. So her gauge only ever holds its **battle-start** value, clause 4 fires **once, round 1, and only with FK2**, and clause 5's extra pool (filled by overflow past 6) **can never fill** ⇒ **+20%/+30% are UNREACHABLE BY CONSTRUCTION**. Recorded as a mechanism gap, NOT worked around (raising `confectanceMax` would fake it and violate U9, which a guard test pins). **(b) The prediction, made discriminating on purpose:** control **356** vs clause-4 **420** (`ceil(1719 × 1.10) = 1891` ⇒ `ceil(1891²/6891 × 0.80 × 1.01) = ceil(419.29)`), with the competing models giving **420 / 410 / 383 / 392** so the observation rules alternatives out rather than merely agreeing — and the trap recorded that 420 is +10% **ATK**, i.e. +18% **damage**. **(c) OBSERVED 2026: both matched — 356 without FK2, 420 with FK2.** Clause 4's magnitude, round-scoped window and at-max precondition are **`Validated`**; the control re-confirms V1. Clause 5 was **not** exercised. | `examples/vector-v3-control.json` (new), `examples/vector-v3-clause4.json` (new), `src/test/vector-data.test.ts` (new test pinning 1719→356 and 1891→420), `docs/validation-plan.md` (§2 V3 row, new **§3.5** incl. §3.5.5 OBSERVED, §5 status), `docs/dolls/vector.md` (§11 clause-4/clause-5 rows + the Skill-1/2-gain row carry the validation state and the unreachability), `docs/project.md` (§2, §7.1, §8.0, §10) | engine **984 pass / 0 fail** (+1 new); both scenarios run and print **356** / **420**; Qiongjiu CLI **14,581 unchanged**; in-game observation supplied by the owner (356 / 420) | uncommitted (§10) |
 
 **Detail — the documentation-drift cleanup (`8d8ef61`):** the task and its outcome are also
 recorded here because future sessions should not re-fix them.
@@ -896,24 +898,27 @@ dfe777d docs(attachment): element boosts validated by shared mechanism; only Bur
 
 Only genuinely open work. Completed items are closed and preserved in §7.
 
-### 8.0 OPEN OWNER DECISION — a weapon's INNATE damage% has no field (raised 2026, item 36)
+### 8.0 RESOLVED — a weapon's INNATE damage% now has a field (raised item 36; settled by `d05ee66`)
 
 Found while expressing the owner's real Vector build (a blue SMG with "+1% damage"). `WeaponDef`
 models damage ONLY as a **Calibration Effect** (`calibrations[n].damageDealt`, gated on
 `calibrationLevel`). An **innate** weapon damage roll — a property of the weapon itself, not a
-calibration — has **no home in the schema**. It was **NOT** approximated and NOT recorded as a
-calibration (that would be a falsehood).
+calibration — had **no home in the schema**. It was **NOT** approximated and NOT recorded as a
+calibration (that would have been a falsehood).
 
-Two honest options, and this is the owner's call because it is an engine-vocabulary decision
-(documented in `docs/validation-plan.md` §3.4):
+**RESOLVED (2026) by option (a):** `WeaponDef.innateDamageDealt?: number` was added
+(`src/model/types.ts`) and is folded into the **existing additive DMG% bucket**, so no new formula
+and no new stat system. It is independent of `calibrationLevel`. First consumer: **Retired TMP**
+(`retired_tmp`, `innateDamageDealt: 0.01`) — the owner's own weapon, with the note that the +1% is
+present during validations. Option (b) (declaring innate rolls out of scope) was not taken.
 
-- **(a)** Add `damageDealt?: number` to `WeaponDef`, folded into the **existing additive DMG% bucket**
-  (reusing the calibration path's bucket — no new formula, no new stat system).
-- **(b)** Declare innate weapon damage% out of scope, calibration-only, and record the gap.
+**Retained because it is the reusable decision record:** the question was raised as an
+engine-vocabulary decision for the owner, not resolved by assumption, and the shape chosen is the one
+every future innate weapon roll should follow.
 
-**Also blocking her real build (information, not code):** `src/data/weapons.ts` holds **exactly one**
-weapon (Golden Melody, an AR). There is **no SMG definition**, so her blue SMG's `atkLvl1`/`atkLvl60`
-are needed before it can be entered as data. See `docs/validation-plan.md` §3.2.
+**Still outstanding from that investigation, separately:** the "no SMG definition" half was closed by
+adding **Retired TMP** itself (only the summed ATK value is known, so `atkLvl1` = `atkLvl60` = 25 and
+no proficiency curve is invented). A *different* SMG would still need its own two ATK numbers.
 
 ### 8.1 Immediate next step — Vector (character NAMED by the user, 2026-10-09)
 
@@ -1045,41 +1050,40 @@ installers beyond plain Windows dev builds.
 
 ## 10. Next Action
 
-**The single most appropriate next action: run validation slice V1 — Vector's panel + damage
-multipliers (`docs/validation-plan.md` §3).**
-The code side is complete, so the remaining work is **in-game validation**, and it now has an ORDER:
-**`docs/validation-plan.md`** owns the slices (its §2 is the list, **§3.0 the PANEL comparison**,
-§3.1 the damage comparison, §4 the **unobservable-by-construction** set that must never be chased).
-**STEP 1 is COMPLETE — both panel tabs observed — and it validated the engine:** the in-game
-**Basic Attributes** is **FLAT only** (**ATK 1718.73 / HP 4313.79 / DEF 1422.40**, each exactly the sum
-of its parts), while the **Special Attributes** tab carries the percentages separately (Stability 10 ·
-CR 20% · CDMG 120% · Mobility 6 · **Attack Boost 17%** · **Defense Boost 12%** · **Health Boost 17%** ·
-**Stability Damage Reduction 60%**). The engine's flat folding reproduces the game exactly once the three
-sources her `CharacterDef` lacks are supplied — **Neural Helix** (432.73/945.79/252.40), **Affinity Lv5
-flat** (106/280/116) and the **weapon** (25 ATK). **`Defense Boost = 12%` = `NEURAL_HELIX_GLOBAL_PCT`
-exactly, so the universal 12% DOES apply to Vector** (an earlier contrary claim is withdrawn — the error
-was comparing the engine's *effective* panel against the game's *flat-only* Attack). Effective panel for
-this configuration: **ATK 2011 · HP 5048 · DEF 1594**. **That ambiguity is CLOSED** — the owner clarified
-"max level remolding" = **Remolder LEVEL 60**, not the flower/buff picks, so she has **no Fighting
-Spirit** and the residual +5% is Neural Helix's own (`atkPct: 0.05`). **Her data is now WIRED**
-(`neuralHelixStats` + `affinityFlatStats`), and the engine reproduces **all six** observed stats.
-**STILL OPEN: the weapon** — the panel's `Weapon 25.00` has no `WeaponDef`, so the engine's real-build
-panel is **1982 not 2011** and Basic is **451 not 462**. **STEP 2 (damage) is SHELVED 2026** — both damage fixtures were DELETED at the owner's instruction (focus moved to basic stats). Do not recreate without asking.
-line; its identity, its `%ATK` sub-stats and the innate **+1% damage** decision remain. Every slice that
-can be built today **is built**, and
-**Vector is REGISTERED** (B4, 2026): her modelable subset is wired and every blocked
-clause is recorded in a `deferredNote`. **Her behaviour is `Not Tested`**, and nearly every tile rule is
-`[SOURCE]` (community guide, level 5) — in-game observation is the only thing that can move those
-values above `[SOURCE]`, and a slice is one comparable observation (the plan supplies the exact setup,
-the engine's predicted number, and the mandatory control).
+**The single most appropriate next action: run validation slice V3's observation — Vector's passive,
+Perception Block clause 4 (`docs/validation-plan.md` §3.5 — SETUP PREPARED, awaiting the number).**
+The code side is complete, so the remaining work is **in-game validation**, and it has an ORDER:
+**`docs/validation-plan.md`** owns the slices (its §2 is the list, §3.0–§3.4 the V1 panel/damage
+comparison, **§3.5 the V3 clause-4 slice**, §4 the **unobservable-by-construction** set that must
+never be chased).
 
-The **mechanism backlog** is the other half of what remains — it is NOT an evidence or investigation
-task: T8's triggers (a)/(c), the six blocked T11 statuses (taken-side Stability, mobility,
-healing-received/blocked, an incoming-skill-type gate, a Burn-damage counter), T12's tile-generation
-and multi-enemy clauses, and Vector's own recorded-only pieces (skill-level tile generation, skill
-Confectance gain, ability-sourced percent-of-ATK fixed damage, "large target", cooldown reduction,
-ally healing, Crit Rate on an affinity key). Each is named with its block in `docs/tiles.md` §10,
-`docs/dolls/vector.md` §7/§11, and her `deferredNote`s. Her source record is
+**V1 is CLOSED and VALIDATED** (item 43): with all five flat sources plus **Retired TMP**'s 25 ATK the
+engine reproduces **every** observed number exactly — flat **1469 / 3687 / 1270** at **ATK 17% / HP 17%
+/ DEF 12%**, giving **ATK 1718.73 · HP 4313.79 · DEF 1422.40** and **Basic 356** at DEF 5000 non-crit
+with the +1% weapon. The in-game **Basic Attributes** tab is **flat only**; the **Special Attributes**
+tab carries the percentages separately. **`Defense Boost = 12%` = `NEURAL_HELIX_GLOBAL_PCT` exactly**,
+so the universal 12% DOES apply to Vector (an earlier contrary claim is withdrawn). **"Max level
+remolding" = Remolder LEVEL 60**, not the flower/buff picks — she has **no Fighting Spirit**, and the
+residual +5% is Neural Helix's own (`atkPct: 0.05`). **The weapon is RESOLVED** — Retired TMP was added
+to `weapons.ts` with `innateDamageDealt: 0.01`; the earlier "STILL OPEN" note is superseded, and §8.0
+now records the settled decision. **STEP 2 (the V1 damage fixtures) is SHELVED 2026** — both were
+DELETED at the owner's instruction (focus moved to basic stats). Do not recreate without asking.
+
+**V3's clause 4 is `Validated` IN-GAME 2026 — the observation AGREED.** The owner ran both scenarios:
+**356 without FK2**, **420 with FK2**, exactly as predicted. So **clause 4's +10% ATK, its round-scoped
+window and its at-max precondition are `Validated`**, and the control re-confirms V1's 356. The run
+**discriminated** rather than merely agreeing — the rejected models would have produced 410 / 383 / 392.
+Pinned by `src/test/vector-data.test.ts` (ATK 1719→356 and ATK 1891→420, hard non-crit guards).
+**Clause 5's +20%/+30% tiers were NOT tested and remain unreachable by construction** (plan §3.5.0):
+her gauge never exceeds its battle-start value because skill-level Confectance gain is not implemented
+and she declares no `resource_gain`. **That mechanism gap is the prerequisite for clause 5.**
+
+**The mechanism backlog is the other half** — named, not evidence-blocked: skill-level Confectance
+gain (which would make clause 5 reachable), T8's triggers (a)/(c), the six blocked T11 statuses,
+T12's tile-generation and multi-enemy clauses, and Vector's own recorded-only pieces. Each is named
+with its block in `docs/tiles.md` §10, `docs/dolls/vector.md` §7/§11, and her `deferredNote`s.
+
+Her source record is
 complete — **base stats resolved** (`[GAME]`: HP 1819 · ATK 748 ·
 DEF 569 · Stability 10 · Crit Rate 20% · Crit DMG 120% · Movement 6), **V2 is**
 IMPLEMENTED + TESTED, and **V4's evidence is documented**.
@@ -1136,12 +1140,11 @@ with §7 decision 5 resolved it is no longer at risk of modelling unplayable con
 
 **Also outstanding:**
 
-- **This slice (V1 re-based on the real build + new slice V2) is uncommitted** (§7.1 item 36) — awaiting
-  the user's authorization. (Slices 5–12 are committed and pushed: `45ed287`, `b0ccf7c`, `ca34892`,
-  `e247f15`, `e636961`, `e6b9926`, `b323ea6`, `ed9446a`; the T1/M1 tile slice is `c2d66ad`, the
-  duration-rule slice is `4c63337`, T2/M2 is `1799d32`, T3/M3 is `c95f298`, T4/M4 + T5/M5+M7 share
-  `8236e55`, T6/M6 + T8/M8 share `8a8d1c2`, T11/M11 is `1bc0e03`, T9/M9 is `fee18b2`, T10/M10 is
-  `674199e`, and B4 is `346cbc2`.)
+- **Slices 1–12 are committed and pushed** (`45ed287`, `b0ccf7c`, `ca34892`, `e247f15`, `e636961`,
+  `e6b9926`, `b323ea6`, `ed9446a`; the T1/M1 tile slice is `c2d66ad`, the duration-rule slice is
+  `4c63337`, T2/M2 is `1799d32`, T3/M3 is `c95f298`, T4/M4 + T5/M5+M7 share `8236e55`, T6/M6 + T8/M8
+  share `8a8d1c2`, T11/M11 is `1bc0e03`, T9/M9 is `fee18b2`, T10/M10 is `674199e`, B4 is `346cbc2`,
+  and the V1 re-basing + V2 + the weapon work are `d05ee66`, `9a68711`, `f63e552`).
 - **The remaining work is IN-GAME VALIDATION (ordered by `docs/validation-plan.md`) plus a
   MECHANISM BACKLOG — not data entry.** `docs/validation-plan.md` §4 lists the items that are
   **unobservable BY CONSTRUCTION** (FK5's tile reduction, the Burn-tile immunity in normal play,

@@ -260,6 +260,42 @@ test("VALIDATED: Vector's Basic at DEF 5000 reproduces the observed 356 (ATK 171
   assert.equal(basic.finalDamage, 356, "in-game observed Basic damage");
 });
 
+test("VALIDATED: Perception Block clause 4 — the at-max Confectance drain (+10% ATK) reproduces the observed 420", () => {
+  const run = (equippedFixedKeys: string[]) =>
+    simulateScenario(
+      {
+        version: 1,
+        seed: 2,
+        turns: 1,
+        team: [{ characterId: "vector", rotation: ["basic"], weaponId: "retired_tmp", equippedFixedKeys }],
+        configOverrides: { fortificationLevel: 6 },
+        dummy: { id: "training_dummy", name: "Training Dummy", hp: 999999999, defense: 5000, stability: 65, weaknesses: [], phase: null, cover: "none" },
+      },
+      REGISTRY,
+    );
+  const firstHit = (r: ReturnType<typeof run>) => {
+    const hit = r.log.find((e) => e.attackerAtk !== undefined && e.actionType !== "status_tick");
+    assert.ok(hit);
+    return hit;
+  };
+
+  // CONTROL — without FK2 the gauge starts at 3 (below max 6), so clause 4 MUST NOT fire.
+  const control = firstHit(run([]));
+  assert.equal(control.attackerAtk, 1719, "control: the plain effective panel ATK");
+  assert.equal(control.critical, false, "seed 2 must produce a NON-CRIT hit — pick a new seed rather than relax this");
+  assert.equal(control.finalDamage, 356, "in-game observed control (matches V1)");
+
+  // CLAUSE 4 — FK2 lifts the battle-start gauge to 6 (max), the turn-start drain fires, +10% ATK.
+  // ceil(1719 × 1.10) = 1891 ⇒ ceil(1891²/6891 × 0.80 × 1.01) = ceil(419.29) = 420 — the in-game observation.
+  // NOTE the observation DISCRIMINATES: +10% ATK is +18% DAMAGE (420/356) because the defense term
+  // moves with ATK. The rejected alternatives would have read 410 (merged into the permanent ATK%
+  // bucket), 383 (+10% of base ATK) or 392 (+10% as a final damage multiplier).
+  const clause4 = firstHit(run(["vector_fk2_splattering_pessimism"]));
+  assert.equal(clause4.attackerAtk, 1891, "clause 4: +10% ATK applied to the final panel");
+  assert.equal(clause4.critical, false, "seed 2 must produce a NON-CRIT hit here too");
+  assert.equal(clause4.finalDamage, 420, "in-game observed Basic damage with FK2");
+});
+
 test("VALIDATED: the Retired TMP's innate +1% damage is always active (no calibration needed)", () => {
   const w = REGISTRY.getWeapon("retired_tmp");
   assert.ok(w);

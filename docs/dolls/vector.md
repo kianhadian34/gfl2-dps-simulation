@@ -814,18 +814,19 @@ absent. None is silently dropped; each names the mechanic it waits on.
 | **Ultimate V2** | applies **Blazing Assault II** to `all_allies` for 2t (status exists) |
 | **Ultimate V6** | applies **Apathetic Resistance** to self for 2t (status exists) |
 | **Passive** clause 1 | Burn-tile debuff immunity (`tile_debuff_immunity`) |
-| **Passive** clause 4 | at-max Confectance drain ⇒ round-scoped +10% ATK |
-| **Passive** clause 5 (Lv.3/V5) | 2 extra slots ⇒ +10/+20/+30% for 0/1/2 filled |
+| **Passive** clause 4 | at-max Confectance drain ⇒ round-scoped +10% ATK — **`Validated` in-game 2026**: no FK2 → **356**, with FK2 → **420** (predicted and observed; the rejected models would have given 410/383/392) |
+| **Passive** clause 5 (Lv.3/V5) | 2 extra slots ⇒ +10/+20/+30% for 0/1/2 filled — **mechanism wired, but +20%/+30% are UNREACHABLE today**: the extra pool fills only from gains overflowing past 6, and Vector declares no `resource_gain` (no skill-level Confectance grant exists). See `docs/validation-plan.md` §3.5.0 |
 | **Fortification map** | her OWN ordering (V1 passive L2 · V2 ult L2 · V3 a1 L2 · V4 a2 L2 · V5 passive L3 · V6 ult L3) |
 | **FK2** | +3 Confectance at battle start (Qiongjiu's FK1 shape) |
 | **FK5** | the tile reduction (−20% on a Burn tile) — **INERT end to end** (the damage path only targets the dummy), tested directly |
+| **Status** | **Clause 4 is `Validated` in-game 2026** (356 / 420). Clause 5's +20%/+30% were NOT tested (unreachable). Everything else in this table remains `[SOURCE]` / **Not Tested** |
 
 ### Recorded-only (each with its reason, in code)
 
 | Element | Block |
 |---|---|
 | Skill 1 fixed-damage AoE | needs an ability-sourced **percent-of-ATK fixed damage** + multi-enemy targeting |
-| Skill 1/2 Conf gain | `resource_gain` is a PASSIVE effect only — no skill-level Confectance grant |
+| Skill 1/2 Conf gain | `resource_gain` is a PASSIVE effect only — no skill-level Confectance grant. **Consequence measured 2026:** her gauge never exceeds its battle-start value, so Perception Block **clause 4 fires at most once (round 1, with FK2)** and **clause 5's +20%/+30% tiers are unreachable** (`docs/validation-plan.md` §3.5.0) |
 | Skill 1's Overburn clause | conditional on the same Burn-debuff clause and area-scoped — omitted with it |
 | Skill 2's **Smolder** | status UNDEFINED (§7.1 row 4) |
 | Ultimate's **Incineration tiles** | no skill can generate a tile (`docs/tiles.md` §10) |

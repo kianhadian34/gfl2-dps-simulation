@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "seed": 2,
+  "turns": 1,
+  "team": [
+    {
+      "characterId": "vector",
+      "rotation": ["basic"],
+      "weaponId": "retired_tmp",
+      "equippedFixedKeys": ["vector_fk2_splattering_pessimism"]
+    }
+  ],
+  "configOverrides": { "fortificationLevel": 6 },
+  "dummy": {
+    "id": "training_dummy",
+    "name": "Training Dummy",
+    "hp": 999999999,
+    "defense": 5000,
+    "stability": 65,
+    "weaknesses": [],
+    "phase": null,
+    "cover": "none"
+  }
+}

@@ -57,7 +57,7 @@ blocks:
 |---|---|---|---|
 | **V1** | **Vector's panel + damage multipliers** (at V6 — §3) | Confirms her registration is arithmetically right, and gives the baseline every later Vector slice is measured against | Standard fixture; no tiles |
 | **V2** | **Vector's weapon data** — the blue SMG (ATK +25, +1% dmg) | Makes her REAL build expressible; today `weapons.ts` holds one AR and no SMG, so her actual gear cannot enter the engine at all (§3.2, §3.4) | Its name + ATK Lv.1/Lv.60; a decision on the innate +1% |
-| **V3** | **Vector's passive — Confectance behaviour** (clauses 4 & 5) | Her strongest non-tile mechanic; clause 5's 2 extra slots is user-provided level-1 evidence that has **never been observed**, and it silently changes her numbers (§3.1 Trap 3) | Confectance at/over max; V5 for clause 5 |
+| **V3** | **Vector's passive — Confectance behaviour** (clauses 4 & 5) | Her strongest non-tile mechanic; clause 5's 2 extra slots is user-provided level-1 evidence that has **never been observed**, and it silently changes her numbers (§3.1 Trap 3) | Confectance at/over max; V5 for clause 5. **ONLY THE +10% TIER IS REACHABLE — see §3.5** |
 | **V4** | **Tile generation + duration** | Almost all of Vector's remaining kit AND every other tile slice depends on tiles behaving as modelled | A tile-generating effect (blocked — see §4) |
 | **V5** | **Tile debuffs on a unit standing on one** (trigger (b)) | The applied-status sets; the Burn tile's real effect | V4 (tiles must exist) |
 | **V6** | **Tile upgrade + fusion** | T5's whole rule set (the 8 fusible pairs, level preservation, replacement-vs-protection) | V4 |
@@ -348,6 +348,118 @@ I will not silently do either, and I will not model the +1% as a calibration it 
 
 ---
 
+## 3.5 Slice detail — V3: Vector's passive, clause 4 (the at-max Confectance drain)
+
+**Claim level:** the isolated clause, not the passive.
+
+**Why this slice looks different than planned.** The slice list expected V3 to cover **clauses 4 and
+5** (+10% / +20% / +30%). Investigation before writing the setup found clause 5 **unreachable by
+construction**, so this slice is deliberately the **+10% tier only**.
+
+### 3.5.0 The reachability finding (verify this before expecting the upper tiers)
+
+Her kit gains Confectance from her **skills** — Skill 1 and Skill 2 both state *"Vector gains 2 points
+of Confectance Index"*. Those halves are **RECORDED-ONLY**: the engine's `resource_gain` is a
+**PASSIVE** effect with `on: "onDamageDealt"` (`src/model/types.ts`, consumed at
+`simulation.ts:774`), and **no skill-level Confectance grant exists**. Vector accordingly declares
+**no `resource_gain` at all** (`src/data/vector.ts` — Qiongjiu's `+1 per damage event` lives in
+*her* passive's text, not Vector's).
+
+Consequences, all verified against the built engine:
+
+1. Her gauge only ever holds its **battle-start** value: **3** by default, **6 (max)** with **FK2**.
+2. Clause 4 therefore fires **once, on round 1**, and only with FK2 — after the drain the gauge sits
+   at 0 for the rest of the run and there is no way to refill it.
+3. Clause 5 counts points **above** max in the separate extra pool, which is filled only by gains
+   that overflow past 6 — also impossible without those skill gains. So **+20% and +30% cannot be
+   produced in the engine today**, and no in-game run can be compared against them.
+
+**This is a recorded gap, not a modelling choice to work around.** Making clause 5 observable needs
+skill-level Confectance gain implemented first; that is engine work, and this slice is evidence work.
+Do not raise `confectanceMax` to fake a filled extra pool — U9 is settled and a guard test pins it.
+
+### 3.5.1 Setup (identical to the VALIDATED V1 fixture — exactly one field differs)
+
+Vector **V6** (`configOverrides.fortificationLevel: 6`) · **Affinity Lv5** · Neural Helix + Affinity
+flats wired · weapon **Retired TMP** (`retired_tmp`, +25 ATK, innate +1%) · dispatch + Remolder flats ·
+**no attachments, no Apex, no Cooking Stats** · **no Common Keys** · fixed keys **none / FK2 only**.
+
+Rotation **`basic` only**, `turns: 1`, `seed: 2` (pins a **non-crit** hit — assert this, do not relax
+it). Dummy: **DEF 5000**, stability 65, **no weaknesses**, phase `null`, No Cover.
+
+Ready-to-run files (run both — the pair IS the slice):
+
+```
+examples/vector-v3-control.json     # no fixed keys      -> control
+examples/vector-v3-clause4.json     # FK2 equipped       -> the clause
+```
+
+### 3.5.2 The claim, and why FK2 is the only lever
+
+Clause 4 is *"at the start of the turn, if Confectance Index is at maximum, consumes all points … to
+increase attack by 10% for the round"*. Given §3.5.0, **at maximum** on round 1 is reachable only via
+FK2 (+3 at battle start → 3 + 3 = 6). Without FK2 the clause **must not fire**, and that is the
+control: it protects the 356 already validated in V1 and rules out the clause firing unconditionally.
+
+### 3.5.3 Engine prediction, with the derivation
+
+Panel ATK **1718.73** at ATK% 17% (12% universal Neural Helix + 5% her own) ⇒ flat **1469**
+(`1469 × 1.17 = 1718.73`). The engine's in-combat ATK% bucket is applied to the **final panel**:
+`ceil(1469 × 1.17) = 1719`, then `ceil(1719 × 1.10) = 1891`.
+
+| Run | ATK | Derivation | Predicted |
+|---|---|---|---|
+| **Control** (no keys) | 1719 | `ceil(1719²/6719 × 0.80 × 1.01)` | **356** *(already VALIDATED in V1 — this run re-confirms the control)* |
+| **Clause 4** (FK2) | 1891 | `ceil(1891²/6891 × 0.80 × 1.01) = ceil(419.29)` | **420** |
+
+The four outcomes the observation can produce, all rising out of the same 356 control — this is what
+makes the slice discriminating rather than merely consistent:
+
+| Model of *"increase attack by 10%"* | ATK | Damage |
+|---|---|---|
+| **In-combat ATK% on the final panel** (the engine) | 1891 | **420** |
+| Merged into the permanent ATK% bucket (`1469 × 1.27`) | 1866 | 410 |
+| +10% of **base** ATK only (`1719 + 75`) | 1794 | 383 |
+| +10% as a **final damage** multiplier (`ceil(356 × 1.10)`) | 1719 | 392 |
+
+**If the hit crits**, the clause-4 number becomes `ceil(419.29 × 1.20) = 504`. Record whether it
+crit — seed 2 is chosen so it does not.
+
+**What upgrades if it agrees:** clause 4's **+10% magnitude**, its **round-scoped window**, and the
+**at-max precondition** each become one claim with the observation cited. Nothing about clause 5
+upgrades — it was not exercised.
+
+**What stays `Not Tested` even on agreement:** clause 5's +20%/+30% tiers (§3.5.0), her skill-sourced
+Confectance gain, clauses 2 and 3, and every other recorded-only clause in `docs/dolls/vector.md` §11.
+
+### 3.5.4 The one thing to watch (a real trap in this slice)
+
+**Do not report the 420 as a +10% damage increase.** It is +10% **ATK**, which lifts damage by
+**18%** (420/356) because the defense term moves with it. An observer expecting "+10% damage" would
+read 420 as an error; it is the prediction.
+
+### 3.5.5 OBSERVED 2026 — and it AGREED on both runs
+
+The owner ran both and reported: **356 without FK2**, **420 with FK2**. Both match the prediction
+exactly, and the control re-confirms V1.
+
+**What that upgrades to `Validated`:**
+
+| Claim | Evidence |
+|---|---|
+| Clause 4's magnitude is **+10% ATK** | 420 — the in-combat-ATK%-on-final-panel model. The three rejected readings would have produced **410** / **383** / **392** |
+| The bonus is **round-scoped** and fires at the **holder's turn start** | the observed round-1 hit carries it |
+| The **at-max precondition** is real | the control (gauge 3 < 6) did **not** fire — 356, unchanged |
+
+**Pinned by an automated test:** `src/test/vector-data.test.ts` — the control and clause-4 cases assert
+ATK 1719→356 and ATK 1891→420, with hard non-crit guards.
+
+**NOT upgraded, and it must not be read as covered:** clause 5's **+20% / +30% tiers** (§3.5.0 — still
+unreachable), her skill-sourced Confectance gain, clauses 2 and 3, and every other recorded-only clause
+in `docs/dolls/vector.md` §11. The observation tested the **+10% tier only**.
+
+---
+
 ## 4. The UNOBSERVABLE set — record, do not chase
 
 These **cannot** be `Validated` with the current MVP, by construction. They are NOT "pending": there
@@ -420,8 +532,14 @@ with **ATK 17% / HP 17% / DEF 12%**. Two separate game stats confirmed:
 - **V2 (Vector's weapon data)** — **partially answered:** the panel gives the weapon's ATK contribution
   as **25 flat**, with **no HP/DEF lines**. Still needed: its identity and whether it carries
   **%ATK sub-stats / a calibration**, plus the owner decision on the innate **+1% damage** (§3.4).
-- **V3 (her passive / Confectance)** — planned; the engine control is confirmed (FK2 flips Basic
-  78 → 94, which is the passive firing).
+- **V3 (her passive / Confectance) — CLAUSE 4 `Validated` IN-GAME 2026; clause 5 still unreachable.**
+  **Observed: 356 without FK2, 420 with FK2** — both exactly as predicted, so **clause 4's +10% ATK,
+  its round-scoped window and its at-max precondition are `Validated`**, and the control re-confirms
+  V1's 356. The observation **discriminated**: the rejected models gave 410 / 383 / 392. Pinned by
+  `src/test/vector-data.test.ts`. **Clause 5's +20%/+30% tiers were NOT tested and remain unreachable
+  by construction** (§3.5.0): Vector declares no `resource_gain` and the engine has no skill-level
+  Confectance grant, so her gauge never exceeds its battle-start value and the extra-slot pool cannot
+  fill. Scenario files: `examples/vector-v3-control.json`, `examples/vector-v3-clause4.json`.
 - V4–V9 — planned; detail is added per slice when we reach it (each slice's setup depends on the
   previous slice's outcome).
 
