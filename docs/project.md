@@ -209,7 +209,7 @@ summary alone.
 | Branch | `main` |
 | HEAD | `346cbc2813b62ce62608f7960fd40ddb9de736cb` |
 | `origin/main` | `346cbc2813b62ce62608f7960fd40ddb9de736cb` (in sync) |
-| Working tree | clean after commit `ce70ec0` (§7.1 items 36–43) |
+| Working tree | clean after commit `9a68711` (§7.1 items 36–43) |
 | Untracked | `.reasonix/` (host-managed session artifacts — **never stage**) |
 | Engine build | `npm run build` → exit 0 |
 | Engine tests | **980 pass · 0 fail · 0 skipped** across **116 test files** |
