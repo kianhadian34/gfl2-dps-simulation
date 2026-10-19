@@ -253,9 +253,11 @@ test("VALIDATED: Vector's Basic at DEF 5000 reproduces the observed 356 (ATK 171
   const basic = r.log.find((e) => e.attackerAtk !== undefined && e.actionType !== "status_tick");
   assert.ok(basic);
   assert.equal(basic.attackerAtk, 1719, "the engine uses the effective panel ATK");
-  if (basic.critical !== true) {
-    assert.equal(basic.finalDamage, 356, "in-game observed Basic damage");
-  }
+  // HARD-FAIL GUARD: the seeded hit MUST be non-crit, otherwise the 356 assertion below would be
+  // skipped and this validation could silently stop testing anything. If a future RNG/data change makes
+  // this crit, pick a different seed — do NOT relax the assertion.
+  assert.equal(basic.critical, false, "seed 2 must produce a NON-CRIT hit (the observed 356 was non-crit)");
+  assert.equal(basic.finalDamage, 356, "in-game observed Basic damage");
 });
 
 test("VALIDATED: the Retired TMP's innate +1% damage is always active (no calibration needed)", () => {

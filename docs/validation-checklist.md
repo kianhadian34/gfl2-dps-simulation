@@ -164,15 +164,27 @@ Mobility **6** · Stability Damage Reduction **60.00%**.
 | **Base stats: Stability 10 · Crit Rate 20% · Critical Damage 120% · Mobility 6** | **`Validated`** | Special Attributes tab matches `src/data/vector.ts` exactly |
 | **`Stability Damage Reduction` = 60%** exists and has that value for this character | **`Validated`** (the value) / **`Not Modelled`** (the mechanic) | Displayed on Special Attributes. The engine has **no field** for it, and it is **inert** in the MVP (dolls are never attacked). Whether 60% is universal is **`Not Tested`** |
 | Whether **`Fighting Spirit`'s 1.8% is inside `Attack Boost`'s 17%** | **RESOLVED — `Validated`: NOT present** | The owner confirmed "max level remolding" = **Remolder LEVEL 60** (the flat stat), **not** the flower/buff picks; Vector has **no Fighting Spirit**. So `Attack Boost 17% = 12% universal + 5% Neural Helix` (`atkPct: 0.05`). *(The earlier "5.0% vs 3.2%" ambiguity was self-inflicted — I assumed "max remolding" meant all 15 `SUPPORT_BUFFS` at max)* |
-| **Vector's Neural Helix flats** (432.73 / 945.79 / 252.40) and **Affinity Lv5 flats** (106 / 280 / 116) | **`Validated`** and **WIRED** | Entered into `src/data/vector.ts`; the engine now reproduces **all six** observed stats (flat 1718.73/4313.79/1422.40, percent 17%/17%/12%) ⇒ effective **ATK 2011 · HP 5048 · DEF 1594** |
-| **Vector's weapon can be equipped** | **`Not Tested` / BLOCKED** | The panel shows `Weapon 25.00` but **no `WeaponDef` exists**. The engine's real-build panel is **1982**, not 2011; Basic damage **451 vs 462**. Needs the weapon's identity/ATK curve |
+| **Vector's Neural Helix flats = ATK 183 / HP 319 / DEF 100, with atkPct 5% / hpPct 5%** (the GENE NODE TABLE — **PRE-percentage**) | **`Validated`** and **WIRED** | Node table totals; the `View Details` line (432.73 / 945.79 / 252.40) is **POST-percentage** and must NOT be entered as flat (that error was made and corrected 2026) |
+| **Vector's Affinity Lv5 flats = ATK 106 / HP 280 / DEF 116** | **`Validated`** and **WIRED** | `affinityFlatStats[5]`; only Lv5 is defined because the model expects PER-LEVEL increments summed 1..N while the observation is one flat block |
+| **Vector's weapon "Retired TMP": +25 flat ATK, innate +1% damage** | **`Validated`** and **WIRED** | `src/data/weapons.ts`; `atkLvl1` = `atkLvl60` = 25 (only the summed value is known — no curve invented); the +1% is `WeaponDef.innateDamageDealt`, independent of `calibrationLevel`, folded into the existing additive DMG% bucket |
+| **Vector's full effective panel: ATK 1718.73 · HP 4313.79 · DEF 1422.40** (HUD **1719 / 4314 / 1423**) | **`Validated`** | Reproduced exactly by `flat × (1 + pct)` with all five flat sources + the weapon, and the 12% global + 5% Helix. Pinned by test |
+| **Vector's Basic attack = 356 at DEF 5000, non-crit, with the +1% weapon** | **`Validated`** | `ceil(1719²/6719 × 0.80 × 1.01)` = **356** — matches the owner's in-game hit exactly. **Discriminating**: without the +1% it would be 352; a crit would be 423; no ATK in 1600–1850 gives 356 without the +1%. Pinned by test |
 | **Percentage-bucket folding into DAMAGE (ATK% → damage)** | **`Not Tested`** | This build equips no attachments/Common Keys/Apex, so no independent percentage source was exercised; still validated only through Qiongjiu's attachment observation |
 | The engine's **integer `ceil` panel convention is adequate** for damage | **`Mathematically Proven`** | ATK 1719 vs 1718.73 → identical **352** damage at DEF 5000 |
 
-**Scope limit, stated plainly:** this read validates the **flat-plus-bond** arithmetic and the
-**percentage-stat VALUES** (Attack/Defense/Health Boost, Crit, Stability, Stability Damage Reduction).
-It says **nothing** about how the percentage buckets fold into **damage** — no independent percentage
-source (attachments / Common Keys / Apex) was equipped, and no hit was observed.
+**Scope limit, stated plainly — what IS and IS NOT covered.**
+
+**VALIDATED:** the flat-plus-bond arithmetic; the percentage-stat VALUES; the complete effective PANEL
+(ATK/HP/DEF); and **Vector's Basic attack damage** (one hit, DEF 5000, non-crit, +1% weapon).
+
+**NOT validated — do not infer it:**
+- **Her other abilities** — Skill 1, Skill 2 and the Ultimate have NEVER been observed. Only Basic has.
+- **Her passive** (Perception Block: the turn-start Confectance drain and the +10%/+30% ATK) — never observed.
+- **Her Fixed Keys** beyond FK2/FK5 being wired, and every `deferredNote` clause (absent by construction).
+- **Percentage-bucket folding from an INDEPENDENT percentage source** (attachments / Common Keys /
+  Apex). The 17% here comes from the Helix path, not an equipment source.
+- **`Stability Damage Reduction` = 60%** — displayed in-game but the engine has **no field** for it. Inert
+  in the MVP (dolls are never attacked), so it affects no current number; recorded as a gap.
 
 ### 6.2 Automated evidence
 

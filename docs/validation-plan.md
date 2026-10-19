@@ -374,8 +374,11 @@ become retroactively testable.
 
 ## 5. Status
 
-- **V1 STEP 1 — the PANEL** — **OBSERVED 2026 (both tabs, owner-supplied).** Two separate game stats
-  confirmed:
+- **V1 STEP 1 — the PANEL — COMPLETE and VALIDATED 2026.** The engine reproduces **every** number
+exactly: effective **ATK 1718.73 / HP 4313.79 / DEF 1422.40** (HUD **1719 / 4314 / 1423**), and her
+**Basic attack 356** at DEF 5000 non-crit with the +1% weapon. Full flat sources: base 748/1819/569 ·
+weapon 25 · Helix 183/319/100 · Affinity Lv5 106/280/116 · Dispatch 183/618/240 · Remolding 224/651/245,
+with **ATK 17% / HP 17% / DEF 12%**. Two separate game stats confirmed:
   - **Basic Attributes = FLAT only.** `ATK 1718.73 / HP 4313.79 / DEF 1422.40`, each **exactly** the sum
     of its listed parts (`total/Σparts = 1.000000`), and the engine's flat folding reproduces it once the
     three missing sources (Neural Helix, Affinity Lv5 flat, weapon 25) are supplied.

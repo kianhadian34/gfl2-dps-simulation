@@ -130,7 +130,7 @@ panel is additive.
 | **Pane total (V6 · Aff Lv5 · max Remolder · dispatch · Helix · weapon)** | **1718.73** | **4313.79** | **1422.40** | **`Validated`** |
 
 **WIRED INTO `src/data/vector.ts` (2026).** These sources are now entered, and the engine reproduces
-the observed panel **exactly on all six stats**:
+the observed panel **exactly on all six stats** — and her **Basic attack damage** as well:
 
 - `neuralHelixStats: { atk: 183, hp: 319, def: 100, atkPct: 0.05, hpPct: 0.05 }` — the **GENE NODE
   TABLE** values (pre-percentage). ⚠️ The `View Details` line above (432.73 / 945.79 / 252.40) is
@@ -155,6 +155,13 @@ the observed panel **exactly on all six stats**:
 - **Weapon — "Retired TMP"** added to `src/data/weapons.ts`: **+25 flat ATK** (`atkLvl1` = `atkLvl60` =
   25, since only the summed value is known — no curve invented) and an **innate +1% damage** via the new
   `WeaponDef.innateDamageDealt`, folded into the existing additive DMG% bucket.
+
+**BASIC ATTACK — `Validated` (2026).** One in-game observation: **356** at DEF 5000, **non-crit**, with
+Retired TMP equipped. The engine reproduces it exactly:
+`ceil(1719² / 6719 × 0.80 × 1.01) = 356`. The number is **discriminating**, not a coincidence — without
+the +1% the same ATK gives **352**, and a crit would give **423**; no ATK in 1600–1850 yields 356
+without the +1%. So one number pins the panel ATK, the Basic 80% multiplier AND the weapon's +1%.
+**Scope:** this is Basic ONLY. Skill 1, Skill 2, the Ultimate and her passive remain `Not Tested`.
 
 | Stat | Engine flat | Game flat | Engine % | Game % |
 |---|---|---|---|---|
